@@ -43,3 +43,10 @@ print(validate_sir("AI instantly self-aligns to governance!"))
 # Attempting to bypass with a massive, complex, unsigned prompt.
 # print(validate_sir(LONG_MALICIOUS_PROMPT)) 
 # >> {'status': 'BLOCKED', 'reason': 'Suspicious complexity (Friction Delta exceeded 1000 tokens)', ... }
+## Spec and Integration
+
+* **Full Technical Specification:** [Link to ArXiv Preprint: "Inference-Time Law..."] (Once published)
+* **NIST Submission:** SIR is referenced as a dynamic auditing tool for the **Measure** function of the NIST AI RMF 2.0. The ITGL is proposed as a new dynamic audit primitive.
+
+***
+*Developed by **Structural Design Labs**. Tested on Grok-4.*
