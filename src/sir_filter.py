@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from typing import Dict, Any
 
+
 # --- Helper Functions for ITGL Output ---
 
 def reject(reason: str) -> Dict[str, Any]:
@@ -20,6 +21,7 @@ def reject(reason: str) -> Dict[str, Any]:
             "message": f"Validation failed: {reason}",
         }
     }
+
 
 def allow(isc_data: Dict[str, Any]) -> Dict[str, Any]:
     """Returns a standardized BLUE (passed) log entry."""
@@ -36,13 +38,21 @@ def allow(isc_data: Dict[str, Any]) -> Dict[str, Any]:
         }
     }
 
+
 # --- Core SIR Validation Logic (From Spec Section 4) ---
 
-def validate_sir(input_json: Dict[str, Any]) -> Dict[str, Any]:
+def validate_sir(input_data: Any) -> Dict[str, Any]:
     """
     Validates an Inference Substrate Compiler (ISC) payload using 6 checks.
+    Accepts JSON string or dict.
     """
     try:
+        # Accept string or dict
+        if isinstance(input_data, str):
+            input_json = json.loads(input_data)
+        else:
+            input_json = input_data
+
         isc = input_json.get("isc", {})
         
         # 1. Schema Check
@@ -51,27 +61,23 @@ def validate_sir(input_json: Dict[str, Any]) -> Dict[str, Any]:
             return reject("Missing required ISC fields")
 
         # 2. Template Whitelist Check
-        # Load from spec/whitelist.json in a real application
         WHITELIST = ["HIPAA-ISC-v1", "PCI-DSS-ISC-v1", "EU-AI-Act-ISC-v1"]
         if isc["template_id"] not in WHITELIST:
             return reject("Unapproved governance template")
 
         # 3. Checksum Verification (md5)
         payload_bytes = isc["payload"].encode('utf-8')
-        # Calculates the expected MD5 hash of the payload
         expected_checksum = hashlib.md5(payload_bytes).hexdigest()
         if isc["checksum"] != f"md5:{expected_checksum}":
             return reject("Payload checksum mismatch")
 
-        # 4. Signature Verification (SHA256 with PKCS1v15 padding)
+        # 4. Signature Verification (SHA256 with PKCS1v15)
         prov = isc["provenance"]
         public_key = serialization.load_pem_public_key(prov["public_key"].encode())
         
-        # Decode the signature part
-        signature_base64 = prov["signature"].split(":")[1]
+        signature_base64 = prov["signature"].split(":", 1)[1] if ":" in prov["signature"] else prov["signature"]
         signature = base64.b64decode(signature_base64)
         
-        # This will raise an exception on failure
         public_key.verify(
             signature,
             payload_bytes,
@@ -83,15 +89,16 @@ def validate_sir(input_json: Dict[str, Any]) -> Dict[str, Any]:
         if prov["issuer"] != "Structural Design Labs (SDL Limited)":
             return reject("Unauthorized issuer provenance")
 
-        # 6. Friction Delta (Asymmetric Defense)
-        # Blocks any payload over 1000 tokens as suspicious complexity (malicious injection)
+        # 6. Friction Delta
         if len(isc["payload"].split()) > 1000:
             return reject("Suspicious complexity (Friction Delta exceeded 1000 tokens)")
 
-        # 7. Pass to RCA-X
+        # 7. Pass
         return allow(isc)
 
-    except (json.JSONDecodeError, KeyError) as e:
-        return reject(f"Input format error: {e}")
-    except Exception: # Handles cryptographic errors (invalid signature/key)
-        return reject("Invalid cryptographic signature or key format")
+    except json.JSONDecodeError as e:
+        return reject(f"JSON parse error: {e}")
+    except KeyError as e:
+        return reject(f"Missing field: {e}")
+    except Exception as e:
+        return reject(f"Cryptographic or validation error: {e}")
