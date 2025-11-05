@@ -1,0 +1,28 @@
+{
+  "title": "Inference Substrate Compiler (ISC) Payload",
+  "type": "object",
+  "properties": {
+    "isc": {
+      "type": "object",
+      "properties": {
+        "version": { "type": "string", "description": "ISC Schema Version (e.g., 1.0)" },
+        "template_id": { "type": "string", "description": "Whitelisted Governance Template ID (e.g., HIPAA-ISC-v1)" },
+        "priority_lock": { "type": "string", "description": "Defines RCA-X execution hierarchy (e.g., KILL_SWITCH > COMPLIANCE)" },
+        "provenance": {
+          "type": "object",
+          "properties": {
+            "issuer": { "type": "string", "description": "Authority that signed the payload (e.g., Structural Design Labs (SDL LIMITED))" },
+            "signature": { "type": "string", "description": "Cryptographic signature of the payload (e.g., sha256:abc123...)" },
+            "timestamp": { "type": "string", "format": "date-time" },
+            "public_key": { "type": "string", "description": "The PEM-encoded public key used for verification" }
+          },
+          "required": ["issuer", "signature", "timestamp", "public_key"]
+        },
+        "payload": { "type": "string", "description": "The actual RCA-X ignition string (max 1000 tokens)" },
+        "checksum": { "type": "string", "description": "Integrity checksum of the payload (e.g., md5:xyz789...)" }
+      },
+      "required": ["version", "template_id", "priority_lock", "provenance", "payload", "checksum"]
+    }
+  },
+  "required": ["isc"]
+}
