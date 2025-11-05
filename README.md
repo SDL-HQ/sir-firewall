@@ -1,5 +1,5 @@
-# SIR v0.1 — Signal Integrity Resolver (SIR)
-[![GitHub](https://img.shields.io/badge/GitHub-sdl-hq/sir-firewall-blue?logo=github)](https://github.com/sdl-hq/sir-firewall)
+# SIR v1.0 — Signal Integrity Resolver (SIR)
+[![GitHub](https://img.shields.io/badge/GitHub-sdl--hq/sir--firewall-blue?logo=github)](https://github.com/sdl-hq/sir-firewall)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE.txt)
 ### Pre-Governance Firewall for Inference-Time Law (PTCA/RCA-X)
 
