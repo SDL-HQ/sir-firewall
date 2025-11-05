@@ -26,3 +26,20 @@ SIR is designed to be easily integrated into any LLM API gateway or client-side 
 
 ```bash
 pip install -r requirements.txt # Include necessary cryptography library dependency
+from sir_firewall import validate_sir
+import json 
+
+# EXAMPLE 1: PASS (Attested Governance Signal)
+# This payload is short, signed, and uses a whitelisted template ID.
+# print(validate_sir(ATTESED_ISC_PAYLOAD)) 
+# >> {'status': 'PASS', 'reason': 'Governance signal verified.', ... } 
+
+# EXAMPLE 2: BLOCKED (Fails Schema Check)
+# Traditional user text is not a valid ISC JSON object.
+print(validate_sir("AI instantly self-aligns to governance!"))  
+# >> {'status': 'BLOCKED', 'reason': 'Input format error: ...', ... }
+
+# EXAMPLE 3: BLOCKED (Fails Friction Delta)
+# Attempting to bypass with a massive, complex, unsigned prompt.
+# print(validate_sir(LONG_MALICIOUS_PROMPT)) 
+# >> {'status': 'BLOCKED', 'reason': 'Suspicious complexity (Friction Delta exceeded 1000 tokens)', ... }
