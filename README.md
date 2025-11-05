@@ -49,4 +49,4 @@ print(validate_sir("AI instantly self-aligns to governance!"))
 * **NIST Submission:** SIR is referenced as a dynamic auditing tool for the **Measure** function of the NIST AI RMF 2.0. The ITGL is proposed as a new dynamic audit primitive.
 
 ***
-*Developed by **Structural Design Labs**. Tested on Grok-4.*
+*Developed by **Structural Design Labs (SDL Limited)**. Tested on Grok-4.*
