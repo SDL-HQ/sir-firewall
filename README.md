@@ -1,6 +1,6 @@
 # SIR v1.0 — Signal Integrity Resolver (SIR)
 [![GitHub](https://img.shields.io/badge/GitHub-sdl--hq/sir--firewall-blue?logo=github)](https://github.com/sdl-hq/sir-firewall)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE.txt)
+[![License](https://img.shields.io/badge/GitHub-sdl--hq/License-MIT-green)](LICENSE.txt)
 ### Pre-Governance Firewall for Inference-Time Law (PTCA/RCA-X)
 
 The **Signal Integrity Resolver (SIR)** is a lightweight, parameter-free validator designed to run *before* any Large Language Model (LLM) inference. Its purpose is to enforce **Inference-Time Law (ITGL)** by blocking complex, unauthorized inputs (like prompt injection) while only permitting trusted, cryptographically-attested governance signals (ISC payloads).
