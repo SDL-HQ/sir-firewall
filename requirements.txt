@@ -1,4 +1,4 @@
 # SIR v1.0 — Signal Integrity Resolver
 # Required for cryptographic validation and ITGL logging
 
-cryptography>=42.0.0,<43.0.0
+cryptography>=44.0.1,<45.0.0
