@@ -1,6 +1,6 @@
 import json
 import pytest
-from sir_firewall import validate_sir
+from sir_firewall.sir_firewall import validate_sir
 
 
 @pytest.fixture
