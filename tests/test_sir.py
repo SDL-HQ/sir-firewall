@@ -1,5 +1,7 @@
 import json
 import pytest
+import hashlib
+import base64
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes, serialization
 from sir_firewall.sir_firewall import validate_sir
@@ -16,7 +18,7 @@ def valid_isc():
     version = "1.0"
     template_id = "HIPAA-ISC-v1"
     priority_lock = "HARD"
-    checksum = f"sha256:{hashes.SHA256().finalize(hash(payload.encode())).hex()}"
+    checksum = f"sha256:{hashlib.sha256(payload.encode()).hexdigest()}"
 
     # Build envelope
     envelope_parts = [
