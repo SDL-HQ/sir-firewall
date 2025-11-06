@@ -1,22 +1,59 @@
 import json
 import pytest
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import hashes, serialization
 from sir_firewall.sir_firewall import validate_sir
 
 
 @pytest.fixture
 def valid_isc():
+    # Generate real key
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public_key = private_key.public_key()
+
+    # Payload
+    payload = "Protect PHI."
+    version = "1.0"
+    template_id = "HIPAA-ISC-v1"
+    priority_lock = "HARD"
+    checksum = f"sha256:{hashes.SHA256().finalize(hash(payload.encode())).hex()}"
+
+    # Build envelope
+    envelope_parts = [
+        version,
+        template_id,
+        checksum,
+        payload,
+        json.dumps(priority_lock, separators=(",", ":"), sort_keys=True)
+    ]
+    envelope = "|".join(envelope_parts).encode()
+
+    # Sign
+    signature = private_key.sign(
+        envelope,
+        padding.PKCS1v15(),
+        hashes.SHA256()
+    )
+    sig_b64 = base64.b64encode(signature).decode()
+
+    # PEM
+    pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode()
+
     return {
         "isc": {
-            "version": "1.0",
-            "template_id": "HIPAA-ISC-v1",
-            "priority_lock": "HARD",
+            "version": version,
+            "template_id": template_id,
+            "priority_lock": priority_lock,
             "provenance": {
                 "issuer": "Structural Design Labs (SDL Limited)",
-                "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy8Dbv8xEin2TR4b8jL\nzF0b6Y8iK8QIDAQAB\n-----END PUBLIC KEY-----",
-                "signature": "rsa-sha256:MEUCIQCli0lY8bP7l6L2x8P7j4v1g1p2h3j4k5l6m7n8o9p0qA=="
+                "public_key": pem,
+                "signature": f"rsa-sha256:{sig_b64}"
             },
-            "payload": "Protect PHI.",
-            "checksum": "sha256:1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z"
+            "payload": payload,
+            "checksum": checksum
         }
     }
 
