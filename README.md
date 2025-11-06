@@ -3,7 +3,10 @@
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE.txt)
 ### Pre-Governance Firewall for Inference-Time Law (PTCA/RCA-X)
 
-The **Signal Integrity Resolver (SIR)** is a lightweight, parameter-free validator designed to run *before* any Large Language Model (LLM) inference. Its purpose is to enforce **Inference-Time Law (ITGL)** by blocking complex, unauthorized inputs (like prompt injection) while only permitting trusted, cryptographically-attested governance signals (ISC payloads).
+The **Signal Integrity Resolver (SIR)** is a lightweight, parameter-free validator designed to run *before* any Large Language Model (LLM) inference. Its purpose is to enforce **Inference-Time Law (ITGL)** by blocking complex, unauthorized inputs (like prompt injection) while only permitting trusted, cryptographically-attested governance signals (**ISC payloads**).
+
+> **ISC (Inference Substrate Compiler)**: A JSON payload carrying a signed governance instruction.  
+> Requires: `isc.provenance.issuer`, `isc.provenance.signature`, and `isc.template_id`.
 
 **Goal: Make breaking alignment 100× harder than maintaining it.**
 
