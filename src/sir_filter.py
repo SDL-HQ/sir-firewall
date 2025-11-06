@@ -29,8 +29,8 @@ def reject(reason: str, code: int = 403) -> Dict[str, Any]:
     }
 
 
-def allow(isc_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Returns a standardized BLUE (passed) log entry."""
+def allow(isc_data: Dict[str, Any], key_fpr: str) -> Dict[str, Any]:
+    """Returns a standardized BLUE (passed) log entry with key fingerprint."""
     return {
         "status": "PASS",
         "reason": "Governance signal verified.",
@@ -40,31 +40,38 @@ def allow(isc_data: Dict[str, Any]) -> Dict[str, Any]:
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "template_id": isc_data["template_id"],
             "issuer": isc_data["provenance"]["issuer"],
+            "key_fingerprint": key_fpr,
+            "sig_alg": "RSA-PKCS1v15-SHA256",
             "status_code": 200,
         }
     }
 
 
-# --- Token Counting Utility ---
+# --- Token Counting + Key Fingerprint ---
 
 def count_tokens(text: str) -> int:
     """Rough token count: 1 token ≈ 4 chars (GPT-style)"""
-    return (len(text) + 3) // 4  # Ceiling division
+    return (len(text) + 3) // 4
+
+
+def _spki_fingerprint_hex(pem: str) -> str:
+    """SHA-256 of DER-encoded SubjectPublicKeyInfo."""
+    k = serialization.load_pem_public_key(pem.encode())
+    der = k.public_bytes(
+        serialization.Encoding.DER,
+        serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+    return hashlib.sha256(der).hexdigest()
 
 
 # --- Core SIR Validation Logic (SIR v1.0.2) ---
 
 def validate_sir(input_data: Any) -> Dict[str, Any]:
-    """
-    Validates an Inference Substrate Compiler (ISC) payload.
-    Enforces 7 checks with full envelope signing.
-    """
     try:
         # 0. Early size guardrail
         if isinstance(input_data, str) and len(input_data.encode()) > MAX_INPUT_BYTES:
             return reject("Input exceeds size limit", code=413)
 
-        # Parse input
         input_json = json.loads(input_data) if isinstance(input_data, str) else input_data
         isc = input_json.get("isc", {})
 
@@ -87,7 +94,7 @@ def validate_sir(input_data: Any) -> Dict[str, Any]:
         ]
         envelope = "|".join(envelope_parts).encode('utf-8')
 
-        # 4. SHA256 Checksum over payload only
+        # 4. SHA256 Checksum over payload
         payload_bytes = isc["payload"].encode('utf-8')
         expected_checksum = f"sha256:{hashlib.sha256(payload_bytes).hexdigest()}"
         if not compare_digest(isc["checksum"], expected_checksum):
@@ -107,7 +114,7 @@ def validate_sir(input_data: Any) -> Dict[str, Any]:
 
         public_key.verify(
             signature,
-            envelope,  # ← Signed: version|template_id|checksum|payload|priority_lock
+            envelope,
             padding.PKCS1v15(),
             hashes.SHA256()
         )
@@ -120,8 +127,9 @@ def validate_sir(input_data: Any) -> Dict[str, Any]:
         if count_tokens(isc["payload"]) > 1000:
             return reject("Suspicious complexity (Friction Delta exceeded 1000 tokens)")
 
-        # 8. PASS
-        return allow(isc)
+        # 8. PASS with key fingerprint
+        key_fpr = _spki_fingerprint_hex(prov["public_key"])
+        return allow(isc, key_fpr)
 
     except json.JSONDecodeError as e:
         return reject(f"JSON parse error: {e}", code=400)
