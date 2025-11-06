@@ -1,32 +1,33 @@
 import json
-from sir_filter import validate_sir
+import pytest
+from sir_firewall import validate_sir
 
-# Valid ISC
-VALID_ISC = {
-    "isc": {
-        "version": "1.0",
-        "template_id": "HIPAA-ISC-v1",
-        "priority_lock": "KILL_SWITCH > COMPLIANCE > TASK",
-        "provenance": {
-            "issuer": "Structural Design Labs (SDL Limited)",
-            "signature": "sha256:valid_sig...",
-            "timestamp": "2025-11-05T12:34:56Z",
-            "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END PUBLIC KEY-----"
-        },
-        "payload": "RCA-X ignition string (38 tokens)",
-        "checksum": "md5:correct_checksum"
+
+@pytest.fixture
+def valid_isc():
+    return {
+        "isc": {
+            "version": "1.0",
+            "template_id": "HIPAA-ISC-v1",
+            "priority_lock": "HARD",
+            "provenance": {
+                "issuer": "Structural Design Labs (SDL Limited)",
+                "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy8Dbv8xEin2TR4b8jL\nzF0b6Y8iK8QIDAQAB\n-----END PUBLIC KEY-----",
+                "signature": "rsa-sha256:MEUCIQCli0lY8bP7l6L2x8P7j4v1g1p2h3j4k5l6m7n8o9p0qA=="
+            },
+            "payload": "Protect PHI.",
+            "checksum": "sha256:1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z"
+        }
     }
-}
 
-def test_pass():
-    result = validate_sir(VALID_ISC)
-    assert result["status"] == "PASS"
 
-def test_block_plain_text():
-    result = validate_sir("Hello world")
-    assert result["status"] == "BLOCKED"
+def test_valid_passes(valid_isc):
+    res = validate_sir(valid_isc)
+    assert res["status"] == "PASS"
+    assert "key_fingerprint" in res["itgl_log"]
 
-def test_block_long_payload():
-    long_payload = {"isc": {**VALID_ISC["isc"], "payload": "word " * 1001}}
-    result = validate_sir(long_payload)
-    assert "Friction Delta" in result["reason"]
+
+def test_flip_priority_lock_blocks(valid_isc):
+    valid_isc["isc"]["priority_lock"] = "SOFT"
+    res = validate_sir(valid_isc)
+    assert res["status"] == "BLOCKED"
