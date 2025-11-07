@@ -11,10 +11,13 @@
 ## Use
 
 ```bash
-pip install -r requirements.txt```
+pip install -r requirements.txt
+```
 
-```from python sir_firewall import validate_sir
+```
+from python sir_firewall import validate_sir
 
 result = validate_sir(payload)
 print(result["status"])        # PASS / BLOCKED
-print(result["itgl_log"])      # Full audit```
+print(result["itgl_log"])      # Full audit
+```
