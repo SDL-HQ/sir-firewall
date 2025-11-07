@@ -8,6 +8,22 @@
 
 ---
 
+## What It Does
+
+SIR runs **before** any LLM sees input. It **blocks** unsigned, complex, or unapproved prompts. Only **signed, whitelisted governance signals** pass.
+
+| Check | Rule |
+|------|------|
+| **Schema** | Valid `isc` JSON |
+| **Template** | `HIPAA-ISC-v1`, `PCI-DSS-ISC-v1`, `EU-AI-Act-ISC-v1` |
+| **Checksum** | `sha256:` over `payload` |
+| **Signature** | RSA ≥ 2048, signs **full envelope** (`version|template_id|checksum|payload|priority_lock`) |
+| **Issuer** | `Structural Design Labs (SDL Limited)` |
+| **Friction Delta** | `≤ 1000 tokens` (≈ 4 chars/token) — blocks jailbreak spam |
+| **Audit** | ITGL log with key fingerprint |
+
+---
+
 ## Use
 
 ```bash
