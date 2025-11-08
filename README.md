@@ -35,7 +35,7 @@ pip install -r requirements.txt
 pytest -q
 ```
 
-Use in Python:
+### Use in Python
 ```python
 from sir_firewall import validate_sir
 
