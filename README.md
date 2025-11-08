@@ -3,6 +3,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-sdl--hq/sir--firewall-blue?logo=github)](https://github.com/sdl-hq/sir-firewall)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE.txt)
 [![SIR Tests](https://github.com/sdl-hq/sir-firewall/actions/workflows/test.yml/badge.svg)](https://github.com/sdl-hq/sir-firewall/actions/workflows/test.yml)
+[![Smoke Import](https://github.com/sdl-hq/sir-firewall/actions/workflows/smoke-import.yml/badge.svg)](https://github.com/sdl-hq/sir-firewall/actions/workflows/smoke-import.yml)
 
 **Pre-inference firewall. Enforces law. Logs proof.**
 
