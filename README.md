@@ -1,4 +1,4 @@
-# SIR v1.0.2 — Signal Integrity Resolver
+# SIR v1.0.2 — Signal Integrity Resolver by Structural Design Labs
 
 [![GitHub](https://img.shields.io/badge/GitHub-sdl--hq/sir--firewall-blue?logo=github)](https://github.com/sdl-hq/sir-firewall)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE.txt)
