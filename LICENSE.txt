@@ -1,7 +1,7 @@
 MIT License
 -----------
 
-Copyright © 2025 Structural Design Labs Limited (SDL)  
+Copyright © 2025 Structural Design Labs (SDL Limited)  
 https://www.structuraldesignlabs.com | @SDL_HQ (X) | info@structuraldesignlabs.com
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, **except that no rights are granted to sell the Software as a standalone product**, including without limitation the rights to use, copy, modify, merge, publish, distribute, and/or sublicense copies of the Software, and to permit persons to whom the Software is furnished to do so, **subject to the following conditions**:
