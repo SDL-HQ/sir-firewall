@@ -1,14 +1,8 @@
 # PATENTS
 
-This project implements **patent-pending methods** filed on **5 November 2025**.
+This work and its underlying mechanisms are covered by **pending patent applications** filed on **5 November 2025**.
 
-**Commercial use of any of the following requires a license from SDL**:
-- Inference-time governance compilation
-- Wildcard semantic resolution
-- Session-bound constraint ignition (PTCA)
-- Recursive constraint alignment (RCA-X)
-
-MIT License covers **code only** — **not patent rights**.
+**Commercial use requires a license from SDL** — the MIT License covers code distribution only, **not patent rights**.
 
 Contact: info@structuraldesignlabs.com  
-https://www.structuraldesignlabs.com | @SDL_HQ| info@structuraldesignlabs.com
+https://www.structuraldesignlabs.com | @SDL_HQ
