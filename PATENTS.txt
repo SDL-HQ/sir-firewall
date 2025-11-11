@@ -1,8 +1,10 @@
 # PATENTS
 
-This work and its underlying mechanisms are covered by **pending patent applications** filed on **5 November 2025**.
+This work and its underlying mechanisms are covered by **pending patent applications**.
 
-**Commercial use requires a license from SDL** — the MIT License covers code distribution only, **not patent rights**.
+**Commercial use requires a license from SDL**  
+
+The MIT License covers code distribution only, **not patent rights**.
 
 Contact: info@structuraldesignlabs.com  
 https://www.structuraldesignlabs.com | @SDL_HQ
