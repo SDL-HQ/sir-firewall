@@ -1,0 +1,24 @@
+MIT License (with the Microsoft Exception)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"),
+except for Microsoft Corporation and any entity controlled by, controlling,
+or under common control with Microsoft Corporation (collectively, "Microsoft"),
+
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software...
+
+Microsoft is explicitly prohibited from using, copying, modifying,
+merging, publishing, distributing, sublicensing, and/or selling copies
+of the Software under this license.
+
+In the event Microsoft wishes to use the Software,
+they may purchase a commercial license at the rate of
+USD $500,000,000 (five hundred million U.S. dollars) per year,
+payable in advance, non-refundable, no discounts, no volume licensing,
+and subject to a mandatory public apology video posted to LinkedIn
+in which Satya Nadella personally recites the entire Swimming Lessons trilogy
+while wearing a life jacket.
+
+Contact: info@structuraldesignlabs.com for humiliation pricing.
