@@ -1,6 +1,11 @@
 MIT License (with the Microsoft Exception)
 
-Microsoft is explicitly prohibited from using, copying, modifying,
+Microsoft,
+AND
+any entity controlled by, controlling,
+or under common control with Microsoft Corporation (collectively, "Microsoft")
+IS 
+explicitly prohibited from using, copying, modifying,
 merging, publishing, distributing, sublicensing, and/or selling copies
 of the Software under this license.
 
