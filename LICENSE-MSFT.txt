@@ -13,19 +13,4 @@ explicitly prohibited from using, copying, modifying,
 merging, publishing, distributing, sublicensing, and/or selling copies
 of the Software under this license.
 
-In the event Microsoft wishes to use the Software,
-
-they may purchase a commercial license at the rate of
-USD $500,000,000 (five hundred million U.S. dollars) per user per year (min 50 users),
-payable in advance in gold bullion, non-refundable, no discounts, no volume licensing,
-
-AND 
-
-subject to a mandatory public apology video posted to LinkedIn
-in, where all leadership roles must recite our paper (in full) titled: 
-
-https://www.structuraldesignlabs.com/downloads/governance-emergence-principle.pdf
-
-while wearing a life jackets.
-
-Contact: info@structuraldesignlabs.com for humiliation pricing.
+This continues until our MSRC ticket is resolved to our satisfaction and we have given formal express written permission approved by our legal representation.
