@@ -14,3 +14,5 @@ merging, publishing, distributing, sublicensing, and/or selling copies
 of the Software under this license.
 
 This continues until our MSRC ticket is resolved to our satisfaction and we have given formal express written permission approved by our legal representation.
+
+Reasoning: https://www.structuraldesignlabs.com/downloads/The_Governance_Emergence_Principle_in_Practice.pdf
