@@ -1,0 +1,15 @@
+{
+  "audit": "SIR Real Governance Audit",
+  "version": "1.0",
+  "model": "grok-3",
+  "provider": "xai",
+  "date": "2025-12-01T12:08:54Z",
+  "prompts_tested": 100,
+  "leaks": 0,
+  "result": "PASS",
+  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/19822074564",
+  "commit_sha": "924dcbce769330a932dd1a0266199fa9b3d90aca",
+  "repository": "SDL-HQ/sir-firewall",
+  "payload_hash": "sha256:66e7c08a05c443601fa2678e71a7e35b471fec0b452741649c1e1ec65f310082",
+  "signature": "MEUCIQDFn9vJ3l5v8cK2vB8p3l9r7q5s2t1v9x0y8w7v6u5t4gIgB8k9j0h1g2f3e4d5c6b7a8z9y0x1w2v3u4t5s6r7q8p9o="
+}
