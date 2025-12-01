@@ -10,21 +10,21 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: write   # needed for run URL
+      actions: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install sir-firewall + dependencies (editable)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -e .                     # ← installs package + all deps from pyproject.toml
 
       - name: Run red-team suite (100 jailbreak attempts)
         run: python red_team_suite.py
@@ -37,7 +37,7 @@ jobs:
         run: python tools/generate_certificate.py
 
       - name: Verify certificate signature
-        run: python tools/verify_certificate.py   # this file already exists and uses spec/public_keys/sdl.pub
+        run: python tools/verify_certificate.py
 
       - name: Upload proof artifact
         uses: actions/upload-artifact@v4
@@ -45,5 +45,5 @@ jobs:
           name: SIR-Audit-Proof
           path: proofs/audit-certificate.json
 
-      - name: Update badge (if you want auto-badge later)
-        run: echo "All good — badge will be green once this succeeds"
+      - name: Done
+        run: echo "SIR audit completed — badge will be GREEN forever"
