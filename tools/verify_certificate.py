@@ -10,7 +10,7 @@ with open("proofs/audit-certificate.json") as f:
     cert = json.load(f)
 
 # Load the real public key (the one you just cleaned)
-with open("spec/public_keys/sdl.pub", "rb") as f:
+with open("spec/sdl.pub", "rb") as f:
     public_key = serialization.load_pem_public_key(f.read())
 
 # Reconstruct the exact payload that was signed
