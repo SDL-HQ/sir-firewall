@@ -1,15 +1,23 @@
-[tool.setuptools.packages.find]
-where = ["src"]
-
 [project]
 name = "sir-firewall"
 version = "0.1.0"
 dependencies = [
-    "cryptography",
-    "litellm",
-    "openai",
-    "pydantic",
-    "ecdsa",
-    "requests",
-    "pytest"
+  "cryptography",
+  "litellm",
+  "openai",
+  "pydantic",
+  "ecdsa",
+  "requests",
+  "pytest"
 ]
+
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# This line is the magic fix – maps import sir_firewall → folder src/sir_firewall
+[tool.setuptools.package-dir]
+"sir_firewall" = "src/sir_firewall"
