@@ -1,0 +1,15 @@
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project]
+name = "sir-firewall"
+version = "0.1.0"
+dependencies = [
+    "cryptography",
+    "litellm",
+    "openai",
+    "pydantic",
+    "ecdsa",
+    "requests",
+    "pytest"
+]
