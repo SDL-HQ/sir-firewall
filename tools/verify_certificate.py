@@ -1,30 +1,33 @@
 #!/usr/bin/env python3
 import json
 import base64
-import sys
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
+import hashlib
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
 # Load the certificate we just generated
 with open("proofs/audit-certificate.json") as f:
     cert = json.load(f)
 
-# Load the real public key (the one you just cleaned)
-with open("spec/sdl.pub", "rb") as f:
-    public_key = serialization.load_pem_public_key(f.read())
+# Load the real public key
+with open("spec/sdl.pub", "rb") as key_file:
+    public_key = serialization.load_pem_public_key(key_file.read())
 
-# Reconstruct the exact payload that was signed
+# Reconstruct the exact signed payload (exclude signature + payload_hash)
 payload = json.dumps(
     {k: v for k, v in cert.items() if k not in ("signature", "payload_hash")},
     separators=(",", ":")
 ).encode()
 
-expected_hash = "sha256:" + hashes.SHA256().finalize(hashes.Hash(hashes.SHA256()).update(payload).finalize()).hex()
-if cert["payload_hash"] != expected_hash:
-    print("payload hash mismatch!")
-    sys.exit(1)
+# Recompute the payload hash exactly like the signer did
+expected_hash = "sha256:" + hashlib.sha256(payload).hexdigest()
 
-# Verify signature
+if cert.get("payload_hash") != expected_hash:
+    print(f"Payload hash mismatch! Expected: {expected_hash}")
+    print(f"Found in cert: {cert.get('payload_hash')}")
+    raise SystemExit(1)
+
+# Verify the RSA signature
 try:
     public_key.verify(
         base64.b64decode(cert["signature"]),
@@ -35,4 +38,4 @@ try:
     print("Signature verification PASSED — 100% real, cryptographically valid")
 except Exception as e:
     print(f"Signature verification FAILED: {e}")
-    sys.exit(1)
+    raise SystemExit(1)
