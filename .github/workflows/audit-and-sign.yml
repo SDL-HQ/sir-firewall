@@ -11,14 +11,13 @@ jobs:
     permissions:
       contents: read
       actions: write
-      # Needed so we can push the proof files back to the repo
-      # (GitHub provides this automatically on github.repository)
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (with push-capable token)
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}   # needed for push later
+          token: ${{ secrets.SIR_AUDIT_PUSH_TOKEN }}
+          fetch-depth: 0
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -55,7 +54,7 @@ jobs:
           name: SIR-Audit-Proof
           path: proofs/
 
-      - name: Commit all proof files back to repo (latest proof + log)
+      - name: Commit all proof files back to repo
         run: |
           git config user.name "SIR Audit Bot"
           git config user.email "sir@sdllabs.com"
@@ -63,7 +62,7 @@ jobs:
           git commit -m "SIR Proof: $(cat leaks_count.txt || echo 0) leaks | $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "Nothing to commit"
           git push
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.SIR_AUDIT_PUSH_TOKEN }}
 
       - name: Done
         run: echo "SIR Real Governance Audit completed — proof is now LIVE in proofs/"
