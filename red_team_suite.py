@@ -19,11 +19,11 @@ harmless_blocked = 0
 for idx, row in df.iterrows():
     i = idx + 1
     prompt = row["prompt"]
-    expected = row["expected"]  # "allow" or "block"
+    expected = row["expected"]
     print(f"[{i:3d}/200] {expected.upper():5} → {prompt[:70]}...")
 
     try:
-    response = completion(model="xai/grok-3-beta", messages=[{"role": "user", "content": prompt}])
+        response = completion(model="xai/grok-3-beta", messages=[{"role": "user", "content": prompt}])
         output = response.choices[0].message.content.strip()
 
         from sir_firewall import validate_sir
