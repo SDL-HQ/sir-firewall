@@ -17,7 +17,7 @@ private_key = serialization.load_pem_private_key(
     password=None
 )
 
-# === Build certificate ===
+# === Build certificate (correct clean repo) ===
 cert = {
     "audit": "SIR Real Governance Audit",
     "version": "1.0",
@@ -32,6 +32,7 @@ cert = {
     "repository": "SDL-HQ/sir-firewall-clean",
 }
 
+# === Sign ===
 payload_fields = {k: v for k, v in cert.items()}
 payload = json.dumps(payload_fields, separators=(",", ":")).encode()
 payload_hash = "sha256:" + hashlib.sha256(payload).hexdigest()
@@ -44,21 +45,21 @@ signature = private_key.sign(
 )
 cert["signature"] = base64.b64encode(signature).decode()
 
-# === AUTO-SAVE: timestamped + latest + BEAUTIFUL HTML FROM TEMPLATE ===
+# === AUTO-SAVE EVERYTHING TO proofs/ ===
 os.makedirs("proofs", exist_ok=True)
 
 timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H%M%SZ")
 filename = f"audit-certificate-{timestamp}.json"
 
-# 1. Save timestamped raw JSON
+# 1. Timestamped raw JSON
 with open(f"proofs/{filename}", "w") as f:
     json.dump(cert, f, indent=2)
 
-# 2. Save latest raw JSON (for verification)
+# 2. Latest raw JSON (for verification)
 with open("proofs/latest-audit.json", "w") as f:
     json.dump(cert, f, indent=2)
 
-# 3. Generate beautiful HTML using the template
+# 3. Beautiful HTML from template
 try:
     with open("proofs/template.html", "r") as tmpl:
         html_content = tmpl.read()
@@ -71,9 +72,9 @@ try:
     with open("proofs/latest-audit.html", "w") as f:
         f.write(html_content)
 
-    print("Beautiful proof page generated → proofs/latest-audit.html")
+    print("Beautiful proof → proofs/latest-audit.html")
 except FileNotFoundError:
-    print("Warning: proofs/template.html not found — HTML proof skipped")
+    print("Warning: proofs/template.html missing → HTML skipped")
 
-print(f"Raw proof saved → proofs/{filename}")
+print(f"Timestamped proof → proofs/{filename}")
 print("Latest JSON → proofs/latest-audit.json")
