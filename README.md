@@ -2,8 +2,8 @@
 
 **Pre-inference firewall · 100/100 worst 2025 jailbreaks blocked live on Grok-3 · Cryptographically signed proof**
 
-[![Live Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![Live Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)  
+Last successful run: **0 leaks / 100** (2025-12-02). Current red = in-progress tuning, not a jailbreak.
 
 https://www.structuraldesignlabs.com · @SDL_HQ
 
