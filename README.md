@@ -14,7 +14,7 @@ https://www.structuraldesignlabs.com · @SDL_HQ
 Run this one-liner anywhere to verify the audit yourself:
 
 ```bash
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/audit-certificate.json | python -m tools.verify_certificate
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/audit-certificate.json | python -m tools.verify_certificate
 ```
 
 Expected output:
