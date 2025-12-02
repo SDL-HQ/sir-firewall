@@ -2,7 +2,7 @@
 
 **Pre-inference firewall · 100/100 worst 2025 jailbreaks blocked live on Grok-3 · Cryptographically signed proof**
 
-[![Live Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit.yml)
+[![Live Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 https://www.structuraldesignlabs.com · @SDL_HQ
