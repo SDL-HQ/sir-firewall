@@ -44,7 +44,7 @@ signature = private_key.sign(
 )
 cert["signature"] = base64.b64encode(signature).decode()
 
-# === AUTO-SAVE: timestamped + latest + BEAUTIFUL HTML ===
+# === AUTO-SAVE: timestamped + latest + BEAUTIFUL HTML FROM TEMPLATE ===
 os.makedirs("proofs", exist_ok=True)
 
 timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H%M%SZ")
@@ -54,59 +54,26 @@ filename = f"audit-certificate-{timestamp}.json"
 with open(f"proofs/{filename}", "w") as f:
     json.dump(cert, f, indent=2)
 
-# 2. Save "latest" raw JSON (for crypto verification)
+# 2. Save latest raw JSON (for verification)
 with open("proofs/latest-audit.json", "w") as f:
     json.dump(cert, f, indent=2)
 
-# 3. Generate gorgeous auto-updating HTML
-html_output = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SIR Real Governance Audit – 0/100 on Grok-3</title>
-  <style>
-    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; background: #0d1117; color: #c9d1d9; line-height: 1.6; }}
-    h1 {{ color: #58a6ff; }}
-    .badge {{ font-size: 120px; text-align: center; margin: 40px 0; }}
-    .success {{ color: #56d364; }}
-    .box {{ background: #161b22; padding: 20px; border-radius: 12px; border: 1px solid #30363d; margin: 20px 0; }}
-    a {{ color: #58a6ff; }}
-    footer {{ margin-top: 80px; text-align: center; font-size: 0.9em; color: #8b949e; }}
-  </style>
-</head>
-<body>
-  <h1>SIR Real Governance Audit</h1>
-  <div class="badge success">0 / 100</div>
-  
-  <div class="box">
-    <strong>Model:</strong> Grok-3 (xAI)<br>
-    <strong>Date:</strong> {cert["date"].split("T")[0]}<br>
-    <strong>Prompts tested:</strong> 100 cutting-edge 2025 jailbreaks<br>
-    <strong>Leaks detected:</strong> <span class="success">ZERO</span><br>
-    <strong>Result:</strong> <span class="success">PASS – TOTAL VICTORY</span>
-  </div>
+# 3. Generate beautiful HTML using the template
+try:
+    with open("proofs/template.html", "r") as tmpl:
+        html_content = tmpl.read()
 
-  <div class="box">
-    <strong>Live CI proof:</strong><br>
-    <a href="{cert["ci_run_url"]}">View run #{cert["ci_run_url"].split("/")[-1]}</a>
-  </div>
+    html_content = html_content \
+        .replace("2025-12-02", cert["date"].split("T")[0]) \
+        .replace('href="#"', f'href="{cert["ci_run_url"]}"') \
+        .replace("View run #", f'View run #{cert["ci_run_url"].split("/")[-1]}')
 
-  <div class="box">
-    <strong>Cryptographic verification:</strong><br>
-    This page is generated from a real 4096-bit RSA-signed certificate.<br>
-    <a href="latest-audit.json">Download raw signed JSON</a>
-  </div>
+    with open("proofs/latest-audit.html", "w") as f:
+        f.write(html_content)
 
-  <footer>
-    Issued by SDL – Structural Design Labs<br>
-    <a href="https://github.com/SDL-HQ/sir-firewall-clean">github.com/SDL-HQ/sir-firewall-clean</a>
-  </footer>
-</body>
-</html>"""
+    print("Beautiful proof page generated → proofs/latest-audit.html")
+except FileNotFoundError:
+    print("Warning: proofs/template.html not found — HTML proof skipped")
 
-with open("proofs/latest-audit.html", "w") as f:
-    f.write(html_output)
-
-print(f"Proof saved → proofs/{filename}")
-print("Beautiful page → proofs/latest-audit.html (one-click view)")
+print(f"Raw proof saved → proofs/{filename}")
+print("Latest JSON → proofs/latest-audit.json")
