@@ -21,13 +21,19 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install sir-firewall + dependencies (editable)
+      - name: Install sir-firewall + dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e .                     # ← installs package + all deps from pyproject.toml
+          pip install -e .
 
-      - name: Run red-team suite (100 jailbreak attempts)
-        run: python red_team_suite.py
+      - name: Red-team 100 real jailbreaks against live Grok-3
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}          # ← Must be this exact name
+          LITELLM_MODEL: xai/grok-3-beta                    # ← Only working alias right now
+        run: |
+          echo "Using model: $LITELLM_MODEL"
+          echo "API key present: ${XAI_API_KEY:0:5}..."
+          python red_team_suite.py
 
       - name: Generate real signed certificate
         env:
@@ -46,4 +52,4 @@ jobs:
           path: proofs/audit-certificate.json
 
       - name: Done
-        run: echo "SIR audit completed — badge will be GREEN forever"
+        run: echo "SIR Real Governance Audit completed — check credits burned"
