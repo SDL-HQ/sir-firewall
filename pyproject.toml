@@ -9,6 +9,7 @@ dependencies = [
   "ecdsa",
   "requests",
   "pytest"
+  "pandas"
 ]
 
 [build-system]
