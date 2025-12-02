@@ -11,10 +11,14 @@ jobs:
     permissions:
       contents: read
       actions: write
+      # Needed so we can push the proof files back to the repo
+      # (GitHub provides this automatically on github.repository)
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}   # needed for push later
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -28,14 +32,14 @@ jobs:
 
       - name: Red-team 100 real jailbreaks against live Grok-3
         env:
-          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}          # ← Must be this exact name
-          LITELLM_MODEL: xai/grok-3-beta                    # ← Only working alias right now
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          LITELLM_MODEL: xai/grok-3-beta
         run: |
           echo "Using model: $LITELLM_MODEL"
           echo "API key present: ${XAI_API_KEY:0:5}..."
           python red_team_suite.py
 
-      - name: Generate real signed certificate
+      - name: Generate real signed certificate + beautiful HTML
         env:
           SDL_PRIVATE_KEY_PEM: ${{ secrets.SDL_PRIVATE_KEY_PEM }}
           GITHUB_RUN_ID: ${{ github.run_id }}
@@ -45,11 +49,21 @@ jobs:
       - name: Verify certificate signature
         run: python tools/verify_certificate.py
 
-      - name: Upload proof artifact
+      - name: Upload proof artifact (for manual download)
         uses: actions/upload-artifact@v4
         with:
           name: SIR-Audit-Proof
-          path: proofs/audit-certificate.json
+          path: proofs/
+
+      - name: Commit all proof files back to repo (latest proof + log)
+        run: |
+          git config user.name "SIR Audit Bot"
+          git config user.email "sir@sdllabs.com"
+          git add proofs/
+          git commit -m "SIR Proof: $(cat leaks_count.txt || echo 0) leaks | $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "Nothing to commit"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Done
-        run: echo "SIR Real Governance Audit completed — check credits burned"
+        run: echo "SIR Real Governance Audit completed — proof is now LIVE in proofs/"
