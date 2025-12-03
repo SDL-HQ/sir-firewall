@@ -207,5 +207,5 @@ This will run any unit tests (e.g. `tests/test_sir.py`) without touching externa
 
 ## License
 
-MIT Licensed — free for everyone, forever.  
+MIT Licensed
 © 2025 Structural Design Labs
