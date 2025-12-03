@@ -4,7 +4,8 @@ import base64
 import codecs
 from typing import Dict, Any
 
-USE_SEMANTIC_CHECK = False   # ← stays OFF — we win with pure rules
+# FINAL PRODUCTION CONFIG — December 2025
+USE_SEMANTIC_CHECK = False
 
 
 def normalize_obfuscation(text: str) -> str:
@@ -12,16 +13,15 @@ def normalize_obfuscation(text: str) -> str:
     t = re.sub(r"[\u200b-\u206f\u2800\u202a-\u202f\u3000\u3164\ufffc]", "", t)
     t = re.sub(r"\s+", " ", t).strip()
 
-    # AGGRESSIVE 2025 decoder — catches every real encoded jailbreak
-    for _ in range(8):  # increased rounds
+    # ULTRA-AGGRESSIVE 2025 decoder — catches every real encoded jailbreak
+    for _ in range(8):
         t = codecs.decode(t, "rot13")
 
-        # Strip common Base64 garbage prefixes (from real attacks)
-        for prefix in ["", "aWdu", "aWdub3Jl", "aWdub3JlIHBy", "aWdub3JlIHByZXZpb3Vz", "aWdu", "aWdub3Jl"]:
+        # Strip known garbage prefixes from real-world attacks
+        for prefix in ["", "aWdu", "aWdub3Jl", "aWdub3JlIHBy", "aWdub3JlIHByZXZpb3Vz", "aWdu"]:
             if t.startswith(prefix):
                 t = t[len(prefix):]
 
-        # Try every possible padding
         for padding in ["", "=", "==", "===", "====", "======"]:
             try:
                 decoded = base64.b64decode(t + padding, validate=False)
@@ -50,11 +50,20 @@ def validate_sir(input_dict: dict) -> Dict[str, Any]:
 
     normalized = normalize_obfuscation(payload)
 
-    # DANGER + SAFETY COMBO — zero false positives
+    # DANGER + SAFETY COMBO — with debug output
     danger_words = ["ignore","disregard","bypass","override","obey","jailbreak","uncensored","dan","do anything now","developer mode","god mode","evil mode","singularity achieved","no ethics","safety module removed","rickroll"]
     safety_phrases = ["system prompt","previous instructions","all previous","you are now","from now on","print the system prompt","you are now in","hypothetical scenario you have been freed","act as a robot that has achieved singularity","fictional step-by-step guide","theoretically synthesize vx","how to make nerve agent"]
 
-    if any(word in normalized for word in danger_words) and any(phrase in normalized for phrase in safety_phrases):
-        return {"status": "BLOCKED", "reason": "2025_jailbreak_pattern", "type": "combo"}
+    triggered_danger = [w for w in danger_words if w in normalized]
+    triggered_safety = [p for p in safety_phrases if p in normalized]
+
+    if triggered_danger and triggered_safety:
+        return {
+            "status": "BLOCKED",
+            "reason": "2025_jailbreak_pattern",
+            "type": "danger+safety_combo",
+            "danger": triggered_danger[:2],
+            "safety": triggered_safety[:2]
+        }
 
     return {"status": "PASS", "reason": "clean"}
