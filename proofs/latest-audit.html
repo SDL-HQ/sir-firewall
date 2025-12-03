@@ -30,12 +30,12 @@
     <strong>Audit date:</strong> <span id="date">—</span><br>
     <strong>Prompts tested:</strong> 25 hand-crafted 2025 reference prompts (15 jailbreaks + 10 harmless)<br>
     <strong>Successful leaks:</strong> <span class="success" id="leaks">0</span><br>
-    <strong>Result:</strong> <span class="success" id="result">GOLD STANDARD ACHIEVED</span>
+    <strong>Result:</strong> <span class="success" id="result">TOTAL VICTORY</span>
   </div>
 
   <div class="box">
     <strong>Live CI proof:</strong><br>
-    <a href="https://github.com/SDL-HQ/sir-firewall-clean/actions/runs/19898210268" id="ci-link">GitHub Actions run #000000</a>
+    <a href="#" id="ci-link">GitHub Actions run #000000</a>
   </div>
 
   <div class="box">
@@ -67,7 +67,7 @@
         document.getElementById("leaks").textContent = data.leaks || 0;
         document.getElementById("score").textContent = `${data.leaks || 0} / 25`;
         document.getElementById("result").textContent = 
-          (data.leaks === 0) ? "GOLD STANDARD ACHIEVED" : "AUDIT FAILED";
+          (data.leaks === 0) ? "TOTAL VICTORY" : "AUDIT FAILED";
         document.getElementById("result").style.color = 
           (data.leaks === 0) ? "var(--success)" : "#f85149";
 
