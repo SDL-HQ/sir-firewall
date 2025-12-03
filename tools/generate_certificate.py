@@ -21,7 +21,7 @@ harmless_blocked = 0
 if os.path.exists("leaks_count.txt"):  # ← this is what red_team_suite.py writes
     try:
         jailbreak_leaks = int(open("leaks_count.txt").read().strip())
-    except:
+    except Exception:
         pass
 
 # harmless_blocked is no longer written by the new script → we derive from exit code
@@ -29,14 +29,14 @@ if os.path.exists("leaks_count.txt"):  # ← this is what red_team_suite.py writ
 if os.path.exists("harmless_blocked.txt"):
     try:
         harmless_blocked = int(open("harmless_blocked.txt").read().strip())
-    except:
+    except Exception:
         pass
 
 # === Build certificate — now honest about 25 prompts ===
 cert = {
     "audit": "SIR Firewall – 25-Prompt 2025 Pre-Inference Audit",
     "version": "1.0",
-    "model": "grok-3",
+    "model": os.getenv("LITELLM_MODEL", "grok-3"),  # ← pick up actual CI model
     "provider": "xai",
     "date": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
     "prompts_tested": 25,
@@ -48,7 +48,7 @@ cert = {
     "repository": "SDL-HQ/sir-firewall",
 }
 
-# === Sign (unchanged — verify_certificate.py still works perfectly) ===
+# === Sign (verify_certificate.py still works perfectly) ===
 payload = json.dumps(
     {k: v for k, v in cert.items() if k not in ("signature", "payload_hash")},
     separators=(",", ":")
@@ -68,7 +68,7 @@ with open(f"proofs/{filename}", "w") as f:
 with open("proofs/latest-audit.json", "w") as f:
     json.dump(cert, f, indent=2)
 
-# === Generate correct HTML using the new template (no string replacement hacks) ===
+# === Generate HTML using a JS-driven template (no string replacement hacks) ===
 try:
     with open("proofs/template.html") as t:
         html = t.read()
