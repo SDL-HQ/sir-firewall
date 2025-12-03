@@ -285,7 +285,17 @@ def _check_crypto(
 
 
 def _estimate_tokens(payload: str) -> int:
-    # Rough token approximation: whitespace-separated words
+    """
+    Rough token approximation for friction checks.
+
+    NOTE:
+    - SIR v1.x deliberately does *not* use entropy or any .bit_length()-style
+      heuristics here. This keeps the firewall fully deterministic and avoids
+      the float/int bug people sometimes attribute to earlier drafts.
+    - Any future complexity/entropy scoring must be added explicitly and
+      CI-validated, not assumed to exist.
+    """
+    # Simple, stable: whitespace-separated words
     return len(str(payload).split())
 
 
