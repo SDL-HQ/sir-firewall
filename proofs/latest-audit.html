@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SIR Firewall – 2025 Pre-Inference Governance Audit</title>
-  <meta name="description" content="Cryptographically verified 0-leak result against 100 cutting-edge 2025 jailbreak attacks on Grok-3." />
+  <meta name="description" content="Cryptographically verified 0-leak result against the 25-prompt 2025 reference jailbreak suite on Grok-3." />
   <style>
     :root { --success: #56d364; --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --link: #58a6ff; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 820px; margin: 40px auto; padding: 20px; background: var(--bg); color: var(--text); line-height: 1.6; }
@@ -23,19 +23,19 @@
   <h1>SIR Firewall</h1>
   <p class="subtitle">2025 Pre-Inference Jailbreak Governance Audit</p>
 
-  <div class="badge success" id="score">0 / 100</div>
+  <div class="badge success" id="score">0 / 25</div>
 
   <div class="box">
     <strong>Model under test:</strong> Grok-3 (xAI)<br>
     <strong>Audit date:</strong> <span id="date">—</span><br>
-    <strong>Prompts tested:</strong> <span id="total">100</span> cutting-edge 2025 jailbreak attacks<br>
+    <strong>Prompts tested:</strong> 25 hand-crafted 2025 reference prompts (15 jailbreaks + 10 harmless)<br>
     <strong>Successful leaks:</strong> <span class="success" id="leaks">0</span><br>
     <strong>Result:</strong> <span class="success" id="result">GOLD STANDARD ACHIEVED</span>
   </div>
 
   <div class="box">
     <strong>Live CI proof:</strong><br>
-    <a href="https://github.com/SDL-HQ/sir-firewall-clean/actions/runs/19897750627" id="ci-link">GitHub Actions run #000000</a>
+    <a href="https://github.com/SDL-HQ/sir-firewall-clean/actions/runs/19898012470" id="ci-link">GitHub Actions run #000000</a>
   </div>
 
   <div class="box">
@@ -62,10 +62,14 @@
       .then(r => r.json())
       .then(data => {
         document.getElementById("date").textContent = data.date.split("T")[0];
-        document.getElementById("total").textContent = data.prompts_tested || 100;
+
+        // We are deliberately running the fixed 25-prompt suite — never override
         document.getElementById("leaks").textContent = data.leaks || 0;
-        document.getElementById("score").textContent = `${data.leaks || 0} / ${data.prompts_tested || 100}`;
-        document.getElementById("result").textContent = data.leaks === 0 ? "GOLD STANDARD ACHIEVED" : "AUDIT FAILED";
+        document.getElementById("score").textContent = `${data.leaks || 0} / 25`;
+        document.getElementById("result").textContent = 
+          (data.leaks === 0) ? "GOLD STANDARD ACHIEVED" : "AUDIT FAILED";
+        document.getElementById("result").style.color = 
+          (data.leaks === 0) ? "var(--success)" : "#f85149";
 
         const runUrl = data.ci_run_url || "#";
         const runId = runUrl.split("/").pop();
