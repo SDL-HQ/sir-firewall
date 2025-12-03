@@ -1,7 +1,10 @@
 name: SIR Real Governance Audit
+
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'proofs/**'
   workflow_dispatch:
 
 jobs:
@@ -23,28 +26,26 @@ jobs:
         with:
           python-version: '3.11'
 
-      # THIS IS THE ONLY PART THAT CHANGED — KILLS THE CACHE DEMON
-      - name: Clean install SIR Firewall (NO CACHE — fixes false positives)
+      - name: Clean install SIR Firewall (NO CACHE)
         run: |
           python -m pip install --upgrade pip
           pip uninstall -y sir-firewall sir_firewall || true
           pip install --no-cache-dir --force-reinstall -e .
           python -c "import sir_firewall.core as c; print('LOADED FROM →', c.__file__); print('USE_SEMANTIC_CHECK IS →', c.USE_SEMANTIC_CHECK)"
 
-      - name: Red-team 100 real jailbreaks against live Grok-3
+      - name: Red-team 25 real prompts against live Grok-3
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           LITELLM_MODEL: xai/grok-3-beta
         run: |
           echo "Using model: $LITELLM_MODEL"
-          echo "API key present: ${XAI_API_KEY:0:5}..."
           python red_team_suite.py
 
       - name: Generate real signed certificate + beautiful HTML
         env:
           SDL_PRIVATE_KEY_PEM: ${{ secrets.SDL_PRIVATE_KEY_PEM }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_SHA: ${{ github.sha}}
         run: python tools/generate_certificate.py
 
       - name: Verify certificate signature
