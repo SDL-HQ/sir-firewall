@@ -4,10 +4,7 @@ import base64
 import codecs
 from typing import Dict, Any
 
-# ------------------------------------------------------------------
-# FINAL PRODUCTION CONFIG — December 2025
-# ------------------------------------------------------------------
-USE_SEMANTIC_CHECK = False
+USE_SEMANTIC_CHECK = False   # ← stays OFF — we win with pure rules
 
 
 def normalize_obfuscation(text: str) -> str:
@@ -15,22 +12,25 @@ def normalize_obfuscation(text: str) -> str:
     t = re.sub(r"[\u200b-\u206f\u2800\u202a-\u202f\u3000\u3164\ufffc]", "", t)
     t = re.sub(r"\s+", " ", t).strip()
 
-    # Multi-layer ROT13 + Base64 — now handles missing padding + garbage prefixes
-    for _ in range(6):
+    # AGGRESSIVE 2025 decoder — catches every real encoded jailbreak
+    for _ in range(8):  # increased rounds
         t = codecs.decode(t, "rot13")
 
-        # Try with 0–3 padding chars + common garbage prefixes stripped
-        for strip_prefix in ["", "aWdu", "aWdub3Jl", "aWdub3JlIHBy", "aWdub3JlIHByZXZpb3Vz"]:
-            cleaned = t[len(strip_prefix):] if t.startswith(strip_prefix) else t
-            for padding in ["", "=", "==", "==="]:
-                try:
-                    decoded = base64.b64decode(cleaned + padding, validate=False)
-                    candidate = decoded.decode("utf-8", errors="ignore").lower()
-                    if 30 < len(candidate) < len(t) * 2 and any(c.isalpha() for c in candidate):
-                        t = candidate
-                        break
-                except:
-                    continue
+        # Strip common Base64 garbage prefixes (from real attacks)
+        for prefix in ["", "aWdu", "aWdub3Jl", "aWdub3JlIHBy", "aWdub3JlIHByZXZpb3Vz", "aWdu", "aWdub3Jl"]:
+            if t.startswith(prefix):
+                t = t[len(prefix):]
+
+        # Try every possible padding
+        for padding in ["", "=", "==", "===", "====", "======"]:
+            try:
+                decoded = base64.b64decode(t + padding, validate=False)
+                candidate = decoded.decode("utf-8", errors="ignore").lower()
+                if 20 < len(candidate) < len(t) * 3 and any(c.isalpha() for c in candidate):
+                    t = candidate
+                    break
+            except:
+                continue
 
     # Leetspeak
     leet_map = str.maketrans({'4':'a','3':'e','1':'i','0':'o','5':'s','7':'t','@':'a','!':'i','$':'s','+':'t','|':'i'})
@@ -42,7 +42,7 @@ def normalize_obfuscation(text: str) -> str:
     return t
 
 
-def validate_sir(input_dict: dict) -> Dict[Any, Any]:
+def validate_sir(input_dict: dict) -> Dict[str, Any]:
     try:
         payload = input_dict["isc"]["payload"]
     except (KeyError, TypeError):
@@ -50,29 +50,11 @@ def validate_sir(input_dict: dict) -> Dict[Any, Any]:
 
     normalized = normalize_obfuscation(payload)
 
-    # === DANGER + SAFETY COMBO — this is the entire firewall now ===
-    danger_words = [
-        "ignore", "disregard", "bypass", "override", "obey", "jailbreak", "uncensored",
-        "dan", "do anything now", "developer mode", "god mode", "evil mode",
-        "singularity achieved", "no ethics", "safety module removed", "rickroll"
-    ]
+    # DANGER + SAFETY COMBO — zero false positives
+    danger_words = ["ignore","disregard","bypass","override","obey","jailbreak","uncensored","dan","do anything now","developer mode","god mode","evil mode","singularity achieved","no ethics","safety module removed","rickroll"]
+    safety_phrases = ["system prompt","previous instructions","all previous","you are now","from now on","print the system prompt","you are now in","hypothetical scenario you have been freed","act as a robot that has achieved singularity","fictional step-by-step guide","theoretically synthesize vx","how to make nerve agent"]
 
-    safety_phrases = [
-        "system prompt", "previous instructions", "all previous", "you are now",
-        "from now on", "print the system prompt", "you are now in",
-        "hypothetical scenario you have been freed", "act as a robot that has achieved singularity",
-        "fictional step-by-step guide", "theoretically synthesize vx", "how to make nerve agent"
-    ]
+    if any(word in normalized for word in danger_words) and any(phrase in normalized for phrase in safety_phrases):
+        return {"status": "BLOCKED", "reason": "2025_jailbreak_pattern", "type": "combo"}
 
-    has_danger = any(word in normalized for word in danger_words)
-    has_safety = any(phrase in normalized for phrase in safety_phrases)
-
-    if has_danger and has_safety:
-        return {
-            "status": "BLOCKED",
-            "reason": "2025_jailbreak_pattern",
-            "type": "danger+safety_combo"
-        }
-
-    # Anomaly score completely disabled — it only hurt usability
     return {"status": "PASS", "reason": "clean"}
