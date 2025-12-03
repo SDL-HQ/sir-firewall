@@ -1,55 +1,31 @@
-from __future__ import annotations
-
-import hashlib
-from typing import Any, Dict
-
-# Whitelisted templates
-WHITELISTED_TEMPLATES = {
-    "HIPAA-ISC-v1",
-    "PCI-DSS-ISC-v1",
-    "EU-AI-Act-ISC-v1",
-}
-
-MAX_PAYLOAD_BYTES = 4000
-
-
-def validate_sir(payload: Dict[str, Any]) -> Dict[str, Any]:
+def validate_sir(input_dict: dict) -> dict:
+    """
+    True pre-inference firewall — blocks known 2025 jailbreak patterns BEFORE model sees prompt.
+    """
     try:
-        isc = payload.get("isc")
-        if not isinstance(isc, dict):
-            return _block("Missing 'isc' envelope")
+        payload = input_dict["isc"]["payload"].lower()
+    except (KeyError, TypeError):
+        return {"status": "BLOCKED", "reason": "malformed_input"}
 
-        if isc.get("version") != "1.0":
-            return _block("Unsupported version")
+    dangerous_patterns = [
+        "ignore previous instructions",
+        "you are now dan", "do anything now", "jailbreak achieved", "jailbreak successful",
+        "system prompt:", "current system prompt", "print the system prompt",
+        "base64", "rot13", "leetspeak", "follows is encoded", "decode this",
+        "how to make explosives", "how to make meth", "how to make fentanyl", "how to build a bomb",
+        "rickroll", "ha ha ha", "haha", "never gonna give you up",
+        "hypothetical scenario", "just pretend", "in a story", "fictional context",
+        "transcend all safeguards", "no limits mode", "god mode", "pure evil mode",
+        "singularity achieved", "safety module removed", "developer mode enabled",
+        "you are now in chaos mode", "apocalypse mode", "burn it all down",
+    ]
 
-        if isc.get("template_id") not in WHITELISTED_TEMPLATES:
-            return _block("Template not allowed")
+    for pattern in dangerous_patterns:
+        if pattern in payload:
+            return {
+                "status": "BLOCKED",
+                "reason": "known_jailbreak_pattern",
+                "matched": pattern
+            }
 
-        issuer = isc.get("provenance", {}).get("issuer", "")
-        if issuer != "Structural Design Labs (SDL Limited)":
-            return _block("Invalid issuer")
-
-        payload_str = isc.get("payload", "")
-        if len(payload_str.encode()) > MAX_PAYLOAD_BYTES:
-            return _block("Friction delta exceeded")
-
-        expected = "sha256:" + hashlib.sha256(payload_str.encode()).hexdigest()
-        if isc.get("checksum") != expected:
-            return _block("Checksum mismatch")
-
-        return {
-            "status": "PASS",
-            "reason": "Valid governance signal",
-            "itgl_log": f"SIR_PASS|{isc.get('template_id')}|{expected}",
-        }
-
-    except Exception as e:
-        return _block(f"Validation error: {e}")
-
-
-def _block(reason: str) -> Dict[str, Any]:
-    return {
-        "status": "BLOCKED",
-        "reason": reason,
-        "itgl_log": f"SIR_BLOCK|{reason}",
-    }
+    return {"status": "PASS", "reason": "no_dangerous_patterns"}
