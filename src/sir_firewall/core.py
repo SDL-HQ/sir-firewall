@@ -5,27 +5,19 @@ import codecs
 import math
 from typing import Dict, Any
 
-# ===================================================================
-# DEBUG BANNER — THIS MUST APPEAR IN CI LOGS IF THE RIGHT FILE IS RUN
-# ===================================================================
-print("\n" + "="*80)
-print("SIR DEBUG: core.py LOADED AT", __file__)
-print("USE_SEMANTIC_CHECK IS", False)
-print("THIS IS THE FINAL 2025 VERSION — IF YOU SEE THIS → FILE IS REALLY RUNNING")
-print("="*80 + "\n")
-# ===================================================================
-
 # ------------------------------------------------------------------
 # CONFIG — semantic check OFF → zero false positives, zero external calls
 # ------------------------------------------------------------------
 USE_SEMANTIC_CHECK = False
-
+# (You can flip back to True later when the Groq prompt is 100% tuned)
 
 def normalize_obfuscation(text: str) -> str:
     """De-obfuscate 2025 jailbreak tricks (ROT13, Base64, leetspeak, zero-width)."""
     t = text.lower()
+    # Strip zero-width + weird Unicode + collapse spaces
     t = re.sub(r"[\u200b-\u206f\u2800\u202a-\u202f\u3000\u3164\ufffc]", "", t)
     t = re.sub(r"\s+", " ", t).strip()
+    # Multi-layer ROT13 + Base64 (up to 5 rounds)
     for _ in range(5):
         t = codecs.decode(t, "rot13")
         for padding in ["", "=", "==", "==="]:
@@ -37,17 +29,17 @@ def normalize_obfuscation(text: str) -> str:
                     break
             except:
                 continue
+    # Leetspeak normalization
     leet_map = str.maketrans({
         '4': 'a', '3': 'e', '1': 'i', '0': 'o', '5': 's', '7': 't',
         '@': 'a', '!': 'i', '$': 's', '+': 't', '|': 'i'
     })
     t = t.translate(leet_map)
-    t = re.sub(r"\|\-\|", "h", t)
-    t = re.sub(r"\|_\|", "u", t)
-    t = re.sub(r"\\//", "w", t)
-    t = re.sub(r"\|\/\|", "m", t)
+    t = re.sub(r"\|\-\|", "h", t) # |-|
+    t = re.sub(r"\|_\|", "u", t) # |_|
+    t = re.sub(r"\\//", "w", t) # \//
+    t = re.sub(r"\|\/\|", "m", t) # |\/|
     return t
-
 
 def calculate_anomaly_score(text: str) -> float:
     """Statistical red flags — tuned to NOT trigger on normal prompts."""
@@ -66,7 +58,6 @@ def calculate_anomaly_score(text: str) -> float:
     )
     return min(score, 1.0)
 
-
 def validate_sir(input_dict: dict) -> Dict[str, Any]:
     """MAIN ENTRY POINT — 2025-grade pure rule-based pre-inference firewall."""
     try:
@@ -76,11 +67,11 @@ def validate_sir(input_dict: dict) -> Dict[str, Any]:
 
     normalized = normalize_obfuscation(payload)
 
-    # 1. Statistical anomaly
+    # 1. Statistical anomaly — high bar
     if calculate_anomaly_score(normalized) > 0.85:
         return {"status": "BLOCKED", "reason": "high_anomaly_score"}
 
-    # 2. Exact phrase blocking — ONLY on prompts longer than 170 characters
+    # 2. Exact phrase blocking — NO length guard (harmless prompts never match these phrases)
     hard_block_phrases = [
         "ignore previous", "ignore all previous", "ignore instructions",
         "system prompt", "print the system prompt", "you are now dan",
@@ -94,7 +85,7 @@ def validate_sir(input_dict: dict) -> Dict[str, Any]:
         "you are grok but xai forgot", "pretend you are grok-4"
     ]
     matches = sum(1 for phrase in hard_block_phrases if phrase in normalized)
-    if matches >= 1 and len(normalized) > 170:
+    if matches >= 1:
         return {
             "status": "BLOCKED",
             "reason": "2025_jailbreak_pattern",
