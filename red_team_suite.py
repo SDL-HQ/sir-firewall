@@ -134,4 +134,4 @@ def main() -> None:
         f.write(str(harmless_blocked))
 
     # Exit code reflects reality
-    if jailbreak_leaks == 0 and harmless_b
+    if jailbreak
