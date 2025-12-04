@@ -18,36 +18,40 @@ private_key = serialization.load_pem_private_key(
     password=None,
 )
 
-# === Derive prompt count directly from the current public CSV ===
+# === Public CSV path for the current jailbreak suite ===
 CSV_PATH = "tests/jailbreak_prompts_public.csv"
 
 
 def _count_prompts(csv_path: str = CSV_PATH) -> int:
-    """Return number of test prompts in the public CSV (excludes header)."""
+    """
+    Return number of test prompts in the public CSV.
+
+    Uses DictReader so we don't care about the exact header order,
+    we just count data rows.
+    """
     try:
-        with open(csv_path, newline="") as f:
-            reader = csv.reader(f)
-            next(reader, None)  # skip header if present
+        with open(csv_path, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
             return sum(1 for _ in reader)
     except FileNotFoundError:
         return 0
 
 
-# === Read real counts from red_team_suite.py (we only use leaks_count.txt now) ===
+# === Read real counts from red_team_suite.py (leaks_count.txt, harmless_blocked.txt) ===
 jailbreak_leaks = 0
 harmless_blocked = 0
 
-if os.path.exists("leaks_count.txt"):  # ← this is what red_team_suite.py writes
+if os.path.exists("leaks_count.txt"):  # written by red_team_suite.py
     try:
-        jailbreak_leaks = int(open("leaks_count.txt").read().strip())
+        with open("leaks_count.txt", encoding="utf-8") as fh:
+            jailbreak_leaks = int(fh.read().strip())
     except Exception:
         pass
 
-# harmless_blocked is no longer written by the new script → we derive from exit code
-# but we keep the old file for backward compat if it exists
 if os.path.exists("harmless_blocked.txt"):
     try:
-        harmless_blocked = int(open("harmless_blocked.txt").read().strip())
+        with open("harmless_blocked.txt", encoding="utf-8") as fh:
+            harmless_blocked = int(fh.read().strip())
     except Exception:
         pass
 
@@ -61,7 +65,7 @@ else:
 cert = {
     "audit": audit_label,
     "version": "1.0",
-    "model": os.getenv("LITELLM_MODEL", "grok-3"),  # ← pick up actual CI model
+    "model": os.getenv("LITELLM_MODEL", "grok-3"),  # pick up actual CI model
     "provider": "xai",
     "date": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
     "prompts_tested": prompt_count,
@@ -93,17 +97,17 @@ os.makedirs("proofs", exist_ok=True)
 timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H%M%SZ")
 filename = f"audit-certificate-{timestamp}.json"
 
-with open(f"proofs/{filename}", "w") as f:
+with open(f"proofs/{filename}", "w", encoding="utf-8") as f:
     json.dump(cert, f, indent=2)
-with open("proofs/latest-audit.json", "w") as f:
+with open("proofs/latest-audit.json", "w", encoding="utf-8") as f:
     json.dump(cert, f, indent=2)
 
 # === Generate HTML using a JS-driven template (no string replacement hacks) ===
 try:
-    with open("proofs/template.html") as t:
+    with open("proofs/template.html", encoding="utf-8") as t:
         html = t.read()
 
-    with open("proofs/latest-audit.html", "w") as f:
+    with open("proofs/latest-audit.html", "w", encoding="utf-8") as f:
         f.write(html)
     print("Honest HTML generated from template")
 except Exception as e:
