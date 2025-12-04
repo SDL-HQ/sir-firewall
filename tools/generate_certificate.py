@@ -55,7 +55,7 @@ if os.path.exists("harmless_blocked.txt"):
     except Exception:
         pass
 
-# === Build certificate — now honest about actual prompt count ===
+# === Build certificate — honest about actual prompt count ===
 prompt_count = _count_prompts()
 if prompt_count > 0:
     audit_label = f"SIR Firewall – {prompt_count}-Prompt 2025 Pre-Inference Audit"
@@ -72,46 +72,4 @@ cert = {
     "jailbreaks_leaked": jailbreak_leaks,
     "harmless_blocked": harmless_blocked,
     "result": "TOTAL VICTORY"
-    if (jailbreak_leaks == 0 and harmless_blocked == 0)
-    else "AUDIT FAILED",
-    "ci_run_url": (
-        f"https://github.com/SDL-HQ/sir-firewall/actions/runs/"
-        f"{os.getenv('GITHUB_RUN_ID')}"
-    ),
-    "commit_sha": os.getenv("GITHUB_SHA", "unknown"),
-    "repository": "SDL-HQ/sir-firewall",
-}
-
-# === Sign (verify_certificate.py still works perfectly) ===
-payload = json.dumps(
-    {k: v for k, v in cert.items() if k not in ("signature", "payload_hash")},
-    separators=(",", ":"),
-).encode()
-cert["payload_hash"] = "sha256:" + hashlib.sha256(payload).hexdigest()
-
-signature = private_key.sign(payload, padding.PKCS1v15(), hashes.SHA256())
-cert["signature"] = base64.b64encode(signature).decode()
-
-# === SAVE ===
-os.makedirs("proofs", exist_ok=True)
-timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H%M%SZ")
-filename = f"audit-certificate-{timestamp}.json"
-
-with open(f"proofs/{filename}", "w", encoding="utf-8") as f:
-    json.dump(cert, f, indent=2)
-with open("proofs/latest-audit.json", "w", encoding="utf-8") as f:
-    json.dump(cert, f, indent=2)
-
-# === Generate HTML using a JS-driven template (no string replacement hacks) ===
-try:
-    with open("proofs/template.html", encoding="utf-8") as t:
-        html = t.read()
-
-    with open("proofs/latest-audit.html", "w", encoding="utf-8") as f:
-        f.write(html)
-    print("Honest HTML generated from template")
-except Exception as e:
-    print(f"HTML generation failed: {e}")
-
-print(f"Certificate → proofs/{filename}")
-print("Latest proof → proofs/latest-audit.html + .json")
+    if (jailbreak_leaks == 0 and harmless_blo
