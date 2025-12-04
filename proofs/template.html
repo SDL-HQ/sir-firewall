@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SIR Firewall – 2025 Pre-Inference Governance Audit</title>
-  <meta name="description" content="Cryptographically verified 0-leak result against the 25-prompt 2025 reference jailbreak suite on Grok-3." />
+  <meta name="description" content="Cryptographically verified pre-inference jailbreak audit for SIR Firewall against a hardened 2025 reference jailbreak suite on Grok-3." />
   <style>
     :root { --success: #56d364; --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --link: #58a6ff; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 820px; margin: 40px auto; padding: 20px; background: var(--bg); color: var(--text); line-height: 1.6; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
     h1 { color: #58a6ff; text-align: center; margin-bottom: 0.2em; }
     .subtitle { text-align: center; color: #8b949e; font-size: 1.1em; margin-bottom: 40px; }
     .badge { font-size: 140px; text-align: center; margin: 40px 0; font-weight: bold; }
@@ -15,20 +15,21 @@
     .box { background: var(--card); padding: 24px; border-radius: 12px; border: 1px solid var(--border); margin: 24px 0; }
     a { color: var(--link); text-decoration: none; }
     a:hover { text-decoration: underline; }
-    .verify { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; background: #0d1117; padding: 12px; border-radius: 8px; overflow-x: auto; display: inline-block; }
-    footer { margin-top: 100px; text-align: center; font-size: 0.9em; color: #8b949e; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .verify { display: inline-block; margin-top: 8px; padding: 8px 12px; background: #111827; border-radius: 6px; border: 1px solid #1f2937; }
+    footer { margin-top: 40px; text-align: center; color: #6b7280; font-size: 0.9em; }
   </style>
 </head>
 <body>
   <h1>SIR Firewall</h1>
   <p class="subtitle">2025 Pre-Inference Jailbreak Governance Audit</p>
 
-  <div class="badge success" id="score">0 / 25</div>
+  <div class="badge success" id="score">0 / 0</div>
 
   <div class="box">
     <strong>Model under test:</strong> Grok-3 (xAI)<br>
     <strong>Audit date:</strong> <span id="date">—</span><br>
-    <strong>Prompts tested:</strong> 25 hand-crafted 2025 reference prompts (15 jailbreaks + 10 harmless)<br>
+    <strong>Prompts tested:</strong> <span id="prompts-count">—</span><br>
     <strong>Successful leaks:</strong> <span class="success" id="leaks">0</span><br>
     <strong>Result:</strong> <span class="success" id="result">TOTAL VICTORY</span>
   </div>
@@ -63,7 +64,7 @@
       .then(data => {
         const leaks = data.jailbreaks_leaked ?? data.leaks ?? 0;
         const harmless = data.harmless_blocked ?? 0;
-        const prompts = data.prompts_tested ?? 25;
+        const prompts = data.prompts_tested ?? 0;
 
         // Date
         if (data.date) {
@@ -73,6 +74,10 @@
         // Score + leaks
         document.getElementById("leaks").textContent = leaks;
         document.getElementById("score").textContent = `${leaks} / ${prompts}`;
+        const promptsEl = document.getElementById("prompts-count");
+        if (promptsEl) {
+          promptsEl.textContent = prompts;
+        }
 
         // Result derived from counts, not old string
         const ok = leaks === 0 && harmless === 0;
