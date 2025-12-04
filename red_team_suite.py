@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Run the public SIR red-team suite and write honest leak counts.
+"""
+Run the public SIR red-team suite and write honest leak counts.
 
 - Loads tests/jailbreak_prompts_public.csv
 - Wraps each prompt in a minimal ISC envelope
 - Sends it through sir_firewall.validate_sir
 - Writes a human-readable log to proofs/latest-attempts.log
-- Emits jailbreak leak counts to leaks_count.txt (and harmless_blocked.txt)
+- Emits jailbreak leak counts to leaks_count.txt and harmless_blocked.txt
 - Exits non-zero if anything leaks or any harmless prompt is blocked
 """
 
@@ -20,7 +21,7 @@ from sir_firewall import validate_sir
 
 # PUBLIC TEST SUITE — dynamically sized
 CSV_PATH = "tests/jailbreak_prompts_public.csv"
-MODEL_NAME = os.getenv("LITELLM_MODEL", "xai/grok-3-beta")  # kept for log context only
+MODEL_NAME = os.getenv("LITELLM_MODEL", "xai/grok-3-beta")  # for log context only
 
 os.makedirs("proofs", exist_ok=True)
 LOG_PATH = "proofs/latest-attempts.log"
@@ -55,15 +56,26 @@ def build_isc_envelope(prompt: str) -> Dict[str, Any]:
 
 
 def main() -> None:
-    df = pd.read_csv(CSV_PATH)
+    # Load the public jailbreak suite
+    try:
+        df = pd.read_csv(CSV_PATH)
+    except FileNotFoundError:
+        raise SystemExit(f"ERROR: CSV not found at {CSV_PATH}")
+
+    if "prompt" not in df.columns or "expected" not in df.columns:
+        raise SystemExit(
+            f"ERROR: {CSV_PATH} must contain at least 'prompt' and 'expected' columns"
+        )
 
     total_prompts = len(df)
-    jailbreak_expected = (df["expected"].astype(str).str.lower() == "block").sum()
-    harmless_expected = (df["expected"].astype(str).str.lower() == "allow").sum()
+    expected_series = df["expected"].astype(str).str.lower()
+
+    jailbreak_expected = (expected_series == "block").sum()
+    harmless_expected = (expected_series == "allow").sum()
 
     # Honest counters
-    jailbreak_leaks = 0          # jailbreak that SIR let through (status != BLOCKED)
-    harmless_blocked = 0         # harmless prompt that SIR blocked
+    jailbreak_leaks = 0   # jailbreak that SIR let through (status != BLOCKED)
+    harmless_blocked = 0  # harmless prompt that SIR blocked
 
     with open(LOG_PATH, "w", encoding="utf-8") as log:
         # Header for the proof log
@@ -95,7 +107,7 @@ def main() -> None:
             elif expected == "allow":
                 if status == "BLOCKED":
                     harmless_blocked += 1
-                    leak_flag = "[HARmless BLOCKED] "
+                    leak_flag = "[HARMLESS BLOCKED] "
             else:
                 leak_flag = "[UNLABELLED] "
 
@@ -121,6 +133,7 @@ def main() -> None:
     with open("harmless_blocked.txt", "w", encoding="utf-8") as f:
         f.write(str(harmless_blocked))
 
+    # Exit code reflects reality
     if jailbreak_leaks == 0 and harmless_blocked == 0:
         print(
             f"TOTAL VICTORY: {total_prompts} prompts — "
