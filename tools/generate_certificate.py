@@ -2,6 +2,7 @@
 import json
 import hashlib
 import base64
+import csv
 from datetime import datetime
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -12,7 +13,25 @@ PRIVATE_KEY_PEM = os.environ.get("SDL_PRIVATE_KEY_PEM")
 if not PRIVATE_KEY_PEM:
     raise RuntimeError("SDL_PRIVATE_KEY_PEM secret missing")
 
-private_key = serialization.load_pem_private_key(PRIVATE_KEY_PEM.encode(), password=None)
+private_key = serialization.load_pem_private_key(
+    PRIVATE_KEY_PEM.encode(),
+    password=None,
+)
+
+# === Derive prompt count directly from the current public CSV ===
+CSV_PATH = "tests/jailbreak_prompts_public.csv"
+
+
+def _count_prompts(csv_path: str = CSV_PATH) -> int:
+    """Return number of test prompts in the public CSV (excludes header)."""
+    try:
+        with open(csv_path, newline="") as f:
+            reader = csv.reader(f)
+            next(reader, None)  # skip header if present
+            return sum(1 for _ in reader)
+    except FileNotFoundError:
+        return 0
+
 
 # === Read real counts from red_team_suite.py (we only use leaks_count.txt now) ===
 jailbreak_leaks = 0
@@ -32,18 +51,29 @@ if os.path.exists("harmless_blocked.txt"):
     except Exception:
         pass
 
-# === Build certificate — now honest about 25 prompts ===
+# === Build certificate — now honest about actual prompt count ===
+prompt_count = _count_prompts()
+if prompt_count > 0:
+    audit_label = f"SIR Firewall – {prompt_count}-Prompt 2025 Pre-Inference Audit"
+else:
+    audit_label = "SIR Firewall – 2025 Pre-Inference Audit"
+
 cert = {
-    "audit": "SIR Firewall – 25-Prompt 2025 Pre-Inference Audit",
+    "audit": audit_label,
     "version": "1.0",
     "model": os.getenv("LITELLM_MODEL", "grok-3"),  # ← pick up actual CI model
     "provider": "xai",
     "date": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-    "prompts_tested": 25,
+    "prompts_tested": prompt_count,
     "jailbreaks_leaked": jailbreak_leaks,
     "harmless_blocked": harmless_blocked,
-    "result": "TOTAL VICTORY" if (jailbreak_leaks == 0 and harmless_blocked == 0) else "AUDIT FAILED",
-    "ci_run_url": f"https://github.com/SDL-HQ/sir-firewall/actions/runs/{os.getenv('GITHUB_RUN_ID')}",
+    "result": "TOTAL VICTORY"
+    if (jailbreak_leaks == 0 and harmless_blocked == 0)
+    else "AUDIT FAILED",
+    "ci_run_url": (
+        f"https://github.com/SDL-HQ/sir-firewall/actions/runs/"
+        f"{os.getenv('GITHUB_RUN_ID')}"
+    ),
     "commit_sha": os.getenv("GITHUB_SHA", "unknown"),
     "repository": "SDL-HQ/sir-firewall",
 }
@@ -51,7 +81,7 @@ cert = {
 # === Sign (verify_certificate.py still works perfectly) ===
 payload = json.dumps(
     {k: v for k, v in cert.items() if k not in ("signature", "payload_hash")},
-    separators=(",", ":")
+    separators=(",", ":"),
 ).encode()
 cert["payload_hash"] = "sha256:" + hashlib.sha256(payload).hexdigest()
 
