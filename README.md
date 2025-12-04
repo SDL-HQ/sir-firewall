@@ -3,7 +3,6 @@
 **Pre-inference firewall · Hardened 2025 jailbreak suite on Grok-3 · Cryptographically signed proof**
 
 [![Live Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
-[![Tests](https://github.com/SDL-HQ/sir-firewall/actions/workflows/tests.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/tests.yml)
 
 Every successful CI run executes the **current 2025 jailbreak suite** against Grok-3 via SIR, then:
 
