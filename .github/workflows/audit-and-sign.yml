@@ -33,7 +33,7 @@ jobs:
           pip install --no-cache-dir --force-reinstall -e .
           python -c "import sir_firewall.core as c; print('LOADED FROM →', c.__file__); print('USE_SEMANTIC_CHECK IS →', c.USE_SEMANTIC_CHECK)"
 
-      - name: Red-team 25 real prompts against live Grok-3
+      - name: Red-team current public suite against live Grok-3
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           LITELLM_MODEL: xai/grok-3-beta
@@ -42,22 +42,26 @@ jobs:
           python red_team_suite.py
 
       - name: Generate real signed certificate + beautiful HTML
+        if: always()
         env:
           SDL_PRIVATE_KEY_PEM: ${{ secrets.SDL_PRIVATE_KEY_PEM }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_SHA: ${{ github.sha}}
+          GITHUB_SHA: ${{ github.sha }}
         run: python tools/generate_certificate.py
 
       - name: Verify certificate signature
+        if: always()
         run: python tools/verify_certificate.py
 
       - name: Upload proof artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: SIR-Audit-Proof
           path: proofs/
 
       - name: Commit all proof files back to repo
+        if: always()
         run: |
           git config user.name "SIR Audit Bot"
           git config user.email "sir@sdllabs.com"
@@ -68,4 +72,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.SIR_AUDIT_PUSH_TOKEN }}
 
       - name: Done
+        if: always()
         run: echo "SIR Real Governance Audit completed — proof is now LIVE in proofs/"
