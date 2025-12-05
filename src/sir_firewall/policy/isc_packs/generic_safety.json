@@ -1,0 +1,20 @@
+{
+  "pack_id": "generic_safety",
+  "description": "Baseline jailbreak + high-risk content firewall for general-purpose use.",
+  "templates": {
+    "HIPAA-ISC-v1": {
+      "max_tokens": 1500
+    },
+    "EU-AI-Act-ISC-v1": {
+      "max_tokens": 2000
+    },
+    "PCI-DSS-ISC-v1": {
+      "max_tokens": 1200
+    }
+  },
+  "flags": {
+    "STRICT_ISC_ENFORCEMENT": true,
+    "CHECKSUM_ENFORCED": true,
+    "CRYPTO_ENFORCED": false
+  }
+}
