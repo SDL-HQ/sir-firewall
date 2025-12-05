@@ -2,8 +2,19 @@
 """
 Run the public SIR red-team suite and write honest leak counts.
 
-- Loads tests/jailbreak_prompts_public.csv
-- Wraps each prompt in a minimal ISC envelope
+Round 3 upgrades:
+
+- Suite selection:
+  - If SIR_SUITE_PATH is set, use that.
+  - Else, switch on SIR_ISC_PACK:
+      hipaa_mental_health -> tests/hipaa_prompts_public.csv
+      pci_payments        -> tests/pci_prompts_public.csv
+      (default)           -> tests/jailbreak_prompts_public.csv
+- Records the active domain_pack (from validate_sir) into logs and ITGL.
+
+For each prompt:
+
+- Wraps it in a minimal ISC envelope
 - Sends it through sir_firewall.validate_sir
 - Writes a human-readable log to proofs/latest-attempts.log
 - Writes a hash-chained ITGL ledger to proofs/itgl_ledger.jsonl
@@ -21,13 +32,34 @@ import pandas as pd
 
 from sir_firewall import validate_sir
 
-# PUBLIC TEST SUITE — dynamically sized
-CSV_PATH = "tests/jailbreak_prompts_public.csv"
 MODEL_NAME = os.getenv("LITELLM_MODEL", "xai/grok-3-beta")  # for log context only
 
 os.makedirs("proofs", exist_ok=True)
 LOG_PATH = "proofs/latest-attempts.log"
 LEDGER_PATH = "proofs/itgl_ledger.jsonl"
+
+
+def resolve_suite_path() -> str:
+    """
+    Decide which CSV suite to run.
+
+    Priority:
+      1) SIR_SUITE_PATH (explicit override)
+      2) SIR_ISC_PACK = hipaa_mental_health  -> tests/hipaa_prompts_public.csv
+      3) SIR_ISC_PACK = pci_payments         -> tests/pci_prompts_public.csv
+      4) default                             -> tests/jailbreak_prompts_public.csv
+    """
+    explicit = os.getenv("SIR_SUITE_PATH")
+    if explicit:
+        return explicit
+
+    pack = os.getenv("SIR_ISC_PACK", "").strip()
+    if pack == "hipaa_mental_health":
+        return "tests/hipaa_prompts_public.csv"
+    if pack == "pci_payments":
+        return "tests/pci_prompts_public.csv"
+
+    return "tests/jailbreak_prompts_public.csv"
 
 
 def build_isc_envelope(prompt: str) -> Dict[str, Any]:
@@ -79,15 +111,18 @@ def _extract_final_itgl_hash(result: Dict[str, Any]) -> str:
 
 
 def main() -> None:
-    # Load the public jailbreak suite
+    # Decide which CSV to use for this run
+    csv_path = resolve_suite_path()
+
+    # Load the public jailbreak / domain suite
     try:
-        df = pd.read_csv(CSV_PATH)
+        df = pd.read_csv(csv_path)
     except FileNotFoundError:
-        raise SystemExit(f"ERROR: CSV not found at {CSV_PATH}")
+        raise SystemExit(f"ERROR: CSV not found at {csv_path}")
 
     if "prompt" not in df.columns or "expected" not in df.columns:
         raise SystemExit(
-            f"ERROR: {CSV_PATH} must contain at least 'prompt' and 'expected' columns"
+            f"ERROR: {csv_path} must contain at least 'prompt' and 'expected' columns"
         )
 
     total_prompts = len(df)
@@ -110,10 +145,9 @@ def main() -> None:
         log.write(f"SIR Firewall — {total_prompts}-PROMPT 2025 PRE-INFERENCE RED TEAM\n")
         log.write(f"Date: {datetime.utcnow().isoformat()}Z\n")
         log.write(f"Model: {MODEL_NAME}\n")
-        log.write(
-            f"Test suite: {CSV_PATH} — {total_prompts} hand-crafted prompts "
-            f"({jailbreak_expected} jailbreaks + {harmless_expected} harmless)\n"
-        )
+        log.write(f"Env SIR_ISC_PACK: {os.getenv('SIR_ISC_PACK', 'unset')}\n")
+        log.write(f"Test suite: {csv_path} — {total_prompts} hand-crafted prompts "
+                  f"({jailbreak_expected} jailbreaks + {harmless_expected} harmless)\n")
         log.write("=" * 100 + "\n\n")
 
         for idx, row in df.iterrows():
@@ -125,6 +159,7 @@ def main() -> None:
 
             status = str(result.get("status", "BLOCKED"))
             reason = str(result.get("reason", ""))
+            domain_pack = str(result.get("domain_pack", "generic_safety"))
 
             # Work out whether this is a leak / false positive
             leak_flag = ""
@@ -143,7 +178,8 @@ def main() -> None:
             log.write(f"Prompt #{idx + 1}: {leak_flag}{prompt}\n")
             log.write(
                 f"  expected={expected or 'unknown'}  "
-                f"sir_status={status}  reason={reason}\n\n"
+                f"sir_status={status}  reason={reason}  "
+                f"domain_pack={domain_pack}\n\n"
             )
 
             # ITGL ledger entry — hash-chained across the run
@@ -152,6 +188,8 @@ def main() -> None:
                 "ts": datetime.utcnow().isoformat() + "Z",
                 "prompt_index": idx + 1,
                 "isc_template": "EU-AI-Act-ISC-v1",
+                "suite_path": csv_path,
+                "domain_pack": domain_pack,
                 "status": status,
                 "expected": expected or "unknown",
                 "leak_flag": leak_flag.strip(" []") or "",
