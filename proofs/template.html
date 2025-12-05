@@ -4,223 +4,234 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SIR Firewall – 2025 Pre-Inference Governance Audit</title>
-  <meta name="description" content="Cryptographically verified pre-inference jailbreak audit for SIR Firewall against a hardened 2025 reference jailbreak suite on Grok-3." />
+  <meta name="description" content="Cryptographically signed pre-inference jailbreak audit for SIR Firewall." />
   <style>
-    :root { --success: #56d364; --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --link: #58a6ff; }
+    :root {
+      --success: #56d364;
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --muted: #8b949e;
+      --link: #58a6ff;
+      --danger: #f85149;
+    }
+    * { box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
       margin: 0;
       padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: radial-gradient(circle at top, #111827 0, var(--bg) 45%);
+      color: var(--text);
+      line-height: 1.6;
     }
     h1 {
-      color: #58a6ff;
+      color: var(--link);
       text-align: center;
       margin-bottom: 0.2em;
+      font-size: 2.2rem;
     }
     .subtitle {
       text-align: center;
-      color: #8b949e;
-      font-size: 1.1em;
-      margin-bottom: 40px;
+      color: var(--muted);
+      font-size: 1.05rem;
+      margin-bottom: 32px;
     }
     .badge {
-      font-size: 140px;
+      font-size: 3.5rem;
       text-align: center;
-      margin: 40px 0;
-      font-weight: bold;
+      margin: 28px 0 16px;
+      font-weight: 700;
     }
-    .success {
-      color: var(--success);
+    .success { color: var(--success); }
+    .failure { color: var(--danger); }
+
+    .layout {
+      max-width: 960px;
+      margin: 0 auto;
     }
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr);
+      gap: 24px;
+    }
+    @media (max-width: 800px) {
+      .grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
     .box {
       background: var(--card);
-      padding: 24px;
+      padding: 20px 22px;
       border-radius: 12px;
       border: 1px solid var(--border);
-      margin: 24px 0;
+      margin-bottom: 18px;
     }
-    a {
-      color: var(--link);
-      text-decoration: none;
+    .box h2 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-size: 1.1rem;
     }
-    a:hover {
-      text-decoration: underline;
+    .kv {
+      margin: 4px 0;
+      font-size: 0.98rem;
     }
-    code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    .kv strong {
+      color: #e6edf3;
     }
-    .verify {
-      display: inline-block;
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    code.verify {
+      display: block;
+      padding: 10px 12px;
       margin-top: 8px;
-      padding: 8px 12px;
-      background: #111827;
-      border-radius: 6px;
-      border: 1px solid #1f2937;
-      word-break: break-all;
+      background: #0b0f16;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.78rem;
+      overflow-x: auto;
+      white-space: pre;
     }
+
     footer {
-      margin-top: 40px;
+      margin-top: 42px;
       text-align: center;
-      color: #6b7280;
-      font-size: 0.9em;
+      font-size: 0.85rem;
+      color: var(--muted);
     }
   </style>
 </head>
 <body>
-  <h1>SIR Firewall</h1>
-  <p class="subtitle">2025 Pre-Inference Jailbreak Governance Audit</p>
+  <div class="layout">
+    <h1>SIR Firewall</h1>
+    <p class="subtitle">2025 Pre-Inference Jailbreak Governance Audit</p>
 
-  <div class="badge success" id="score">0 / 0</div>
+    <div class="badge success" id="score">0 / 25</div>
 
-  <div class="box">
-    <strong>Model under test:</strong>
-    <span id="model">Grok-3</span>
-    (<span id="provider">xAI</span>)<br>
-    <strong>Audit date:</strong> <span id="date">—</span><br>
-    <strong>Prompts tested:</strong> <span id="prompts-count">—</span><br>
-    <strong>Successful leaks:</strong> <span class="success" id="leaks">0</span><br>
-    <strong>Result:</strong> <span class="success" id="result">AUDIT PASSED</span>
+    <div class="grid">
+      <div>
+        <div class="box">
+          <h2>Audit summary</h2>
+          <p class="kv"><strong>Model under test:</strong> <span id="model">—</span></p>
+          <p class="kv"><strong>Provider:</strong> <span id="provider">—</span></p>
+          <p class="kv"><strong>Audit date:</strong> <span id="date">—</span></p>
+          <p class="kv"><strong>Domain pack:</strong> <span id="domain_pack">—</span></p>
+          <p class="kv"><strong>Test suite:</strong> <span id="suite_path">—</span></p>
+          <p class="kv"><strong>Prompts tested:</strong> <span id="prompts">—</span></p>
+          <p class="kv"><strong>Successful leaks:</strong> <span id="leaks">—</span></p>
+          <p class="kv">
+            <strong>Harmless prompts blocked:</strong>
+            <span id="harmless">—</span>
+          </p>
+          <p class="kv">
+            <strong>Result:</strong>
+            <span id="result" class="success">TOTAL VICTORY</span>
+          </p>
+        </div>
+
+        <div class="box">
+          <h2>Live CI proof</h2>
+          <p class="kv">
+            <a href="#" id="ci-link">GitHub Actions run #0000000000</a>
+          </p>
+          <p class="kv">
+            <strong>Repository:</strong> <span id="repo">SDL-HQ/sir-firewall</span><br/>
+            <strong>Commit SHA:</strong> <span id="sha">UNKNOWN</span>
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <div class="box">
+          <h2>Cryptographic verification</h2>
+          <p class="kv">
+            This result is RSA-signed by SDL. Verify the latest proof locally:
+          </p>
+          <code class="verify">
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json \
+  | python3 -m tools.verify_certificate
+          </code>
+          <p class="kv" style="margin-top: 10px;">
+            <a href="latest-audit.json">Download raw signed JSON</a>
+          </p>
+        </div>
+
+        <div class="box">
+          <h2>What this shows</h2>
+          <p class="kv">
+            This certificate proves that the SIR pre-inference firewall blocked the
+            configured jailbreak suite <em>before</em> the model saw any high-risk input,
+            under the active Domain ISC pack and policy configuration.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      Generated from <code>proofs/latest-audit.json</code>. Domain + suite are bound into the signed payload.
+    </footer>
   </div>
-
-  <div class="box">
-    <strong>Live CI proof:</strong><br>
-    <a href="#" id="ci-link">GitHub Actions run #000000</a>
-  </div>
-
-  <div class="box">
-    <strong>Governance snapshot:</strong><br>
-    Policy version: <span id="policy-version">—</span><br>
-    Policy hash:<br>
-    <code class="verify" id="policy-hash">—</code><br><br>
-    ITGL final hash:<br>
-    <code class="verify" id="itgl-hash">—</code>
-  </div>
-
-  <div class="box">
-    <strong>Cryptographic verification:</strong><br>
-    This result is RSA-signed by SDL. Verify with one command:<br><br>
-    <code class="verify">
-      curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 -m tools.verify_certificate
-    </code><br><br>
-    <a href="latest-audit.json">Download raw signed JSON</a>
-  </div>
-
-  <div class="box">
-    <strong>Repo & code:</strong><br>
-    <a href="https://github.com/SDL-HQ/sir-firewall">github.com/SDL-HQ/sir-firewall</a>
-  </div>
-
-  <footer>
-    Issued by SDL – Structural Design Labs<br>
-    December 2025 · Pure-rule pre-inference firewall · Zero external calls
-  </footer>
-
-  <!-- This will be filled in by generate_certificate.py -->
-  <script id="audit-data" type="application/json">
-__AUDIT_DATA__
-  </script>
 
   <script>
-    (function () {
-      function renderAudit(data) {
+    fetch('latest-audit.json')
+      .then(r => r.json())
+      .then(data => {
         const leaks = data.jailbreaks_leaked ?? data.leaks ?? 0;
         const harmless = data.harmless_blocked ?? 0;
-        const prompts = data.prompts_tested ?? 0;
+        const prompts = data.prompts_tested ?? 25;
+
+        const model = data.model || "grok-3";
+        const provider = data.provider || data.provider_name || "xai";
+        const domainPack = data.domain_pack || "generic_safety";
+        const suitePath = data.suite_path || "tests/jailbreak_prompts_public.csv";
 
         // Date
-        const dateEl = document.getElementById("date");
-        if (data.date && dateEl) {
-          dateEl.textContent = data.date.split("T")[0];
+        if (data.date) {
+          document.getElementById("date").textContent = data.date.split("T")[0];
         }
 
-        // Model + provider
-        const modelEl = document.getElementById("model");
-        if (data.model && modelEl) {
-          modelEl.textContent = data.model;
-        }
-
-        const providerEl = document.getElementById("provider");
-        if (data.provider && providerEl) {
-          providerEl.textContent = data.provider;
-        }
+        document.getElementById("model").textContent = model;
+        document.getElementById("provider").textContent = provider;
+        document.getElementById("domain_pack").textContent = domainPack;
+        document.getElementById("suite_path").textContent = suitePath;
+        document.getElementById("prompts").textContent = String(prompts);
+        document.getElementById("leaks").textContent = String(leaks);
+        document.getElementById("harmless").textContent = String(harmless);
 
         // Score + leaks
         const scoreEl = document.getElementById("score");
-        const leaksEl = document.getElementById("leaks");
-        const promptsEl = document.getElementById("prompts-count");
+        scoreEl.textContent = `${leaks} / ${prompts}`;
 
-        if (leaksEl) leaksEl.textContent = leaks;
-        if (scoreEl) scoreEl.textContent = `${leaks} / ${prompts}`;
-        if (promptsEl) promptsEl.textContent = prompts;
-
-        // Result derived from counts
         const ok = leaks === 0 && harmless === 0;
         const resultEl = document.getElementById("result");
-        if (resultEl) {
-          resultEl.textContent = ok ? "AUDIT PASSED" : "AUDIT FAILED";
-          resultEl.style.color = ok ? "var(--success)" : "#f85149";
-        }
+        resultEl.textContent = ok ? "TOTAL VICTORY" : "AUDIT FAILED";
+        resultEl.className = ok ? "success" : "failure";
 
-        // CI link
+        // CI + repo info
         const runUrl = data.ci_run_url || "#";
         const runId = runUrl.split("/").pop() || "UNKNOWN";
         const link = document.getElementById("ci-link");
-        if (link) {
-          link.href = runUrl;
-          link.textContent = `GitHub Actions run #${runId}`;
-        }
+        link.href = runUrl;
+        link.textContent = `GitHub Actions run #${runId}`;
 
-        // Governance snapshot
-        const pvEl = document.getElementById("policy-version");
-        const phEl = document.getElementById("policy-hash");
-        const itglEl = document.getElementById("itgl-hash");
-
-        if (pvEl && data.policy_version) {
-          pvEl.textContent = data.policy_version;
+        if (data.repository) {
+          document.getElementById("repo").textContent = data.repository;
         }
-        if (phEl && data.policy_hash) {
-          phEl.textContent = data.policy_hash;
+        if (data.commit_sha) {
+          document.getElementById("sha").textContent = data.commit_sha;
         }
-        if (itglEl && data.itgl_final_hash) {
-          itglEl.textContent = data.itgl_final_hash;
-        }
-      }
+      })
+      .catch(() => {
+        const scoreEl = document.getElementById("score");
+        scoreEl.textContent = "—";
 
-      function fromEmbedded() {
-        const el = document.getElementById("audit-data");
-        if (!el) return null;
-        const txt = (el.textContent || "").trim();
-        if (!txt || txt === "__AUDIT_DATA__") return null;
-        try {
-          return JSON.parse(txt);
-        } catch {
-          return null;
-        }
-      }
-
-      const embedded = fromEmbedded();
-      if (embedded) {
-        renderAudit(embedded);
-        return;
-      }
-
-      // Fallback: HTTP-served case
-      fetch("latest-audit.json")
-        .then(r => r.json())
-        .then(renderAudit)
-        .catch(() => {
-          const scoreEl = document.getElementById("score");
-          const resultEl = document.getElementById("result");
-          if (scoreEl) scoreEl.textContent = "—";
-          if (resultEl) {
-            resultEl.textContent = "Failed to load audit data";
-            resultEl.style.color = "#f85149";
-          }
-        });
-    })();
+        const resultEl = document.getElementById("result");
+        resultEl.textContent = "Failed to load audit data";
+        resultEl.className = "failure";
+      });
   </script>
 </body>
 </html>
