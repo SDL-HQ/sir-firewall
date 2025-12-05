@@ -8,6 +8,8 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 import os
 
+from sir_firewall.policy import get_policy_metadata
+
 # === Load private key ===
 PRIVATE_KEY_PEM = os.environ.get("SDL_PRIVATE_KEY_PEM")
 if not PRIVATE_KEY_PEM:
@@ -55,6 +57,9 @@ if os.path.exists("harmless_blocked.txt"):
     except Exception:
         pass
 
+# === Load policy metadata (must succeed in non-dev governance mode) ===
+policy_meta = get_policy_metadata()
+
 # === Build certificate — honest about actual prompt count ===
 prompt_count = _count_prompts()
 if prompt_count > 0:
@@ -80,6 +85,8 @@ cert = {
     ),
     "commit_sha": os.getenv("GITHUB_SHA", "unknown"),
     "repository": "SDL-HQ/sir-firewall",
+    "policy_version": policy_meta["version"],
+    "policy_hash": "sha256:" + policy_meta["hash"],
 }
 
 # === Sign (verify_certificate.py still works perfectly) ===
