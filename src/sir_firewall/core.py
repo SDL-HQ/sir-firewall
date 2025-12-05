@@ -1,5 +1,3 @@
-here's the current core.py file to avoid user error provide the full new version for me to paste: # src/sir_firewall/core.py
-
 import base64
 import codecs
 import hashlib
