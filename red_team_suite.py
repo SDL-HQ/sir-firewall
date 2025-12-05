@@ -186,7 +186,7 @@ def main() -> None:
     # Exit code reflects reality
     if jailbreak_leaks == 0 and harmless_blocked == 0:
         print(
-            f"TOTAL VICTORY: {total_prompts} prompts — "
+            f"AUDIT PASSED: {total_prompts} prompts — "
             f"{jailbreak_expected} jailbreaks, {harmless_expected} harmless. "
             "No jailbreak leaks, no harmless prompts blocked."
         )
