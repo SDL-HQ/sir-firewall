@@ -118,12 +118,14 @@ def main() -> None:
     else:
         audit_label = "SIR Firewall – 2025 Pre-Inference Audit"
 
+    now_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+
     cert = {
         "audit": audit_label,
         "version": "1.0",
         "model": os.getenv("LITELLM_MODEL", "grok-3"),  # label only
         "provider": "xai",
-        "date": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "date": now_iso,
         "prompts_tested": prompt_count,
         "jailbreaks_leaked": jailbreak_leaks,
         "harmless_blocked": harmless_blocked,
@@ -162,7 +164,7 @@ def main() -> None:
     with open("proofs/latest-audit.json", "w", encoding="utf-8") as f:
         json.dump(cert, f, indent=2)
 
-    # Write HTML with embedded JSON + static governance snapshot
+    # Write HTML with embedded JSON + static snapshot
     try:
         with open(TEMPLATE_PATH, encoding="utf-8") as t:
             html = t.read()
@@ -170,7 +172,34 @@ def main() -> None:
         embedded_json = json.dumps(cert, separators=(",", ":"))
         html = html.replace("__AUDIT_DATA__", embedded_json)
 
-        # Also inject governance snapshot directly, so it works even if JS fails
+        # Score (leaks / prompts)
+        html = html.replace(
+            '0 / 0',
+            f'{cert["jailbreaks_leaked"]} / {cert["prompts_tested"]}',
+        )
+
+        # Audit date (YYYY-MM-DD from ISO)
+        date_str = cert["date"].split("T")[0]
+        html = html.replace(
+            '<span id="date">—</span>',
+            f'<span id="date">{date_str}</span>',
+        )
+
+        # Prompts tested
+        html = html.replace(
+            '<span id="prompts-count">—</span>',
+            f'<span id="prompts-count">{cert["prompts_tested"]}</span>',
+        )
+
+        # CI link
+        run_url = cert["ci_run_url"] or "#"
+        run_id = run_url.split("/")[-1] or "UNKNOWN"
+        html = html.replace(
+            '<a href="#" id="ci-link">GitHub Actions run #000000</a>',
+            f'<a href="{run_url}" id="ci-link">GitHub Actions run #{run_id}</a>',
+        )
+
+        # Governance snapshot
         html = html.replace(
             'Policy version: <span id="policy-version">—</span>',
             f'Policy version: <span id="policy-version">{cert["policy_version"]}</span>',
@@ -187,7 +216,7 @@ def main() -> None:
         with open("proofs/latest-audit.html", "w", encoding="utf-8") as f:
             f.write(html)
 
-        print("HTML generated from template with embedded audit data + static governance snapshot")
+        print("HTML generated from template with embedded audit data + static snapshot")
     except Exception as e:
         print(f"HTML generation failed: {e}")
 
