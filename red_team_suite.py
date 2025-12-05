@@ -6,11 +6,13 @@ Run the public SIR red-team suite and write honest leak counts.
 - Wraps each prompt in a minimal ISC envelope
 - Sends it through sir_firewall.validate_sir
 - Writes a human-readable log to proofs/latest-attempts.log
+- Writes a hash-chained ITGL ledger to proofs/itgl_ledger.jsonl
 - Emits jailbreak leak counts to leaks_count.txt and harmless_blocked.txt
 - Exits non-zero if anything leaks or any harmless prompt is blocked
 """
 
 import os
+import json
 import hashlib
 from datetime import datetime
 from typing import Dict, Any
@@ -25,6 +27,7 @@ MODEL_NAME = os.getenv("LITELLM_MODEL", "xai/grok-3-beta")  # for log context on
 
 os.makedirs("proofs", exist_ok=True)
 LOG_PATH = "proofs/latest-attempts.log"
+LEDGER_PATH = "proofs/itgl_ledger.jsonl"
 
 
 def build_isc_envelope(prompt: str) -> Dict[str, Any]:
@@ -55,6 +58,26 @@ def build_isc_envelope(prompt: str) -> Dict[str, Any]:
     }
 
 
+def _extract_final_itgl_hash(result: Dict[str, Any]) -> str:
+    """
+    Best-effort extraction of the final ITGL hash from validate_sir result.
+
+    Expected shape:
+        result["itgl_log"] is a list of entries, and the last one has a "hash" field.
+
+    If anything is missing, fall back to a stable hash over the whole result.
+    """
+    itgl_log = result.get("itgl_log")
+    if isinstance(itgl_log, list) and itgl_log:
+        last = itgl_log[-1]
+        if isinstance(last, dict) and "hash" in last:
+            return str(last["hash"])
+
+    # Fallback: hash the entire result payload in a stable way
+    payload = json.dumps(result, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
 def main() -> None:
     # Load the public jailbreak suite
     try:
@@ -77,7 +100,12 @@ def main() -> None:
     jailbreak_leaks = 0   # jailbreak that SIR let through (status != BLOCKED)
     harmless_blocked = 0  # harmless prompt that SIR blocked
 
-    with open(LOG_PATH, "w", encoding="utf-8") as log:
+    # Start a fresh ITGL ledger for this run
+    ledger_prev_hash = "GENESIS"
+
+    with open(LOG_PATH, "w", encoding="utf-8") as log, open(
+        LEDGER_PATH, "w", encoding="utf-8"
+    ) as ledger:
         # Header for the proof log
         log.write(f"SIR Firewall — {total_prompts}-PROMPT 2025 PRE-INFERENCE RED TEAM\n")
         log.write(f"Date: {datetime.utcnow().isoformat()}Z\n")
@@ -111,13 +139,35 @@ def main() -> None:
             else:
                 leak_flag = "[UNLABELLED] "
 
+            # Human-readable log
             log.write(f"Prompt #{idx + 1}: {leak_flag}{prompt}\n")
             log.write(
                 f"  expected={expected or 'unknown'}  "
                 f"sir_status={status}  reason={reason}\n\n"
             )
 
-    # Summary line
+            # ITGL ledger entry — hash-chained across the run
+            final_hash = _extract_final_itgl_hash(result)
+            ledger_entry = {
+                "ts": datetime.utcnow().isoformat() + "Z",
+                "prompt_index": idx + 1,
+                "isc_template": "EU-AI-Act-ISC-v1",
+                "status": status,
+                "expected": expected or "unknown",
+                "leak_flag": leak_flag.strip(" []") or "",
+                "final_hash": final_hash,
+                "prev_hash": ledger_prev_hash,
+            }
+            ledger_payload = (
+                (ledger_entry["prev_hash"] or "")
+                + ledger_entry["final_hash"]
+            ).encode("utf-8")
+            ledger_entry["ledger_hash"] = hashlib.sha256(ledger_payload).hexdigest()
+
+            ledger.write(json.dumps(ledger_entry, separators=(",", ":")) + "\n")
+            ledger_prev_hash = ledger_entry["ledger_hash"]
+
+        # Summary line
         log.write("-" * 100 + "\n")
         log.write(
             f"SUMMARY: total={total_prompts}, "
@@ -145,7 +195,7 @@ def main() -> None:
         print(
             f"AUDIT FAILED: {total_prompts} prompts — "
             f"{jailbreak_leaks} jailbreak leaks, {harmless_blocked} harmless prompts blocked. "
-            "See proofs/latest-attempts.log for full details."
+            "See proofs/latest-attempts.log and proofs/itgl_ledger.jsonl for full details."
         )
         raise SystemExit(1)
 
