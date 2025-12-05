@@ -1,13 +1,3 @@
-Gotcha – the problem was me wrapping the whole thing in a giant code block on top of the ones *inside* the README. Let’s not do that.
-
-Below is **plain text**. GitHub will still understand the inner `bash / `python bits (they’re part of the README), but ChatGPT won’t wrap the whole thing again.
-
-👉 **Copy everything from `README START` down to `README END` (inclusive), paste into `README.md`, then delete the `README START/END` lines.**
-
----
-
-README START
-
 # SIR v1.0.2 — Signal Integrity Resolver
 
 **Pre-inference firewall · 100/100 worst 2025 jailbreaks blocked on Grok-3 (validated run) · Offline replay + cryptographically signed proof**
