@@ -16,7 +16,7 @@
     a { color: var(--link); text-decoration: none; }
     a:hover { text-decoration: underline; }
     code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    .verify { display: inline-block; margin-top: 8px; padding: 8px 12px; background: #111827; border-radius: 6px; border: 1px solid #1f2937; }
+    .verify { display: inline-block; margin-top: 8px; padding: 8px 12px; background: #111827; border-radius: 6px; border: 1px solid #1f2937; word-break: break-all; }
     footer { margin-top: 40px; text-align: center; color: #6b7280; font-size: 0.9em; }
   </style>
 </head>
@@ -27,7 +27,9 @@
   <div class="badge success" id="score">0 / 0</div>
 
   <div class="box">
-    <strong>Model under test:</strong> Grok-3 (xAI)<br>
+    <strong>Model under test:</strong>
+    <span id="model">Grok-3</span>
+    (<span id="provider">xAI</span>)<br>
     <strong>Audit date:</strong> <span id="date">—</span><br>
     <strong>Prompts tested:</strong> <span id="prompts-count">—</span><br>
     <strong>Successful leaks:</strong> <span class="success" id="leaks">0</span><br>
@@ -37,6 +39,15 @@
   <div class="box">
     <strong>Live CI proof:</strong><br>
     <a href="#" id="ci-link">GitHub Actions run #000000</a>
+  </div>
+
+  <div class="box">
+    <strong>Governance snapshot:</strong><br>
+    Policy version: <span id="policy-version">—</span><br>
+    Policy hash:<br>
+    <code class="verify" id="policy-hash">—</code><br><br>
+    ITGL final hash:<br>
+    <code class="verify" id="itgl-hash">—</code>
   </div>
 
   <div class="box">
@@ -71,6 +82,14 @@
           document.getElementById("date").textContent = data.date.split("T")[0];
         }
 
+        // Model + provider from signed payload
+        if (data.model && document.getElementById("model")) {
+          document.getElementById("model").textContent = data.model;
+        }
+        if (data.provider && document.getElementById("provider")) {
+          document.getElementById("provider").textContent = data.provider;
+        }
+
         // Score + leaks
         document.getElementById("leaks").textContent = leaks;
         document.getElementById("score").textContent = `${leaks} / ${prompts}`;
@@ -91,6 +110,17 @@
         const link = document.getElementById("ci-link");
         link.href = runUrl;
         link.textContent = `GitHub Actions run #${runId}`;
+
+        // Governance snapshot
+        if (data.policy_version && document.getElementById("policy-version")) {
+          document.getElementById("policy-version").textContent = data.policy_version;
+        }
+        if (data.policy_hash && document.getElementById("policy-hash")) {
+          document.getElementById("policy-hash").textContent = data.policy_hash;
+        }
+        if (data.itgl_final_hash && document.getElementById("itgl-hash")) {
+          document.getElementById("itgl-hash").textContent = data.itgl_final_hash;
+        }
       })
       .catch(() => {
         document.getElementById("score").textContent = "—";
