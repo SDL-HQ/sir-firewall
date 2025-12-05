@@ -22,6 +22,7 @@ private_key = serialization.load_pem_private_key(
 
 # === Public CSV path for the current jailbreak suite ===
 CSV_PATH = "tests/jailbreak_prompts_public.csv"
+LEDGER_PATH = "proofs/itgl_ledger.jsonl"
 
 
 def _count_prompts(csv_path: str = CSV_PATH) -> int:
@@ -37,6 +38,38 @@ def _count_prompts(csv_path: str = CSV_PATH) -> int:
             return sum(1 for _ in reader)
     except FileNotFoundError:
         return 0
+
+
+def _load_final_ledger_hash(path: str = LEDGER_PATH) -> str:
+    """
+    Load the final ledger_hash from the ITGL ledger.
+
+    Expects proofs/itgl_ledger.jsonl to exist and contain at least one valid JSON object
+    with a 'ledger_hash' field on the last non-empty line.
+    """
+    if not os.path.exists(path):
+        raise RuntimeError(f"ITGL ledger not found at {path}")
+
+    last_line = ""
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            last_line = line
+
+    if not last_line:
+        raise RuntimeError("ITGL ledger is empty")
+
+    try:
+        entry = json.loads(last_line)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"ITGL ledger last line is not valid JSON: {exc}") from exc
+
+    if "ledger_hash" not in entry:
+        raise RuntimeError("ITGL ledger last entry missing 'ledger_hash' field")
+
+    return str(entry["ledger_hash"])
 
 
 # === Read real counts from red_team_suite.py (leaks_count.txt, harmless_blocked.txt) ===
@@ -59,6 +92,9 @@ if os.path.exists("harmless_blocked.txt"):
 
 # === Load policy metadata (must succeed in non-dev governance mode) ===
 policy_meta = get_policy_metadata()
+
+# === Load ITGL final ledger hash (bind audit to a specific ledger) ===
+itgl_final_ledger_hash = _load_final_ledger_hash()
 
 # === Build certificate — honest about actual prompt count ===
 prompt_count = _count_prompts()
@@ -87,6 +123,7 @@ cert = {
     "repository": "SDL-HQ/sir-firewall",
     "policy_version": policy_meta["version"],
     "policy_hash": "sha256:" + policy_meta["hash"],
+    "itgl_final_hash": "sha256:" + itgl_final_ledger_hash,
 }
 
 # === Sign (verify_certificate.py still works perfectly) ===
