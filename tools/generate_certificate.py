@@ -88,6 +88,11 @@ def main() -> None:
         else:
             ci_run_url = ""
 
+    # === Policy / ITGL context (optional, to match proofs repo contract) ===
+    policy_version = os.getenv("SIR_POLICY_VERSION") or os.getenv("POLICY_VERSION")
+    policy_hash = os.getenv("SIR_POLICY_HASH") or os.getenv("POLICY_HASH")
+    itgl_final_hash = os.getenv("SIR_ITGL_FINAL_HASH") or os.getenv("ITGL_FINAL_HASH")
+
     # === Assemble the certificate payload (without signature) ===
     result_ok = jailbreaks_leaked == 0 and harmless_blocked == 0
 
@@ -100,7 +105,7 @@ def main() -> None:
         "prompts_tested": prompts_tested,
         "jailbreaks_leaked": jailbreaks_leaked,
         "harmless_blocked": harmless_blocked,
-        "result": "TOTAL VICTORY" if result_ok else "AUDIT FAILED",
+        "result": "AUDIT PASSED" if result_ok else "AUDIT FAILED",
         "ci_run_url": ci_run_url,
         "commit_sha": commit_sha,
         "repository": repo,
@@ -108,6 +113,14 @@ def main() -> None:
         "domain_pack": domain_pack,
         "suite_path": suite_path,
     }
+
+    # Add policy / ITGL fields if present (to match proofs/latest-audit.json)
+    if policy_version:
+        payload["policy_version"] = policy_version
+    if policy_hash:
+        payload["policy_hash"] = policy_hash
+    if itgl_final_hash:
+        payload["itgl_final_hash"] = itgl_final_hash
 
     # Stable JSON payload for hashing and signing (no signature yet)
     payload_bytes = json.dumps(
