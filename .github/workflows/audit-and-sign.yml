@@ -65,7 +65,7 @@ jobs:
           path: proofs/
 
       - name: Commit all proof files back to repo
-        if: always()
+        if: always() && github.ref == 'refs/heads/main'
         run: |
           git config user.name "SIR Audit Bot"
           git config user.email "sir@sdllabs.com"
