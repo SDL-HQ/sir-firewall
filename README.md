@@ -284,28 +284,35 @@ In CI, this is wired as a GitHub secret.
 
 ## Verifying the Certificate
 
+## Verifying the Certificate
+
 You can verify the signature with SDL’s public key (`sdl.pub`) and the verifier script.
 
-Examples:
+Example:
 
-Verify the latest audit from `main`:
+    curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json \
+      | python -m verify_certificate
 
-```bash
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json \
-  | python -m tools.verify_certificate
-```
+Or point it at a specific JSON file:
 
-Or point it at a specific JSON file locally:
-
-```bash
-python -m tools.verify_certificate proofs/latest-audit.json
-```
+    python verify_certificate.py proofs/latest-audit.json
 
 This checks:
 
-* The SHA-256 payload hash
-* The RSA signature against `sdl.pub`
-* That the certificate content (including `policy_version`, `policy_hash`, `itgl_final_hash`) hasn’t been tampered with
+- The SHA-256 payload hash
+- The RSA signature against `sdl.pub`
+- That the certificate content hasn’t been tampered with
+
+In addition, every certificate carries a **governance snapshot**:
+
+- `policy_version` and `policy_hash` bind the audit to the exact policy in force
+- `itgl_final_hash` is the final hash of the ITGL ledger for that run
+
+Together, the signature, policy hash, and ITGL hash give you a verifiable link between:
+
+- The rules SIR was enforcing
+- The decisions it made on the public jailbreak suite
+- The audit certificate you’re looking at
 
 ---
 
