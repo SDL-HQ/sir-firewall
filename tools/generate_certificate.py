@@ -10,7 +10,7 @@ Generate a signed SIR audit certificate + HTML view.
 - Writes:
     proofs/audit-certificate-<timestamp>.json
     proofs/latest-audit.json
-    proofs/latest-audit.html  (template with embedded JSON)
+    proofs/latest-audit.html  (template with embedded JSON + static governance snapshot)
 """
 
 import os
@@ -162,7 +162,7 @@ def main() -> None:
     with open("proofs/latest-audit.json", "w", encoding="utf-8") as f:
         json.dump(cert, f, indent=2)
 
-    # Write HTML with embedded JSON
+    # Write HTML with embedded JSON + static governance snapshot
     try:
         with open(TEMPLATE_PATH, encoding="utf-8") as t:
             html = t.read()
@@ -170,10 +170,24 @@ def main() -> None:
         embedded_json = json.dumps(cert, separators=(",", ":"))
         html = html.replace("__AUDIT_DATA__", embedded_json)
 
+        # Also inject governance snapshot directly, so it works even if JS fails
+        html = html.replace(
+            'Policy version: <span id="policy-version">—</span>',
+            f'Policy version: <span id="policy-version">{cert["policy_version"]}</span>',
+        )
+        html = html.replace(
+            '<code class="verify" id="policy-hash">—</code>',
+            f'<code class="verify" id="policy-hash">{cert["policy_hash"]}</code>',
+        )
+        html = html.replace(
+            '<code class="verify" id="itgl-hash">—</code>',
+            f'<code class="verify" id="itgl-hash">{cert["itgl_final_hash"]}</code>',
+        )
+
         with open("proofs/latest-audit.html", "w", encoding="utf-8") as f:
             f.write(html)
 
-        print("HTML generated from template with embedded audit data")
+        print("HTML generated from template with embedded audit data + static governance snapshot")
     except Exception as e:
         print(f"HTML generation failed: {e}")
 
