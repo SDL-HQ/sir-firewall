@@ -41,6 +41,10 @@ jobs:
           echo "Using model: $LITELLM_MODEL"
           python red_team_suite.py
 
+      - name: Verify ITGL ledger hash chain
+        if: always()
+        run: python tools/verify_itgl.py
+
       - name: Generate real signed certificate + beautiful HTML
         if: always()
         env:
