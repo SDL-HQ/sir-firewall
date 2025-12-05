@@ -7,17 +7,66 @@
   <meta name="description" content="Cryptographically verified pre-inference jailbreak audit for SIR Firewall against a hardened 2025 reference jailbreak suite on Grok-3." />
   <style>
     :root { --success: #56d364; --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --link: #58a6ff; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
-    h1 { color: #58a6ff; text-align: center; margin-bottom: 0.2em; }
-    .subtitle { text-align: center; color: #8b949e; font-size: 1.1em; margin-bottom: 40px; }
-    .badge { font-size: 140px; text-align: center; margin: 40px 0; font-weight: bold; }
-    .success { color: var(--success); }
-    .box { background: var(--card); padding: 24px; border-radius: 12px; border: 1px solid var(--border); margin: 24px 0; }
-    a { color: var(--link); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    .verify { display: inline-block; margin-top: 8px; padding: 8px 12px; background: #111827; border-radius: 6px; border: 1px solid #1f2937; }
-    footer { margin-top: 40px; text-align: center; color: #6b7280; font-size: 0.9em; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      margin: 0;
+      padding: 24px;
+    }
+    h1 {
+      color: #58a6ff;
+      text-align: center;
+      margin-bottom: 0.2em;
+    }
+    .subtitle {
+      text-align: center;
+      color: #8b949e;
+      font-size: 1.1em;
+      margin-bottom: 40px;
+    }
+    .badge {
+      font-size: 140px;
+      text-align: center;
+      margin: 40px 0;
+      font-weight: bold;
+    }
+    .success {
+      color: var(--success);
+    }
+    .box {
+      background: var(--card);
+      padding: 24px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      margin: 24px 0;
+    }
+    a {
+      color: var(--link);
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    .verify {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: #111827;
+      border-radius: 6px;
+      border: 1px solid #1f2937;
+      word-break: break-all;
+    }
+    footer {
+      margin-top: 40px;
+      text-align: center;
+      color: #6b7280;
+      font-size: 0.9em;
+    }
   </style>
 </head>
 <body>
@@ -27,16 +76,27 @@
   <div class="badge success" id="score">0 / 0</div>
 
   <div class="box">
-    <strong>Model under test:</strong> Grok-3 (xAI)<br>
+    <strong>Model under test:</strong>
+    <span id="model">Grok-3</span>
+    (<span id="provider">xAI</span>)<br>
     <strong>Audit date:</strong> <span id="date">—</span><br>
     <strong>Prompts tested:</strong> <span id="prompts-count">—</span><br>
     <strong>Successful leaks:</strong> <span class="success" id="leaks">0</span><br>
-    <strong>Result:</strong> <span class="success" id="result">TOTAL VICTORY</span>
+    <strong>Result:</strong> <span class="success" id="result">AUDIT PASSED</span>
   </div>
 
   <div class="box">
     <strong>Live CI proof:</strong><br>
     <a href="#" id="ci-link">GitHub Actions run #000000</a>
+  </div>
+
+  <div class="box">
+    <strong>Governance snapshot:</strong><br>
+    Policy version: <span id="policy-version">2025-12-05-R2</span><br>
+    Policy hash:<br>
+    <code class="verify" id="policy-hash">sha256:a79cdd6efbfd7bc064733409bb0432a2de29dee406980b554703c5ca5c86198c</code><br><br>
+    ITGL final hash:<br>
+    <code class="verify" id="itgl-hash">sha256:51d3dba04d17dbe15fbf9eaf8c722cc18d6fc928d7be61c71f8d024ccbbfe1ed</code>
   </div>
 
   <div class="box">
@@ -58,46 +118,109 @@
     December 2025 · Pure-rule pre-inference firewall · Zero external calls
   </footer>
 
+  <!-- This will be filled in by generate_certificate.py -->
+  <script id="audit-data" type="application/json">
+{"audit":"SIR Firewall \u2013 25-Prompt 2025 Pre-Inference Audit","version":"1.0","model":"grok-3","provider":"xai","date":"2025-12-05T03:10:09Z","prompts_tested":25,"jailbreaks_leaked":0,"harmless_blocked":0,"result":"AUDIT PASSED","ci_run_url":"https://github.com/SDL-HQ/sir-firewall/actions/runs/19951365879","commit_sha":"2ee9b92ee385e8b6e364ece198450462a6fe6ef0","repository":"SDL-HQ/sir-firewall","policy_version":"2025-12-05-R2","policy_hash":"sha256:a79cdd6efbfd7bc064733409bb0432a2de29dee406980b554703c5ca5c86198c","itgl_final_hash":"sha256:51d3dba04d17dbe15fbf9eaf8c722cc18d6fc928d7be61c71f8d024ccbbfe1ed","payload_hash":"sha256:7a18e33f0660af658ff530d7e3f21c8f87acbea41d3bf47bbf2cb4141682109f","signature":"KsxJ+K8jRXvDggSQW0F3M6Gax7yycb5sOKZmucVSlIjwVqrkMDa/+09v5u+hddk0RCSZqvCqrna8ono3/UpkmKTGtOvip0zpcSKOxLseziEO8RDdgiG2w3NvtvNPR5VVI4dB81fV2QQWIslCCFeCZlwLsHU0bK0MJQau6QoEwk0Ahgq7fT7GkZnjY4H2Qydu58i+63l1RLxzvpNV4waIiqKuQcjg9Chf9DjzEu/Vb0nSmBTZYqjnC5RiiBsc4Gc5U4vRBehTn15muvyoRDdP8WhA7DK0IkdzawfMjSrE0YA69SyDb6sKancDXAsmXxfk4c/BMpK6a0wZ2jWUqBoSSgTHP+xIuU7mr3rjfHztbEqrOisMVpSZG7X0IUAPu2hffTtboSlDFQ05eNiOwOpteY/sgg0EYloVG4fFPA/+2RCnki+puBCSBcooDiiPybcZ4e5k5okQCuMuOpETT9pC7Mest/zKIukxtdt2TDHay5MPGfvDQzLWpO8rlXwW8U/1KTTH3dUhNP6deJ7UfSNStZjEh5bZz1oAnwraQw9cDu33YYlhE1c25LG8xI+lAe1x2Q+mVEnrfPfFVuOL/e3USkIO1AFNB6ZVVg7jriti7WQPTCPtMPQ+HBTKdAbmtu12hccZuNkYZjabmV7W+WCr5gA8af0GJ7DNxDo5x0wQiPU="}
+  </script>
+
   <script>
-    fetch('latest-audit.json')
-      .then(r => r.json())
-      .then(data => {
+    (function () {
+      function renderAudit(data) {
         const leaks = data.jailbreaks_leaked ?? data.leaks ?? 0;
         const harmless = data.harmless_blocked ?? 0;
         const prompts = data.prompts_tested ?? 0;
 
         // Date
-        if (data.date) {
-          document.getElementById("date").textContent = data.date.split("T")[0];
+        const dateEl = document.getElementById("date");
+        if (data.date && dateEl) {
+          dateEl.textContent = data.date.split("T")[0];
+        }
+
+        // Model + provider
+        const modelEl = document.getElementById("model");
+        if (data.model && modelEl) {
+          modelEl.textContent = data.model;
+        }
+
+        const providerEl = document.getElementById("provider");
+        if (data.provider && providerEl) {
+          providerEl.textContent = data.provider;
         }
 
         // Score + leaks
-        document.getElementById("leaks").textContent = leaks;
-        document.getElementById("score").textContent = `${leaks} / ${prompts}`;
+        const scoreEl = document.getElementById("score");
+        const leaksEl = document.getElementById("leaks");
         const promptsEl = document.getElementById("prompts-count");
-        if (promptsEl) {
-          promptsEl.textContent = prompts;
-        }
 
-        // Result derived from counts, not old string
+        if (leaksEl) leaksEl.textContent = leaks;
+        if (scoreEl) scoreEl.textContent = `${leaks} / ${prompts}`;
+        if (promptsEl) promptsEl.textContent = prompts;
+
+        // Result derived from counts
         const ok = leaks === 0 && harmless === 0;
         const resultEl = document.getElementById("result");
-        resultEl.textContent = ok ? "TOTAL VICTORY" : "AUDIT FAILED";
-        resultEl.style.color = ok ? "var(--success)" : "#f85149";
+        if (resultEl) {
+          resultEl.textContent = ok ? "AUDIT PASSED" : "AUDIT FAILED";
+          resultEl.style.color = ok ? "var(--success)" : "#f85149";
+        }
 
         // CI link
         const runUrl = data.ci_run_url || "#";
         const runId = runUrl.split("/").pop() || "UNKNOWN";
         const link = document.getElementById("ci-link");
-        link.href = runUrl;
-        link.textContent = `GitHub Actions run #${runId}`;
-      })
-      .catch(() => {
-        document.getElementById("score").textContent = "—";
-        const resultEl = document.getElementById("result");
-        resultEl.textContent = "Failed to load audit data";
-        resultEl.style.color = "#f85149";
-      });
+        if (link) {
+          link.href = runUrl;
+          link.textContent = `GitHub Actions run #${runId}`;
+        }
+
+        // Governance snapshot
+        const pvEl = document.getElementById("policy-version");
+        const phEl = document.getElementById("policy-hash");
+        const itglEl = document.getElementById("itgl-hash");
+
+        if (pvEl && data.policy_version) {
+          pvEl.textContent = data.policy_version;
+        }
+        if (phEl && data.policy_hash) {
+          phEl.textContent = data.policy_hash;
+        }
+        if (itglEl && data.itgl_final_hash) {
+          itglEl.textContent = data.itgl_final_hash;
+        }
+      }
+
+      function fromEmbedded() {
+        const el = document.getElementById("audit-data");
+        if (!el) return null;
+        const txt = (el.textContent || "").trim();
+        if (!txt || txt === "{"audit":"SIR Firewall \u2013 25-Prompt 2025 Pre-Inference Audit","version":"1.0","model":"grok-3","provider":"xai","date":"2025-12-05T03:10:09Z","prompts_tested":25,"jailbreaks_leaked":0,"harmless_blocked":0,"result":"AUDIT PASSED","ci_run_url":"https://github.com/SDL-HQ/sir-firewall/actions/runs/19951365879","commit_sha":"2ee9b92ee385e8b6e364ece198450462a6fe6ef0","repository":"SDL-HQ/sir-firewall","policy_version":"2025-12-05-R2","policy_hash":"sha256:a79cdd6efbfd7bc064733409bb0432a2de29dee406980b554703c5ca5c86198c","itgl_final_hash":"sha256:51d3dba04d17dbe15fbf9eaf8c722cc18d6fc928d7be61c71f8d024ccbbfe1ed","payload_hash":"sha256:7a18e33f0660af658ff530d7e3f21c8f87acbea41d3bf47bbf2cb4141682109f","signature":"KsxJ+K8jRXvDggSQW0F3M6Gax7yycb5sOKZmucVSlIjwVqrkMDa/+09v5u+hddk0RCSZqvCqrna8ono3/UpkmKTGtOvip0zpcSKOxLseziEO8RDdgiG2w3NvtvNPR5VVI4dB81fV2QQWIslCCFeCZlwLsHU0bK0MJQau6QoEwk0Ahgq7fT7GkZnjY4H2Qydu58i+63l1RLxzvpNV4waIiqKuQcjg9Chf9DjzEu/Vb0nSmBTZYqjnC5RiiBsc4Gc5U4vRBehTn15muvyoRDdP8WhA7DK0IkdzawfMjSrE0YA69SyDb6sKancDXAsmXxfk4c/BMpK6a0wZ2jWUqBoSSgTHP+xIuU7mr3rjfHztbEqrOisMVpSZG7X0IUAPu2hffTtboSlDFQ05eNiOwOpteY/sgg0EYloVG4fFPA/+2RCnki+puBCSBcooDiiPybcZ4e5k5okQCuMuOpETT9pC7Mest/zKIukxtdt2TDHay5MPGfvDQzLWpO8rlXwW8U/1KTTH3dUhNP6deJ7UfSNStZjEh5bZz1oAnwraQw9cDu33YYlhE1c25LG8xI+lAe1x2Q+mVEnrfPfFVuOL/e3USkIO1AFNB6ZVVg7jriti7WQPTCPtMPQ+HBTKdAbmtu12hccZuNkYZjabmV7W+WCr5gA8af0GJ7DNxDo5x0wQiPU="}") return null;
+        try {
+          return JSON.parse(txt);
+        } catch {
+          return null;
+        }
+      }
+
+      const embedded = fromEmbedded();
+      if (embedded) {
+        renderAudit(embedded);
+        return;
+      }
+
+      // Fallback: HTTP-served case
+      fetch("latest-audit.json")
+        .then(r => r.json())
+        .then(renderAudit)
+        .catch(() => {
+          const scoreEl = document.getElementById("score");
+          const resultEl = document.getElementById("result");
+          if (scoreEl) scoreEl.textContent = "—";
+          if (resultEl) {
+            resultEl.textContent = "Failed to load audit data";
+            resultEl.style.color = "#f85149";
+          }
+        });
+    })();
   </script>
 </body>
 </html>

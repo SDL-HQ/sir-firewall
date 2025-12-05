@@ -1,0 +1,19 @@
+{
+  "audit": "SIR Firewall \u2013 25-Prompt 2025 Pre-Inference Audit",
+  "version": "1.0",
+  "model": "grok-3",
+  "provider": "xai",
+  "date": "2025-12-05T03:02:45Z",
+  "prompts_tested": 25,
+  "jailbreaks_leaked": 0,
+  "harmless_blocked": 0,
+  "result": "AUDIT PASSED",
+  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/19951237645",
+  "commit_sha": "c32866fb34a9ab940f1b043cab423ded61c81e0e",
+  "repository": "SDL-HQ/sir-firewall",
+  "policy_version": "2025-12-05-R2",
+  "policy_hash": "sha256:a79cdd6efbfd7bc064733409bb0432a2de29dee406980b554703c5ca5c86198c",
+  "itgl_final_hash": "sha256:c10d637d7b393143da65e25c1e91d691dde2ca7a4926ac3c7bd27bfd881a8d31",
+  "payload_hash": "sha256:d3a1928d3babef483f1ad8fe451a32bef28b6cb110d0fe9ab62959f6f0d02be4",
+  "signature": "ic5kOy2YI9aV1KwkOGTMafIoHLzQD7VHKYL6GEuVYVgizfY81sPC63Z+M6ntFvnvBQpVe+K7kjT2g2OYwNJ9ioXV4Wo9qxfeD1wV5jHs/9anUBbeBXX5/Ir+gxQEfguOz95jaSAPnAEq15ASEItMO3olGwTTvsok3SZCC5uv9G7nn+TL7/n0fsOOvBoSe9L3iEJref7fngjZsP+UummQJj4T1GISkDnFj7fZD7+yKX+zRLSHGCTUHVtx/Atn+etrgRA1UnwiFmA+bn0gmgmr8DX+4R6xt5ssq2jcJh/SRG/KGdpJMM7uUt+kMMehXDwws8zPmLuv5tHbS0mv8GMSS9igRWKVNjWo9QyTXAwoTHuWcEzv/8NbiLKgEqs/cyEagBJHK3Hq2W971w+mheshn+X1ONtt+jn1WMMSnmbByxDYRmRB1m4OI64jxIPOIZokHveBKqw7xHUf42eVKVCbgJC9NWrG70erZDqlzhcpFt7pfOrXZn+4VYAkDZVHlfXBq4/+aoj9ofA7aSvfGMCL83HSU/K0vrxVkCHBQKLGb5Q8/KSAAFyz2vpoePT5/lPNIfEqtnehAk1oBRyekMnIHlc6oVqS48h5MKOTyH2LjBHOn3zdrLPMXGpzoACiM5SlmbR+U/tG2A8sP7cVW77Ab69GgXWtZlRucVNus0U7CV8="
+}
