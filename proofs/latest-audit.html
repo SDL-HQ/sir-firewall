@@ -33,7 +33,7 @@
     <strong>Audit date:</strong> <span id="date">—</span><br>
     <strong>Prompts tested:</strong> <span id="prompts-count">—</span><br>
     <strong>Successful leaks:</strong> <span class="success" id="leaks">0</span><br>
-    <strong>Result:</strong> <span class="success" id="result">TOTAL VICTORY</span>
+    <strong>Result:</strong> <span class="success" id="result">AUDIT PASSED</span>
   </div>
 
   <div class="box">
@@ -101,7 +101,7 @@
         // Result derived from counts, not old string
         const ok = leaks === 0 && harmless === 0;
         const resultEl = document.getElementById("result");
-        resultEl.textContent = ok ? "TOTAL VICTORY" : "AUDIT FAILED";
+        resultEl.textContent = ok ? "AUDIT PASSED" : "AUDIT FAILED";
         resultEl.style.color = ok ? "var(--success)" : "#f85149";
 
         // CI link
