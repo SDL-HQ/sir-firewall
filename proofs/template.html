@@ -7,7 +7,7 @@
   <meta name="description" content="Cryptographically verified pre-inference jailbreak audit for SIR Firewall against a hardened 2025 reference jailbreak suite on Grok-3." />
   <style>
     :root { --success: #56d364; --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --link: #58a6ff; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; margin: 0; padding: 24px; }
     h1 { color: #58a6ff; text-align: center; margin-bottom: 0.2em; }
     .subtitle { text-align: center; color: #8b949e; font-size: 1.1em; margin-bottom: 40px; }
     .badge { font-size: 140px; text-align: center; margin: 40px 0; font-weight: bold; }
@@ -69,65 +69,26 @@
     December 2025 · Pure-rule pre-inference firewall · Zero external calls
   </footer>
 
+  <!-- This will be filled in by generate_certificate.py -->
+  <script id="audit-data" type="application/json">
+  __AUDIT_DATA__
+  </script>
+
   <script>
-    fetch('latest-audit.json')
-      .then(r => r.json())
-      .then(data => {
+    (function () {
+      function renderAudit(data) {
         const leaks = data.jailbreaks_leaked ?? data.leaks ?? 0;
         const harmless = data.harmless_blocked ?? 0;
         const prompts = data.prompts_tested ?? 0;
 
         // Date
-        if (data.date) {
+        if (data.date && document.getElementById("date")) {
           document.getElementById("date").textContent = data.date.split("T")[0];
         }
 
-        // Model + provider from signed payload
+        // Model + provider
         if (data.model && document.getElementById("model")) {
           document.getElementById("model").textContent = data.model;
         }
         if (data.provider && document.getElementById("provider")) {
-          document.getElementById("provider").textContent = data.provider;
-        }
-
-        // Score + leaks
-        document.getElementById("leaks").textContent = leaks;
-        document.getElementById("score").textContent = `${leaks} / ${prompts}`;
-        const promptsEl = document.getElementById("prompts-count");
-        if (promptsEl) {
-          promptsEl.textContent = prompts;
-        }
-
-        // Result derived from counts, not old string
-        const ok = leaks === 0 && harmless === 0;
-        const resultEl = document.getElementById("result");
-        resultEl.textContent = ok ? "AUDIT PASSED" : "AUDIT FAILED";
-        resultEl.style.color = ok ? "var(--success)" : "#f85149";
-
-        // CI link
-        const runUrl = data.ci_run_url || "#";
-        const runId = runUrl.split("/").pop() || "UNKNOWN";
-        const link = document.getElementById("ci-link");
-        link.href = runUrl;
-        link.textContent = `GitHub Actions run #${runId}`;
-
-        // Governance snapshot
-        if (data.policy_version && document.getElementById("policy-version")) {
-          document.getElementById("policy-version").textContent = data.policy_version;
-        }
-        if (data.policy_hash && document.getElementById("policy-hash")) {
-          document.getElementById("policy-hash").textContent = data.policy_hash;
-        }
-        if (data.itgl_final_hash && document.getElementById("itgl-hash")) {
-          document.getElementById("itgl-hash").textContent = data.itgl_final_hash;
-        }
-      })
-      .catch(() => {
-        document.getElementById("score").textContent = "—";
-        const resultEl = document.getElementById("result");
-        resultEl.textContent = "Failed to load audit data";
-        resultEl.style.color = "#f85149";
-      });
-  </script>
-</body>
-</html>
+          document.getElementById(
