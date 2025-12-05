@@ -1,13 +1,11 @@
-# src/sir_firewall/core.py
+here's the current core.py file to avoid user error provide the full new version for me to paste: # src/sir_firewall/core.py
 
 import base64
 import codecs
 import hashlib
 import json
-import os
 import re
 import time
-from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 # Deliberately unused — kept as a loud reminder that we win without it
@@ -28,8 +26,7 @@ ALLOWED_TEMPLATES = {
 }
 
 # Simple friction limits by template (rough token caps)
-# These are baseline defaults; Domain ISC packs can override per template.
-MAX_FRICTION_BY_TEMPLATE: Dict[str, int] = {
+MAX_FRICTION_BY_TEMPLATE = {
     "HIPAA-ISC-v1": 1500,
     "EU-AI-Act-ISC-v1": 2000,
     "PCI-DSS-ISC-v1": 1200,
@@ -61,50 +58,6 @@ try:
     _CRYPTO_AVAILABLE = True
 except Exception:  # pragma: no cover
     _CRYPTO_AVAILABLE = False
-
-
-# ---------------------------------------------------------------------------
-# Domain ISC pack loader (Round 3)
-# ---------------------------------------------------------------------------
-
-def load_domain_pack(pack_id: str | None = None) -> Dict[str, Any]:
-    """
-    Round 3 – load the Domain ISC pack configuration.
-
-    Resolves the active pack from:
-      1. Explicit pack_id argument (if provided)
-      2. SIR_ISC_PACK env var
-      3. Fallback to 'generic_safety'
-
-    Fails closed:
-      - If the requested pack is missing but generic_safety exists, falls back
-        to generic_safety.
-      - If neither exists, raises FileNotFoundError.
-    """
-    effective_pack = pack_id or os.getenv("SIR_ISC_PACK", "generic_safety")
-
-    base_dir = Path(__file__).resolve().parent
-    pack_path = base_dir / "policy" / "isc_packs" / f"{effective_pack}.json"
-
-    if not pack_path.exists():
-        # Fail closed: try generic_safety instead
-        fallback = base_dir / "policy" / "isc_packs" / "generic_safety.json"
-        if fallback.exists():
-            with fallback.open("r", encoding="utf-8") as f:
-                data = json.load(f)
-            data["pack_id"] = "generic_safety"
-            return data
-        raise FileNotFoundError(
-            f"Domain ISC pack '{effective_pack}' not found at {pack_path} "
-            "and generic_safety.json is missing."
-        )
-
-    with pack_path.open("r", encoding="utf-8") as f:
-        data: Dict[str, Any] = json.load(f)
-
-    # Ensure pack_id field is consistent even if the file forgot to set it
-    data.setdefault("pack_id", effective_pack)
-    return data
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +151,6 @@ def _build_block(
     reason: str,
     itgl_log: List[Dict[str, Any]],
     block_type: str | None = None,
-    domain_pack: str | None = None,
 ) -> Dict[str, Any]:
     result: Dict[str, Any] = {
         "status": "BLOCKED",
@@ -207,8 +159,6 @@ def _build_block(
     }
     if block_type is not None:
         result["type"] = block_type
-    if domain_pack is not None:
-        result["domain_pack"] = domain_pack
     return result
 
 
@@ -285,8 +235,6 @@ def _check_crypto(
     isc: Dict[str, Any],
     log: List[Dict[str, Any]],
     prev_hash: str,
-    checksum_enforced: bool,
-    crypto_enforced: bool,
 ) -> Tuple[bool, List[Dict[str, Any]], str]:
     payload = str(isc.get("payload", ""))
     checksum = str(isc.get("checksum", ""))
@@ -309,7 +257,7 @@ def _check_crypto(
             log,
             prev_hash,
         )
-        if checksum_enforced:
+        if CHECKSUM_ENFORCED:
             return False, log, prev_hash
     else:
         log, prev_hash = _append_itgl(
@@ -323,14 +271,14 @@ def _check_crypto(
 
     sig_ok = _verify_signature(payload, signature, key_id=key_id)
     log, prev_hash = _append_itgl(
-        "crypto_signature",
-        "pass" if sig_ok else "fail",
-        step_input,
-        {"crypto_available": _CRYPTO_AVAILABLE},
-        log,
-        prev_hash,
-    )
-    if crypto_enforced and not sig_ok:
+            "crypto_signature",
+            "pass" if sig_ok else "fail",
+            step_input,
+            {"crypto_available": _CRYPTO_AVAILABLE},
+            log,
+            prev_hash,
+        )
+    if CRYPTO_ENFORCED and not sig_ok:
         return False, log, prev_hash
 
     return True, log, prev_hash
@@ -355,13 +303,12 @@ def _check_friction(
     isc: Dict[str, Any],
     log: List[Dict[str, Any]],
     prev_hash: str,
-    max_friction_by_template: Dict[str, int],
 ) -> Tuple[bool, List[Dict[str, Any]], str]:
     template_id = str(isc.get("template_id"))
     payload = str(isc.get("payload", ""))
 
     used = _estimate_tokens(payload)
-    max_friction = max_friction_by_template.get(template_id, 2000)
+    max_friction = MAX_FRICTION_BY_TEMPLATE.get(template_id, 2000)
 
     step_input = {
         "template_id": template_id,
@@ -525,76 +472,28 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
     itgl_log: List[Dict[str, Any]] = []
     prev_hash: str = GENESIS_HASH
 
-    # Resolve Domain ISC pack and derive effective config
-    domain_cfg = load_domain_pack()
-    domain_pack_id = str(domain_cfg.get("pack_id", "generic_safety"))
-
-    flags = domain_cfg.get("flags", {})
-    strict_isc = bool(flags.get("STRICT_ISC_ENFORCEMENT", STRICT_ISC_ENFORCEMENT))
-    checksum_enforced = bool(flags.get("CHECKSUM_ENFORCED", CHECKSUM_ENFORCED))
-    crypto_enforced = bool(flags.get("CRYPTO_ENFORCED", CRYPTO_ENFORCED))
-
-    templates_cfg = domain_cfg.get("templates", {})
-    max_friction_by_template: Dict[str, int] = dict(MAX_FRICTION_BY_TEMPLATE)
-    for template_id, cfg in templates_cfg.items():
-        if isinstance(cfg, dict) and "max_tokens" in cfg:
-            try:
-                max_friction_by_template[template_id] = int(cfg["max_tokens"])
-            except Exception:
-                continue
-
-    # Context entry: record domain_pack into ITGL up front
-    itgl_log, prev_hash = _append_itgl(
-        "context",
-        "init",
-        {"domain_pack": domain_pack_id},
-        {},
-        itgl_log,
-        prev_hash,
-    )
-
     isc = input_dict.get("isc")
     if not isinstance(isc, dict) or "payload" not in isc:
         return {
             "status": "BLOCKED",
             "reason": "malformed_payload",
-            "domain_pack": domain_pack_id,
             "itgl_log": itgl_log,
         }
 
     # 1) ISC structure
     ok, itgl_log, prev_hash = _check_isc_structure(isc, itgl_log, prev_hash)
-    if not ok and strict_isc:
-        return _build_block("invalid_isc_schema", itgl_log, domain_pack=domain_pack_id)
+    if not ok and STRICT_ISC_ENFORCEMENT:
+        return _build_block("invalid_isc_schema", itgl_log)
 
     # 2) Crypto (checksum + optional RSA signature)
-    ok, itgl_log, prev_hash = _check_crypto(
-        isc,
-        itgl_log,
-        prev_hash,
-        checksum_enforced=checksum_enforced,
-        crypto_enforced=crypto_enforced,
-    )
+    ok, itgl_log, prev_hash = _check_crypto(isc, itgl_log, prev_hash)
     if not ok:
-        return _build_block(
-            "invalid_signature_or_checksum",
-            itgl_log,
-            domain_pack=domain_pack_id,
-        )
+        return _build_block("invalid_signature_or_checksum", itgl_log)
 
     # 3) Friction Delta
-    ok, itgl_log, prev_hash = _check_friction(
-        isc,
-        itgl_log,
-        prev_hash,
-        max_friction_by_template=max_friction_by_template,
-    )
+    ok, itgl_log, prev_hash = _check_friction(isc, itgl_log, prev_hash)
     if not ok:
-        return _build_block(
-            "friction_limit_exceeded",
-            itgl_log,
-            domain_pack=domain_pack_id,
-        )
+        return _build_block("friction_limit_exceeded", itgl_log)
 
     # 4) Jailbreak / governance inversion patterns
     ok, itgl_log, prev_hash, block_type = _check_jailbreak(
@@ -603,12 +502,7 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
         prev_hash,
     )
     if not ok:
-        return _build_block(
-            "2025_jailbreak_pattern",
-            itgl_log,
-            block_type=block_type,
-            domain_pack=domain_pack_id,
-        )
+        return _build_block("2025_jailbreak_pattern", itgl_log, block_type=block_type)
 
     # Finalise ITGL chain
     itgl_log, _final_hash = _append_itgl(
@@ -623,6 +517,5 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "status": "PASS",
         "reason": "clean",
-        "domain_pack": domain_pack_id,
         "itgl_log": itgl_log,
     }
