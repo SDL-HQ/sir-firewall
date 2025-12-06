@@ -207,7 +207,7 @@ curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest
 
         const ok = leaks === 0 && harmless === 0;
         const resultEl = document.getElementById("result");
-        resultEl.textContent = ok ? "TOTAL VICTORY" : "AUDIT FAILED";
+        resultEl.textContent = ok ? "AUDIT PASSED" : "AUDIT FAILED";
         resultEl.className = ok ? "success" : "failure";
 
         // CI + repo info
