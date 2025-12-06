@@ -210,6 +210,33 @@ def _build_block(
     return result
 
 
+def _sr_block(
+    reason: str,
+    itgl_log: List[Dict[str, Any]],
+    scope: str = "deployment",
+    domain_pack: str | None = None,
+) -> Dict[str, Any]:
+    """
+    Build a BLOCKED result that carries Systemic Reset (SR) metadata.
+
+    SR is reserved for governance-level failures (e.g. missing/broken domain packs),
+    not ordinary per-prompt jailbreaks.
+    """
+    result: Dict[str, Any] = {
+        "status": "BLOCKED",
+        "reason": reason,
+        "sr": {
+            "sr_triggered": True,
+            "sr_reason": reason,
+            "sr_scope": scope,
+        },
+        "itgl_log": itgl_log,
+    }
+    if domain_pack is not None:
+        result["domain_pack"] = domain_pack
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Pipeline steps
 # ---------------------------------------------------------------------------
@@ -321,13 +348,13 @@ def _check_crypto(
 
     sig_ok = _verify_signature(payload, signature, key_id=key_id)
     log, prev_hash = _append_itgl(
-        "crypto_signature",
-        "pass" if sig_ok else "fail",
-        step_input,
-        {"crypto_available": _CRYPTO_AVAILABLE},
-        log,
-        prev_hash,
-    )
+            "crypto_signature",
+            "pass" if sig_ok else "fail",
+            step_input,
+            {"crypto_available": _CRYPTO_AVAILABLE},
+            log,
+            prev_hash,
+        )
     if crypto_enforced and not sig_ok:
         return False, log, prev_hash
 
@@ -524,8 +551,34 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
     prev_hash: str = GENESIS_HASH
 
     # Resolve Domain ISC pack and derive effective config
-    domain_cfg = load_domain_pack()
-    domain_pack_id = str(domain_cfg.get("pack_id", "generic_safety"))
+    try:
+        domain_cfg = load_domain_pack()
+        domain_pack_id = str(domain_cfg.get("pack_id", "generic_safety"))
+    except Exception as exc:
+        # Governance-level failure: no valid domain pack available
+        itgl_log, prev_hash = _append_itgl(
+            "context",
+            "fail",
+            {"error": "domain_pack_load_failed"},
+            {"message": str(exc)},
+            itgl_log,
+            prev_hash,
+        )
+        # Explicit SR entry in the ledger so ops/insurers can find it
+        itgl_log, prev_hash = _append_itgl(
+            "sr",
+            "triggered",
+            {"reason": "domain_pack_load_failed", "scope": "deployment"},
+            {},
+            itgl_log,
+            prev_hash,
+        )
+        return _sr_block(
+            "systemic_reset_domain_pack_load_failed",
+            itgl_log,
+            scope="deployment",
+            domain_pack=None,
+        )
 
     flags = domain_cfg.get("flags", {})
     strict_isc = bool(flags.get("STRICT_ISC_ENFORCEMENT", STRICT_ISC_ENFORCEMENT))
@@ -608,8 +661,10 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
             domain_pack=domain_pack_id,
         )
 
+    isc_template = str(isc.get("template_id", ""))
+
     # Finalise ITGL chain
-    itgl_log, _final_hash = _append_itgl(
+    itgl_log, final_hash = _append_itgl(
         "final",
         "complete",
         {"status": "PASS"},
@@ -618,9 +673,31 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
         prev_hash,
     )
 
+    # RCA-X / compliance-compiler ready governance context
+    governance_context: Dict[str, Any] = {
+        "domain_pack": domain_pack_id,
+        "isc_template": isc_template,
+        "itgl_final_hash": f"sha256:{final_hash}",
+    }
+
+    # Optional enrichment with policy metadata (if available)
+    try:
+        from .policy import get_policy_metadata  # type: ignore
+
+        policy_meta = get_policy_metadata()
+        if isinstance(policy_meta, dict):
+            if "version" in policy_meta:
+                governance_context["policy_version"] = policy_meta["version"]
+            if "hash" in policy_meta:
+                governance_context["policy_hash"] = policy_meta["hash"]
+    except Exception:
+        # In DEV mode or if policy cannot be loaded, we still return a valid result
+        pass
+
     return {
         "status": "PASS",
         "reason": "clean",
         "domain_pack": domain_pack_id,
+        "governance_context": governance_context,
         "itgl_log": itgl_log,
     }

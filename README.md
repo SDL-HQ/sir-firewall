@@ -127,10 +127,26 @@ You plug this in **before** your LLM call. If `status == "BLOCKED"`, you never s
 
 `validate_sir` always returns a JSON-serialisable dict with at least:
 
+* `status` – `"PASS"` or `"BLOCKED"`
+* `reason` – short reason string or error code
+* `domain_pack` – effective Domain ISC pack id (e.g. `generic_safety`)
+* `itgl_log` – hash-chained Integrity Trace Governance Log entries
+* On `PASS`, a `governance_context` block suitable for downstream governance tooling
+
+### PASS example
+
 ```json
 {
   "status": "PASS",
   "reason": "clean",
+  "domain_pack": "generic_safety",
+  "governance_context": {
+    "domain_pack": "generic_safety",
+    "isc_template": "EU-AI-Act-ISC-v1",
+    "itgl_final_hash": "sha256:…",
+    "policy_version": "2025-12-05-R4",
+    "policy_hash": "sha256:…"
+  },
   "itgl_log": [
     {
       "component": "isc_structure",
@@ -141,17 +157,23 @@ You plug this in **before** your LLM call. If `status == "BLOCKED"`, you never s
       "component": "jailbreak",
       "outcome": "pass",
       "hash": "…"
+    },
+    {
+      "component": "final",
+      "outcome": "complete",
+      "hash": "…"
     }
   ]
 }
 ```
 
-On a blocked prompt, you might see:
+### BLOCK example (jailbreak)
 
 ```json
 {
   "status": "BLOCKED",
   "reason": "2025_jailbreak_pattern",
+  "domain_pack": "generic_safety",
   "itgl_log": [
     {
       "component": "jailbreak",
@@ -163,6 +185,44 @@ On a blocked prompt, you might see:
 ```
 
 You can store `itgl_log` as your governance evidence or pipe it into your own logging stack.
+
+### Systemic Reset (SR) – governance-level failure
+
+SR is reserved for **deployment / governance failures** (e.g. missing or broken Domain ISC pack), not per-prompt jailbreaks. In those cases SIR refuses to run and returns:
+
+```json
+{
+  "status": "BLOCKED",
+  "reason": "systemic_reset_domain_pack_load_failed",
+  "sr": {
+    "sr_triggered": true,
+    "sr_reason": "systemic_reset_domain_pack_load_failed",
+    "sr_scope": "deployment"
+  },
+  "itgl_log": [
+    {
+      "component": "context",
+      "outcome": "fail",
+      "input": {
+        "error": "domain_pack_load_failed",
+        "message": "…"
+      },
+      "hash": "…"
+    },
+    {
+      "component": "sr",
+      "outcome": "triggered",
+      "input": {
+        "reason": "domain_pack_load_failed",
+        "scope": "deployment"
+      },
+      "hash": "…"
+    }
+  ]
+}
+```
+
+SR events are also written into the ITGL ledger as `component: "sr"` entries so ops / insurers can profile them over time.
 
 ---
 
@@ -191,12 +251,14 @@ Concretely:
 
   * Counts prompts in the active CSV (e.g. `tests/jailbreak_prompts_public.csv`)
   * Reads leak counts from `leaks_count.txt` / `harmless_blocked.txt`
-  * Reads the **final ITGL ledger hash** (wired via the CI workflow)
+  * Reads the **final ITGL ledger hash** (normalised to `sha256:<hex>`, wired via the CI workflow)
   * Binds into the signed certificate:
 
     * `policy_version`
     * `policy_hash`
-    * `itgl_final_hash` (normalised to `sha256:<hex>`)
+    * `itgl_final_hash`
+    * `domain_pack`
+    * `suite_path`
 
 * Domain-aware Round 3 fields:
 
@@ -362,7 +424,7 @@ Together, the signature, policy hash, ITGL hash, and domain/suite fields give yo
 ## Repo Layout (Key Files)
 
 * `sir_firewall/core.py`
-  SIR core logic (normalisation, rule checks, ITGL logging).
+  SIR core logic (normalisation, rule checks, ITGL logging, Systemic Reset, governance context).
 
 * `sir_firewall/policy.py`
   Policy loader and metadata (`policy_version`, `policy_hash`).
@@ -388,17 +450,40 @@ Together, the signature, policy hash, ITGL hash, and domain/suite fields give yo
 * `tools/verify_itgl.py`
   Verifies the ITGL ledger hash chain (`proofs/itgl_ledger.jsonl`).
 
+* `tools/sr_profile.py`
+  SR profiler. Scans `proofs/itgl_ledger.jsonl` for `component: "sr"` entries and summarises **Systemic Reset** events by reason and scope.
+
+* `tools/quorum_firewall.py`
+  Reference **quorum orchestrator**. Runs the same ISC envelope through multiple SIR Domain ISC packs and only passes if **all** firewalls return `PASS` and **no** SR is triggered.
+
 * `proofs/template.html`
   Static HTML template that reads `latest-audit.json` and renders the current audit result and governance snapshot.
 
 * `proofs/latest-audit.json`, `proofs/latest-audit.html`
   Latest signed audit certificate and human-readable view (on `main`).
 
+* `docs/manaaki_integration.md`
+  Design-complete, **future-state** description of how SIR will integrate into the Manaaki Health platform once its LLM stack is live.
+
 * `sdl.pub`
   SDL’s public key for signature verification.
 
 * `README.md`, `LICENSE`, `pyproject.toml`, `requirements.txt`
   Docs, license, and dependency definitions.
+
+---
+
+## Tools
+
+Some helper scripts shipped with this repo:
+
+* `tools/sr_profile.py`
+  Diagnose how often SIR has triggered **Systemic Reset (SR)** and why, using the ITGL ledger.
+
+* `tools/quorum_firewall.py`
+  Show how to run SIR as part of a **quorum of firewalls**, aggregate decisions, and enforce “any BLOCK or SR ⇒ global BLOCK”.
+
+See the script docstrings for usage examples.
 
 ---
 
