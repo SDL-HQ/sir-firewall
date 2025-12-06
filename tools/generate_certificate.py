@@ -120,7 +120,10 @@ def main() -> None:
     if policy_hash:
         payload["policy_hash"] = policy_hash
     if itgl_final_hash:
-        payload["itgl_final_hash"] = itgl_final_hash
+        norm_itgl = itgl_final_hash
+        if not norm_itgl.startswith("sha256:"):
+            norm_itgl = f"sha256:{norm_itgl}"
+        payload["itgl_final_hash"] = norm_itgl
 
     # Stable JSON payload for hashing and signing (no signature yet)
     payload_bytes = json.dumps(
