@@ -155,9 +155,16 @@ def main() -> None:
     try:
         with open("proofs/template.html", "r", encoding="utf-8") as t:
             html = t.read()
+
+        # Inject a tiny per-run marker so latest-audit.html always changes
+        # and Git can see that a new audit was published.
+        audit_date = cert.get("date", datetime.utcnow().isoformat() + "Z")
+        marker = f"\n<!-- audit_date:{audit_date} -->\n"
+        html_with_marker = html + marker
+
         with open("proofs/latest-audit.html", "w", encoding="utf-8") as f:
-            f.write(html)
-        print("Honest HTML generated from template")
+            f.write(html_with_marker)
+        print(f"Honest HTML generated from template (audit_date={audit_date})")
     except Exception as e:  # pragma: no cover
         print(f"HTML generation failed: {e}")
 
