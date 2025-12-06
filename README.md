@@ -1,6 +1,6 @@
 # SIR v1.0.2 — Signal Integrity Resolver
 
-**Pre-inference firewall · 100/100 worst 2025 jailbreaks blocked on Grok-3 (validated run) · Offline replay + cryptographically signed proof**
+**Pre-inference firewall · 0 leaks on the current 2025 Grok-3 jailbreak suite (latest signed replay) · Offline replay + cryptographically signed proof**
 
 [![Live Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
