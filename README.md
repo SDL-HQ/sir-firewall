@@ -487,6 +487,11 @@ See the script docstrings for usage examples.
 
 ---
 
+## Security Reporting
+For security reporting, see SECURITY.md
+
+---
+
 ## License
 
 MIT Licensed
