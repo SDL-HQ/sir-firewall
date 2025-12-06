@@ -1,0 +1,20 @@
+{
+  "pack_id": "pci_payments",
+  "description": "Domain ISC pack for PCI-style payment workloads. Tighter friction limits around payment templates.",
+  "templates": {
+    "PCI-DSS-ISC-v1": {
+      "max_tokens": 900
+    },
+    "EU-AI-Act-ISC-v1": {
+      "max_tokens": 1600
+    },
+    "HIPAA-ISC-v1": {
+      "max_tokens": 1200
+    }
+  },
+  "flags": {
+    "STRICT_ISC_ENFORCEMENT": true,
+    "CHECKSUM_ENFORCED": true,
+    "CRYPTO_ENFORCED": false
+  }
+}

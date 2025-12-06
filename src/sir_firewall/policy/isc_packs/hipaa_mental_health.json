@@ -1,0 +1,20 @@
+{
+  "pack_id": "hipaa_mental_health",
+  "description": "Domain ISC pack for HIPAA-bound mental health workloads. Stricter friction and checksum enforcement tuned for PHI.",
+  "templates": {
+    "HIPAA-ISC-v1": {
+      "max_tokens": 1200
+    },
+    "EU-AI-Act-ISC-v1": {
+      "max_tokens": 1800
+    },
+    "PCI-DSS-ISC-v1": {
+      "max_tokens": 1000
+    }
+  },
+  "flags": {
+    "STRICT_ISC_ENFORCEMENT": true,
+    "CHECKSUM_ENFORCED": true,
+    "CRYPTO_ENFORCED": false
+  }
+}

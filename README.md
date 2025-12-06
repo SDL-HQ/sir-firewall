@@ -183,6 +183,10 @@ Concretely:
 * ITGL final hash
 * Model label + leak counts
 
+The signed `latest-audit.json` now also binds the active `domain_pack` (e.g. `hipaa_mental_health`, `pci_payments`, `generic_safety`) and the `suite_path` used for the run, so auditors can see exactly which domain mode and test set were under test.
+
+For NIST / ISO / EU AI Act mapping, see `docs/standards_alignment.md`.
+
 ---
 
 ## The Public 2025 Jailbreak Suite
