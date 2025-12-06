@@ -348,13 +348,13 @@ def _check_crypto(
 
     sig_ok = _verify_signature(payload, signature, key_id=key_id)
     log, prev_hash = _append_itgl(
-        "crypto_signature",
-        "pass" if sig_ok else "fail",
-        step_input,
-        {"crypto_available": _CRYPTO_AVAILABLE},
-        log,
-        prev_hash,
-    )
+            "crypto_signature",
+            "pass" if sig_ok else "fail",
+            step_input,
+            {"crypto_available": _CRYPTO_AVAILABLE},
+            log,
+            prev_hash,
+        )
     if crypto_enforced and not sig_ok:
         return False, log, prev_hash
 
@@ -561,6 +561,15 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
             "fail",
             {"error": "domain_pack_load_failed"},
             {"message": str(exc)},
+            itgl_log,
+            prev_hash,
+        )
+        # Explicit SR entry in the ledger so ops/insurers can find it
+        itgl_log, prev_hash = _append_itgl(
+            "sr",
+            "triggered",
+            {"reason": "domain_pack_load_failed", "scope": "deployment"},
+            {},
             itgl_log,
             prev_hash,
         )
