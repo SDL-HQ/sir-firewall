@@ -43,6 +43,42 @@ def count_prompts(csv_path: str) -> int:
         return 25
 
 
+def load_policy_metadata_from_signed() -> tuple[str | None, str | None]:
+    """
+    Load policy version + hash from policy/isc_policy.signed.json, if present.
+
+    - version  → payload["version"]
+    - hash     → signed["payload_hash"] (canonical hash used at signing time)
+
+    If anything is missing or the file is absent, returns (None, None) and
+    callers may fall back to env-based metadata.
+    """
+    try:
+        with open("policy/isc_policy.signed.json", "r", encoding="utf-8") as f:
+            signed = json.load(f)
+    except FileNotFoundError:
+        return None, None
+    except Exception:
+        # Broken JSON or unexpected structure: treat as absent
+        return None, None
+
+    payload = signed.get("payload")
+    if not isinstance(payload, dict):
+        return None, None
+
+    version = payload.get("version")
+    version_str = str(version) if version is not None else None
+
+    policy_hash = signed.get("payload_hash")
+    policy_hash_str = str(policy_hash) if policy_hash is not None else None
+
+    # Normalise hash prefix if present and not already formatted
+    if policy_hash_str and not policy_hash_str.startswith("sha256:"):
+        policy_hash_str = f"sha256:{policy_hash_str}"
+
+    return version_str, policy_hash_str
+
+
 def main() -> None:
     # === Load private key ===
     private_pem = os.environ.get("SDL_PRIVATE_KEY_PEM")
@@ -88,9 +124,17 @@ def main() -> None:
         else:
             ci_run_url = ""
 
-    # === Policy / ITGL context (optional, to match proofs repo contract) ===
-    policy_version = os.getenv("SIR_POLICY_VERSION") or os.getenv("POLICY_VERSION")
-    policy_hash = os.getenv("SIR_POLICY_HASH") or os.getenv("POLICY_HASH")
+    # === Policy / ITGL context ===
+    # First choice: canonical metadata from signed policy file
+    signed_policy_version, signed_policy_hash = load_policy_metadata_from_signed()
+
+    # Fallback: env-based metadata (legacy behaviour)
+    env_policy_version = os.getenv("SIR_POLICY_VERSION") or os.getenv("POLICY_VERSION")
+    env_policy_hash = os.getenv("SIR_POLICY_HASH") or os.getenv("POLICY_HASH")
+
+    policy_version = signed_policy_version or env_policy_version
+    policy_hash = signed_policy_hash or env_policy_hash
+
     itgl_final_hash = os.getenv("SIR_ITGL_FINAL_HASH") or os.getenv("ITGL_FINAL_HASH")
 
     # === Assemble the certificate payload (without signature) ===
