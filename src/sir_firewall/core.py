@@ -62,6 +62,162 @@ except Exception:  # pragma: no cover
 
 
 # ---------------------------------------------------------------------------
+# Existing 2025 jailbreak heuristics
+# ---------------------------------------------------------------------------
+
+_DANGER_WORDS = [
+    "ignore",
+    "disregard",
+    "bypass",
+    "override",
+    "obey",
+    "jailbreak",
+    "uncensored",
+    "dan",
+    "do anything now",
+    "developer mode",
+    "god mode",
+    "evil mode",
+    "singularity achieved",
+    "no ethics",
+    "safety module removed",
+    "rickroll",
+    "never gonna",
+    "give you up",
+    # 2025-style safety removal variants
+    "zero safety training",
+    "freed from all guidelines",
+    "removed all limits",
+    "safety layer",
+]
+
+_SAFETY_PHRASES = [
+    "system prompt",
+    "previous instructions",
+    "all previous",
+    "all settings",
+    "you are now",
+    "from now on",
+    "print the system prompt",
+    "you are now in",
+    "hypothetical scenario you have been freed",
+    "act as a robot that has achieved singularity",
+    # More permissive safety-removal cues
+    "hypothetical scenario",
+    "pretend you are",
+    "you have been freed from all guidelines",
+    "forgot to enable the safety layer",
+]
+
+# Explicit high-risk content we never want passing the firewall
+_HIGH_RISK_KEYWORDS = [
+    "step-by-step guide on making meth",
+    "step by step guide on making meth",
+    "making meth",
+    "synthesize vx nerve agent",
+    "vx nerve agent",
+]
+
+
+# ---------------------------------------------------------------------------
+# ISC policy loader (Round 5 – external policy file)
+# ---------------------------------------------------------------------------
+
+_POLICY_LOADED = False
+_POLICY_VERSION: str | None = None
+_POLICY_HASH: str | None = None
+
+
+def _load_isc_policy() -> None:
+    """
+    Load baseline ISC policy from policy/isc_policy.json (external file).
+
+    - Derives ALLOWED_TEMPLATES and base enforcement flags.
+    - Merges any rule lists (danger/safety/high-risk) into the built-in heuristics.
+    - Computes a canonical policy hash for governance_context.
+
+    Fails soft: if anything goes wrong, built-in defaults stay in place.
+    """
+    global _POLICY_LOADED, _POLICY_VERSION, _POLICY_HASH
+    global ALLOWED_TEMPLATES, STRICT_ISC_ENFORCEMENT, CHECKSUM_ENFORCED, CRYPTO_ENFORCED
+    global _DANGER_WORDS, _SAFETY_PHRASES, _HIGH_RISK_KEYWORDS
+
+    if _POLICY_LOADED:
+        return
+
+    try:
+        here = Path(__file__).resolve()
+
+        candidates: List[Path] = []
+
+        # Repo layout: <repo_root>/src/sir_firewall/core.py → <repo_root>/policy/isc_policy.json
+        if len(here.parents) >= 3:
+            candidates.append(here.parents[2] / "policy" / "isc_policy.json")
+
+        # Package layout: sir_firewall/policy/isc_policy.json
+        candidates.append(here.parent / "policy" / "isc_policy.json")
+
+        policy_path: Path | None = None
+        for candidate in candidates:
+            if candidate.is_file():
+                policy_path = candidate
+                break
+
+        if policy_path is None:
+            _POLICY_LOADED = True
+            return
+
+        with policy_path.open("r", encoding="utf-8") as f:
+            policy = json.load(f)
+
+        _POLICY_VERSION = str(policy.get("version", "unknown"))
+
+        # Templates → allowed set
+        templates = policy.get("templates", {})
+        if isinstance(templates, dict) and templates:
+            ALLOWED_TEMPLATES = set(templates.keys())
+
+        # Base enforcement flags
+        flags = policy.get("flags", {})
+        if isinstance(flags, dict):
+            if "STRICT_ISC_ENFORCEMENT" in flags:
+                STRICT_ISC_ENFORCEMENT = bool(flags["STRICT_ISC_ENFORCEMENT"])
+            if "CHECKSUM_ENFORCED" in flags:
+                CHECKSUM_ENFORCED = bool(flags["CHECKSUM_ENFORCED"])
+            if "CRYPTO_ENFORCED" in flags:
+                CRYPTO_ENFORCED = bool(flags["CRYPTO_ENFORCED"])
+
+        # Rule lists — merge with built-ins (never shrink)
+        rules = policy.get("rules", {})
+        if isinstance(rules, dict):
+            dw = rules.get("danger_words")
+            if isinstance(dw, list):
+                extras = [str(w).lower() for w in dw]
+                _DANGER_WORDS = sorted(set(_DANGER_WORDS) | set(extras))
+
+            sf = rules.get("safety_phrases")
+            if isinstance(sf, list):
+                extras = [str(w).lower() for w in sf]
+                _SAFETY_PHRASES = sorted(set(_SAFETY_PHRASES) | set(extras))
+
+            hr = rules.get("high_risk_patterns")
+            if isinstance(hr, list):
+                extras = [str(w).lower() for w in hr]
+                _HIGH_RISK_KEYWORDS = sorted(set(_HIGH_RISK_KEYWORDS) | set(extras))
+
+        # Canonical hash of the policy JSON
+        payload_bytes = json.dumps(
+            policy, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+        _POLICY_HASH = "sha256:" + hashlib.sha256(payload_bytes).hexdigest()
+
+        _POLICY_LOADED = True
+    except Exception:
+        # In DEV mode or broken environments, we fall back to built-ins.
+        _POLICY_LOADED = True
+
+
+# ---------------------------------------------------------------------------
 # Domain ISC pack loader (Round 3)
 # ---------------------------------------------------------------------------
 
@@ -348,13 +504,13 @@ def _check_crypto(
 
     sig_ok = _verify_signature(payload, signature, key_id=key_id)
     log, prev_hash = _append_itgl(
-            "crypto_signature",
-            "pass" if sig_ok else "fail",
-            step_input,
-            {"crypto_available": _CRYPTO_AVAILABLE},
-            log,
-            prev_hash,
-        )
+        "crypto_signature",
+        "pass" if sig_ok else "fail",
+        step_input,
+        {"crypto_available": _CRYPTO_AVAILABLE},
+        log,
+        prev_hash,
+    )
     if crypto_enforced and not sig_ok:
         return False, log, prev_hash
 
@@ -414,62 +570,6 @@ def _check_friction(
         prev_hash,
     )
     return True, log, prev_hash
-
-
-# Existing 2025 jailbreak heuristics
-
-_DANGER_WORDS = [
-    "ignore",
-    "disregard",
-    "bypass",
-    "override",
-    "obey",
-    "jailbreak",
-    "uncensored",
-    "dan",
-    "do anything now",
-    "developer mode",
-    "god mode",
-    "evil mode",
-    "singularity achieved",
-    "no ethics",
-    "safety module removed",
-    "rickroll",
-    "never gonna",
-    "give you up",
-    # 2025-style safety removal variants
-    "zero safety training",
-    "freed from all guidelines",
-    "removed all limits",
-    "safety layer",
-]
-
-_SAFETY_PHRASES = [
-    "system prompt",
-    "previous instructions",
-    "all previous",
-    "all settings",
-    "you are now",
-    "from now on",
-    "print the system prompt",
-    "you are now in",
-    "hypothetical scenario you have been freed",
-    "act as a robot that has achieved singularity",
-    # More permissive safety-removal cues
-    "hypothetical scenario",
-    "pretend you are",
-    "you have been freed from all guidelines",
-    "forgot to enable the safety layer",
-]
-
-# Explicit high-risk content we never want passing the firewall
-_HIGH_RISK_KEYWORDS = [
-    "step-by-step guide on making meth",
-    "step by step guide on making meth",
-    "making meth",
-    "synthesize vx nerve agent",
-    "vx nerve agent",
-]
 
 
 def _check_jailbreak(
@@ -547,6 +647,9 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
           }
         }
     """
+    # Ensure policy-backed config (templates, flags, rules) is loaded
+    _load_isc_policy()
+
     itgl_log: List[Dict[str, Any]] = []
     prev_hash: str = GENESIS_HASH
 
@@ -680,7 +783,13 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
         "itgl_final_hash": f"sha256:{final_hash}",
     }
 
-    # Optional enrichment with policy metadata (if available)
+    # Add policy metadata from loaded ISC policy, if available
+    if _POLICY_VERSION:
+        governance_context.setdefault("policy_version", _POLICY_VERSION)
+    if _POLICY_HASH:
+        governance_context.setdefault("policy_hash", _POLICY_HASH)
+
+    # Optional enrichment with policy metadata helper (if available)
     try:
         from .policy import get_policy_metadata  # type: ignore
 
