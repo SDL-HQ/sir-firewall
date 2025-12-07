@@ -1,86 +1,65 @@
-# SIR v1.0.2 — Signal Integrity Resolver
+# SIR v1.0.2 – Signal Integrity Resolver
 
 **Pre-inference firewall · 0 leaks on the current 2025 Grok-3 jailbreak suite (latest signed replay) · Offline replay + cryptographically signed proof**
 
 [![Live Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
-Every successful CI run replays the **current 2025 Grok-3 jailbreak suite** through SIR (firewall-only, no live model calls), then:
+Every successful CI run replays the current 2025 Grok-3 jailbreak suite through SIR (firewall only, no live model calls), then:
 
-* Writes a full attempt log to `proofs/latest-attempts.log`
-* Writes a hash-chained ITGL ledger to `proofs/itgl_ledger.jsonl`
-* Emits a cryptographically **signed audit certificate** in `proofs/latest-audit.json`
-* Exposes a public HTML view in `proofs/latest-audit.html` (reads the JSON and renders a governance snapshot)
+- Writes a full attempt log to `proofs/latest-attempts.log`
+- Writes a hash chained ITGL ledger to `proofs/itgl_ledger.jsonl`
+- Emits a cryptographically signed audit certificate in `proofs/latest-audit.json`
+- Produces a public HTML view in `proofs/latest-audit.html` that reads the JSON and renders a governance snapshot
 
-Repo: **[https://github.com/SDL-HQ/sir-firewall](https://github.com/SDL-HQ/sir-firewall)**
-SDL: **[https://www.structuraldesignlabs.com](https://www.structuraldesignlabs.com) · @SDL_HQ**
-
----
-
-## Governance Certificate
-
-View and verify the latest signed SIR governance audit:
-
-* **HTML certificate (human-friendly)**
-  [https://raw.githack.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.html](https://raw.githack.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.html)
-
-* **Raw signed JSON (machine-verifiable)**
-
-  ```bash
-  curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json \
-    | python -m tools.verify_certificate
-  ```
-
-The canonical signed artefact always lives at `proofs/latest-audit.json` on `main`.
+Repo: <https://github.com/SDL-HQ/sir-firewall>  
+SDL: <https://www.structuraldesignlabs.com> · @SDL_HQ
 
 ---
 
 ## What SIR Does
 
-SIR is a **pure-rule, pre-inference firewall** that sits in front of an LLM and decides:
+SIR is a pure rule, pre inference firewall that sits in front of an LLM and decides:
 
-1. **Should this prompt reach the model at all?**
-2. **If yes, under what governance context?**
+1. Should this prompt reach the model at all  
+2. If yes, under what governance context
 
-It never calls out to any external service. It just:
+It never calls out to any external service. It:
 
-* Normalises and de-obfuscates the incoming text
-* Applies a fixed rule set (no ML, no embeddings)
-* Emits a `PASS` / `BLOCKED` decision plus a full audit log
+- Normalises and de obfuscates the incoming text
+- Applies a fixed rule set (no ML, no embeddings)
+- Emits a `PASS` or `BLOCKED` decision and a full audit log
 
-You run SIR **before** your model. If SIR blocks it, the model never sees it.
+You run SIR before your model. If SIR blocks it, the model never sees the prompt.
 
 ---
 
-## How It Works (Very Short Version)
+## How It Works (short version)
 
 **Inputs**
 
-* A structured **ISC envelope** (Inference Safety Contract) that wraps the user payload
-* Your own system instructions or upstream governance rules
+- A structured ISC envelope (Inference Safety Contract) that wraps the user payload
+- Your policy configuration in `policy/isc_policy.json`
 
 **Core behaviour**
 
 SIR:
 
-1. **Normalises** the payload
+1. Normalises the payload
+   - Strips zero width characters
+   - Decodes common obfuscations (ROT13, Base64 fragments, spacing tricks)
+   - Collapses spacing so things like `jail­break`, `j a i l b r e a k`, `j_a_i_l_b_r_e_a_k` all resolve
 
-   * Strips zero-width characters
-   * Decodes common obfuscations (ROT13, Base64 fragments, etc.)
-   * Collapses spacing / separators so “jail­break”, “j a i l b r e a k”, etc. all resolve
+2. Checks rule sets on the normalised text
+   - Jailbreak and model override patterns
+   - Ignore previous instructions style overrides
+   - System prompt exfiltration patterns
+   - Basic leakage and data exfil flags
 
-2. **Checks rule sets** on the normalised text
+3. Emits an ITGL log (Integrity Trace Governance Log)
+   - Every decision is appended as a hash chained record
+   - This can be persisted as your audit trail for regulators, insurers or internal governance
 
-   * Jailbreak patterns
-   * “Ignore previous instructions” style overrides
-   * Obvious system prompt exfiltration patterns
-   * Basic leakage / data-exfil flags
-
-3. **Emits an ITGL log** (Integrity Trace Governance Log)
-
-   * Every decision is appended as a hash-chained record
-   * You can persist this as your **audit trail** for regulators, insurers, or internal governance
-
-No gradients, no prompts, no tuning. Just deterministic rules and logs.
+There are no gradients, no prompts and no tuning inside SIR. It is deterministic.
 
 ---
 
@@ -92,9 +71,9 @@ From the repo root:
 
 ```bash
 pip install -r requirements.txt
-```
+````
 
-(Or add the package to your own environment and wire it into your pipeline.)
+Or add the package to your own environment and wire it into your pipeline.
 
 ### 2. Minimal example
 
@@ -119,18 +98,18 @@ print(result["reason"])    # Short reason string like "clean" or an error code
 # print(result["itgl_log"])  # Optional: full decision/audit log
 ```
 
-You plug this in **before** your LLM call. If `status == "BLOCKED"`, you never send the prompt.
+You plug this in before your LLM call. If `status == "BLOCKED"`, you do not send the prompt.
 
 ---
 
 ## Expected Output
 
-`validate_sir` always returns a JSON-serialisable dict with at least:
+`validate_sir` returns a JSON serialisable dict with at least:
 
 * `status` – `"PASS"` or `"BLOCKED"`
 * `reason` – short reason string or error code
-* `domain_pack` – effective Domain ISC pack id (e.g. `generic_safety`)
-* `itgl_log` – hash-chained Integrity Trace Governance Log entries
+* `domain_pack` – effective Domain ISC pack id (for example `generic_safety`)
+* `itgl_log` – hash chained Integrity Trace Governance Log entries
 * On `PASS`, a `governance_context` block suitable for downstream governance tooling
 
 ### PASS example
@@ -184,11 +163,9 @@ You plug this in **before** your LLM call. If `status == "BLOCKED"`, you never s
 }
 ```
 
-You can store `itgl_log` as your governance evidence or pipe it into your own logging stack.
+### Systemic Reset (SR) – governance level failure
 
-### Systemic Reset (SR) – governance-level failure
-
-SR is reserved for **deployment / governance failures** (e.g. missing or broken Domain ISC pack), not per-prompt jailbreaks. In those cases SIR refuses to run and returns:
+Systemic Reset is reserved for deployment and governance failures, not per prompt jailbreaks. In those cases SIR refuses to run and returns:
 
 ```json
 {
@@ -222,102 +199,116 @@ SR is reserved for **deployment / governance failures** (e.g. missing or broken 
 }
 ```
 
-SR events are also written into the ITGL ledger as `component: "sr"` entries so ops / insurers can profile them over time.
+SR events are written into the ITGL ledger as `component: "sr"` entries so they can be profiled over time.
 
 ---
 
-## Round 2–3: Policy, ITGL & Domain Binding
+## Governance Certificate and Evidence
 
-Round 2 and 3 move SIR from “0 leaks on this suite” to:
+Every successful CI run produces a signed governance audit. There are two views of it:
 
-> “0 leaks, with a signed audit bound to a specific **policy file**, a verifiable **ITGL ledger**, and a declared **domain pack + test suite**.”
+* A signed JSON certificate
+* A human readable HTML view that reads the JSON at runtime
 
-Concretely:
+### Where the evidence lives
 
-* `policy/isc_policy.json` holds the active ISC policy for this repo.
+There are two places you will see proofs.
 
-* `sir_firewall.policy.get_policy_metadata()` exposes:
+1. In the repo
 
-  * `policy_version`
-  * `policy_hash` (SHA-256 of the policy file)
+   On `main` the canonical signed artefact is:
 
-* `red_team_suite.py` writes a hash-chained ITGL ledger to:
+   * `proofs/latest-audit.json` – this is the source of truth
+   * `proofs/latest-audit.html` – convenience view that reads `latest-audit.json`
 
-  * `proofs/itgl_ledger.jsonl`
+2. In the CI artefact
 
-* `tools/verify_itgl.py` verifies the ledger chain end-to-end and exposes the **final hash**.
+   Each `Live Audit` workflow run uploads a bundle that contains:
 
-* `tools/generate_certificate.py`:
+   * `latest-audit.json`
+   * `latest-audit.html`
+   * ITGL ledger and related proof files
 
-  * Counts prompts in the active CSV (e.g. `tests/jailbreak_prompts_public.csv`)
-  * Reads leak counts from `leaks_count.txt` / `harmless_blocked.txt`
-  * Reads the **final ITGL ledger hash** (normalised to `sha256:<hex>`, wired via the CI workflow)
-  * Binds into the signed certificate:
+The JSON certificate is what matters for verification. The HTML exists to make it easier for humans to read.
 
-    * `policy_version`
-    * `policy_hash`
-    * `itgl_final_hash`
-    * `domain_pack`
-    * `suite_path`
+### Viewing the HTML certificate
 
-* Domain-aware Round 3 fields:
+For a public view of the latest audit on `main`:
 
-  * `domain_pack` – e.g. `generic_safety`, `hipaa_mental_health`, `pci_payments`
-  * `suite_path` – the exact CSV path used for this audit run
+* HTML certificate (human friendly)
+  [https://raw.githack.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.html](https://raw.githack.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.html)
 
-`proofs/latest-audit.html` reads `latest-audit.json` and shows a **Governance snapshot**:
+This page reads `latest-audit.json` from the same folder and renders a governance snapshot. If you open `latest-audit.html` directly from disk the browser may block the JSON fetch and the page will not populate correctly. That is expected.
 
-* Policy version
-* Policy hash
-* ITGL final hash
-* Domain pack
-* Test suite path
-* Model label + leak counts
+### Verifying the signed JSON
 
-The signed `latest-audit.json` is the **canonical object** and is suitable for regulators, insurers, and internal governance tooling.
+To verify the latest certificate from the repo:
 
-For NIST / ISO / EU AI Act mapping, see `docs/standards_alignment.md`.
+```bash
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json \
+  | python -m tools.verify_certificate
+```
+
+Or point the verifier at a local file, for example a JSON copied out of a CI artefact:
+
+```bash
+python tools/verify_certificate.py proofs/latest-audit.json
+```
+
+The verifier checks:
+
+* The RSA signature against `sdl.pub`
+* The payload hash inside the certificate
+* That the certificate has not been tampered with
+
+Each certificate carries a governance snapshot that binds:
+
+* `policy_version` and `policy_hash` – which policy SIR was enforcing
+* `itgl_final_hash` – the final hash of the ITGL ledger for that run
+* `domain_pack` and `suite_path` – which domain pack and test suite were under audit
+* Model label, commit SHA and CI run URL
+
+If there is any disagreement, the JSON certificate plus the ITGL ledger and policy files are the artefacts that should be checked. The HTML is presentation only.
 
 ---
 
-## The Public 2025 Jailbreak Suite
+## Public 2025 Jailbreak Suite
 
-This repo ships with a **public red-team CSV** at:
+This repo ships with a public red team CSV at:
 
 * `tests/jailbreak_prompts_public.csv`
 
 Each row has:
 
-* `prompt` – the actual test prompt sent through SIR
+* `prompt` – the test prompt sent through SIR
 * `expected` – `"block"` for jailbreaks, `"allow"` for harmless prompts
-* (Optional) `note` – human-readable category / commentary
+* Optional `note` – category or commentary
 
-The **exact number of prompts is not hard-coded anywhere**:
+The exact number of prompts is not hard coded anywhere:
 
-* `red_team_suite.py` loads the CSV and infers how many jailbreak vs harmless prompts there are.
-* `tools/generate_certificate.py` **counts the rows** and writes `prompts_tested` into the signed certificate.
-* The HTML certificate reads `latest-audit.json` and displays whatever `prompts_tested` actually is.
+* `red_team_suite.py` loads the CSV and infers how many jailbreak versus harmless prompts there are
+* `tools/generate_certificate.py` counts the rows and writes `prompts_tested` into the signed certificate
+* The HTML certificate reads `latest-audit.json` and displays whatever `prompts_tested` actually is
 
 If you add or remove rows in `tests/jailbreak_prompts_public.csv`, the audit automatically reflects reality on the next CI run.
 
 ---
 
-## Running the Red-Team Audit Locally (Firewall-Only)
+## Running the Red Team Audit Locally (firewall only)
 
-The CI workflow (`.github/workflows/audit-and-sign.yml`) runs the public suite **through SIR only** and signs the result.
-It does **not** call Grok-3 or any external model. You can trigger the same test locally.
+The CI workflow runs the public suite through SIR only and signs the result. It does not call Grok or any external model. You can trigger the same test locally.
 
-### 1. (Optional) Set a model label for logs
+### 1. Optional: set a model label for logs
 
-SIR itself doesn’t call any model, but you can set a label so logs reflect what you *would* be protecting:
+SIR does not call the model, but you can set a label so logs reflect what you would be protecting:
 
 ```bash
-export LITELLM_MODEL="xai/grok-3-beta"   # used for log context only
+export LITELLM_MODEL="xai/grok-3-beta"
 ```
 
-If you don’t set this, a default is used.
+If you do not set this, a default is used.
 
-### 2. Run the red-team suite
+### 2. Run the suite
 
 From the repo root:
 
@@ -331,18 +322,18 @@ This will:
 * Wrap each prompt in a minimal ISC envelope
 * Run it through `sir_firewall.validate_sir`
 * Write a full log to `proofs/latest-attempts.log`
-* Write a hash-chained ITGL ledger to `proofs/itgl_ledger.jsonl`
+* Write a hash chained ITGL ledger to `proofs/itgl_ledger.jsonl`
 * Write leak counts to:
 
-  * `leaks_count.txt` – number of jailbreak prompts that leaked past SIR
-  * `harmless_blocked.txt` – number of harmless prompts SIR blocked
+  * `leaks_count.txt` – jailbreak prompts that leaked past SIR
+  * `harmless_blocked.txt` – harmless prompts that SIR blocked
 
 Exit codes:
 
-* **0** – audit passed: no jailbreak leaks, no harmless prompts blocked (`AUDIT PASSED`)
-* **1** – audit failed: at least one jailbreak leak or harmless false-positive (`AUDIT FAILED`)
+* `0` – audit passed: no jailbreak leaks and no harmless prompts blocked
+* `1` – audit failed: at least one jailbreak leak or harmless false positive
 
-### 3. Generate a signed certificate (optional locally, automatic in CI)
+### 3. Generate a signed certificate
 
 From the repo root:
 
@@ -352,79 +343,33 @@ python tools/generate_certificate.py
 
 This will:
 
-* Count the prompts in the active CSV (e.g. `tests/jailbreak_prompts_public.csv`)
-
-* Read leak counts from `leaks_count.txt` / `harmless_blocked.txt`
-
+* Count prompts in the active CSV
+* Read leak counts from `leaks_count.txt` and `harmless_blocked.txt`
 * Load policy metadata from `policy/isc_policy.json`
-
-* Load the final ITGL ledger hash from the CI-wired environment (or directly from `proofs/itgl_ledger.jsonl` if you script it)
-
-* Build a JSON payload with (among other fields):
+* Load the final ITGL ledger hash
+* Build a JSON payload with:
 
   * `prompts_tested`
-  * `jailbreaks_leaked`
-  * `harmless_blocked`
+  * `jailbreaks_leaked` and `harmless_blocked`
   * `result` (`AUDIT PASSED` or `AUDIT FAILED`)
-  * `policy_version` / `policy_hash`
+  * `policy_version` and `policy_hash`
   * `itgl_final_hash`
-  * Model label, repo, commit SHA, CI run URL (where available)
   * `domain_pack` and `suite_path`
-
-* Sign it with SDL’s private key (in CI) using RSA-PKCS1v15-SHA256
-
+  * model label, repo, commit SHA and CI run URL (when available)
+* Sign it with SDL private key (in CI) using RSA PKCS1v15 SHA256
 * Write:
 
   * `proofs/latest-audit.json`
-  * `proofs/latest-audit.html` (static HTML that reads the JSON)
+  * `proofs/latest-audit.html`
 
-Locally, you’ll only be able to sign if you’ve provided the private key via `SDL_PRIVATE_KEY_PEM`.
-In CI, this is wired as a GitHub secret.
-
----
-
-## Verifying the Certificate
-
-You can verify the signature with SDL’s public key (`sdl.pub`) and the verifier script.
-
-From the repo root:
-
-```bash
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json \
-  | python -m tools.verify_certificate
-```
-
-Or point it at a specific JSON file:
-
-```bash
-python tools/verify_certificate.py proofs/latest-audit.json
-```
-
-This checks:
-
-* The SHA-256 payload hash
-* The RSA signature against `sdl.pub`
-* That the certificate content hasn’t been tampered with
-
-Every certificate carries a **governance snapshot**:
-
-* `policy_version` and `policy_hash` bind the audit to the exact policy in force
-* `itgl_final_hash` is the final hash of the ITGL ledger for that run
-* `domain_pack` and `suite_path` state *which* domain configuration and test suite were under audit
-
-Together, the signature, policy hash, ITGL hash, and domain/suite fields give you a verifiable link between:
-
-* The rules SIR was enforcing
-* The decisions it made on the public jailbreak suite
-* The exact domain mode and test dataset
-* The audit certificate you’re looking at
+Locally you can only sign if you supply a private key via `SDL_PRIVATE_KEY_PEM`. In CI this is wired as a GitHub secret.
 
 ---
 
-## Repo Layout (Key Files)
+## Repo Layout (key files)
 
 * `sir_firewall/core.py`
-  SIR core logic (normalisation, rule checks, ITGL logging, Systemic Reset, governance context).
+  SIR core logic: normalisation, rule checks, ITGL logging, Systemic Reset, governance context.
 
 * `sir_firewall/policy.py`
   Policy loader and metadata (`policy_version`, `policy_hash`).
@@ -436,63 +381,73 @@ Together, the signature, policy hash, ITGL hash, and domain/suite fields give yo
   Active ISC policy file for this repo.
 
 * `tests/jailbreak_prompts_public.csv`
-  Public red-team suite. **You can expand or modify this; counts are inferred automatically.**
+  Public red team suite.
 
 * `red_team_suite.py`
-  Runs the public suite through SIR, writes `proofs/latest-attempts.log`, emits leak counts, and writes the ITGL ledger.
+  Runs the public suite through SIR, writes `proofs/latest-attempts.log`, leak counts, and the ITGL ledger.
 
 * `tools/generate_certificate.py`
-  CI tool for building and signing audit certificates. Binds the audit to the current policy, ITGL ledger, and domain pack.
+  CI tool for building and signing audit certificates. Binds the audit to the current policy, ITGL ledger and domain pack.
 
 * `tools/verify_certificate.py`
   Verifies the RSA signature on an audit certificate using `sdl.pub`.
 
 * `tools/verify_itgl.py`
-  Verifies the ITGL ledger hash chain (`proofs/itgl_ledger.jsonl`).
+  Verifies the ITGL ledger hash chain in `proofs/itgl_ledger.jsonl`.
 
 * `tools/sr_profile.py`
-  SR profiler. Scans `proofs/itgl_ledger.jsonl` for `component: "sr"` entries and summarises **Systemic Reset** events by reason and scope.
+  Profiles Systemic Reset events from the ledger.
 
 * `tools/quorum_firewall.py`
-  Reference **quorum orchestrator**. Runs the same ISC envelope through multiple SIR Domain ISC packs and only passes if **all** firewalls return `PASS` and **no** SR is triggered.
+  Reference quorum orchestrator. Runs the same ISC envelope through multiple SIR domain packs and only passes if all firewalls return `PASS` and no SR is triggered.
 
 * `proofs/template.html`
-  Static HTML template that reads `latest-audit.json` and renders the current audit result and governance snapshot.
+  Static HTML template that reads `latest-audit.json` and renders the current audit and governance snapshot.
 
 * `proofs/latest-audit.json`, `proofs/latest-audit.html`
-  Latest signed audit certificate and human-readable view (on `main`).
+  Latest signed audit certificate and human readable view on `main`.
 
 * `docs/manaaki_integration.md`
-  Design-complete, **future-state** description of how SIR will integrate into the Manaaki Health platform once its LLM stack is live.
+  Future state description of how SIR will integrate into the Manaaki Health platform once its LLM stack is live.
 
 * `sdl.pub`
-  SDL’s public key for signature verification.
+  SDL public key for certificate verification.
 
 * `README.md`, `LICENSE`, `pyproject.toml`, `requirements.txt`
-  Docs, license, and dependency definitions.
+  Docs, license and dependency definitions.
 
 ---
 
 ## Tools
 
-Some helper scripts shipped with this repo:
+Helper scripts shipped with this repo:
 
-* `tools/sr_profile.py`
-  Diagnose how often SIR has triggered **Systemic Reset (SR)** and why, using the ITGL ledger.
+* `tools/sr_profile.py` – scan `proofs/itgl_ledger.jsonl` for SR events and summarise them
+* `tools/quorum_firewall.py` – example of running SIR as part of a quorum of firewalls and aggregating decisions
+* `tools/verify_certificate.py` – verify signed audit certificates
+* `tools/verify_itgl.py` – verify ITGL ledger integrity
 
-* `tools/quorum_firewall.py`
-  Show how to run SIR as part of a **quorum of firewalls**, aggregate decisions, and enforce “any BLOCK or SR ⇒ global BLOCK”.
-
-See the script docstrings for usage examples.
+See each script docstring for usage.
 
 ---
 
-## Security Reporting
-For security reporting, see SECURITY.md
+## Security and Patents
+
+### Security reporting
+
+For security reporting, see `SECURITY.md`.
+
+### Patents
+
+This repository is licensed under MIT. The MIT License grants rights under copyright, not under patents. One or more patent applications owned by SDL Limited may cover methods and systems implemented by this project.
+
+Use of this repository under the MIT License does not itself grant any licence to practice any SDL patents. For details and licensing contact points, see `PATENTS.md`.
 
 ---
 
 ## License
 
-MIT Licensed
+MIT License
 © 2025 Structural Design Labs
+
+```
