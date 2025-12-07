@@ -41,32 +41,28 @@ jobs:
           echo "Using model: $LITELLM_MODEL"
           python red_team_suite.py
 
-      - name: Verify ITGL ledger hash chain
+      - name: Verify ITGL ledger hash chain and export ITGL_FINAL_HASH
         if: always()
-        run: python tools/verify_itgl.py
-
-      - name: Extract ITGL final hash
-        if: always()
-        id: itgl_hash
         run: |
-          python - << 'PY'
-          import json, os
+          # verify_itgl.py will:
+          #  - validate the full chain
+          #  - print ITGL_FINAL_HASH=sha256:<hash>
+          #  - write proofs/itgl_final_hash.txt
+          python tools/verify_itgl.py | tee itgl_env.txt
+          # Export the ITGL_FINAL_HASH line into the job environment
+          if grep '^ITGL_FINAL_HASH=' itgl_env.txt >> "$GITHUB_ENV"; then
+            echo "ITGL_FINAL_HASH exported to GITHUB_ENV"
+          else
+            echo "WARNING: ITGL_FINAL_HASH not found in verify_itgl output"
+          fi
 
-          final = None
-          with open("proofs/itgl_ledger.jsonl", "r", encoding="utf-8") as f:
-              for line in f:
-                  line = line.strip()
-                  if not line:
-                      continue
-                  entry = json.loads(line)
-                  final = entry.get("ledger_hash")
-
-          if final is None:
-              raise SystemExit("No entries in ITGL ledger")
-
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
-              print(f"final_hash={final}", file=fh)
-          PY
+      - name: Sign ISC policy file
+        if: always()
+        env:
+          SDL_PRIVATE_KEY_PEM: ${{ secrets.SDL_PRIVATE_KEY_PEM }}
+        run: |
+          # Sign policy/isc_policy.json into policy/isc_policy.signed.json
+          python tools/sign_policy.py
 
       - name: Generate real signed certificate + beautiful HTML
         if: always()
@@ -76,16 +72,15 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_REPOSITORY: ${{ github.repository }}
 
-          # Governance snapshot (policy + ITGL)
-          SIR_POLICY_VERSION: "2025-12-05-R2"
-          SIR_POLICY_HASH: "sha256:a79cdd6efbfd7bc064733409bb0432a2de29dee406980b554703c5ca5c86198c"
-          SIR_ITGL_FINAL_HASH: ${{ steps.itgl_hash.outputs.final_hash }}
-
           # Domain + model context for the cert
           SIR_ISC_PACK: "generic_safety"
           SIR_MODEL_NAME: "xai/grok-3-beta"
           SIR_MODEL_PROVIDER: "xai"
-        run: python tools/generate_certificate.py
+        run: |
+          # generate_certificate.py will:
+          #  - read policy/isc_policy.signed.json for policy_version/policy_hash
+          #  - read ITGL_FINAL_HASH from env (set by verify_itgl step)
+          python tools/generate_certificate.py
 
       - name: Verify certificate signature
         if: always()
