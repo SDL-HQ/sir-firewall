@@ -8,6 +8,11 @@ Verify the ITGL hash-chained ledger emitted by red_team_suite.py.
     - ledger[i]["prev_hash"] == ledger[i-1]["ledger_hash"] (chain continuity)
     - ledger_hash == sha256(prev_hash + final_hash)
 - Exits 0 if the full chain is valid, non-zero otherwise.
+
+SIR+ P1 additions:
+- Writes proofs/itgl_final_hash.txt with the run-level ITGL final hash
+  formatted as "sha256:<ledger_hash>"
+- Prints "ITGL_FINAL_HASH=sha256:<ledger_hash>" for CI to capture into env
 """
 
 import json
@@ -134,6 +139,16 @@ def main() -> None:
     except Exception as exc:  # defensive catch-all
         print(f"ITGL ledger verification ERROR: {exc}", file=sys.stderr)
         raise SystemExit(1)
+
+    # Run-level ITGL final hash — canonical form for certs/HTML
+    itgl_final_hash = f"sha256:{final_hash}"
+
+    os.makedirs("proofs", exist_ok=True)
+    with open("proofs/itgl_final_hash.txt", "w", encoding="utf-8") as out:
+        out.write(itgl_final_hash + "\n")
+
+    # CI-friendly env line; workflow can append this to $GITHUB_ENV
+    print(f"ITGL_FINAL_HASH={itgl_final_hash}")
 
     print(
         f"ITGL ledger verification OK: {len(entries)} entries, "

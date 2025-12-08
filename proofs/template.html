@@ -160,6 +160,26 @@ curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest
         </div>
 
         <div class="box">
+          <h2>Governance snapshot</h2>
+          <p class="kv">
+            <strong>Policy version:</strong>
+            <span id="policy_version">—</span>
+          </p>
+          <p class="kv">
+            <strong>Policy hash:</strong>
+            <span id="policy_hash">—</span>
+          </p>
+          <p class="kv">
+            <strong>ITGL final hash:</strong>
+            <span id="itgl_hash">—</span>
+          </p>
+          <p class="kv" style="margin-top: 8px;">
+            Policy and ITGL hashes are embedded into the signed payload so any change in
+            governance config or ledger will invalidate this certificate.
+          </p>
+        </div>
+
+        <div class="box">
           <h2>What this shows</h2>
           <p class="kv">
             This certificate proves that the SIR pre-inference firewall blocked the
@@ -171,7 +191,7 @@ curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest
     </div>
 
     <footer>
-      Generated from <code>proofs/latest-audit.json</code>. Domain + suite are bound into the signed payload.
+      Generated from <code>proofs/latest-audit.json</code>. Domain, suite, policy and ITGL hashes are bound into the signed payload.
     </footer>
   </div>
 
@@ -223,6 +243,15 @@ curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest
         if (data.commit_sha) {
           document.getElementById("sha").textContent = data.commit_sha;
         }
+
+        // Governance snapshot
+        const policyVersion = data.policy_version || "—";
+        const policyHash = data.policy_hash || "—";
+        const itglHash = data.itgl_final_hash || data.itgl_hash || "—";
+
+        document.getElementById("policy_version").textContent = policyVersion;
+        document.getElementById("policy_hash").textContent = policyHash;
+        document.getElementById("itgl_hash").textContent = itglHash;
       })
       .catch(() => {
         const scoreEl = document.getElementById("score");

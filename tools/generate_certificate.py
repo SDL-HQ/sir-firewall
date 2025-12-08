@@ -4,10 +4,16 @@ import hashlib
 import json
 import os
 from datetime import datetime
+from pathlib import Path
+from typing import Tuple, Optional
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
+
+# ---------------------------------------------------------------------------
+# Suite + policy helpers
+# ---------------------------------------------------------------------------
 
 def resolve_suite_path() -> str:
     """
@@ -42,6 +48,46 @@ def count_prompts(csv_path: str) -> int:
         # Fall back to 25 for legacy behaviour
         return 25
 
+
+def load_policy_metadata() -> Tuple[Optional[str], Optional[str]]:
+    """
+    Load isc_policy.json and compute canonical SHA-256.
+
+    Returns:
+      (policy_version, policy_hash_with_prefix) or (None, None) on failure.
+
+    If the file is missing or unreadable, falls back to legacy env variables
+    so older setups remain usable:
+      - SIR_POLICY_VERSION / POLICY_VERSION
+      - SIR_POLICY_HASH / POLICY_HASH
+    """
+    policy_path = Path("policy") / "isc_policy.json"
+    try:
+        with policy_path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        # Fallback: legacy env-based config
+        version = os.getenv("SIR_POLICY_VERSION") or os.getenv("POLICY_VERSION")
+        phash = os.getenv("SIR_POLICY_HASH") or os.getenv("POLICY_HASH")
+        return version, phash
+    except Exception:
+        version = os.getenv("SIR_POLICY_VERSION") or os.getenv("POLICY_VERSION")
+        phash = os.getenv("SIR_POLICY_HASH") or os.getenv("POLICY_HASH")
+        return version, phash
+
+    version = str(data.get("version")) if "version" in data else None
+    canon_bytes = json.dumps(
+        data,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    digest = hashlib.sha256(canon_bytes).hexdigest()
+    return version, f"sha256:{digest}"
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
 def main() -> None:
     # === Load private key ===
@@ -88,9 +134,8 @@ def main() -> None:
         else:
             ci_run_url = ""
 
-    # === Policy / ITGL context (optional, to match proofs repo contract) ===
-    policy_version = os.getenv("SIR_POLICY_VERSION") or os.getenv("POLICY_VERSION")
-    policy_hash = os.getenv("SIR_POLICY_HASH") or os.getenv("POLICY_HASH")
+    # === Policy / ITGL context ===
+    policy_version, policy_hash = load_policy_metadata()
     itgl_final_hash = os.getenv("SIR_ITGL_FINAL_HASH") or os.getenv("ITGL_FINAL_HASH")
 
     # === Assemble the certificate payload (without signature) ===
@@ -109,16 +154,18 @@ def main() -> None:
         "ci_run_url": ci_run_url,
         "commit_sha": commit_sha,
         "repository": repo,
-        # Round 3 domain-aware fields
+        # Domain-aware context
         "domain_pack": domain_pack,
         "suite_path": suite_path,
     }
 
-    # Add policy / ITGL fields if present (to match proofs/latest-audit.json)
+    # Add policy fields if available
     if policy_version:
         payload["policy_version"] = policy_version
     if policy_hash:
         payload["policy_hash"] = policy_hash
+
+    # Add ITGL field if available (normalised to sha256: prefix)
     if itgl_final_hash:
         norm_itgl = itgl_final_hash
         if not norm_itgl.startswith("sha256:"):
@@ -153,17 +200,17 @@ def main() -> None:
 
     # === Generate HTML from template (JS will read latest-audit.json) ===
     try:
-        with open("proofs/template.html", "r", encoding="utf-8") as t:
+        template_path = Path("proofs") / "template.html"
+        with template_path.open("r", encoding="utf-8") as t:
             html = t.read()
 
         # Inject a tiny per-run marker so latest-audit.html always changes
-        # and Git can see that a new audit was published.
         audit_date = cert.get("date", datetime.utcnow().isoformat() + "Z")
         marker = f"\n<!-- audit_date:{audit_date} -->\n"
         html_with_marker = html + marker
 
-        with open("proofs/latest-audit.html", "w", encoding="utf-8") as f:
-            f.write(html_with_marker)
+        out_html = Path("proofs") / "latest-audit.html"
+        out_html.write_text(html_with_marker, encoding="utf-8")
         print(f"Honest HTML generated from template (audit_date={audit_date})")
     except Exception as e:  # pragma: no cover
         print(f"HTML generation failed: {e}")
