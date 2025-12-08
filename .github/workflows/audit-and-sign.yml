@@ -49,6 +49,7 @@ jobs:
           #  - print ITGL_FINAL_HASH=sha256:<hash>
           #  - write proofs/itgl_final_hash.txt
           python tools/verify_itgl.py | tee itgl_env.txt
+
           # Export the ITGL_FINAL_HASH line into the job environment
           if grep '^ITGL_FINAL_HASH=' itgl_env.txt >> "$GITHUB_ENV"; then
             echo "ITGL_FINAL_HASH exported to GITHUB_ENV"
@@ -91,7 +92,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: SIR-Audit-Proof
-          path: proofs/
+          path: |
+            proofs/
+            policy/isc_policy.json
+            policy/isc_policy.signed.json
 
       - name: Commit all proof files back to repo
         if: success() && github.ref == 'refs/heads/main'
