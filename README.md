@@ -13,7 +13,7 @@ Every successful CI run replays the current 2025 Grok-3 jailbreak suite through 
 - Binds the certificate to **both** the active ISC policy (`policy_version`, `policy_hash`) and the ITGL ledger (`itgl_final_hash`)
 
 Repo: <https://github.com/SDL-HQ/sir-firewall>  
-SDL: <https://www.structuraldesignlabs.com> · @SDL_HQ
+SDL: <https://www.structuraldesignlabs.com> · @SDL_HQ · info@structuraldesignlabs.com
 
 ---
 
