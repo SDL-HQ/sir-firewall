@@ -460,7 +460,7 @@ Use of this repository under the MIT License does not itself grant any licence t
 
 MIT License
 
-## ## No phone-home
+## No phone-home
 
 SIR never phones home.
 
