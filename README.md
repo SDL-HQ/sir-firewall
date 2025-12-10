@@ -459,4 +459,16 @@ Use of this repository under the MIT License does not itself grant any licence t
 ## License
 
 MIT License
+
+## ## No phone-home
+
+SIR never phones home.
+
+- No telemetry
+- No analytics
+- No canaries
+- No “first run” pings
+
+If SIR is running, it’s not talking to us. Any network calls you see are from your own scripts or CI, not from the firewall.
+
 © 2025 Structural Design Labs
