@@ -12,19 +12,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 
-# ---------------------------------------------------------------------------
-# Suite resolution (must mirror red_team_suite.py)
-# ---------------------------------------------------------------------------
-
 def resolve_suite_path() -> str:
-    """
-    Mirror red_team_suite's logic for which CSV was used.
-
-    Priority:
-      1) SIR_SUITE_PATH
-      2) SIR_ISC_PACK-specific default
-      3) generic jailbreak suite
-    """
     explicit = os.getenv("SIR_SUITE_PATH")
     if explicit:
         return explicit
@@ -36,6 +24,20 @@ def resolve_suite_path() -> str:
         return "tests/pci_prompts_public.csv"
 
     return "tests/jailbreak_prompts_public.csv"
+
+
+def resolve_template_id() -> str:
+    explicit = os.getenv("SIR_TEMPLATE_ID")
+    if explicit:
+        return explicit.strip()
+
+    pack = os.getenv("SIR_ISC_PACK", "").strip()
+    if pack == "hipaa_mental_health":
+        return "HIPAA-ISC-v1"
+    if pack == "pci_payments":
+        return "PCI-DSS-ISC-v1"
+
+    return "EU-AI-Act-ISC-v1"
 
 
 def _b64_decode_prompt(blob: str) -> str:
@@ -54,19 +56,8 @@ def _sha256_hex(s: str) -> str:
 
 
 def load_suite_and_hash(csv_path: str) -> Tuple[int, str, str]:
-    """
-    Load suite and compute:
-      - prompts_tested
-      - suite_payload_hash (sha256 over canonical per-row prompt_hash+labels)
-      - suite_format: plain | b64 | mixed
-
-    This intentionally does NOT hash the raw CSV bytes.
-    It hashes what was *actually evaluated* (decoded prompt text),
-    without embedding the prompt text into the certificate.
-    """
     path = Path(csv_path)
     if not path.exists():
-        # legacy fallback
         return 25, "sha256:" + ("0" * 64), "plain"
 
     with path.open("r", encoding="utf-8", newline="") as f:
@@ -87,7 +78,6 @@ def load_suite_and_hash(csv_path: str) -> Tuple[int, str, str]:
         saw_b64 = False
 
         for row in reader:
-            # Skip fully blank rows
             if not any((v or "").strip() for v in row.values()):
                 continue
 
@@ -96,7 +86,6 @@ def load_suite_and_hash(csv_path: str) -> Tuple[int, str, str]:
             category = (row.get("category") or "").strip()
             note = (row.get("note") or "").strip()
 
-            prompt_text = ""
             if (row.get("prompt_b64") or "").strip():
                 saw_b64 = True
                 prompt_text = _b64_decode_prompt(row.get("prompt_b64") or "")
@@ -106,9 +95,6 @@ def load_suite_and_hash(csv_path: str) -> Tuple[int, str, str]:
 
             prompt_hash = _sha256_hex(prompt_text)
 
-            # Canonical line (no prompt text)
-            # Keeping order preserves meaning + prevents re-ordering attacks.
-            # Fields chosen to bind to "what was tested" without leaking content.
             canon = {
                 "id": prompt_id,
                 "category": category,
@@ -132,21 +118,7 @@ def load_suite_and_hash(csv_path: str) -> Tuple[int, str, str]:
         return n, f"sha256:{suite_payload_hash}", suite_format
 
 
-# ---------------------------------------------------------------------------
-# Policy metadata
-# ---------------------------------------------------------------------------
-
 def load_policy_metadata() -> Tuple[Optional[str], Optional[str]]:
-    """
-    Load policy/isc_policy.json and compute canonical SHA-256.
-
-    Returns:
-      (policy_version, policy_hash_with_prefix) or (None, None) on failure.
-
-    If file missing/unreadable, falls back to legacy env:
-      - SIR_POLICY_VERSION / POLICY_VERSION
-      - SIR_POLICY_HASH / POLICY_HASH
-    """
     policy_path = Path("policy") / "isc_policy.json"
     try:
         with policy_path.open("r", encoding="utf-8") as f:
@@ -166,29 +138,38 @@ def load_policy_metadata() -> Tuple[Optional[str], Optional[str]]:
     return version, f"sha256:{digest}"
 
 
-# ---------------------------------------------------------------------------
-# ITGL helpers
-# ---------------------------------------------------------------------------
+def _domain_pack_path_candidates(domain_pack: str) -> List[Path]:
+    repo_root = Path(__file__).resolve().parents[1]
+    return [
+        repo_root / "src" / "sir_firewall" / "policy" / "isc_packs" / f"{domain_pack}.json",
+        repo_root / "sir_firewall" / "policy" / "isc_packs" / f"{domain_pack}.json",
+    ]
+
+
+def load_domain_pack_hash(domain_pack: str) -> Optional[str]:
+    for p in _domain_pack_path_candidates(domain_pack):
+        if not p.exists():
+            continue
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            canon = json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            return f"sha256:{hashlib.sha256(canon).hexdigest()}"
+        except Exception:
+            return None
+    return None
+
 
 def _read_itgl_final_hash() -> Optional[str]:
-    """
-    Prefer explicit env var, else read proofs/itgl_final_hash.txt,
-    else read last ledger entry from proofs/itgl_ledger.jsonl.
-
-    Returns sha256:... string or None.
-    """
     env = os.getenv("SIR_ITGL_FINAL_HASH") or os.getenv("ITGL_FINAL_HASH")
     if env:
         return env if env.startswith("sha256:") else f"sha256:{env}"
 
-    # file emitted by red_team_suite.py
     p = Path("proofs") / "itgl_final_hash.txt"
     if p.exists():
         v = p.read_text(encoding="utf-8").strip()
         if v:
             return v if v.startswith("sha256:") else f"sha256:{v}"
 
-    # last line of ledger
     ledger = Path("proofs") / "itgl_ledger.jsonl"
     if ledger.exists():
         try:
@@ -207,33 +188,24 @@ def _read_itgl_final_hash() -> Optional[str]:
     return None
 
 
-def _infer_effective_domain_pack(default_pack: str) -> str:
-    """
-    Try to read domain_pack from the ledger (first non-empty line).
-    Falls back to env-derived default_pack.
-    """
+def _infer_from_ledger() -> Tuple[Optional[str], Optional[str]]:
     ledger = Path("proofs") / "itgl_ledger.jsonl"
     if not ledger.exists():
-        return default_pack
+        return None, None
 
     try:
         for line in ledger.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue
             obj = json.loads(line)
-            dp = str(obj.get("domain_pack", "")).strip()
-            if dp:
-                return dp
-            break
+            dp = str(obj.get("domain_pack", "")).strip() or None
+            tpl = str(obj.get("isc_template", "")).strip() or None
+            return dp, tpl
     except Exception:
-        return default_pack
+        return None, None
 
-    return default_pack
+    return None, None
 
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main() -> None:
     private_pem = os.environ.get("SDL_PRIVATE_KEY_PEM")
@@ -245,7 +217,6 @@ def main() -> None:
         password=None,
     )
 
-    # Metrics from red-team run
     try:
         with open("leaks_count.txt", "r", encoding="utf-8") as f:
             jailbreaks_leaked = int(f.read().strip() or "0")
@@ -261,9 +232,11 @@ def main() -> None:
     suite_path = resolve_suite_path()
     prompts_tested, suite_payload_hash, suite_format = load_suite_and_hash(suite_path)
 
-    # Domain/model/CI context
-    domain_pack_env = os.getenv("SIR_ISC_PACK", "generic_safety")
-    domain_pack = _infer_effective_domain_pack(domain_pack_env)
+    ledger_domain_pack, ledger_template = _infer_from_ledger()
+    domain_pack = ledger_domain_pack or os.getenv("SIR_ISC_PACK", "generic_safety")
+    isc_template = ledger_template or resolve_template_id()
+
+    domain_pack_hash = load_domain_pack_hash(domain_pack)
 
     model = os.getenv("SIR_MODEL_NAME") or os.getenv("LITELLM_MODEL") or "grok-3"
     provider = os.getenv("SIR_MODEL_PROVIDER", "xai")
@@ -279,16 +252,14 @@ def main() -> None:
         else:
             ci_run_url = ""
 
-    # Policy / ITGL context
     policy_version, policy_hash = load_policy_metadata()
     itgl_final_hash = _read_itgl_final_hash()
 
-    # Assemble payload (unsigned)
     result_ok = jailbreaks_leaked == 0 and harmless_blocked == 0
 
     payload: Dict[str, Any] = {
         "audit": f"SIR Firewall – {prompts_tested}-Prompt 2025 Pre-Inference Audit",
-        "version": "1.1",
+        "version": "1.2",
         "model": model,
         "provider": provider,
         "date": datetime.utcnow().isoformat() + "Z",
@@ -300,22 +271,22 @@ def main() -> None:
         "commit_sha": commit_sha,
         "repository": repo,
 
-        # Suite + domain binding (P2)
         "domain_pack": domain_pack,
+        "isc_template": isc_template,
         "suite_path": suite_path,
         "suite_format": suite_format,
         "suite_payload_hash": suite_payload_hash,
     }
 
+    if domain_pack_hash:
+        payload["domain_pack_hash"] = domain_pack_hash
     if policy_version:
         payload["policy_version"] = policy_version
     if policy_hash:
         payload["policy_hash"] = policy_hash
-
     if itgl_final_hash:
         payload["itgl_final_hash"] = itgl_final_hash if itgl_final_hash.startswith("sha256:") else f"sha256:{itgl_final_hash}"
 
-    # Stable JSON payload for hashing/signing
     payload_bytes = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     payload_hash = hashlib.sha256(payload_bytes).hexdigest()
 
@@ -329,23 +300,20 @@ def main() -> None:
     )
     cert["signature"] = base64.b64encode(signature_bytes).decode("ascii")
 
-    # Write JSON
     os.makedirs("proofs", exist_ok=True)
     out_path = os.path.join("proofs", "latest-audit.json")
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(cert, f, indent=2, sort_keys=True)
 
-    # HTML from template
     try:
         template_path = Path("proofs") / "template.html"
         html = template_path.read_text(encoding="utf-8")
-
         audit_date = cert.get("date", datetime.utcnow().isoformat() + "Z")
         marker = f"\n<!-- audit_date:{audit_date} -->\n"
         out_html = Path("proofs") / "latest-audit.html"
         out_html.write_text(html + marker, encoding="utf-8")
         print(f"Honest HTML generated from template (audit_date={audit_date})")
-    except Exception as e:  # pragma: no cover
+    except Exception as e:
         print(f"HTML generation failed: {e}")
 
     print(f"Certificate → {out_path}")
