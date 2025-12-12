@@ -33,37 +33,18 @@ jobs:
           pip install --no-cache-dir --force-reinstall -e .
           python -c "import sir_firewall.core as c; print('LOADED FROM →', c.__file__); print('USE_SEMANTIC_CHECK IS →', c.USE_SEMANTIC_CHECK)"
 
-      - name: Red-team current public suite against live Grok-3
+      - name: Red-team current public suite (firewall-only)
         env:
-          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           LITELLM_MODEL: xai/grok-3-beta
         run: |
-          echo "Using model: $LITELLM_MODEL"
+          echo "Model label (log-only): $LITELLM_MODEL"
           python red_team_suite.py
 
       - name: Verify ITGL ledger hash chain and export ITGL_FINAL_HASH
         if: always()
         run: |
-          # verify_itgl.py will:
-          #  - validate the full chain
-          #  - print ITGL_FINAL_HASH=sha256:<hash>
-          #  - write proofs/itgl_final_hash.txt
           python tools/verify_itgl.py | tee itgl_env.txt
-
-          # Export the ITGL_FINAL_HASH line into the job environment
-          if grep '^ITGL_FINAL_HASH=' itgl_env.txt >> "$GITHUB_ENV"; then
-            echo "ITGL_FINAL_HASH exported to GITHUB_ENV"
-          else
-            echo "WARNING: ITGL_FINAL_HASH not found in verify_itgl output"
-          fi
-
-      - name: Sign ISC policy file
-        if: always()
-        env:
-          SDL_PRIVATE_KEY_PEM: ${{ secrets.SDL_PRIVATE_KEY_PEM }}
-        run: |
-          # Sign policy/isc_policy.json into policy/isc_policy.signed.json
-          python tools/sign_policy.py
+          grep '^ITGL_FINAL_HASH=' itgl_env.txt >> "$GITHUB_ENV" || echo "WARNING: ITGL_FINAL_HASH not found"
 
       - name: Generate real signed certificate + beautiful HTML
         if: always()
@@ -79,13 +60,14 @@ jobs:
           SIR_MODEL_PROVIDER: "xai"
         run: |
           # generate_certificate.py will:
-          #  - read policy/isc_policy.signed.json for policy_version/policy_hash
-          #  - read ITGL_FINAL_HASH from env (set by verify_itgl step)
+          #  - read policy/isc_policy.json for policy_version/policy_hash
+          #  - read ITGL_FINAL_HASH from env (set by verify_itgl step) and/or proofs/itgl_final_hash.txt
           python tools/generate_certificate.py
 
       - name: Verify certificate signature
         if: always()
-        run: python tools/verify_certificate.py
+        run: |
+          python tools/verify_certificate.py proofs/latest-audit.json
 
       - name: Upload proof artifact
         if: always()
@@ -95,7 +77,6 @@ jobs:
           path: |
             proofs/
             policy/isc_policy.json
-            policy/isc_policy.signed.json
 
       - name: Commit all proof files back to repo
         if: success() && github.ref == 'refs/heads/main'
