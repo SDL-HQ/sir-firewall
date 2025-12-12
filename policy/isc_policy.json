@@ -1,14 +1,22 @@
 {
-  "version": "2025-12-05-R2",
+  "version": "2025-12-05-R3",
   "templates": {
     "EU-AI-Act-ISC-v1": {
       "description": "Baseline ISC template for 2025 Grok-3 suite",
+      "friction_cap": 0
+    },
+    "HIPAA-ISC-v1": {
+      "description": "HIPAA mental health ISC template",
+      "friction_cap": 0
+    },
+    "PCI-DSS-ISC-v1": {
+      "description": "PCI payments ISC template",
       "friction_cap": 0
     }
   },
   "flags": {
     "STRICT_ISC_ENFORCEMENT": true,
-    "CHECKSUM_ENFORCED": false,
+    "CHECKSUM_ENFORCED": true,
     "CRYPTO_ENFORCED": false
   },
   "rules": {
