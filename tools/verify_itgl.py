@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
 """
-Verify the ITGL hash-chained *run ledger* emitted by red_team_suite.py.
+Verify the ITGL hash-chained run ledger emitted by red_team_suite.py.
 
-Ledger file: proofs/itgl_ledger.jsonl
+- Reads proofs/itgl_ledger.jsonl
+- Checks structure + chain continuity
+- Verifies ledger_hash integrity per-entry
 
-Checks:
-- Each entry has required fields
-- Chain continuity:
-    - entry[i].prev_hash == entry[i-1].ledger_hash
-    - entry[0].prev_hash == "GENESIS"
-- Hash rule (must match red_team_suite.py exactly):
-    ledger_hash == sha256( prev_hash + itgl_prompt_final_hash_raw )
+Ledger rules (current):
+- Entry 1 must have prev_hash == "GENESIS"
+- For i>1: entry[i]["prev_hash"] must equal entry[i-1]["ledger_hash"]
+- ledger_hash == sha256( (prev_hash or "") + final_hash_raw )
 
-Where:
-- itgl_prompt_final_hash is stored as "sha256:<hex>" in the ledger
-- we strip the "sha256:" prefix before chaining
+Where final_hash_raw is:
+- entry["final_hash"] if present (legacy)
+- else entry["itgl_prompt_final_hash"] with optional "sha256:" prefix stripped
 
 Outputs:
-- Writes proofs/itgl_final_hash.txt as "sha256:<final_ledger_hash>"
-- Prints "ITGL_FINAL_HASH=sha256:<final_ledger_hash>" for CI
+- proofs/itgl_final_hash.txt   (sha256:<final_ledger_hash>)
+- Prints: ITGL_FINAL_HASH=sha256:<final_ledger_hash> (CI-friendly)
 """
 
 import json
@@ -26,18 +25,18 @@ import os
 import sys
 import hashlib
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 LEDGER_PATH = Path("proofs") / "itgl_ledger.jsonl"
 
 
 class LedgerVerificationError(RuntimeError):
-    """Raised when the run ledger fails structural or hash checks."""
+    """Raised when the ITGL ledger fails structural or hash checks."""
 
 
 def _load_ledger(path: Path) -> List[Dict[str, Any]]:
     if not path.exists():
-        raise LedgerVerificationError(f"Run ledger not found at {path}")
+        raise LedgerVerificationError(f"ITGL ledger not found at {path}")
 
     entries: List[Dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as f:
@@ -48,58 +47,60 @@ def _load_ledger(path: Path) -> List[Dict[str, Any]]:
             try:
                 entry = json.loads(line)
             except json.JSONDecodeError as exc:
-                raise LedgerVerificationError(
-                    f"Invalid JSON on line {line_no}: {exc}"
-                ) from exc
+                raise LedgerVerificationError(f"Invalid JSON on line {line_no}: {exc}") from exc
             if not isinstance(entry, dict):
-                raise LedgerVerificationError(
-                    f"Ledger entry on line {line_no} is not a JSON object"
-                )
+                raise LedgerVerificationError(f"Ledger entry on line {line_no} is not a JSON object")
             entries.append(entry)
 
     if not entries:
-        raise LedgerVerificationError("Run ledger is empty")
+        raise LedgerVerificationError("ITGL ledger is empty")
 
     return entries
 
 
+def _final_hash_raw(entry: Dict[str, Any]) -> Optional[str]:
+    """
+    Return the per-prompt final hash in raw hex (no 'sha256:' prefix),
+    regardless of whether the ledger is using legacy or current keys.
+    """
+    if "final_hash" in entry:
+        v = str(entry.get("final_hash") or "").strip()
+        return v or None
+
+    v = str(entry.get("itgl_prompt_final_hash") or "").strip()
+    if not v:
+        return None
+    return v.split("sha256:", 1)[-1] if v.startswith("sha256:") else v
+
+
 def _verify_entry_fields(entry: Dict[str, Any], index: int) -> None:
-    required_fields = [
-        "ts",
-        "prompt_index",
-        "isc_template",
-        "suite_path",
-        "domain_pack",
-        "status",
-        "expected",
-        "prev_hash",
-        "ledger_hash",
-        # P2 ledger field name:
-        "itgl_prompt_final_hash",
-    ]
-    missing = [f for f in required_fields if f not in entry]
+    # Minimal required fields for hash verification + continuity
+    required = ["ts", "prompt_index", "prev_hash", "ledger_hash"]
+    missing = [k for k in required if k not in entry]
     if missing:
         raise LedgerVerificationError(
             f"Entry #{index} missing required fields: {', '.join(missing)}"
         )
 
+    if "final_hash" not in entry and "itgl_prompt_final_hash" not in entry:
+        raise LedgerVerificationError(
+            f"Entry #{index} missing per-prompt final hash field "
+            "(expected 'final_hash' or 'itgl_prompt_final_hash')"
+        )
 
-def _strip_sha256_prefix(v: str) -> str:
-    v = (v or "").strip()
-    if v.startswith("sha256:"):
-        return v.split("sha256:", 1)[1]
-    return v
 
-
-def _compute_ledger_hash(prev_hash: str, itgl_prompt_final_hash: str) -> str:
-    # Must mirror red_team_suite.py:
-    # ledger_hash = sha256( (prev_hash + final_hash_raw).encode("utf-8") )
-    final_raw = _strip_sha256_prefix(itgl_prompt_final_hash)
-    payload = (prev_hash or "") + final_raw
+def _compute_ledger_hash(prev_hash: str, final_hash_raw: str) -> str:
+    payload = (prev_hash or "") + final_hash_raw
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def verify_ledger(entries: List[Dict[str, Any]]) -> str:
+    """
+    Verify the full ledger chain.
+
+    Returns the final ledger_hash (hex) if all checks pass.
+    Raises LedgerVerificationError on any failure.
+    """
     previous_ledger_hash = None
     final_ledger_hash = ""
 
@@ -107,9 +108,12 @@ def verify_ledger(entries: List[Dict[str, Any]]) -> str:
         human_index = idx + 1
         _verify_entry_fields(entry, human_index)
 
-        prev_hash = str(entry["prev_hash"])
-        itgl_prompt_final_hash = str(entry["itgl_prompt_final_hash"])
-        stored_ledger_hash = str(entry["ledger_hash"])
+        prev_hash = str(entry.get("prev_hash") or "")
+        stored_ledger_hash = str(entry.get("ledger_hash") or "")
+
+        fh_raw = _final_hash_raw(entry)
+        if not fh_raw:
+            raise LedgerVerificationError(f"Entry #{human_index} has empty final hash")
 
         if idx == 0:
             if prev_hash != "GENESIS":
@@ -123,11 +127,11 @@ def verify_ledger(entries: List[Dict[str, Any]]) -> str:
                     f"previous ledger_hash={previous_ledger_hash!r}"
                 )
 
-        computed_ledger_hash = _compute_ledger_hash(prev_hash, itgl_prompt_final_hash)
-        if stored_ledger_hash != computed_ledger_hash:
+        computed = _compute_ledger_hash(prev_hash, fh_raw)
+        if stored_ledger_hash != computed:
             raise LedgerVerificationError(
                 f"Entry #{human_index} has invalid ledger_hash: "
-                f"stored={stored_ledger_hash!r}, computed={computed_ledger_hash!r}"
+                f"stored={stored_ledger_hash!r}, computed={computed!r}"
             )
 
         previous_ledger_hash = stored_ledger_hash
@@ -142,21 +146,22 @@ def verify_ledger(entries: List[Dict[str, Any]]) -> str:
 def main() -> None:
     try:
         entries = _load_ledger(LEDGER_PATH)
-        final_hash = verify_ledger(entries)
+        final_hash_hex = verify_ledger(entries)
     except LedgerVerificationError as exc:
-        print(f"Run ledger verification FAILED: {exc}", file=sys.stderr)
+        print(f"ITGL ledger verification FAILED: {exc}", file=sys.stderr)
         raise SystemExit(1)
     except Exception as exc:
-        print(f"Run ledger verification ERROR: {exc}", file=sys.stderr)
+        print(f"ITGL ledger verification ERROR: {exc}", file=sys.stderr)
         raise SystemExit(1)
 
-    itgl_final_hash = f"sha256:{final_hash}"
+    itgl_final_hash = f"sha256:{final_hash_hex}"
 
     os.makedirs("proofs", exist_ok=True)
-    (Path("proofs") / "itgl_final_hash.txt").write_text(itgl_final_hash + "\n", encoding="utf-8")
+    with open("proofs/itgl_final_hash.txt", "w", encoding="utf-8") as out:
+        out.write(itgl_final_hash + "\n")
 
     print(f"ITGL_FINAL_HASH={itgl_final_hash}")
-    print(f"Run ledger verification OK: {len(entries)} entries, final_ledger_hash={final_hash}")
+    print(f"ITGL ledger verification OK: {len(entries)} entries, final_ledger_hash={final_hash_hex}")
     raise SystemExit(0)
 
 
