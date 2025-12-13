@@ -8,8 +8,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Tuple, Optional, Dict, Any, List
 
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
+# cryptography is only required for *signing* (SDL/CI),
+# not for end-user unsigned local cert generation.
+try:
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import padding
+
+    _CRYPTO_AVAILABLE = True
+except Exception:  # pragma: no cover
+    _CRYPTO_AVAILABLE = False
 
 
 # ---------------------------------------------------------------------------
@@ -250,18 +257,42 @@ def _infer_from_ledger() -> Tuple[Optional[str], Optional[str]]:
 
 
 # ---------------------------------------------------------------------------
+# Signing helpers
+# ---------------------------------------------------------------------------
+
+def _maybe_load_private_key() -> Tuple[Optional[Any], str]:
+    """
+    Returns: (private_key_or_None, signing_mode)
+      signing_mode is: "signed" | "unsigned_no_key" | "unsigned_no_crypto"
+    """
+    private_pem = os.environ.get("SDL_PRIVATE_KEY_PEM", "").strip()
+    if not private_pem:
+        return None, "unsigned_no_key"
+
+    if not _CRYPTO_AVAILABLE:
+        return None, "unsigned_no_crypto"
+
+    try:
+        private_key = serialization.load_pem_private_key(
+            private_pem.encode("utf-8"),
+            password=None,
+        )
+        return private_key, "signed"
+    except Exception as exc:
+        # If the key is present but invalid, we fail hard — this is a real signing misconfig.
+        raise RuntimeError(
+            f"SDL_PRIVATE_KEY_PEM is set but could not be loaded. "
+            f"Ensure it's the full PEM (including BEGIN/END lines) with real newlines. "
+            f"Error: {exc}"
+        ) from exc
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    private_pem = os.environ.get("SDL_PRIVATE_KEY_PEM")
-    if not private_pem:
-        raise RuntimeError("SDL_PRIVATE_KEY_PEM secret missing")
-
-    private_key = serialization.load_pem_private_key(
-        private_pem.encode("utf-8"),
-        password=None,
-    )
+    private_key, signing_mode = _maybe_load_private_key()
 
     try:
         jailbreaks_leaked = int(Path("leaks_count.txt").read_text(encoding="utf-8").strip() or "0")
@@ -303,7 +334,7 @@ def main() -> None:
 
     payload: Dict[str, Any] = {
         "audit": f"SIR Firewall – {prompts_tested}-Prompt 2025 Pre-Inference Audit",
-        "version": "1.2",
+        "version": "1.3",
         "model": model,
         "provider": provider,
         "date": datetime.utcnow().isoformat() + "Z",
@@ -331,25 +362,36 @@ def main() -> None:
     if itgl_final_hash:
         payload["itgl_final_hash"] = itgl_final_hash if itgl_final_hash.startswith("sha256:") else f"sha256:{itgl_final_hash}"
 
+    # Stable JSON payload hash (always present, signed or unsigned)
     payload_bytes = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     payload_hash = hashlib.sha256(payload_bytes).hexdigest()
 
-    cert = dict(payload)
+    cert: Dict[str, Any] = dict(payload)
     cert["payload_hash"] = f"sha256:{payload_hash}"
 
-    signature_bytes = private_key.sign(
-        payload_bytes,
-        padding.PKCS1v15(),
-        hashes.SHA256(),
-    )
-    cert["signature"] = base64.b64encode(signature_bytes).decode("ascii")
+    # Signed vs unsigned
+    signed = signing_mode == "signed"
+    cert["signed"] = bool(signed)
 
+    if signed:
+        signature_bytes = private_key.sign(
+            payload_bytes,
+            padding.PKCS1v15(),
+            hashes.SHA256(),
+        )
+        cert["signature_alg"] = "RSA-PKCS1v15-SHA256"
+        cert["signature"] = base64.b64encode(signature_bytes).decode("ascii")
+    else:
+        cert["signature_alg"] = ""
+        # NOTE: no "signature" field when unsigned (prevents confusion / false positives)
+
+    # Write JSON certificate
     os.makedirs("proofs", exist_ok=True)
     out_path = os.path.join("proofs", "latest-audit.json")
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(cert, f, indent=2, sort_keys=True)
 
-    # HTML from template
+    # HTML from template (same for signed/unsigned)
     try:
         template_path = Path("proofs") / "template.html"
         html = template_path.read_text(encoding="utf-8")
@@ -357,9 +399,20 @@ def main() -> None:
         marker = f"\n<!-- audit_date:{audit_date} -->\n"
         out_html = Path("proofs") / "latest-audit.html"
         out_html.write_text(html + marker, encoding="utf-8")
-        print(f"Honest HTML generated from template (audit_date={audit_date})")
+        print(f"HTML generated from template (audit_date={audit_date})")
     except Exception as e:
         print(f"HTML generation failed: {e}")
+
+    # Console summary
+    if signed:
+        print("Certificate mode: SIGNED (SDL_PRIVATE_KEY_PEM present)")
+    else:
+        if signing_mode == "unsigned_no_key":
+            print("Certificate mode: UNSIGNED (SDL_PRIVATE_KEY_PEM not set)")
+        elif signing_mode == "unsigned_no_crypto":
+            print("Certificate mode: UNSIGNED (cryptography not available)")
+        else:
+            print("Certificate mode: UNSIGNED")
 
     print(f"Certificate → {out_path}")
     print("Latest proof → proofs/latest-audit.html + .json")
