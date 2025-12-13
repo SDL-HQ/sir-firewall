@@ -49,7 +49,7 @@ OK: Certificate signature valid and payload_hash matches.
 
 The HTML summary page is kept in sync:
 
-* [https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.html](https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.html)
+* [https://sdl-hq.github.io/sir-firewall/](https://sdl-hq.github.io/sir-firewall/)
 
 ---
 
