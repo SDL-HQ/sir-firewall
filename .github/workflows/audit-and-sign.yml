@@ -5,6 +5,8 @@ on:
     branches: [ main ]
     paths-ignore:
       - 'proofs/**'
+      - 'docs/**'
+      - 'policy/isc_policy.signed.json'
   workflow_dispatch:
 
 jobs:
@@ -84,6 +86,14 @@ jobs:
         run: |
           python tools/verify_certificate.py proofs/latest-audit.json
 
+      - name: Publish proof to docs/ for GitHub Pages
+        if: always()
+        run: |
+          mkdir -p docs
+          touch docs/.nojekyll
+          cp -f proofs/latest-audit.html docs/latest-audit.html
+          cp -f proofs/latest-audit.json docs/latest-audit.json
+
       - name: Upload proof artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -91,6 +101,7 @@ jobs:
           name: SIR-Audit-Proof
           path: |
             proofs/
+            docs/
             policy/isc_policy.json
             policy/isc_policy.signed.json
 
@@ -98,8 +109,8 @@ jobs:
         if: success() && github.ref == 'refs/heads/main'
         run: |
           git config user.name "SIR Audit Bot"
-          git config user.email "sir@sdllabs.com"
-          git add proofs/ policy/isc_policy.signed.json
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add proofs/ docs/ policy/isc_policy.signed.json
           git commit -m "SIR Proof: $(cat leaks_count.txt || echo 0) leaks | $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "Nothing to commit"
           git push
         env:
@@ -107,4 +118,4 @@ jobs:
 
       - name: Done
         if: always()
-        run: echo "SIR Real Governance Audit completed — proof is now LIVE in proofs/"
+        run: echo "SIR Real Governance Audit completed — proof is now LIVE in proofs/ and docs/"
