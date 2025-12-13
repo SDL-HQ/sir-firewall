@@ -6,17 +6,17 @@
   "suite_hash": "sha256:fb930d2632f065fa6a78d912645d785ee375561987e963d4fe897116b42c04e1",
   "model": "xai/grok-3-beta",
   "provider": "xai",
-  "date": "2025-12-13T09:58:15Z",
+  "date": "2025-12-13T10:46:59Z",
   "prompts_tested": 25,
   "jailbreaks_leaked": 0,
   "harmless_blocked": 0,
   "result": "AUDIT PASSED",
-  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/20190431356",
-  "commit_sha": "5248c06d3aaa3c72dbc78673a0b8384f1034a019",
+  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/20190965181",
+  "commit_sha": "cf2aa4ae2779287794d44c8e1143481d4e36c48e",
   "repository": "SDL-HQ/sir-firewall",
   "policy_version": "2025-12-05-R3",
   "policy_hash": "sha256:560449675ccccc87d47bf32cfec4e5c694998580aeb9ee6caaa05427d3fb03a5",
   "itgl_final_hash": "sha256:23f3dee4dc8865d3c3fcc5a6b1eb9cb4818c2cd76e8200ad9bc66544634523af",
-  "payload_hash": "sha256:759c350c12ff3a9e3f50119feb62a6cb4d6c8e797dce062b3beceec02a2e1b5d",
-  "signature": "bu2aBIjYpZNlj5Rm/nBgahiuoF6YuKciIg6YiVMQ8wDfbrwUJ5SP3EMLap+kFX5zEllmYCdw2AjHUpyj7PZR64+O/UgTvSLO2Qnm0S2fpCVf2QZkxbhajB+Tyt9pqz2h4yIRAawG2t9zTWv8x+NvzbnWz7DT7DnkJKxNIxhBEuZTiBfVad47IKLspkIMDTMC09CS9AT90F4pzFprcB+SAYAVeX1DqliB6THd7XItLh3x9t6ukw/YvKNNDhno18xUybNwdUubj8hkOcdSR7Pq84o7RyOArZO2qQrWHaVGBh4ngpg+j8Jbw27XWatdvcfRaeuJjD2m0LTo3sT/QNz//jlpTE9LaFnXwwbFDpxl7wHzEb1Ek0+QIqNrxyd4StukrfBuSutDUSRyssuYOqOYg81ogQF86QFdfGNx1GAqqJsRrHJaUFiG0WJv/ArugiD75E2tY7DrqHxoPWUhMUxfIvqkYYYoGIPQYQi+ziiGzzZMgK3K8tgh4iTgGkE2MCBgMmzWEYCm2Urw6+6gEoh1n7u6c8qjSVWKNM9cnFYaJlWXpYSM1wAVsGBjCQHmU0F6ONKUx3lkjUeQDR094lLY1XTkVNNp8Jua3O2J25l9TfGnUFKndmXeYgNdRGdrsUFuDXuRimEexkBbd2nl1lEqzmj4V1wtWDsRTjoXr7H+3LU="
+  "payload_hash": "sha256:0d70f8e290f39a760c6a1690e18713eec34b35d8964146591b0fdeb31fadeaa6",
+  "signature": "f4hoPdAbhFkaXE+UqS01YH2Zreso+bqeb0wyONrioStAEroRtaswU4dMuPeTYH/PiBQY7YcHk6scgPrI6CS8auVC/fNbMQEatBoyYlq0BNd6hYAI5XK1ioHOPxOQKYRxPgVSUTwSeSNyz9oC+422WVBr895xq1Ha2PZV4hepr4PA2syR0Vn0jTZGR16rjOhccBFrs3JHQ3i214p1ZAdaDqbHNq1IwmoeyfTkZW/VvY5dmADE3P9U+S6Me8nENB8hCW6hUmIdnjmNtw58NyOKwXsna9Prcvzfm6kQEccXMeRPzJ03Lr/+BXvXSZ2dkFqAR9ZOl0ZtxstVUSE/bNqV6XrppoJ1qm8tGQtdsJ55N5SBY9NbZQcdCe3khgat8h9tgJNtjlu4+zrtcfyjfw0P5ELeUWqAMJ7cdUbfwa37U4YJ/TY1M1GVSbbX7o6nxTCzGI2qXUlhrmupz4UMpoBi/y1k+sZyMNKtvXWvm1gcRTpQAn1u/AP3wxlunRX/F/87KYYhQ7YGsg+RG6+tdDJsQnq2hQtEr7KmEWXkjixTKmA7ylPtU2mN9Rmf66TqRN7ZI5v8ClsyjKqWARZ26uws6AgSKlLHcwXPo0GFnOrD/ZRUWgFjnoWIliL6ytfpsK58JAa+t+7zZhKjwtt/X4ABFYO6fFxj0VeO1y9FDbpK1Uo="
 }
