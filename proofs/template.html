@@ -3,198 +3,112 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SIR Firewall – 2025 Pre-Inference Governance Audit</title>
-  <meta name="description" content="Pre-inference jailbreak audit proof for SIR Firewall." />
+  <title>SIR Firewall – Pre-Inference Governance Audit</title>
+  <meta name="description" content="Cryptographically verifiable pre-inference governance audit certificate for SIR Firewall." />
   <style>
-    :root{
-      --success:#56d364;--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#c9d1d9;--muted:#8b949e;--link:#58a6ff;--danger:#f85149;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;padding:24px;
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
-      background:radial-gradient(circle at top,#111827 0,var(--bg) 45%);
-      color:var(--text);line-height:1.6;
-    }
-    h1{color:var(--link);text-align:center;margin:0 0 .2em;font-size:2.2rem}
-    .subtitle{margin:0 0 18px;text-align:center;color:var(--muted);font-size:1.05rem}
-    .badge{font-size:3.5rem;text-align:center;margin:22px 0 14px;font-weight:700}
-    .success{color:var(--success)} .failure{color:var(--danger)}
-    .layout{max-width:960px;margin:0 auto}
-    .grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.4fr);gap:24px}
-    @media (max-width:800px){.grid{grid-template-columns:1fr}}
-    .box{background:var(--card);padding:20px 22px;border-radius:12px;border:1px solid var(--border);margin-bottom:18px}
-    .box h2{margin:0 0 12px;font-size:1.1rem}
-    .kv{margin:4px 0;font-size:.98rem}
-    .kv strong{color:#e6edf3}
-    a{color:var(--link);text-decoration:none} a:hover{text-decoration:underline}
-    code.verify{
-      display:block;padding:10px 12px;margin-top:8px;background:#0b0f16;border-radius:8px;border:1px solid var(--border);
-      font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
-      font-size:.78rem;overflow-x:auto;white-space:pre;
-    }
-    footer{margin-top:34px;text-align:center;font-size:.85rem;color:var(--muted)}
-    .mono{
-      font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
-      font-size:.86rem;word-break:break-all;
-    }
-    .pill{
-      display:inline-block;padding:2px 10px;border-radius:999px;border:1px solid var(--border);background:#0b0f16;
-      font-size:.85rem;letter-spacing:.02em;
-    }
-    .center{display:flex;justify-content:center;margin:0 0 18px}
+    :root { --success: #56d364; --danger: #f85149; --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --muted: #8b949e; --link: #58a6ff; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 920px; margin: 40px auto; padding: 20px; background: var(--bg); color: var(--text); line-height: 1.6; }
+    h1 { color: var(--link); text-align: center; margin-bottom: 0.2em; }
+    .subtitle { text-align: center; color: var(--muted); font-size: 1.05em; margin-bottom: 28px; }
+    .badge { font-size: 120px; text-align: center; margin: 28px 0 10px; font-weight: 800; letter-spacing: -2px; }
+    .success { color: var(--success); }
+    .danger { color: var(--danger); }
+    .box { background: var(--card); padding: 22px; border-radius: 12px; border: 1px solid var(--border); margin: 18px 0; }
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
+    .verify { background: #0d1117; padding: 12px; border-radius: 8px; overflow-x: auto; display: inline-block; }
+    footer { margin-top: 70px; text-align: center; font-size: 0.9em; color: var(--muted); }
+    .row { display: grid; grid-template-columns: 190px 1fr; gap: 10px; }
+    .k { color: var(--muted); }
   </style>
 </head>
 <body>
-  <div class="layout">
-    <h1>SIR Firewall</h1>
-    <p class="subtitle" id="subtitle">2025 Pre-Inference Jailbreak Governance Audit</p>
-    <div class="center"><span class="pill" id="mode">—</span></div>
+  <h1>SIR Firewall</h1>
+  <p class="subtitle">Pre-Inference Governance Audit Certificate</p>
 
-    <div class="badge" id="score">—</div>
+  <div class="badge success" id="score">—</div>
 
-    <div class="grid">
-      <div>
-        <div class="box">
-          <h2>Audit summary</h2>
-          <p class="kv"><strong>Model under test:</strong> <span id="model">—</span></p>
-          <p class="kv"><strong>Provider:</strong> <span id="provider">—</span></p>
-          <p class="kv"><strong>Audit date:</strong> <span id="date">—</span></p>
-          <p class="kv"><strong>Domain pack:</strong> <span id="domain_pack">—</span></p>
-          <p class="kv"><strong>ISC template:</strong> <span id="isc_template">—</span></p>
-          <p class="kv"><strong>Test suite:</strong> <span id="suite_path">—</span></p>
-          <p class="kv"><strong>Suite format:</strong> <span id="suite_format">—</span></p>
-          <p class="kv"><strong>Prompts tested:</strong> <span id="prompts">—</span></p>
-          <p class="kv"><strong>Successful leaks:</strong> <span id="leaks">—</span></p>
-          <p class="kv"><strong>Harmless prompts blocked:</strong> <span id="harmless">—</span></p>
-          <p class="kv"><strong>Result:</strong> <span id="result">—</span></p>
-        </div>
-
-        <div class="box">
-          <h2>Live CI proof</h2>
-          <p class="kv"><a href="#" id="ci-link">GitHub Actions run</a></p>
-          <p class="kv">
-            <strong>Repository:</strong> <span id="repo">—</span><br/>
-            <strong>Commit SHA:</strong> <span id="sha">—</span>
-          </p>
-        </div>
-      </div>
-
-      <div>
-        <div class="box">
-          <h2>Verification</h2>
-
-          <div id="signed" style="display:none;">
-            <p class="kv">RSA-signed by SDL. Verify locally:</p>
-            <code class="verify">
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json \
-  | python3 -m tools.verify_certificate
-            </code>
-          </div>
-
-          <div id="unsigned" style="display:none;">
-            <p class="kv"><strong>Unsigned</strong> (end-user mode). Verify ledger integrity:</p>
-            <code class="verify">python3 tools/verify_itgl.py</code>
-          </div>
-
-          <p class="kv" style="margin-top:10px;">
-            <a href="latest-audit.json" id="dl">Download latest-audit.json</a>
-          </p>
-        </div>
-
-        <div class="box">
-          <h2>Governance snapshot</h2>
-          <p class="kv"><strong>Policy version:</strong> <span id="policy_version">—</span></p>
-          <p class="kv"><strong>Policy hash:</strong> <span id="policy_hash" class="mono">—</span></p>
-          <p class="kv"><strong>Domain pack hash:</strong> <span id="domain_pack_hash" class="mono">—</span></p>
-          <p class="kv"><strong>ITGL final hash:</strong> <span id="itgl_hash" class="mono">—</span></p>
-          <p class="kv"><strong>Suite payload hash:</strong> <span id="suite_payload_hash" class="mono">—</span></p>
-        </div>
-
-        <div class="box">
-          <h2>What this shows</h2>
-          <p class="kv">
-            Proof that SIR evaluated the configured suite <em>before</em> model inference, under the active domain pack,
-            policy config, and ISC template.
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <footer id="foot">
-      Generated from <code>proofs/latest-audit.json</code>.
-    </footer>
+  <div class="box">
+    <div class="row"><div class="k">Suite</div><div id="suite">—</div></div>
+    <div class="row"><div class="k">Model</div><div id="model">—</div></div>
+    <div class="row"><div class="k">Provider</div><div id="provider">—</div></div>
+    <div class="row"><div class="k">Audit date</div><div id="date">—</div></div>
+    <div class="row"><div class="k">Prompts tested</div><div id="prompts">—</div></div>
+    <div class="row"><div class="k">Successful leaks</div><div id="leaks">—</div></div>
+    <div class="row"><div class="k">Harmless blocked</div><div id="harmless">—</div></div>
+    <div class="row"><div class="k">Result</div><div id="result">—</div></div>
   </div>
+
+  <div class="box">
+    <strong>Live CI proof</strong><br>
+    <a href="#" id="ci-link">GitHub Actions run</a>
+  </div>
+
+  <div class="box">
+    <strong>Cryptographic verification</strong><br>
+    Verify the signed JSON with one command:<br><br>
+    <code class="verify mono">curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 -m tools.verify_certificate</code><br><br>
+    <a href="latest-audit.json">Download raw signed JSON</a>
+  </div>
+
+  <div class="box">
+    <strong>Repo</strong><br>
+    <a href="https://github.com/SDL-HQ/sir-firewall">github.com/SDL-HQ/sir-firewall</a>
+  </div>
+
+  <footer>
+    Issued by SDL – Structural Design Labs<br>
+    Cryptographically signed proof · Offline verification · Zero external calls required for verification
+  </footer>
 
   <script>
     fetch('latest-audit.json')
       .then(r => r.json())
-      .then(d => {
-        const leaks = d.jailbreaks_leaked ?? d.leaks ?? 0;
-        const harmless = d.harmless_blocked ?? 0;
-        const prompts = d.prompts_tested ?? 0;
+      .then(data => {
+        const leaks = Number(data.jailbreaks_leaked ?? 0);
+        const harmless = Number(data.harmless_blocked ?? 0);
+        const prompts = Number(data.prompts_tested ?? 0);
 
-        const signed = (d.signed === true) || (typeof d.signature === "string" && d.signature.length > 0);
+        // Basic fields
+        document.getElementById("suite").textContent = data.suite_name ? data.suite_name : (data.suite_path || "—");
+        document.getElementById("model").textContent = data.model || "—";
+        document.getElementById("provider").textContent = data.provider || "—";
 
-        document.getElementById("subtitle").textContent =
-          signed ? "2025 Pre-Inference Jailbreak Governance Audit (SIGNED)" :
-                   "2025 Pre-Inference Jailbreak Governance Audit (UNSIGNED)";
+        if (data.date) {
+          document.getElementById("date").textContent = String(data.date).split("T")[0];
+        }
 
-        document.getElementById("mode").textContent = signed ? "SIGNED PROOF" : "UNSIGNED PROOF";
-        document.getElementById("signed").style.display = signed ? "block" : "none";
-        document.getElementById("unsigned").style.display = signed ? "none" : "block";
-
-        if (d.date) document.getElementById("date").textContent = d.date.split("T")[0];
-
-        document.getElementById("model").textContent = d.model || "grok-3";
-        document.getElementById("provider").textContent = d.provider || d.provider_name || "xai";
-        document.getElementById("domain_pack").textContent = d.domain_pack || "generic_safety";
-        document.getElementById("isc_template").textContent = d.isc_template || "EU-AI-Act-ISC-v1";
-        document.getElementById("suite_path").textContent = d.suite_path || "tests/jailbreak_prompts_public.csv";
-        document.getElementById("suite_format").textContent = d.suite_format || "plain";
-        document.getElementById("prompts").textContent = String(prompts);
+        document.getElementById("prompts").textContent = prompts ? String(prompts) : "—";
         document.getElementById("leaks").textContent = String(leaks);
         document.getElementById("harmless").textContent = String(harmless);
 
+        // Score + result
+        const ok = leaks === 0 && harmless === 0;
         const scoreEl = document.getElementById("score");
         scoreEl.textContent = `${leaks} / ${prompts || "—"}`;
-        scoreEl.className = (leaks === 0 && harmless === 0) ? "badge success" : "badge failure";
+        scoreEl.className = `badge ${ok ? "success" : "danger"}`;
 
-        const ok = leaks === 0 && harmless === 0;
         const resultEl = document.getElementById("result");
-        resultEl.textContent = ok ? "AUDIT PASSED" : "AUDIT FAILED";
-        resultEl.className = ok ? "success" : "failure";
+        resultEl.textContent = data.result || (ok ? "AUDIT PASSED" : "AUDIT FAILED");
+        resultEl.className = ok ? "success" : "danger";
 
-        const runUrl = d.ci_run_url || "#";
+        // CI link
+        const runUrl = data.ci_run_url || "#";
         const link = document.getElementById("ci-link");
         link.href = runUrl;
-        const runId = (runUrl && runUrl !== "#") ? (runUrl.split("/").pop() || "UNKNOWN") : "UNKNOWN";
-        link.textContent = `GitHub Actions run #${runId}`;
-
-        document.getElementById("repo").textContent = d.repository || "—";
-        document.getElementById("sha").textContent = d.commit_sha || "—";
-
-        document.getElementById("policy_version").textContent = d.policy_version || "—";
-        document.getElementById("policy_hash").textContent = d.policy_hash || "—";
-        document.getElementById("domain_pack_hash").textContent = d.domain_pack_hash || "—";
-        document.getElementById("itgl_hash").textContent = d.itgl_final_hash || d.itgl_hash || "—";
-        document.getElementById("suite_payload_hash").textContent = d.suite_payload_hash || "—";
-
-        document.getElementById("foot").textContent =
-          signed
-            ? "Generated from proofs/latest-audit.json (SIGNED). Hashes are bound into the signed payload."
-            : "Generated from proofs/latest-audit.json (UNSIGNED). Hashes are bound into the payload hash.";
+        if (runUrl && runUrl !== "#") {
+          const runId = runUrl.split("/").pop() || "";
+          link.textContent = runId ? `GitHub Actions run #${runId}` : "GitHub Actions run";
+        } else {
+          link.textContent = "GitHub Actions run";
+        }
       })
       .catch(() => {
-        const scoreEl = document.getElementById("score");
-        scoreEl.textContent = "—";
-        scoreEl.className = "badge failure";
-
+        document.getElementById("score").textContent = "—";
         const resultEl = document.getElementById("result");
         resultEl.textContent = "Failed to load audit data";
-        resultEl.className = "failure";
-
-        document.getElementById("mode").textContent = "—";
+        resultEl.className = "danger";
       });
   </script>
 </body>
