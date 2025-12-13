@@ -124,7 +124,7 @@ def _load_isc_policy() -> None:
     Fails soft: if anything goes wrong, built-in defaults stay in place.
     """
     global _POLICY_LOADED, _POLICY_VERSION, _POLICY_HASH
-    global ALLOWED_TEMPLATES, STRICT_ISC_ENFORCEMENT, CHECKSUM_ENFORCED, CRYPTO_ENFORCED
+    global ALLOWED_TEMPLATES, MAX_FRICTION_BY_TEMPLATE, STRICT_ISC_ENFORCEMENT, CHECKSUM_ENFORCED, CRYPTO_ENFORCED
     global _DANGER_WORDS, _SAFETY_PHRASES, _HIGH_RISK_KEYWORDS
 
     if _POLICY_LOADED:
@@ -159,6 +159,14 @@ def _load_isc_policy() -> None:
         templates = policy.get("templates", {})
         if isinstance(templates, dict) and templates:
             ALLOWED_TEMPLATES = set(templates.keys())
+
+            # Policy-level baseline friction limits (Domain packs can still override)
+            for template_id, cfg in templates.items():
+                if isinstance(cfg, dict) and "max_tokens" in cfg:
+                    try:
+                        MAX_FRICTION_BY_TEMPLATE[template_id] = int(cfg["max_tokens"])
+                    except Exception:
+                        pass
 
         flags = policy.get("flags", {})
         if isinstance(flags, dict):
