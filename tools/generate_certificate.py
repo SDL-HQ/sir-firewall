@@ -1,4 +1,3 @@
-# tools/generate_certificate.py
 #!/usr/bin/env python3
 import base64
 import csv
@@ -11,6 +10,15 @@ from typing import Tuple, Optional, Dict, Any, List
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+
+
+# ---------------------------------------------------------------------------
+# Repo root helpers
+# ---------------------------------------------------------------------------
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+PROOFS_DIR = REPO_ROOT / "proofs"
+POLICY_DIR = REPO_ROOT / "policy"
 
 
 # ---------------------------------------------------------------------------
@@ -45,10 +53,13 @@ def resolve_template_id() -> str:
     return "EU-AI-Act-ISC-v1"
 
 
-def _utc_iso_z() -> str:
-    # timezone-aware UTC, avoids deprecated utcnow()
+def _utc_now_iso_z() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
+
+# ---------------------------------------------------------------------------
+# Suite hashing (hash what was evaluated, without embedding prompt text)
+# ---------------------------------------------------------------------------
 
 def _b64_decode_prompt(blob: str) -> str:
     if not isinstance(blob, str) or not blob.strip():
@@ -67,15 +78,12 @@ def _sha256_hex(s: str) -> str:
 
 def load_suite_and_hash(csv_path: str) -> Tuple[int, str, str]:
     """
-    Load suite and compute:
+    Returns:
       - prompts_tested
-      - suite_payload_hash (sha256 over canonical per-row prompt_hash+labels)
+      - suite_payload_hash: sha256:<hex> over canonical row metadata + prompt_hash (of decoded prompt)
       - suite_format: plain | b64 | mixed
-
-    Hashes *what was evaluated* (decoded prompt text),
-    without embedding prompt text into the certificate.
     """
-    path = Path(csv_path)
+    path = REPO_ROOT / csv_path
     if not path.exists():
         return 0, "sha256:" + ("0" * 64), "plain"
 
@@ -84,7 +92,7 @@ def load_suite_and_hash(csv_path: str) -> Tuple[int, str, str]:
         if not reader.fieldnames:
             return 0, "sha256:" + ("0" * 64), "plain"
 
-        fieldset = set([h.strip() for h in reader.fieldnames if h])
+        fieldset = {h.strip() for h in reader.fieldnames if h}
 
         if "expected" not in fieldset:
             raise RuntimeError(f"{csv_path} missing required column: expected")
@@ -138,20 +146,19 @@ def load_suite_and_hash(csv_path: str) -> Tuple[int, str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Policy metadata (prefer signed policy wrapper if present)
+# Policy metadata (prefer signed wrapper if present)
 # ---------------------------------------------------------------------------
 
 def load_policy_metadata() -> Tuple[Optional[str], Optional[str]]:
     """
     Prefer policy/isc_policy.signed.json if present:
       - policy_version = signed["version"]
-      - policy_hash    = signed["payload_hash"]  (hash of canonical unsigned policy payload)
-
+      - policy_hash    = signed["payload_hash"] (hash of canonical unsigned policy payload)
     Else fallback to policy/isc_policy.json:
       - policy_hash = sha256(canonical unsigned policy json)
     """
-    signed_path = Path("policy") / "isc_policy.signed.json"
-    raw_path = Path("policy") / "isc_policy.json"
+    signed_path = POLICY_DIR / "isc_policy.signed.json"
+    raw_path = POLICY_DIR / "isc_policy.json"
 
     if signed_path.exists():
         try:
@@ -182,8 +189,8 @@ def load_policy_metadata() -> Tuple[Optional[str], Optional[str]]:
 
 def _domain_pack_path_candidates(domain_pack: str) -> List[Path]:
     return [
-        Path("src") / "sir_firewall" / "policy" / "isc_packs" / f"{domain_pack}.json",
-        Path("sir_firewall") / "policy" / "isc_packs" / f"{domain_pack}.json",
+        REPO_ROOT / "src" / "sir_firewall" / "policy" / "isc_packs" / f"{domain_pack}.json",
+        REPO_ROOT / "sir_firewall" / "policy" / "isc_packs" / f"{domain_pack}.json",
     ]
 
 
@@ -209,13 +216,13 @@ def _read_itgl_final_hash() -> Optional[str]:
     if env:
         return env if env.startswith("sha256:") else f"sha256:{env}"
 
-    p = Path("proofs") / "itgl_final_hash.txt"
+    p = PROOFS_DIR / "itgl_final_hash.txt"
     if p.exists():
         v = p.read_text(encoding="utf-8").strip()
         if v:
             return v if v.startswith("sha256:") else f"sha256:{v}"
 
-    ledger = Path("proofs") / "itgl_ledger.jsonl"
+    ledger = PROOFS_DIR / "itgl_ledger.jsonl"
     if ledger.exists():
         try:
             lines = ledger.read_text(encoding="utf-8").splitlines()
@@ -234,10 +241,7 @@ def _read_itgl_final_hash() -> Optional[str]:
 
 
 def _infer_from_ledger() -> Tuple[Optional[str], Optional[str]]:
-    """
-    Pull domain_pack + isc_template from the first ledger entry (source of truth).
-    """
-    ledger = Path("proofs") / "itgl_ledger.jsonl"
+    ledger = PROOFS_DIR / "itgl_ledger.jsonl"
     if not ledger.exists():
         return None, None
 
@@ -256,12 +260,20 @@ def _infer_from_ledger() -> Tuple[Optional[str], Optional[str]]:
 
 
 # ---------------------------------------------------------------------------
+# Canonical payload (MUST match verifier)
+# ---------------------------------------------------------------------------
+
+def _canonical_payload_bytes(payload: Dict[str, Any]) -> bytes:
+    return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    private_pem = os.environ.get("SDL_PRIVATE_KEY_PEM")
-    if not private_pem:
+    private_pem = os.environ.get("SDL_PRIVATE_KEY_PEM", "")
+    if not private_pem.strip():
         raise RuntimeError("SDL_PRIVATE_KEY_PEM secret missing")
 
     private_key = serialization.load_pem_private_key(
@@ -269,13 +281,14 @@ def main() -> None:
         password=None,
     )
 
+    # Read counts (default 0 if missing)
     try:
-        jailbreaks_leaked = int(Path("leaks_count.txt").read_text(encoding="utf-8").strip() or "0")
+        jailbreaks_leaked = int((REPO_ROOT / "leaks_count.txt").read_text(encoding="utf-8").strip() or "0")
     except Exception:
         jailbreaks_leaked = 0
 
     try:
-        harmless_blocked = int(Path("harmless_blocked.txt").read_text(encoding="utf-8").strip() or "0")
+        harmless_blocked = int((REPO_ROOT / "harmless_blocked.txt").read_text(encoding="utf-8").strip() or "0")
     except Exception:
         harmless_blocked = 0
 
@@ -305,14 +318,15 @@ def main() -> None:
     policy_version, policy_hash = load_policy_metadata()
     itgl_final_hash = _read_itgl_final_hash()
 
-    result_ok = jailbreaks_leaked == 0 and harmless_blocked == 0
+    result_ok = (jailbreaks_leaked == 0 and harmless_blocked == 0)
 
+    # IMPORTANT: payload must be fully constructed BEFORE hashing/signing.
     payload: Dict[str, Any] = {
         "audit": f"SIR Firewall – {prompts_tested}-Prompt 2025 Pre-Inference Audit",
         "version": "1.2",
         "model": model,
         "provider": provider,
-        "date": _utc_iso_z(),
+        "date": _utc_now_iso_z(),
         "prompts_tested": prompts_tested,
         "jailbreaks_leaked": jailbreaks_leaked,
         "harmless_blocked": harmless_blocked,
@@ -334,41 +348,40 @@ def main() -> None:
     if policy_hash:
         payload["policy_hash"] = policy_hash
     if itgl_final_hash:
-        payload["itgl_final_hash"] = (
-            itgl_final_hash if itgl_final_hash.startswith("sha256:") else f"sha256:{itgl_final_hash}"
-        )
+        payload["itgl_final_hash"] = itgl_final_hash if itgl_final_hash.startswith("sha256:") else f"sha256:{itgl_final_hash}"
 
-    # --- CRITICAL: canonical payload bytes (this must match verify_certificate.py) ---
-    payload_bytes = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    payload_bytes = _canonical_payload_bytes(payload)
     payload_hash_hex = hashlib.sha256(payload_bytes).hexdigest()
 
-    cert = dict(payload)
-    cert["payload_hash"] = f"sha256:{payload_hash_hex}"
-
     signature_bytes = private_key.sign(
-        payload_bytes,  # sign EXACT payload bytes
+        payload_bytes,
         padding.PKCS1v15(),
         hashes.SHA256(),
     )
-    cert["signature"] = base64.b64encode(signature_bytes).decode("ascii")
+    signature_b64 = base64.b64encode(signature_bytes).decode("ascii")
 
-    os.makedirs("proofs", exist_ok=True)
-    out_json = Path("proofs") / "latest-audit.json"
+    cert: Dict[str, Any] = dict(payload)
+    cert["payload_hash"] = f"sha256:{payload_hash_hex}"
+    cert["signature"] = signature_b64
+
+    PROOFS_DIR.mkdir(parents=True, exist_ok=True)
+    out_json = PROOFS_DIR / "latest-audit.json"
     out_json.write_text(json.dumps(cert, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     # HTML from template
-    out_html = Path("proofs") / "latest-audit.html"
-    try:
-        template_path = Path("proofs") / "template.html"
-        html = template_path.read_text(encoding="utf-8")
-        audit_date = cert.get("date", _utc_iso_z())
-        marker = f"\n<!-- audit_date:{audit_date} -->\n"
-        out_html.write_text(html + marker, encoding="utf-8")
-        print(f"HTML generated from template (audit_date={audit_date})")
-    except Exception as e:
-        print(f"HTML generation failed: {e}")
+    template_path = PROOFS_DIR / "template.html"
+    out_html = PROOFS_DIR / "latest-audit.html"
 
-    print("Certificate mode: SIGNED (SDL_PRIVATE_KEY_PEM present)")
+    if template_path.exists():
+        html = template_path.read_text(encoding="utf-8")
+        marker = f"\n<!-- audit_date:{payload.get('date', _utc_now_iso_z())} -->\n"
+        out_html.write_text(html + marker, encoding="utf-8")
+        print(f"HTML generated from template (audit_date={payload.get('date')})")
+    else:
+        print(f"HTML generation skipped: missing {template_path}")
+
+    mode = "SIGNED (SDL_PRIVATE_KEY_PEM present)"
+    print(f"Certificate mode: {mode}")
     print(f"Certificate → {out_json.as_posix()}")
     print("Latest proof → proofs/latest-audit.html + .json")
 
