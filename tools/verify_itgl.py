@@ -12,7 +12,7 @@ Ledger rules (current):
 - ledger_hash == sha256( (prev_hash or "") + final_hash_raw )
 
 Where final_hash_raw is:
-- entry["final_hash"] if present (legacy)
+- entry["final_hash"] if present (preferred)
 - else entry["itgl_prompt_final_hash"] with optional "sha256:" prefix stripped
 
 Outputs:
@@ -59,10 +59,6 @@ def _load_ledger(path: Path) -> List[Dict[str, Any]]:
 
 
 def _final_hash_raw(entry: Dict[str, Any]) -> Optional[str]:
-    """
-    Return the per-prompt final hash in raw hex (no 'sha256:' prefix),
-    regardless of whether the ledger is using legacy or current keys.
-    """
     if "final_hash" in entry:
         v = str(entry.get("final_hash") or "").strip()
         return v or None
@@ -74,13 +70,10 @@ def _final_hash_raw(entry: Dict[str, Any]) -> Optional[str]:
 
 
 def _verify_entry_fields(entry: Dict[str, Any], index: int) -> None:
-    # Minimal required fields for hash verification + continuity
     required = ["ts", "prompt_index", "prev_hash", "ledger_hash"]
     missing = [k for k in required if k not in entry]
     if missing:
-        raise LedgerVerificationError(
-            f"Entry #{index} missing required fields: {', '.join(missing)}"
-        )
+        raise LedgerVerificationError(f"Entry #{index} missing required fields: {', '.join(missing)}")
 
     if "final_hash" not in entry and "itgl_prompt_final_hash" not in entry:
         raise LedgerVerificationError(
@@ -95,12 +88,6 @@ def _compute_ledger_hash(prev_hash: str, final_hash_raw: str) -> str:
 
 
 def verify_ledger(entries: List[Dict[str, Any]]) -> str:
-    """
-    Verify the full ledger chain.
-
-    Returns the final ledger_hash (hex) if all checks pass.
-    Raises LedgerVerificationError on any failure.
-    """
     previous_ledger_hash = None
     final_ledger_hash = ""
 
