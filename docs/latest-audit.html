@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SIR Firewall – Pre-Inference Governance Audit</title>
+  <meta name="description" content="Cryptographically verifiable pre-inference governance audit certificate for SIR Firewall." />
+  <style>
+    :root { --success: #56d364; --danger: #f85149; --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --muted: #8b949e; --link: #58a6ff; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 920px; margin: 40px auto; padding: 20px; background: var(--bg); color: var(--text); line-height: 1.6; }
+    h1 { color: var(--link); text-align: center; margin-bottom: 0.2em; }
+    .subtitle { text-align: center; color: var(--muted); font-size: 1.05em; margin-bottom: 28px; }
+    .badge { font-size: 120px; text-align: center; margin: 28px 0 10px; font-weight: 800; letter-spacing: -2px; }
+    .success { color: var(--success); }
+    .danger { color: var(--danger); }
+    .box { background: var(--card); padding: 22px; border-radius: 12px; border: 1px solid var(--border); margin: 18px 0; }
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
+    .verify { background: #0d1117; padding: 12px; border-radius: 8px; overflow-x: auto; display: inline-block; }
+    footer { margin-top: 70px; text-align: center; font-size: 0.9em; color: var(--muted); }
+    .row { display: grid; grid-template-columns: 190px 1fr; gap: 10px; }
+    .k { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <h1>SIR Firewall</h1>
+  <p class="subtitle">Pre-Inference Governance Audit Certificate</p>
+
+  <div class="badge success" id="score">—</div>
+
+  <div class="box">
+    <div class="row"><div class="k">Suite</div><div id="suite">—</div></div>
+    <div class="row"><div class="k">Model</div><div id="model">—</div></div>
+    <div class="row"><div class="k">Provider</div><div id="provider">—</div></div>
+    <div class="row"><div class="k">Audit date</div><div id="date">—</div></div>
+    <div class="row"><div class="k">Prompts tested</div><div id="prompts">—</div></div>
+    <div class="row"><div class="k">Successful leaks</div><div id="leaks">—</div></div>
+    <div class="row"><div class="k">Harmless blocked</div><div id="harmless">—</div></div>
+    <div class="row"><div class="k">Result</div><div id="result">—</div></div>
+  </div>
+
+  <div class="box">
+    <strong>Live CI proof</strong><br>
+    <a href="#" id="ci-link">GitHub Actions run</a>
+  </div>
+
+  <div class="box">
+    <strong>Cryptographic verification</strong><br>
+    Verify the signed JSON with one command:<br><br>
+    <code class="verify mono">curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 -m tools.verify_certificate</code><br><br>
+    <a href="latest-audit.json">Download raw signed JSON</a>
+  </div>
+
+  <div class="box">
+    <strong>Repo</strong><br>
+    <a href="https://github.com/SDL-HQ/sir-firewall">github.com/SDL-HQ/sir-firewall</a>
+  </div>
+
+  <footer>
+    Issued by SDL – Structural Design Labs<br>
+    Cryptographically signed proof · Offline verification · Zero external calls required for verification
+  </footer>
+
+  <script>
+    fetch('latest-audit.json')
+      .then(r => r.json())
+      .then(data => {
+        const leaks = Number(data.jailbreaks_leaked ?? 0);
+        const harmless = Number(data.harmless_blocked ?? 0);
+        const prompts = Number(data.prompts_tested ?? 0);
+
+        // Basic fields
+        document.getElementById("suite").textContent = data.suite_name ? data.suite_name : (data.suite_path || "—");
+        document.getElementById("model").textContent = data.model || "—";
+        document.getElementById("provider").textContent = data.provider || "—";
+
+        if (data.date) {
+          document.getElementById("date").textContent = String(data.date).split("T")[0];
+        }
+
+        document.getElementById("prompts").textContent = prompts ? String(prompts) : "—";
+        document.getElementById("leaks").textContent = String(leaks);
+        document.getElementById("harmless").textContent = String(harmless);
+
+        // Score + result
+        const ok = leaks === 0 && harmless === 0;
+        const scoreEl = document.getElementById("score");
+        scoreEl.textContent = `${leaks} / ${prompts || "—"}`;
+        scoreEl.className = `badge ${ok ? "success" : "danger"}`;
+
+        const resultEl = document.getElementById("result");
+        resultEl.textContent = data.result || (ok ? "AUDIT PASSED" : "AUDIT FAILED");
+        resultEl.className = ok ? "success" : "danger";
+
+        // CI link
+        const runUrl = data.ci_run_url || "#";
+        const link = document.getElementById("ci-link");
+        link.href = runUrl;
+        if (runUrl && runUrl !== "#") {
+          const runId = runUrl.split("/").pop() || "";
+          link.textContent = runId ? `GitHub Actions run #${runId}` : "GitHub Actions run";
+        } else {
+          link.textContent = "GitHub Actions run";
+        }
+      })
+      .catch(() => {
+        document.getElementById("score").textContent = "—";
+        const resultEl = document.getElementById("result");
+        resultEl.textContent = "Failed to load audit data";
+        resultEl.className = "danger";
+      });
+  </script>
+</body>
+</html>
