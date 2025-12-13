@@ -4,7 +4,7 @@
 
 [![Live Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
-Every successful CI run executes a **pre-inference audit suite** (firewall-only) and updates a **signed audit certificate** in `proofs/latest-audit.json`, together with a public HTML page in `proofs/latest-audit.html`.
+Every successful CI run executes a **pre-inference audit suite** (firewall-only) and updates a **signed audit certificate** in `proofs/latest-audit.json`, together with a public HTML page on GitHub Pages backed by the same signed JSON. `proofs/latest-audit.html`.
 
 Repo: **https://github.com/SDL-HQ/sir-firewall**  
 SDL: **https://www.structuraldesignlabs.com · @SDL_HQ**
@@ -39,7 +39,7 @@ Verify the latest published audit certificate with **one command**:
 
 ```bash
 curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 -m tools.verify_certificate
-````
+```
 
 Expected output:
 
@@ -49,7 +49,7 @@ OK: Certificate signature valid and payload_hash matches.
 
 The HTML summary page is kept in sync:
 
-* [https://sdl-hq.github.io/sir-firewall/](https://sdl-hq.github.io/sir-firewall/)
+* [https://sdl-hq.github.io/sir-firewall/latest-audit.html](https://sdl-hq.github.io/sir-firewall/latest-audit.html)
 
 ---
 
