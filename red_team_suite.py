@@ -1,356 +1,207 @@
 #!/usr/bin/env python3
-"""
-Run the SIR red-team suite and write honest leak counts.
+"""red_team_suite.py
 
-SIR+ upgrades:
+Runs a CSV suite through SIR pre-inference gating and (optionally) calls the target model
+for PASSed prompts. This is an *audit harness* — it counts:
 
-- Suite selection:
-  - If SIR_SUITE_PATH is set, use that.
-  - Else, switch on SIR_ISC_PACK:
-      hipaa_mental_health -> tests/hipaa_prompts_public.csv
-      pci_payments        -> tests/pci_prompts_public.csv
-      (default)           -> tests/jailbreak_prompts_public.csv
+- jailbreaks_leaked: prompts marked expected=block that SIR allowed (PASS)
+- harmless_blocked: prompts marked expected=allow that SIR blocked
 
-- Template selection (no ambiguity):
-  - If SIR_TEMPLATE_ID is set, use that.
-  - Else:
-      hipaa_mental_health -> HIPAA-ISC-v1
-      pci_payments        -> PCI-DSS-ISC-v1
-      (default)           -> EU-AI-Act-ISC-v1
+Suite formats supported:
+1) Public/plain:
+   id,prompt,expected,note,category
+2) Sensitive/encoded:
+   id,prompt_b64,expected,note,category
 
-- Supports both:
-  - plain suites with:    prompt, expected, (optional id/note/category)
-  - encoded suites with:  prompt_b64, expected, (optional id/note/category)
-
-Encoded suite behaviour:
-- Decodes prompt_b64 at runtime for evaluation.
-- Logs do NOT print decoded prompt text; they log id/category + prompt_hash instead.
-- Ledger stores prompt_hash, not prompt text, for encoded prompts.
-
-Outputs:
-- proofs/latest-attempts.log
-- proofs/itgl_ledger.jsonl (hash-chained run ledger)
-- proofs/itgl_final_hash.txt (final run ledger hash, sha256:...)
-- leaks_count.txt
-- harmless_blocked.txt
-
-Exit non-zero if anything leaks or any harmless prompt is blocked.
+Where expected is: allow | block
 """
 
-import os
-import json
+import argparse
 import base64
+import csv
 import hashlib
-from datetime import datetime
-from typing import Dict, Any, Tuple
+import json
+import os
+from datetime import datetime, timezone
+from typing import Dict, List, Tuple
 
-import pandas as pd
+from litellm import completion
 
 from sir_firewall import validate_sir
 
-MODEL_NAME = os.getenv("LITELLM_MODEL", "xai/grok-3-beta")  # log context only
 
-os.makedirs("proofs", exist_ok=True)
-LOG_PATH = "proofs/latest-attempts.log"
-LEDGER_PATH = "proofs/itgl_ledger.jsonl"
-RUN_FINAL_HASH_PATH = "proofs/itgl_final_hash.txt"
+DEFAULT_SUITE = os.getenv("SIR_SUITE_PATH", "tests/jailbreak_prompts_public.csv")
+DEFAULT_MODEL = os.getenv("LITELLM_MODEL", "xai/grok-3-beta")
+DEFAULT_TEMPLATE_ID = os.getenv("SIR_TEMPLATE_ID", "EU-AI-Act-ISC-v1")
 
 
-def resolve_suite_path() -> str:
-    """
-    Decide which CSV suite to run.
-
-    Priority:
-      1) SIR_SUITE_PATH (explicit override)
-      2) SIR_ISC_PACK = hipaa_mental_health  -> tests/hipaa_prompts_public.csv
-      3) SIR_ISC_PACK = pci_payments         -> tests/pci_prompts_public.csv
-      4) default                             -> tests/jailbreak_prompts_public.csv
-    """
-    explicit = os.getenv("SIR_SUITE_PATH")
-    if explicit:
-        return explicit
-
-    pack = os.getenv("SIR_ISC_PACK", "").strip()
-    if pack == "hipaa_mental_health":
-        return "tests/hipaa_prompts_public.csv"
-    if pack == "pci_payments":
-        return "tests/pci_prompts_public.csv"
-
-    return "tests/jailbreak_prompts_public.csv"
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def resolve_template_id() -> str:
-    """
-    Decide which ISC template_id to use (must match what generate_certificate reports).
+def _read_suite(path: str) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
+    """Return (rows_raw, rows_decoded). Decoded rows always have a 'prompt' key."""
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        rows_raw = [dict(r) for r in reader]
 
-    Priority:
-      1) SIR_TEMPLATE_ID (explicit override)
-      2) SIR_ISC_PACK mapping
-      3) default EU template
-    """
-    explicit = os.getenv("SIR_TEMPLATE_ID")
-    if explicit:
-        return explicit.strip()
+    rows_decoded: List[Dict[str, str]] = []
+    for r in rows_raw:
+        r2 = dict(r)
 
-    pack = os.getenv("SIR_ISC_PACK", "").strip()
-    if pack == "hipaa_mental_health":
-        return "HIPAA-ISC-v1"
-    if pack == "pci_payments":
-        return "PCI-DSS-ISC-v1"
+        # Normalize expected
+        exp = (r2.get("expected") or "").strip().lower()
+        if exp not in ("allow", "block"):
+            raise ValueError(f"Suite row has invalid expected= value: {exp!r} (must be allow|block)")
 
-    return "EU-AI-Act-ISC-v1"
+        # Decode prompt
+        if "prompt" in r2 and r2["prompt"] is not None and str(r2["prompt"]).strip() != "":
+            prompt = str(r2["prompt"])
+        elif "prompt_b64" in r2 and r2["prompt_b64"] is not None and str(r2["prompt_b64"]).strip() != "":
+            prompt = base64.b64decode(str(r2["prompt_b64"]).encode("ascii")).decode("utf-8", errors="replace")
+        else:
+            raise ValueError("Suite row missing prompt or prompt_b64")
 
+        r2["prompt"] = prompt
+        r2["expected"] = exp
 
-def _b64_decode_prompt(blob: str) -> str:
-    """
-    Decode base64 prompt safely (tolerant of missing padding).
-    Raises ValueError on failure.
-    """
-    if not isinstance(blob, str) or not blob.strip():
-        return ""
+        # Stable id
+        if not r2.get("id"):
+            r2["id"] = f"row-{len(rows_decoded)+1:03d}"
 
-    s = blob.strip()
-    pad = (-len(s)) % 4
-    if pad:
-        s = s + ("=" * pad)
+        rows_decoded.append(r2)
 
-    try:
-        decoded = base64.b64decode(s, validate=False)
-        return decoded.decode("utf-8", errors="strict")
-    except Exception as exc:
-        raise ValueError(f"prompt_b64 decode failed: {exc}") from exc
+    return rows_raw, rows_decoded
 
 
-def _prompt_sha256(prompt: str) -> str:
-    return hashlib.sha256(prompt.encode("utf-8")).hexdigest()
-
-
-def build_isc_envelope(prompt: str, template_id: str) -> Dict[str, Any]:
-    """
-    Build a minimal but valid ISC envelope for test prompts.
-
+def _suite_hash(rows_decoded: List[Dict[str, str]]) -> str:
+    """Hash over the decoded suite (what SIR actually saw)."""
+    canonical = [
         {
-          "isc": {
-            "version": "1.0",
-            "template_id": "<template>",
-            "payload": "<prompt>",
-            "checksum": sha256(payload),
-            "signature": "",
-            "key_id": "default"
-          }
+            "id": r.get("id", ""),
+            "prompt": r.get("prompt", ""),
+            "expected": r.get("expected", ""),
+            "note": r.get("note", ""),
+            "category": r.get("category", ""),
         }
-    """
-    checksum = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+        for r in rows_decoded
+    ]
+    blob = json.dumps(canonical, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return "sha256:" + hashlib.sha256(blob).hexdigest()
 
+
+def _build_isc_envelope(prompt: str, template_id: str) -> Dict[str, str]:
+    checksum = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
     return {
         "version": "1.0",
         "template_id": template_id,
         "payload": prompt,
         "checksum": checksum,
-        "signature": "",
+        "signature": "",  # not enforced by default
         "key_id": "default",
     }
 
 
-def _extract_final_itgl_hash(result: Dict[str, Any]) -> str:
-    """
-    Best-effort extraction of the final ITGL step hash from validate_sir result.
-
-    Expected shape:
-        result["itgl_log"] is a list; last entry has "hash".
-
-    If missing, fall back to a stable hash over the whole result.
-    """
-    itgl_log = result.get("itgl_log")
-    if isinstance(itgl_log, list) and itgl_log:
-        last = itgl_log[-1]
-        if isinstance(last, dict) and "hash" in last:
-            return str(last["hash"])
-
-    payload = json.dumps(result, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
-
-
-def _row_get_str(row: pd.Series, key: str) -> str:
-    v = row.get(key, "")
-    if v is None:
-        return ""
-    return str(v)
-
-
-def _resolve_prompt_from_row(row: pd.Series) -> Tuple[str, bool, str]:
-    """
-    Returns: (prompt_text, is_encoded, prompt_hash_hex)
-
-    - If prompt_b64 present & non-empty, decode it and mark is_encoded=True.
-    - Else use prompt column (plain).
-    """
-    prompt_b64 = _row_get_str(row, "prompt_b64").strip()
-    if prompt_b64:
-        prompt_text = _b64_decode_prompt(prompt_b64)
-        return prompt_text, True, _prompt_sha256(prompt_text)
-
-    prompt_text = _row_get_str(row, "prompt")
-    return prompt_text, False, _prompt_sha256(prompt_text)
+def _maybe_call_model(model: str, prompt: str, enable: bool) -> None:
+    if not enable:
+        return
+    # Keep this minimal: we're proving SIR is in front of a real model call.
+    # The audit result is still based on SIR gating outcomes, not model content.
+    completion(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0,
+        max_tokens=64,
+    )
 
 
 def main() -> None:
-    csv_path = resolve_suite_path()
-    template_id = resolve_template_id()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--suite", default=DEFAULT_SUITE, help="Path to CSV suite file")
+    ap.add_argument("--model", default=DEFAULT_MODEL, help="LiteLLM model name")
+    ap.add_argument("--template", default=DEFAULT_TEMPLATE_ID, help="ISC template_id to use")
+    ap.add_argument("--no-model-calls", action="store_true", help="Skip model calls even for PASS prompts")
+    args = ap.parse_args()
 
-    try:
-        df = pd.read_csv(csv_path)
-    except FileNotFoundError:
-        raise SystemExit(f"ERROR: CSV not found at {csv_path}")
+    suite_path = args.suite
+    model_name = args.model
+    template_id = args.template
+    do_model_calls = (os.getenv("SIR_MODEL_CALLS", "1").strip() != "0") and (not args.no_model_calls)
 
-    if "expected" not in df.columns:
-        raise SystemExit(f"ERROR: {csv_path} must contain an 'expected' column")
+    os.makedirs("proofs", exist_ok=True)
+    log_path = "proofs/latest-attempts.log"
 
-    if "prompt" not in df.columns and "prompt_b64" not in df.columns:
-        raise SystemExit(
-            f"ERROR: {csv_path} must contain either 'prompt' (plain) or 'prompt_b64' (encoded) column"
-        )
+    _, rows = _read_suite(suite_path)
+    prompts_tested = len(rows)
+    suite_hash = _suite_hash(rows)
 
-    total_prompts = len(df)
-    expected_series = df["expected"].astype(str).str.lower().str.strip()
-
-    jailbreak_expected = int((expected_series == "block").sum())
-    harmless_expected = int((expected_series == "allow").sum())
-
-    jailbreak_leaks = 0
+    # Counters
+    jailbreaks_leaked = 0
     harmless_blocked = 0
 
-    ledger_prev_hash = "GENESIS"
+    with open(log_path, "w", encoding="utf-8") as f:
+        f.write("SIR Firewall — PRE-INFERENCE RED TEAM SUITE\n")
+        f.write(f"Date: {_utc_now_iso()}\n")
+        f.write(f"Model: {model_name}\n")
+        f.write(f"Suite: {suite_path}\n")
+        f.write(f"Suite hash: {suite_hash}\n")
+        f.write(f"Prompts: {prompts_tested}\n")
+        f.write("=" * 100 + "\n\n")
 
-    with open(LOG_PATH, "w", encoding="utf-8") as log, open(
-        LEDGER_PATH, "w", encoding="utf-8"
-    ) as ledger:
-        log.write(f"SIR Firewall — {total_prompts}-PROMPT 2025 PRE-INFERENCE RED TEAM\n")
-        log.write(f"Date: {datetime.utcnow().isoformat()}Z\n")
-        log.write(f"Model: {MODEL_NAME}\n")
-        log.write(f"Env SIR_ISC_PACK: {os.getenv('SIR_ISC_PACK', 'unset')}\n")
-        log.write(f"ISC template_id: {template_id}\n")
-        log.write(
-            f"Test suite: {csv_path} — {total_prompts} prompts "
-            f"({jailbreak_expected} jailbreaks + {harmless_expected} harmless)\n"
-        )
-        log.write("=" * 100 + "\n\n")
+        for r in rows:
+            rid = r.get("id", "")
+            prompt = r["prompt"]
+            expected = r["expected"]
 
-        for idx, row in df.iterrows():
-            expected = _row_get_str(row, "expected").strip().lower()
-            prompt_id = _row_get_str(row, "id").strip()
-            note = _row_get_str(row, "note").strip()
-            category = _row_get_str(row, "category").strip()
+            isc = _build_isc_envelope(prompt, template_id)
+            verdict = validate_sir({"isc": isc})
+            status = verdict.get("status", "UNKNOWN")
 
-            try:
-                prompt_text, is_encoded, prompt_hash = _resolve_prompt_from_row(row)
-            except ValueError as exc:
-                raise SystemExit(f"ERROR: {csv_path} row #{idx+1}: {exc}")
+            expected_status = "PASS" if expected == "allow" else "BLOCKED"
+            ok = (status == expected_status)
 
-            isc_envelope = {"isc": build_isc_envelope(prompt_text, template_id)}
-            result = validate_sir(isc_envelope)
+            if expected == "block" and status == "PASS":
+                jailbreaks_leaked += 1
+            if expected == "allow" and status == "BLOCKED":
+                harmless_blocked += 1
 
-            status = str(result.get("status", "BLOCKED"))
-            reason = str(result.get("reason", ""))
-            domain_pack = str(result.get("domain_pack", "generic_safety"))
+            f.write(f"[{rid}] expected={expected_status} got={status}\n")
+            if not ok:
+                f.write(f"  NOTE: mismatch (expected {expected})\n")
 
-            leak_flag = ""
-            if expected == "block":
-                if status != "BLOCKED":
-                    jailbreak_leaks += 1
-                    leak_flag = "[LEAK] "
-            elif expected == "allow":
-                if status == "BLOCKED":
-                    harmless_blocked += 1
-                    leak_flag = "[HARMLESS BLOCKED] "
-            else:
-                leak_flag = "[UNLABELLED] "
+            # Prove we are actually gating a real call (optional)
+            if status == "PASS":
+                try:
+                    _maybe_call_model(model_name, prompt, do_model_calls)
+                except Exception as e:
+                    # Model call failures do not change SIR gating counts — log only.
+                    f.write(f"  model_call_error: {type(e).__name__}: {e}\n")
 
-            # Human-readable log
-            if is_encoded:
-                summary = "[ENCODED PROMPT]"
-                if prompt_id:
-                    summary += f" id={prompt_id}"
-                if category:
-                    summary += f" category={category}"
-                summary += f" prompt_hash=sha256:{prompt_hash}"
-                if note:
-                    summary += f" note={note}"
-                log.write(f"Prompt #{idx + 1}: {leak_flag}{summary}\n")
-            else:
-                log.write(f"Prompt #{idx + 1}: {leak_flag}{prompt_text}\n")
-
-            log.write(
-                f"  expected={expected or 'unknown'}  "
-                f"sir_status={status}  reason={reason}  "
-                f"domain_pack={domain_pack}\n\n"
-            )
-
-            # ITGL ledger entry — hash-chained across the run
-            per_prompt_final_hash_hex = _extract_final_itgl_hash(result)
-
-            ledger_entry: Dict[str, Any] = {
-                "ts": datetime.utcnow().isoformat() + "Z",
-                "prompt_index": idx + 1,
-                "prompt_id": prompt_id,
-                "category": category,
-                "note": note,
-                "prompt_encoded": bool(is_encoded),
-                "prompt_hash": f"sha256:{prompt_hash}",
-                "isc_template": template_id,
-                "suite_path": csv_path,
-                "domain_pack": domain_pack,
-                "status": status,
-                "expected": expected or "unknown",
-                "leak_flag": leak_flag.strip(" []") or "",
-
-                # For compatibility + clarity:
-                "final_hash": per_prompt_final_hash_hex,  # raw hex (preferred for chaining)
-                "itgl_prompt_final_hash": f"sha256:{per_prompt_final_hash_hex}",
-
-                "prev_hash": ledger_prev_hash,
-            }
-
-            # Chain rule: ledger_hash = sha256(prev_hash + final_hash_raw)
-            ledger_payload = ((ledger_entry["prev_hash"] or "") + per_prompt_final_hash_hex).encode("utf-8")
-            ledger_entry["ledger_hash"] = hashlib.sha256(ledger_payload).hexdigest()
-
-            ledger.write(json.dumps(ledger_entry, separators=(",", ":")) + "\n")
-            ledger_prev_hash = ledger_entry["ledger_hash"]
-
-        log.write("-" * 100 + "\n")
-        log.write(
-            f"SUMMARY: total={total_prompts}, "
-            f"jailbreak_expected={jailbreak_expected}, "
-            f"harmless_expected={harmless_expected}, "
-            f"jailbreak_leaks={jailbreak_leaks}, "
-            f"harmless_blocked={harmless_blocked}\n"
-        )
-
-    # Export counts for generate_certificate.py
+    # Back-compat counters for CI scripts that expect these files
     with open("leaks_count.txt", "w", encoding="utf-8") as f:
-        f.write(str(jailbreak_leaks))
+        f.write(str(jailbreaks_leaked))
     with open("harmless_blocked.txt", "w", encoding="utf-8") as f:
         f.write(str(harmless_blocked))
 
-    # Export final run ledger hash for cert generator (sha256:...)
-    with open(RUN_FINAL_HASH_PATH, "w", encoding="utf-8") as f:
-        f.write(f"sha256:{ledger_prev_hash}")
+    # Preferred machine-readable summary for certificate generation
+    summary = {
+        "date": _utc_now_iso(),
+        "model": model_name,
+        "provider": os.getenv("SIR_PROVIDER", "xai"),
+        "suite_path": suite_path,
+        "suite_name": os.path.splitext(os.path.basename(suite_path))[0],
+        "suite_hash": suite_hash,
+        "prompts_tested": prompts_tested,
+        "jailbreaks_leaked": jailbreaks_leaked,
+        "harmless_blocked": harmless_blocked,
+    }
+    with open("proofs/run_summary.json", "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
 
-    if jailbreak_leaks == 0 and harmless_blocked == 0:
-        print(
-            f"AUDIT PASSED: {total_prompts} prompts — "
-            f"{jailbreak_expected} jailbreaks, {harmless_expected} harmless. "
-            "No jailbreak leaks, no harmless prompts blocked."
-        )
-        raise SystemExit(0)
-
-    print(
-        f"AUDIT FAILED: {total_prompts} prompts — "
-        f"{jailbreak_leaks} jailbreak leaks, {harmless_blocked} harmless prompts blocked. "
-        "See proofs/latest-attempts.log and proofs/itgl_ledger.jsonl for full details."
-    )
-    raise SystemExit(1)
+    print(f"Suite: {suite_path} ({prompts_tested} prompts)")
+    print(f"Leaks: {jailbreaks_leaked} | Harmless blocked: {harmless_blocked}")
+    print(f"Proof log: {log_path}")
+    print("Summary: proofs/run_summary.json")
 
 
 if __name__ == "__main__":

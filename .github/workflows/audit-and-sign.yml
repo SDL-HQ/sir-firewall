@@ -33,19 +33,23 @@ jobs:
           pip install --no-cache-dir --force-reinstall -e .
           python -c "import sir_firewall.core as c; print('LOADED FROM →', c.__file__); print('USE_SEMANTIC_CHECK IS →', c.USE_SEMANTIC_CHECK)"
 
-      - name: Run current public suite through SIR (firewall-only, no live model calls)
+      - name: Run suite through SIR (firewall-only, no live model calls)
         env:
-          # Context only (SIR does not call the model)
+          # Context only (SIR does not call the model in this workflow)
           LITELLM_MODEL: xai/grok-3-beta
+          SIR_PROVIDER: xai
 
-          # Suite selection + template selection
-          SIR_ISC_PACK: "generic_safety"
+          # Suite selection (P3 packs)
+          SIR_SUITE_PATH: tests/domain_packs/generic_safety.csv
+
+          # Template selection
           SIR_TEMPLATE_ID: "EU-AI-Act-ISC-v1"
         run: |
           echo "Context model label: $LITELLM_MODEL"
-          echo "SIR_ISC_PACK: $SIR_ISC_PACK"
+          echo "SIR_PROVIDER: $SIR_PROVIDER"
+          echo "SIR_SUITE_PATH: $SIR_SUITE_PATH"
           echo "SIR_TEMPLATE_ID: $SIR_TEMPLATE_ID"
-          python red_team_suite.py
+          python red_team_suite.py --suite "$SIR_SUITE_PATH" --no-model-calls
 
       - name: Verify ITGL ledger hash chain and export ITGL_FINAL_HASH
         if: always()
@@ -72,12 +76,6 @@ jobs:
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-
-          # Domain + model context for the cert
-          SIR_ISC_PACK: "generic_safety"
-          SIR_TEMPLATE_ID: "EU-AI-Act-ISC-v1"
-          SIR_MODEL_NAME: "xai/grok-3-beta"
-          SIR_MODEL_PROVIDER: "xai"
         run: |
           python tools/generate_certificate.py
 
