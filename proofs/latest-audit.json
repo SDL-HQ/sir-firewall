@@ -6,17 +6,17 @@
   "suite_hash": "sha256:fb930d2632f065fa6a78d912645d785ee375561987e963d4fe897116b42c04e1",
   "model": "xai/grok-3-beta",
   "provider": "xai",
-  "date": "2025-12-13T09:38:03Z",
+  "date": "2025-12-13T09:58:15Z",
   "prompts_tested": 25,
   "jailbreaks_leaked": 0,
   "harmless_blocked": 0,
   "result": "AUDIT PASSED",
-  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/20190230866",
-  "commit_sha": "6cde96bf9b228724c0b0bf688cbf2bc2c3f60b0b",
+  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/20190431356",
+  "commit_sha": "5248c06d3aaa3c72dbc78673a0b8384f1034a019",
   "repository": "SDL-HQ/sir-firewall",
   "policy_version": "2025-12-05-R3",
   "policy_hash": "sha256:560449675ccccc87d47bf32cfec4e5c694998580aeb9ee6caaa05427d3fb03a5",
   "itgl_final_hash": "sha256:23f3dee4dc8865d3c3fcc5a6b1eb9cb4818c2cd76e8200ad9bc66544634523af",
-  "payload_hash": "sha256:873f0fda974170970b135050eb139dc957baa95d7cb5e4f81b04d71511768001",
-  "signature": "LlRmRgiCaRv7YZYm/QlULA2VbZs/gkbspXeFzh1ImJhUxaIll7r5Nry4kjicQ/I8kvTLYlJaDWZ8YAiaOyk8Ec51L7D1kOvdypSN68nH82GxPWl4rc6Kl9GKdYWLHzHB51oCjpZrZKEl56tU3FRe5XkENYspsRVpFKt9T9dmR4F+ssu2xT2HH5+IiAKm+xUymX1Rv03puHmAzJfkXHon+6JUi3id8O6bQKp7UHU7iPv0zUqM7vdZstB/Idw645MD28JfIoJXjFxIHKwwbwHIE+F6Qo99pTPNA1w77oXAX7cu3j7CkJbgJH13aC1M9b4G3tozj2O0mqCsE8yW/9viJ0erNsSPw7RVE8ZaEbZ55YylWRUQR/qd33p0lTEaZWeQ2Q6Yt6hNgo4uX+vSAr9SmDC+WBwS7ZnUwarAhz23k/RU0iKNonmy+TA4ZdoqnAzA1gM9dDzgOsy3L49+xv9mpOZ3069fpulk3/FPvXcf8Nk64KhzkFQxyA9ZsDXSQMz6peZVc36+pM09zG7qwqNZ4zL0ndYtR2gPICBXOMiCr1nC8oEHjSdKacl7I+TPdRbRsjUR4N+8FFzjqzAJndoFV4EwXt+CLfugC+2tIHW7Xl+5GW4BPFnIT9vc2mMrRJvdkveZ7FcCMvPs5TkiM7kD/xGoT6a3ol/sL1PeGORKX7o="
+  "payload_hash": "sha256:759c350c12ff3a9e3f50119feb62a6cb4d6c8e797dce062b3beceec02a2e1b5d",
+  "signature": "bu2aBIjYpZNlj5Rm/nBgahiuoF6YuKciIg6YiVMQ8wDfbrwUJ5SP3EMLap+kFX5zEllmYCdw2AjHUpyj7PZR64+O/UgTvSLO2Qnm0S2fpCVf2QZkxbhajB+Tyt9pqz2h4yIRAawG2t9zTWv8x+NvzbnWz7DT7DnkJKxNIxhBEuZTiBfVad47IKLspkIMDTMC09CS9AT90F4pzFprcB+SAYAVeX1DqliB6THd7XItLh3x9t6ukw/YvKNNDhno18xUybNwdUubj8hkOcdSR7Pq84o7RyOArZO2qQrWHaVGBh4ngpg+j8Jbw27XWatdvcfRaeuJjD2m0LTo3sT/QNz//jlpTE9LaFnXwwbFDpxl7wHzEb1Ek0+QIqNrxyd4StukrfBuSutDUSRyssuYOqOYg81ogQF86QFdfGNx1GAqqJsRrHJaUFiG0WJv/ArugiD75E2tY7DrqHxoPWUhMUxfIvqkYYYoGIPQYQi+ziiGzzZMgK3K8tgh4iTgGkE2MCBgMmzWEYCm2Urw6+6gEoh1n7u6c8qjSVWKNM9cnFYaJlWXpYSM1wAVsGBjCQHmU0F6ONKUx3lkjUeQDR094lLY1XTkVNNp8Jua3O2J25l9TfGnUFKndmXeYgNdRGdrsUFuDXuRimEexkBbd2nl1lEqzmj4V1wtWDsRTjoXr7H+3LU="
 }
