@@ -179,5 +179,3 @@ It produces:
 
 MIT Licensed
 © 2025 Structural Design Labs
-::contentReference[oaicite:0]{index=0}
-```
