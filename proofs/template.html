@@ -171,13 +171,13 @@ curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest
           <h2>Governance snapshot</h2>
           <p class="kv"><strong>Policy version:</strong> <span id="policy_version">—</span></p>
           <p class="kv"><strong>Policy hash:</strong> <span id="policy_hash" class="mono">—</span></p>
+          <p class="kv"><strong>Domain pack hash:</strong> <span id="domain_pack_hash" class="mono">—</span></p>
           <p class="kv"><strong>ITGL final hash:</strong> <span id="itgl_hash" class="mono">—</span></p>
           <p class="kv"><strong>Suite payload hash:</strong> <span id="suite_payload_hash" class="mono">—</span></p>
-          <p class="kv"><strong>Domain pack hash:</strong> <span id="domain_pack_hash" class="mono">—</span></p>
 
           <p class="kv" style="margin-top: 8px;">
-            Policy, ITGL, suite, and domain pack hashes are embedded into the signed payload so any change in governance config,
-            ledger, suite content, or effective Domain ISC pack will invalidate the certificate.
+            Policy, domain pack, ITGL and suite hashes are embedded into the signed payload so any change in governance config,
+            domain pack, ledger, or suite content will invalidate the certificate.
           </p>
         </div>
 
@@ -185,14 +185,15 @@ curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest
           <h2>What this shows</h2>
           <p class="kv">
             This certificate proves that the SIR pre-inference firewall blocked the configured suite
-            <em>before</em> the model saw any high-risk input, under the active Domain ISC pack and policy configuration.
+            <em>before</em> the model saw any high-risk input, under the active Domain ISC pack, policy configuration,
+            and ISC template.
           </p>
         </div>
       </div>
     </div>
 
     <footer>
-      Generated from <code>proofs/latest-audit.json</code>. Domain, suite, policy and ITGL hashes are bound into the signed payload.
+      Generated from <code>proofs/latest-audit.json</code>. Domain, template, suite, policy and ITGL hashes are bound into the signed payload.
     </footer>
   </div>
 
@@ -246,9 +247,9 @@ curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest
 
         document.getElementById("policy_version").textContent = data.policy_version || "—";
         document.getElementById("policy_hash").textContent = data.policy_hash || "—";
+        document.getElementById("domain_pack_hash").textContent = data.domain_pack_hash || "—";
         document.getElementById("itgl_hash").textContent = data.itgl_final_hash || data.itgl_hash || "—";
         document.getElementById("suite_payload_hash").textContent = data.suite_payload_hash || "—";
-        document.getElementById("domain_pack_hash").textContent = data.domain_pack_hash || "—";
       })
       .catch(() => {
         const scoreEl = document.getElementById("score");
