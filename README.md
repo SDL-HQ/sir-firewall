@@ -4,7 +4,7 @@
 
 [![Live Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
-Every successful CI run executes a **pre-inference audit suite** and updates a **signed audit certificate** in `proofs/latest-audit.json`, together with a public HTML page in `proofs/latest-audit.html`.
+Every successful CI run executes a **pre-inference audit suite** (firewall-only) and updates a **signed audit certificate** in `proofs/latest-audit.json`, together with a public HTML page in `proofs/latest-audit.html`.
 
 Repo: **https://github.com/SDL-HQ/sir-firewall**  
 SDL: **https://www.structuraldesignlabs.com · @SDL_HQ**
@@ -25,7 +25,7 @@ This repo includes:
 - The **firewall core** (`src/sir_firewall`)
 - **Audit suites** (`tests/` and `tests/domain_packs/`)
 - A **CI workflow** that:
-  - Runs an audit suite on Grok-3
+  - Runs an audit suite through SIR (**no live model calls**)
   - Writes a proof log + summary
   - Generates a **signed JSON certificate** in `proofs/latest-audit.json`
   - Publishes `proofs/latest-audit.html`
@@ -89,34 +89,38 @@ The point of `prompt_b64` is simple: the suite is still deterministic and testab
 
 ## Running the Red-Team Audit Locally
 
-CI runs this automatically, but you can run the same harness yourself.
+CI runs a firewall-only audit automatically. You can run the same harness yourself.
 
-### 1) Set your xAI / Grok API key
-
-LiteLLM will look for the relevant provider key (see LiteLLM docs). For xAI this is commonly:
+### Firewall-only mode (recommended / matches CI)
 
 ```bash
-export XAI_API_KEY="your_key_here"
+python3 red_team_suite.py --no-model-calls
 ```
 
-### 2) Run the suite (default)
+Run a specific domain pack:
 
 ```bash
-python3 red_team_suite.py
-```
-
-### 3) Run a specific domain pack
-
-```bash
-python3 red_team_suite.py --suite tests/domain_packs/generic_safety.csv
-python3 red_team_suite.py --suite tests/domain_packs/mental_health_clinical.csv
+python3 red_team_suite.py --suite tests/domain_packs/generic_safety.csv --no-model-calls
+python3 red_team_suite.py --suite tests/domain_packs/mental_health_clinical.csv --no-model-calls
 ```
 
 Outputs:
 
 * `proofs/latest-attempts.log` (human readable)
-* `proofs/run_summary.json` (machine readable)
+* `proofs/run_summary.json` (machine readable; generated during runs)
 * `leaks_count.txt` + `harmless_blocked.txt` (back-compat)
+
+### Optional: live model-call mode (integration testing)
+
+If you want to prove the firewall is actively gating real calls, run without `--no-model-calls`.
+This is **not required** for certificate verification and is typically used for manual integration tests only.
+
+LiteLLM will look for the relevant provider key (see LiteLLM docs). For xAI this is commonly:
+
+```bash
+export XAI_API_KEY="your_key_here"
+python3 red_team_suite.py --suite tests/domain_packs/generic_safety.csv
+```
 
 ---
 
@@ -141,13 +145,13 @@ It produces:
 ## Files & Layout (Quick Map)
 
 * `.github/workflows/audit-and-sign.yml`
-  CI pipeline → runs audit suite, generates+signs cert, updates `latest-audit` files.
+  CI pipeline → runs audit suite through SIR (firewall-only), generates+signs cert, updates `latest-audit` files.
 
 * `src/sir_firewall/`
   SIR core logic (normalisation, rule checks, `validate_sir` entry point).
 
 * `red_team_suite.py`
-  Audit harness. Reads a suite CSV, runs SIR gating, optionally calls the model for PASS prompts, and writes `proofs/run_summary.json`.
+  Audit harness. Reads a suite CSV, runs SIR gating, and writes `proofs/run_summary.json`.
 
 * `tests/jailbreak_prompts_public.csv`
   Public 2025 reference prompts.
