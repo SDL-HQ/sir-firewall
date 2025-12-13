@@ -2,6 +2,7 @@
 #!/usr/bin/env python3
 import base64
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -29,33 +30,43 @@ def _load_json_from_path_or_stdin(path: Optional[str]) -> Dict[str, Any]:
     return obj
 
 
-def _find_public_key_pem() -> str:
-    # Prefer repo-shipped public key files. Add more candidates if you move it.
+def _find_public_key_bytes() -> bytes:
+    # Prefer repo-shipped public key files.
     candidates = [
         Path("policy") / "sdl_public_key.pem",
         Path("keys") / "sdl_public_key.pem",
         Path("tools") / "sdl_public_key.pem",
+        Path("spec") / "sdl.pub",              # <-- added
         Path("sdl_public_key.pem"),
+        Path("sdl.pub"),
     ]
     for c in candidates:
         if c.exists():
-            return c.read_text(encoding="utf-8")
+            return c.read_bytes()
 
-    # Optional env override (useful for CI/local dev if needed)
-    env = (sys.environ.get("SDL_PUBLIC_KEY_PEM") if hasattr(sys, "environ") else None)  # defensive
-    if not env:
-        env = None
+    # Optional env override (useful for CI/local dev)
+    env = os.getenv("SDL_PUBLIC_KEY_PEM", "").strip()
     if env:
-        return env
+        return env.encode("utf-8")
 
     raise RuntimeError(
         "SDL public key not found. Expected one of:\n"
         "  policy/sdl_public_key.pem\n"
         "  keys/sdl_public_key.pem\n"
         "  tools/sdl_public_key.pem\n"
+        "  spec/sdl.pub\n"
         "  ./sdl_public_key.pem\n"
+        "  ./sdl.pub\n"
         "Or provide SDL_PUBLIC_KEY_PEM in env."
     )
+
+
+def _load_public_key(pub_bytes: bytes):
+    # Support both PEM and OpenSSH (.pub) formats
+    s = pub_bytes.lstrip()
+    if s.startswith(b"ssh-"):
+        return serialization.load_ssh_public_key(pub_bytes)
+    return serialization.load_pem_public_key(pub_bytes)
 
 
 def _canonical_payload_bytes(cert: Dict[str, Any]) -> bytes:
@@ -88,9 +99,10 @@ def main() -> None:
         raise SystemExit(1)
 
     payload_bytes = _canonical_payload_bytes(cert)
-    computed_hex = hashes.Hash(hashes.SHA256())
-    computed_hex.update(payload_bytes)
-    computed = computed_hex.finalize().hex()
+
+    h = hashes.Hash(hashes.SHA256())
+    h.update(payload_bytes)
+    computed = h.finalize().hex()
 
     claimed_hex = _strip_sha256_prefix(claimed_ph)
 
@@ -100,9 +112,8 @@ def main() -> None:
         print(f"  computed={computed}", file=sys.stderr)
         raise SystemExit(1)
 
-    # Load public key and verify signature over payload_bytes
-    pub_pem = _find_public_key_pem()
-    public_key = serialization.load_pem_public_key(pub_pem.encode("utf-8"))
+    pub_bytes = _find_public_key_bytes()
+    public_key = _load_public_key(pub_bytes)
 
     try:
         signature = base64.b64decode(sig_b64)
