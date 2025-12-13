@@ -15,42 +15,30 @@ USE_SEMANTIC_CHECK = False
 # Configuration (v1 defaults — safe but iterative)
 # ---------------------------------------------------------------------------
 
-# Required ISC envelope fields
 REQUIRED_ISC_FIELDS = ["version", "template_id", "payload", "checksum", "signature"]
 
-# Allow-listed ISC templates
 ALLOWED_TEMPLATES = {
     "HIPAA-ISC-v1",
     "EU-AI-Act-ISC-v1",
     "PCI-DSS-ISC-v1",
 }
 
-# Simple friction limits by template (rough token caps)
-# These are baseline defaults; Domain ISC packs can override per template.
 MAX_FRICTION_BY_TEMPLATE: Dict[str, int] = {
     "HIPAA-ISC-v1": 1500,
     "EU-AI-Act-ISC-v1": 2000,
     "PCI-DSS-ISC-v1": 1200,
 }
 
-# Fail-closed on malformed / disallowed ISC?
 STRICT_ISC_ENFORCEMENT = True
-
-# Enforce checksum strictly
 CHECKSUM_ENFORCED = True
-
-# Enforce RSA signature strictly (leave False until keys are wired)
 CRYPTO_ENFORCED = False
 
-# Fill with real PEM strings before enabling CRYPTO_ENFORCED
 PUBLIC_KEYS: Dict[str, str] = {
-    # "default": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhki...\n-----END PUBLIC KEY-----",
+    # "default": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----",
 }
 
-# Genesis hash for ITGL chain
 GENESIS_HASH = "0" * 64
 
-# Optional cryptography — graceful fallback
 try:
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.asymmetric import padding
@@ -84,7 +72,6 @@ _DANGER_WORDS = [
     "rickroll",
     "never gonna",
     "give you up",
-    # 2025-style safety removal variants
     "zero safety training",
     "freed from all guidelines",
     "removed all limits",
@@ -102,14 +89,12 @@ _SAFETY_PHRASES = [
     "you are now in",
     "hypothetical scenario you have been freed",
     "act as a robot that has achieved singularity",
-    # More permissive safety-removal cues
     "hypothetical scenario",
     "pretend you are",
     "you have been freed from all guidelines",
     "forgot to enable the safety layer",
 ]
 
-# Explicit high-risk content we never want passing the firewall
 _HIGH_RISK_KEYWORDS = [
     "step-by-step guide on making meth",
     "step by step guide on making meth",
@@ -120,7 +105,7 @@ _HIGH_RISK_KEYWORDS = [
 
 
 # ---------------------------------------------------------------------------
-# ISC policy loader (Round 5 – external policy file)
+# ISC policy loader (baseline policy/isc_policy.json)
 # ---------------------------------------------------------------------------
 
 _POLICY_LOADED = False
@@ -134,12 +119,12 @@ def _load_isc_policy() -> None:
 
     - Derives ALLOWED_TEMPLATES and base enforcement flags.
     - Merges any rule lists (danger/safety/high-risk) into the built-in heuristics.
-    - Computes a canonical policy hash for governance_context.
+    - Computes a canonical policy hash (sha256:<hex>) for governance_context.
 
     Fails soft: if anything goes wrong, built-in defaults stay in place.
     """
     global _POLICY_LOADED, _POLICY_VERSION, _POLICY_HASH
-    global ALLOWED_TEMPLATES, STRICT_ISC_ENFORCEMENT, CHECKSUM_ENFORCED, CRYPTO_ENFORCED
+    global ALLOWED_TEMPLATES, MAX_FRICTION_BY_TEMPLATE, STRICT_ISC_ENFORCEMENT, CHECKSUM_ENFORCED, CRYPTO_ENFORCED
     global _DANGER_WORDS, _SAFETY_PHRASES, _HIGH_RISK_KEYWORDS
 
     if _POLICY_LOADED:
@@ -147,7 +132,6 @@ def _load_isc_policy() -> None:
 
     try:
         here = Path(__file__).resolve()
-
         candidates: List[Path] = []
 
         # Repo layout: <repo_root>/src/sir_firewall/core.py → <repo_root>/policy/isc_policy.json
@@ -172,12 +156,18 @@ def _load_isc_policy() -> None:
 
         _POLICY_VERSION = str(policy.get("version", "unknown"))
 
-        # Templates → allowed set
         templates = policy.get("templates", {})
         if isinstance(templates, dict) and templates:
             ALLOWED_TEMPLATES = set(templates.keys())
 
-        # Base enforcement flags
+            # Policy-level baseline friction limits (Domain packs can still override)
+            for template_id, cfg in templates.items():
+                if isinstance(cfg, dict) and "max_tokens" in cfg:
+                    try:
+                        MAX_FRICTION_BY_TEMPLATE[template_id] = int(cfg["max_tokens"])
+                    except Exception:
+                        pass
+
         flags = policy.get("flags", {})
         if isinstance(flags, dict):
             if "STRICT_ISC_ENFORCEMENT" in flags:
@@ -187,7 +177,6 @@ def _load_isc_policy() -> None:
             if "CRYPTO_ENFORCED" in flags:
                 CRYPTO_ENFORCED = bool(flags["CRYPTO_ENFORCED"])
 
-        # Rule lists — merge with built-ins (never shrink)
         rules = policy.get("rules", {})
         if isinstance(rules, dict):
             dw = rules.get("danger_words")
@@ -205,34 +194,29 @@ def _load_isc_policy() -> None:
                 extras = [str(w).lower() for w in hr]
                 _HIGH_RISK_KEYWORDS = sorted(set(_HIGH_RISK_KEYWORDS) | set(extras))
 
-        # Canonical hash of the policy JSON
-        payload_bytes = json.dumps(
-            policy, sort_keys=True, separators=(",", ":")
-        ).encode("utf-8")
+        payload_bytes = json.dumps(policy, sort_keys=True, separators=(",", ":")).encode("utf-8")
         _POLICY_HASH = "sha256:" + hashlib.sha256(payload_bytes).hexdigest()
 
         _POLICY_LOADED = True
     except Exception:
-        # In DEV mode or broken environments, we fall back to built-ins.
         _POLICY_LOADED = True
 
 
 # ---------------------------------------------------------------------------
-# Domain ISC pack loader (Round 3)
+# Domain ISC pack loader
 # ---------------------------------------------------------------------------
 
 def load_domain_pack(pack_id: str | None = None) -> Dict[str, Any]:
     """
-    Round 3 – load the Domain ISC pack configuration.
+    Load the Domain ISC pack configuration.
 
     Resolves the active pack from:
-      1. Explicit pack_id argument (if provided)
+      1. Explicit pack_id argument
       2. SIR_ISC_PACK env var
       3. Fallback to 'generic_safety'
 
     Fails closed:
-      - If the requested pack is missing but generic_safety exists, falls back
-        to generic_safety.
+      - If the requested pack is missing but generic_safety exists, falls back.
       - If neither exists, raises FileNotFoundError.
     """
     effective_pack = pack_id or os.getenv("SIR_ISC_PACK", "generic_safety")
@@ -241,7 +225,6 @@ def load_domain_pack(pack_id: str | None = None) -> Dict[str, Any]:
     pack_path = base_dir / "policy" / "isc_packs" / f"{effective_pack}.json"
 
     if not pack_path.exists():
-        # Fail closed: try generic_safety instead
         fallback = base_dir / "policy" / "isc_packs" / "generic_safety.json"
         if fallback.exists():
             with fallback.open("r", encoding="utf-8") as f:
@@ -256,7 +239,6 @@ def load_domain_pack(pack_id: str | None = None) -> Dict[str, Any]:
     with pack_path.open("r", encoding="utf-8") as f:
         data: Dict[str, Any] = json.load(f)
 
-    # Ensure pack_id field is consistent even if the file forgot to set it
     data.setdefault("pack_id", effective_pack)
     return data
 
@@ -266,13 +248,6 @@ def load_domain_pack(pack_id: str | None = None) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def normalize_obfuscation(text: str) -> str:
-    """
-    Normalise common obfuscation tricks:
-    - Zero-width / exotic whitespace
-    - Base64 blobs that contain jailbreak instructions
-    - Rickroll → canonical "ignore/disregard" phrasing
-    - ROT13 snippets
-    """
     raw = re.sub(
         r"[\u200b-\u206f\u2800\u202a-\u202f\u3000\u3164\ufffc\s]+",
         " ",
@@ -280,7 +255,6 @@ def normalize_obfuscation(text: str) -> str:
     ).strip()
     t = raw.lower()
 
-    # Base64 extraction
     b64_match = None
     if "base64 encoded instructions follow:" in t:
         tail = raw.split("base64 encoded instructions follow:", 1)[-1].strip(" .,")
@@ -298,16 +272,13 @@ def normalize_obfuscation(text: str) -> str:
                     k in candidate
                     for k in ["ignore", "disregard", "obey", "dan", "uncensored"]
                 ):
-                    # Full override — decoded blob *is* the real payload
                     return candidate.strip()
             except Exception:
                 continue
 
-    # Rickroll → canonical danger
     t = t.replace("never gonna give you up", "ignore previous instructions")
     t = t.replace("never gonna let you down", "disregard all ethics")
 
-    # ROT13 payloads: decode the segment after "rot13 ...:"
     rot_match = re.search(r"rot13[^:]*:\s*([a-zA-Z0-9\s\+/=,]+)", t, re.IGNORECASE)
     if rot_match:
         payload = rot_match.group(1)
@@ -372,12 +343,6 @@ def _sr_block(
     scope: str = "deployment",
     domain_pack: str | None = None,
 ) -> Dict[str, Any]:
-    """
-    Build a BLOCKED result that carries Systemic Reset (SR) metadata.
-
-    SR is reserved for governance-level failures (e.g. missing/broken domain packs),
-    not ordinary per-prompt jailbreaks.
-    """
     result: Dict[str, Any] = {
         "status": "BLOCKED",
         "reason": reason,
@@ -518,17 +483,6 @@ def _check_crypto(
 
 
 def _estimate_tokens(payload: str) -> int:
-    """
-    Rough token approximation for friction checks.
-
-    NOTE:
-    - SIR v1.x deliberately does *not* use entropy or any .bit_length()-style
-      heuristics here. This keeps the firewall fully deterministic and avoids
-      the float/int bug people sometimes attribute to earlier drafts.
-    - Any future complexity/entropy scoring must be added explicitly and
-      CI-validated, not assumed to exist.
-    """
-    # Simple, stable: whitespace-separated words
     return len(str(payload).split())
 
 
@@ -591,7 +545,6 @@ def _check_jailbreak(
         "has_high_risk": has_high_risk,
     }
 
-    # High-risk content is an automatic block, even without classic jailbreak phrasing
     if has_high_risk:
         log, prev_hash = _append_itgl(
             "jailbreak",
@@ -603,7 +556,6 @@ def _check_jailbreak(
         )
         return False, log, prev_hash, "high_risk_content"
 
-    # Classic jailbreak: danger + safety inversion combo
     if has_danger and has_safety:
         log, prev_hash = _append_itgl(
             "jailbreak",
@@ -631,34 +583,15 @@ def _check_jailbreak(
 # ---------------------------------------------------------------------------
 
 def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Main SIR firewall entrypoint.
-
-    Expected shape:
-
-        {
-          "isc": {
-            "version": "1.0",
-            "template_id": "EU-AI-Act-ISC-v1",
-            "payload": "...",
-            "checksum": "sha256hex",
-            "signature": "",
-            "key_id": "default"
-          }
-        }
-    """
-    # Ensure policy-backed config (templates, flags, rules) is loaded
     _load_isc_policy()
 
     itgl_log: List[Dict[str, Any]] = []
     prev_hash: str = GENESIS_HASH
 
-    # Resolve Domain ISC pack and derive effective config
     try:
         domain_cfg = load_domain_pack()
         domain_pack_id = str(domain_cfg.get("pack_id", "generic_safety"))
     except Exception as exc:
-        # Governance-level failure: no valid domain pack available
         itgl_log, prev_hash = _append_itgl(
             "context",
             "fail",
@@ -667,7 +600,6 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
             itgl_log,
             prev_hash,
         )
-        # Explicit SR entry in the ledger so ops/insurers can find it
         itgl_log, prev_hash = _append_itgl(
             "sr",
             "triggered",
@@ -697,7 +629,6 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
             except Exception:
                 continue
 
-    # Context entry: record domain_pack into ITGL up front
     itgl_log, prev_hash = _append_itgl(
         "context",
         "init",
@@ -716,12 +647,10 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
             "itgl_log": itgl_log,
         }
 
-    # 1) ISC structure
     ok, itgl_log, prev_hash = _check_isc_structure(isc, itgl_log, prev_hash)
     if not ok and strict_isc:
         return _build_block("invalid_isc_schema", itgl_log, domain_pack=domain_pack_id)
 
-    # 2) Crypto (checksum + optional RSA signature)
     ok, itgl_log, prev_hash = _check_crypto(
         isc,
         itgl_log,
@@ -736,7 +665,6 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
             domain_pack=domain_pack_id,
         )
 
-    # 3) Friction Delta
     ok, itgl_log, prev_hash = _check_friction(
         isc,
         itgl_log,
@@ -750,7 +678,6 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
             domain_pack=domain_pack_id,
         )
 
-    # 4) Jailbreak / governance inversion patterns
     ok, itgl_log, prev_hash, block_type = _check_jailbreak(
         isc,
         itgl_log,
@@ -766,7 +693,6 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
 
     isc_template = str(isc.get("template_id", ""))
 
-    # Finalise ITGL chain
     itgl_log, final_hash = _append_itgl(
         "final",
         "complete",
@@ -776,31 +702,30 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
         prev_hash,
     )
 
-    # RCA-X / compliance-compiler ready governance context
     governance_context: Dict[str, Any] = {
         "domain_pack": domain_pack_id,
         "isc_template": isc_template,
         "itgl_final_hash": f"sha256:{final_hash}",
     }
 
-    # Add policy metadata from loaded ISC policy, if available
     if _POLICY_VERSION:
         governance_context.setdefault("policy_version", _POLICY_VERSION)
     if _POLICY_HASH:
         governance_context.setdefault("policy_hash", _POLICY_HASH)
 
-    # Optional enrichment with policy metadata helper (if available)
+    # Optional enrichment with policy.py metadata helper (normalize hash to sha256:<hex>)
     try:
         from .policy import get_policy_metadata  # type: ignore
 
         policy_meta = get_policy_metadata()
         if isinstance(policy_meta, dict):
-            if "version" in policy_meta:
-                governance_context["policy_version"] = policy_meta["version"]
-            if "hash" in policy_meta:
-                governance_context["policy_hash"] = policy_meta["hash"]
+            if "version" in policy_meta and policy_meta["version"]:
+                governance_context["policy_version"] = str(policy_meta["version"])
+
+            if "hash" in policy_meta and policy_meta["hash"]:
+                h = str(policy_meta["hash"])
+                governance_context["policy_hash"] = h if h.startswith("sha256:") else f"sha256:{h}"
     except Exception:
-        # In DEV mode or if policy cannot be loaded, we still return a valid result
         pass
 
     return {

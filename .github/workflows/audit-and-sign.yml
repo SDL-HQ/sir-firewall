@@ -33,24 +33,25 @@ jobs:
           pip install --no-cache-dir --force-reinstall -e .
           python -c "import sir_firewall.core as c; print('LOADED FROM →', c.__file__); print('USE_SEMANTIC_CHECK IS →', c.USE_SEMANTIC_CHECK)"
 
-      - name: Red-team current public suite against live Grok-3
+      - name: Run current public suite through SIR (firewall-only, no live model calls)
         env:
-          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          # Context only (SIR does not call the model)
           LITELLM_MODEL: xai/grok-3-beta
+
+          # Suite selection + template selection
+          SIR_ISC_PACK: "generic_safety"
+          SIR_TEMPLATE_ID: "EU-AI-Act-ISC-v1"
         run: |
-          echo "Using model: $LITELLM_MODEL"
+          echo "Context model label: $LITELLM_MODEL"
+          echo "SIR_ISC_PACK: $SIR_ISC_PACK"
+          echo "SIR_TEMPLATE_ID: $SIR_TEMPLATE_ID"
           python red_team_suite.py
 
       - name: Verify ITGL ledger hash chain and export ITGL_FINAL_HASH
         if: always()
         run: |
-          # verify_itgl.py will:
-          #  - validate the full chain
-          #  - print ITGL_FINAL_HASH=sha256:<hash>
-          #  - write proofs/itgl_final_hash.txt
           python tools/verify_itgl.py | tee itgl_env.txt
 
-          # Export the ITGL_FINAL_HASH line into the job environment
           if grep '^ITGL_FINAL_HASH=' itgl_env.txt >> "$GITHUB_ENV"; then
             echo "ITGL_FINAL_HASH exported to GITHUB_ENV"
           else
@@ -62,10 +63,9 @@ jobs:
         env:
           SDL_PRIVATE_KEY_PEM: ${{ secrets.SDL_PRIVATE_KEY_PEM }}
         run: |
-          # Sign policy/isc_policy.json into policy/isc_policy.signed.json
           python tools/sign_policy.py
 
-      - name: Generate real signed certificate + beautiful HTML
+      - name: Generate signed certificate + HTML
         if: always()
         env:
           SDL_PRIVATE_KEY_PEM: ${{ secrets.SDL_PRIVATE_KEY_PEM }}
@@ -75,17 +75,16 @@ jobs:
 
           # Domain + model context for the cert
           SIR_ISC_PACK: "generic_safety"
+          SIR_TEMPLATE_ID: "EU-AI-Act-ISC-v1"
           SIR_MODEL_NAME: "xai/grok-3-beta"
           SIR_MODEL_PROVIDER: "xai"
         run: |
-          # generate_certificate.py will:
-          #  - read policy/isc_policy.signed.json for policy_version/policy_hash
-          #  - read ITGL_FINAL_HASH from env (set by verify_itgl step)
           python tools/generate_certificate.py
 
       - name: Verify certificate signature
         if: always()
-        run: python tools/verify_certificate.py
+        run: |
+          python tools/verify_certificate.py proofs/latest-audit.json
 
       - name: Upload proof artifact
         if: always()
@@ -102,7 +101,7 @@ jobs:
         run: |
           git config user.name "SIR Audit Bot"
           git config user.email "sir@sdllabs.com"
-          git add proofs/
+          git add proofs/ policy/isc_policy.signed.json
           git commit -m "SIR Proof: $(cat leaks_count.txt || echo 0) leaks | $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "Nothing to commit"
           git push
         env:
