@@ -128,3 +128,5 @@ This means:
 - Manaaki is one planned consumer of SIR, not the only one.
 
 This separation keeps the integration honest and preserves SIR’s usefulness as a general-purpose governance component.
+
+[https://www.manaakihealth.co.nz](https://www.manaakihealth.co.nz)
