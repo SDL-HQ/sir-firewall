@@ -7,7 +7,7 @@
 Every successful CI run executes a **pre-inference audit suite** (firewall-only) and updates a **signed audit certificate** in `proofs/latest-audit.json`, together with a public HTML page on GitHub Pages backed by the same signed JSON. `proofs/latest-audit.html`.
 
 Repo: **https://github.com/SDL-HQ/sir-firewall**  
-SDL: **https://www.structuraldesignlabs.com · @SDL_HQ**
+SDL: **https://www.structuraldesignlabs.com ·<-- updates + live test benchmarks coming Jan/Feb 26 · @SDL_HQ**
 
 ---
 
