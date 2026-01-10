@@ -6,6 +6,8 @@
 
 Every successful CI run executes a **pre-inference audit suite** (firewall-only by default) and updates a **signed audit certificate** in `proofs/latest-audit.json`, together with a public HTML page on GitHub Pages backed by the same signed JSON: `proofs/latest-audit.html`.
 
+This repo also emits an **ITGL hash-chained run ledger** (`proofs/itgl_ledger.jsonl`). Its verified final hash (`ITGL_FINAL_HASH`) is embedded into the signed certificate as an additional integrity anchor.
+
 Repo: **https://github.com/SDL-HQ/sir-firewall**  
 SDL: **https://www.structuraldesignlabs.com** · <-- updates + live test benchmarks coming Jan/Feb 26 · @SDL_HQ
 
@@ -16,7 +18,7 @@ SDL: **https://www.structuraldesignlabs.com** · <-- updates + live test benchma
 SIR is a **pure-rule, pre-inference firewall** that sits in front of an LLM and decides:
 
 - `PASS` → safe to send to the model
-- `BLOCKED` → rejected *before* the model ever sees it
+- `BLOCKED` → rejected before the model ever sees it
 
 It is designed to resist real-world prompt obfuscation (ROT13, base64, zero-width characters, spacing games, etc.) and is tested against hardened jailbreak suites.
 
@@ -25,7 +27,7 @@ This repo includes:
 - The **firewall core** (`src/sir_firewall`)
 - **Audit suites** (`tests/` and `tests/domain_packs/`)
 - A **CI workflow** that:
-  - Runs an audit suite through SIR (**firewall-only by default**)
+  - Runs an audit suite through SIR (firewall-only by default)
   - Writes a proof log + summary
   - Verifies the ITGL hash-chained run ledger
   - Generates a **signed JSON certificate** in `proofs/latest-audit.json`
@@ -38,7 +40,7 @@ This repo includes:
 
 ## Verified Proof (One Command)
 
-Verify the latest published audit certificate with **one command**:
+Verify the latest published audit certificate with one command:
 
 ```bash
 curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 -m tools.verify_certificate
@@ -109,7 +111,7 @@ Columns:
 
 Examples live under: `tests/domain_packs/`
 
-The point of `prompt_b64` is simple: the suite is still deterministic and testable, but the raw prompt text isn’t sitting in plaintext in the repo.
+The point of `prompt_b64` is simple: the suite is still deterministic and testable, but the raw prompt text is not sitting in plaintext in the repo.
 
 ---
 
@@ -139,8 +141,7 @@ Outputs:
 
 ### Optional: live model-call mode (integration testing)
 
-If you want to prove the firewall is actively gating real calls, run without `--no-model-calls`.
-This is **not required** for certificate verification and is typically used for manual integration tests only.
+If you want to prove the firewall is actively gating real calls, run without `--no-model-calls`. This is not required for certificate verification and is typically used for manual integration tests only.
 
 LiteLLM will look for the relevant provider key (see LiteLLM docs). For xAI this is commonly:
 
@@ -153,7 +154,7 @@ python3 red_team_suite.py --suite tests/domain_packs/generic_safety.csv
 
 ## Certificate Generation (CI / Signing)
 
-Most users only ever need to **verify** the published certificate, not generate one.
+Most users only ever need to verify the published certificate, not generate one.
 
 In CI, the signer runs:
 
@@ -172,7 +173,7 @@ It produces:
 ## Files & Layout (Quick Map)
 
 * `.github/workflows/audit-and-sign.yml`
-  CI pipeline → runs audit suite through SIR (firewall-only by default), verifies ITGL, generates+signs cert, updates `latest-audit` files.
+  CI pipeline runs audit suite through SIR (firewall-only by default), verifies ITGL, generates and signs the certificate, updates the `latest-audit` files.
 
 * `src/sir_firewall/`
   SIR core logic (normalisation, rule checks, `validate_sir` entry point).
@@ -188,17 +189,17 @@ It produces:
 
 * `proofs/`
 
-  * `latest-audit.json` — current signed certificate
-  * `latest-audit.html` — HTML view backed by `latest-audit.json`
-  * `template.html` — HTML template used by the signer
-  * `itgl_ledger.jsonl` — per-prompt hash-chained run ledger
-  * `itgl_final_hash.txt` — run-level ITGL final hash (`sha256:<hex>`)
+  * `latest-audit.json` current signed certificate
+  * `latest-audit.html` HTML view backed by `latest-audit.json`
+  * `template.html` HTML template used by the signer
+  * `itgl_ledger.jsonl` per-prompt hash-chained run ledger
+  * `itgl_final_hash.txt` run-level ITGL final hash (`sha256:<hex>`)
 
 * `tools/`
 
-  * `verify_certificate.py` — verifies hash + RSA signature using `spec/sdl.pub`
-  * `verify_itgl.py` — verifies ITGL ledger structure + chain integrity
-  * `generate_certificate.py` — CI signer
+  * `verify_certificate.py` verifies hash and RSA signature using `spec/sdl.pub`
+  * `verify_itgl.py` verifies ITGL ledger structure and chain integrity
+  * `generate_certificate.py` CI signer
 
 * `spec/sdl.pub`
   SDL public key used for verifying signatures.
@@ -209,3 +210,5 @@ It produces:
 
 MIT Licensed
 © 2025 Structural Design Labs
+
+```
