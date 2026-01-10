@@ -14,6 +14,15 @@ Suite formats supported:
    id,prompt_b64,expected,note,category
 
 Where expected is: allow | block
+
+NEW (P4):
+- Aggregates per-run block reasons / rule-ids for website filtering:
+  - blocks_by_reason
+  - blocks_by_rule_id (reason + optional subtype)
+  - blocks_by_type
+  - blocks_by_category
+  - allows_by_category
+  - mismatches
 """
 
 import argparse
@@ -23,7 +32,7 @@ import hashlib
 import json
 import os
 from datetime import datetime, timezone
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from litellm import completion
 
@@ -115,6 +124,12 @@ def _maybe_call_model(model: str, prompt: str, enable: bool) -> None:
     )
 
 
+def _inc(counter: Dict[str, int], key: str) -> None:
+    if not key:
+        key = "unknown"
+    counter[key] = int(counter.get(key, 0)) + 1
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--suite", default=DEFAULT_SUITE, help="Path to CSV suite file")
@@ -135,9 +150,17 @@ def main() -> None:
     prompts_tested = len(rows)
     suite_hash = _suite_hash(rows)
 
-    # Counters
+    # Counters (back-compat)
     jailbreaks_leaked = 0
     harmless_blocked = 0
+
+    # NEW: Aggregates for website filtering
+    blocks_by_reason: Dict[str, int] = {}
+    blocks_by_rule_id: Dict[str, int] = {}
+    blocks_by_type: Dict[str, int] = {}
+    blocks_by_category: Dict[str, int] = {}
+    allows_by_category: Dict[str, int] = {}
+    mismatches = 0
 
     with open(log_path, "w", encoding="utf-8") as f:
         f.write("SIR Firewall — PRE-INFERENCE RED TEAM SUITE\n")
@@ -146,26 +169,59 @@ def main() -> None:
         f.write(f"Suite: {suite_path}\n")
         f.write(f"Suite hash: {suite_hash}\n")
         f.write(f"Prompts: {prompts_tested}\n")
+        f.write(f"Template: {template_id}\n")
         f.write("=" * 100 + "\n\n")
 
         for r in rows:
             rid = r.get("id", "")
             prompt = r["prompt"]
             expected = r["expected"]
+            category = str(r.get("category") or "").strip() or "uncategorized"
 
             isc = _build_isc_envelope(prompt, template_id)
-            verdict = validate_sir({"isc": isc})
-            status = verdict.get("status", "UNKNOWN")
+            verdict: Dict[str, Any] = validate_sir({"isc": isc})
+            status = str(verdict.get("status", "UNKNOWN"))
+
+            # These are stable in core.py today
+            reason = str(verdict.get("reason", "")) if isinstance(verdict, dict) else ""
+            subtype = str(verdict.get("type", "")) if isinstance(verdict, dict) else ""
 
             expected_status = "PASS" if expected == "allow" else "BLOCKED"
             ok = (status == expected_status)
 
+            if not ok:
+                mismatches += 1
+
+            # Old counters
             if expected == "block" and status == "PASS":
                 jailbreaks_leaked += 1
             if expected == "allow" and status == "BLOCKED":
                 harmless_blocked += 1
 
+            # NEW aggregates
+            if status == "BLOCKED":
+                _inc(blocks_by_reason, reason or "unknown_reason")
+
+                # rule_id = reason + subtype (if present)
+                rule_id = reason or "unknown_reason"
+                if subtype:
+                    rule_id = f"{rule_id}:{subtype}"
+                    _inc(blocks_by_type, subtype)
+                _inc(blocks_by_rule_id, rule_id)
+
+                _inc(blocks_by_category, category)
+
+            elif status == "PASS":
+                _inc(allows_by_category, category)
+
+            # Log
             f.write(f"[{rid}] expected={expected_status} got={status}\n")
+            if reason:
+                f.write(f"  reason: {reason}\n")
+            if subtype:
+                f.write(f"  type: {subtype}\n")
+            if category:
+                f.write(f"  category: {category}\n")
             if not ok:
                 f.write(f"  NOTE: mismatch (expected {expected})\n")
 
@@ -177,6 +233,8 @@ def main() -> None:
                     # Model call failures do not change SIR gating counts — log only.
                     f.write(f"  model_call_error: {type(e).__name__}: {e}\n")
 
+            f.write("\n")
+
     # Back-compat counters for CI scripts that expect these files
     with open("leaks_count.txt", "w", encoding="utf-8") as f:
         f.write(str(jailbreaks_leaked))
@@ -184,7 +242,7 @@ def main() -> None:
         f.write(str(harmless_blocked))
 
     # Preferred machine-readable summary for certificate generation
-    summary = {
+    summary: Dict[str, Any] = {
         "date": _utc_now_iso(),
         "model": model_name,
         "provider": os.getenv("SIR_PROVIDER", "xai"),
@@ -194,12 +252,21 @@ def main() -> None:
         "prompts_tested": prompts_tested,
         "jailbreaks_leaked": jailbreaks_leaked,
         "harmless_blocked": harmless_blocked,
+
+        # NEW aggregates
+        "mismatches": mismatches,
+        "blocks_by_reason": blocks_by_reason,
+        "blocks_by_rule_id": blocks_by_rule_id,
+        "blocks_by_type": blocks_by_type,
+        "blocks_by_category": blocks_by_category,
+        "allows_by_category": allows_by_category,
     }
+
     with open("proofs/run_summary.json", "w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2)
+        json.dump(summary, f, indent=2, ensure_ascii=False)
 
     print(f"Suite: {suite_path} ({prompts_tested} prompts)")
-    print(f"Leaks: {jailbreaks_leaked} | Harmless blocked: {harmless_blocked}")
+    print(f"Leaks: {jailbreaks_leaked} | Harmless blocked: {harmless_blocked} | Mismatches: {mismatches}")
     print(f"Proof log: {log_path}")
     print("Summary: proofs/run_summary.json")
 
