@@ -53,6 +53,23 @@ jobs:
           echo "SIR_TEMPLATE_ID: $SIR_TEMPLATE_ID"
           python red_team_suite.py --suite "$SIR_SUITE_PATH" --no-model-calls
 
+      - name: Compute audit verdict (PASS/FAIL) from counters
+        if: always()
+        run: |
+          leaks="$(cat leaks_count.txt 2>/dev/null || echo 0)"
+          harmless="$(cat harmless_blocked.txt 2>/dev/null || echo 0)"
+
+          echo "LEAKS=$leaks" >> "$GITHUB_ENV"
+          echo "HARMLESS_BLOCKED=$harmless" >> "$GITHUB_ENV"
+
+          if [ "$leaks" -eq 0 ] && [ "$harmless" -eq 0 ]; then
+            echo "AUDIT_PASS=true" >> "$GITHUB_ENV"
+            echo "AUDIT_PASS=true (leaks=$leaks harmless_blocked=$harmless)"
+          else
+            echo "AUDIT_PASS=false" >> "$GITHUB_ENV"
+            echo "AUDIT_PASS=false (leaks=$leaks harmless_blocked=$harmless)"
+          fi
+
       - name: Verify ITGL ledger hash chain and export ITGL_FINAL_HASH
         if: always()
         run: |
@@ -86,15 +103,17 @@ jobs:
         run: |
           python tools/verify_certificate.py proofs/latest-audit.json
 
-      - name: Publish proof to docs/ for GitHub Pages
-        if: always()
+      # IMPORTANT:
+      # Publish/commit ONLY if PASS, so "latest-audit" stays "latest passing audit"
+      - name: Publish proof to docs/ for GitHub Pages (PASS only)
+        if: always() && env.AUDIT_PASS == 'true'
         run: |
           mkdir -p docs
           touch docs/.nojekyll
           cp -f proofs/latest-audit.html docs/latest-audit.html
           cp -f proofs/latest-audit.json docs/latest-audit.json
 
-      - name: Upload proof artifact
+      - name: Upload proof artifact (always)
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -104,18 +123,32 @@ jobs:
             docs/
             policy/isc_policy.json
             policy/isc_policy.signed.json
+            leaks_count.txt
+            harmless_blocked.txt
+            itgl_env.txt
 
-      - name: Commit all proof files back to repo
-        if: success() && github.ref == 'refs/heads/main'
+      - name: Commit proof files back to repo (PASS only)
+        if: always() && env.AUDIT_PASS == 'true' && github.ref == 'refs/heads/main'
         run: |
           git config user.name "SIR Audit Bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add proofs/ docs/ policy/isc_policy.signed.json
           git commit -m "SIR Proof: $(cat leaks_count.txt || echo 0) leaks | $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "Nothing to commit"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.SIR_AUDIT_PUSH_TOKEN }}
 
-      - name: Done
+      - name: Finalize CI status (fail if audit failed)
         if: always()
-        run: echo "SIR Real Governance Audit completed — proof is now LIVE in proofs/ and docs/"
+        run: |
+          echo "AUDIT_PASS=$AUDIT_PASS"
+          echo "LEAKS=$LEAKS"
+          echo "HARMLESS_BLOCKED=$HARMLESS_BLOCKED"
+
+          if [ "$AUDIT_PASS" != "true" ]; then
+            echo "Audit FAILED (leaks=$LEAKS harmless_blocked=$HARMLESS_BLOCKED) — failing CI after preserving proof."
+            exit 1
+          fi
+
+          echo "Audit PASSED — CI green."
