@@ -154,6 +154,7 @@ def _compute_safety_fingerprint(cert: Dict[str, Any]) -> str:
     Intentionally excludes:
     - date, ci_run_url, commit_sha, repository, itgl_final_hash
     - payload_hash, signature
+    - aggregates (blocks_by_*) so fingerprint stays stable for the "headline result"
     """
     obj = {
         "sir_firewall_version": str(cert.get("sir_firewall_version", "")),
@@ -212,7 +213,7 @@ def main() -> None:
         # Certificate schema version (NOT SIR engine version)
         "version": "1.0",
 
-        # NEW: SIR Firewall engine version (what you actually wanted on certs)
+        # SIR Firewall engine version
         "sir_firewall_version": _get_sir_firewall_version(),
 
         "suite_name": suite_name,
@@ -238,5 +239,52 @@ def main() -> None:
     if itgl_final_hash:
         cert["itgl_final_hash"] = itgl_final_hash
 
-    # NEW: safety fingerprint (website indexing primitive)
-    cert
+    # NEW: copy-through run aggregates if present (website filtering)
+    for k in (
+        "mismatches",
+        "blocks_by_reason",
+        "blocks_by_rule_id",
+        "blocks_by_type",
+        "blocks_by_category",
+        "allows_by_category",
+    ):
+        if k in summary:
+            cert[k] = summary[k]
+
+    # Safety fingerprint (website indexing primitive)
+    cert["fingerprint_fields_version"] = "1"
+    cert["safety_fingerprint"] = _compute_safety_fingerprint(cert)
+
+    # Sign payload (everything except signature + payload_hash)
+    payload_obj = {k: v for k, v in cert.items() if k not in ("signature", "payload_hash")}
+    payload = json.dumps(payload_obj, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+
+    cert["payload_hash"] = "sha256:" + hashlib.sha256(payload).hexdigest()
+    signature = private_key.sign(payload, padding.PKCS1v15(), hashes.SHA256())
+    cert["signature"] = base64.b64encode(signature).decode("ascii")
+
+    os.makedirs("proofs", exist_ok=True)
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%SZ")
+    archival = f"proofs/audit-certificate-{ts}.json"
+
+    with open(archival, "w", encoding="utf-8") as f:
+        json.dump(cert, f, indent=2, ensure_ascii=False)
+    with open("proofs/latest-audit.json", "w", encoding="utf-8") as f:
+        json.dump(cert, f, indent=2, ensure_ascii=False)
+
+    # HTML is a JS template that reads latest-audit.json at runtime.
+    try:
+        with open("proofs/template.html", "r", encoding="utf-8") as t:
+            html = t.read()
+        with open("proofs/latest-audit.html", "w", encoding="utf-8") as out:
+            out.write(html)
+        print("OK: HTML written from proofs/template.html")
+    except Exception as e:
+        print(f"WARNING: HTML generation failed: {e}")
+
+    print(f"OK: Certificate → {archival}")
+    print("OK: Latest proof → proofs/latest-audit.json + proofs/latest-audit.html")
+
+
+if __name__ == "__main__":
+    main()
