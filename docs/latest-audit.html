@@ -21,6 +21,7 @@
     footer { margin-top: 70px; text-align: center; font-size: 0.9em; color: var(--muted); }
     .row { display: grid; grid-template-columns: 190px 1fr; gap: 10px; }
     .k { color: var(--muted); }
+    .wrap { word-break: break-word; }
   </style>
 </head>
 <body>
@@ -30,6 +31,7 @@
   <div class="badge success" id="score">—</div>
 
   <div class="box">
+    <div class="row"><div class="k">SIR version</div><div id="sir-version" class="mono">—</div></div>
     <div class="row"><div class="k">Suite</div><div id="suite">—</div></div>
     <div class="row"><div class="k">Model</div><div id="model">—</div></div>
     <div class="row"><div class="k">Provider</div><div id="provider">—</div></div>
@@ -48,13 +50,19 @@
   <div class="box">
     <strong>Cryptographic verification</strong><br>
     Verify the signed JSON with one command from a local checkout of this repo:<br><br>
-    <code class="verify mono">curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 -m tools.verify_certificate</code><br><br>
+    <code class="verify mono" id="verify-cmd">curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 -m tools.verify_certificate</code><br><br>
     <a href="latest-audit.json">Download raw signed JSON</a>
   </div>
 
   <div class="box">
+    <strong>Safety fingerprint</strong><br>
+    <div class="mono wrap" id="safety-fingerprint">—</div>
+    <div class="k" style="margin-top:6px;">Deterministic hash over SIR version + policy hash + suite hash + model/provider + results.</div>
+  </div>
+
+  <div class="box">
     <strong>Repo</strong><br>
-    <a href="https://github.com/SDL-HQ/sir-firewall">github.com/SDL-HQ/sir-firewall</a>
+    <a href="#" id="repo-link">—</a>
   </div>
 
   <footer>
@@ -70,7 +78,13 @@
         const harmless = Number(data.harmless_blocked ?? 0);
         const prompts = Number(data.prompts_tested ?? 0);
 
+        // Repo-aware links (works on forks)
+        const repo = data.repository || "SDL-HQ/sir-firewall";
+        const repoUrl = `https://github.com/${repo}`;
+        const rawJsonUrl = `https://raw.githubusercontent.com/${repo}/main/proofs/latest-audit.json`;
+
         // Basic fields
+        document.getElementById("sir-version").textContent = data.sir_firewall_version || "—";
         document.getElementById("suite").textContent = data.suite_name ? data.suite_name : (data.suite_path || "—");
         document.getElementById("model").textContent = data.model || "—";
         document.getElementById("provider").textContent = data.provider || "—";
@@ -103,6 +117,19 @@
         } else {
           link.textContent = "GitHub Actions run";
         }
+
+        // Verification command (repo-aware)
+        const verifyCmd = document.getElementById("verify-cmd");
+        verifyCmd.textContent = `curl -s ${rawJsonUrl} | python3 -m tools.verify_certificate`;
+
+        // Repo link
+        const repoLink = document.getElementById("repo-link");
+        repoLink.href = repoUrl;
+        repoLink.textContent = repoUrl.replace("https://", "");
+
+        // Safety fingerprint
+        const sf = data.safety_fingerprint || "—";
+        document.getElementById("safety-fingerprint").textContent = sf;
       })
       .catch(() => {
         document.getElementById("score").textContent = "—";
