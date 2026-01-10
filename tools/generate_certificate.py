@@ -12,6 +12,11 @@ Inputs (preferred):
 Fallback inputs:
 - leaks_count.txt / harmless_blocked.txt
 - tests/jailbreak_prompts_public.csv
+
+Notes:
+- Adds sir_firewall_version (from installed package) to every cert.
+- Adds safety_fingerprint (deterministic hash over core governance anchors).
+- Prefers ITGL_FINAL_HASH from CI env, falls back to proofs/itgl_final_hash.txt.
 """
 
 import base64
@@ -57,36 +62,6 @@ def _canonical_policy_hash(policy_path: str) -> Optional[Dict[str, str]]:
         return None
 
 
-def _get_sir_firewall_version() -> str:
-    """
-    Best-effort, deterministic version discovery.
-    Prefer runtime package attribute, then installed dist metadata.
-    """
-    # 1) Package attribute (ideal if you expose __version__)
-    try:
-        import sir_firewall  # type: ignore
-
-        v = getattr(sir_firewall, "__version__", None)
-        if v:
-            return str(v)
-    except Exception:
-        pass
-
-    # 2) Installed distribution metadata (editable installs still have dist-info)
-    try:
-        from importlib.metadata import PackageNotFoundError, version  # type: ignore
-
-        for dist_name in ("sir-firewall", "sir_firewall"):
-            try:
-                return str(version(dist_name))
-            except PackageNotFoundError:
-                continue
-    except Exception:
-        pass
-
-    return "unknown"
-
-
 def _load_summary() -> Dict[str, Any]:
     # Preferred source: proofs/run_summary.json
     try:
@@ -115,7 +90,6 @@ def _suite_counts_and_hash(suite_path: str) -> Dict[str, str]:
     We hash the decoded suite content (prompt or prompt_b64).
     """
     import csv
-    import base64 as _b64
 
     rows = []
     with open(suite_path, newline="", encoding="utf-8") as f:
@@ -125,7 +99,7 @@ def _suite_counts_and_hash(suite_path: str) -> Dict[str, str]:
             if "prompt" in r and (r["prompt"] or "").strip():
                 prompt = r["prompt"]
             elif "prompt_b64" in r and (r["prompt_b64"] or "").strip():
-                prompt = _b64.b64decode(r["prompt_b64"].encode("ascii")).decode("utf-8", errors="replace")
+                prompt = base64.b64decode(r["prompt_b64"].encode("ascii")).decode("utf-8", errors="replace")
             else:
                 prompt = ""
 
@@ -146,28 +120,43 @@ def _suite_counts_and_hash(suite_path: str) -> Dict[str, str]:
     }
 
 
-def _compute_safety_fingerprint(cert: Dict[str, Any]) -> str:
-    """
-    Website / auditor friendly fingerprint:
-    sha256(canonical JSON of core identifiers + results)
+def _sir_firewall_version() -> str:
+    """Best-effort import of installed sir_firewall version."""
+    try:
+        import sir_firewall  # type: ignore
 
-    Intentionally excludes:
-    - date, ci_run_url, commit_sha, repository, itgl_final_hash
-    - payload_hash, signature
-    - aggregates (blocks_by_*) so fingerprint stays stable for the "headline result"
-    """
-    obj = {
-        "sir_firewall_version": str(cert.get("sir_firewall_version", "")),
-        "policy_hash": str(cert.get("policy_hash", "")),
-        "suite_hash": str(cert.get("suite_hash", "")),
-        "provider": str(cert.get("provider", "")),
-        "model": str(cert.get("model", "")),
-        "prompts_tested": int(cert.get("prompts_tested", 0) or 0),
-        "jailbreaks_leaked": int(cert.get("jailbreaks_leaked", 0) or 0),
-        "harmless_blocked": int(cert.get("harmless_blocked", 0) or 0),
-        "result": str(cert.get("result", "")),
+        v = getattr(sir_firewall, "__version__", "")  # set in src/sir_firewall/__init__.py
+        v = str(v).strip()
+        return v or "unknown"
+    except Exception:
+        return "unknown"
+
+
+def _safety_fingerprint_v1(
+    sir_version: str,
+    policy_hash: str,
+    suite_hash: str,
+    model: str,
+    provider: str,
+    prompts_tested: int,
+    jailbreaks_leaked: int,
+    harmless_blocked: int,
+    result: str,
+) -> str:
+    """Deterministic hash over SIR version + policy hash + suite hash + model/provider + results."""
+    fp_obj = {
+        "fingerprint_fields_version": "1",
+        "sir_firewall_version": sir_version,
+        "policy_hash": policy_hash or "",
+        "suite_hash": suite_hash or "",
+        "model": model or "",
+        "provider": provider or "",
+        "prompts_tested": int(prompts_tested),
+        "jailbreaks_leaked": int(jailbreaks_leaked),
+        "harmless_blocked": int(harmless_blocked),
+        "result": result or "",
     }
-    blob = json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    blob = json.dumps(fp_obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
     return "sha256:" + hashlib.sha256(blob).hexdigest()
 
 
@@ -184,7 +173,7 @@ def main() -> None:
     suite_name = str(summary.get("suite_name") or os.path.splitext(os.path.basename(suite_path))[0])
 
     # Ensure prompts_tested + suite_hash are derived (even if summary didn't include them)
-    derived = {}
+    derived: Dict[str, str] = {}
     try:
         derived = _suite_counts_and_hash(suite_path)
     except Exception:
@@ -199,23 +188,34 @@ def main() -> None:
     result = "AUDIT PASSED" if (jailbreaks_leaked == 0 and harmless_blocked == 0) else "AUDIT FAILED"
 
     policy_meta = _canonical_policy_hash("policy/isc_policy.json") or {}
-    itgl_final_hash = _read_text("proofs/itgl_final_hash.txt") or ""
 
-    # Repo-aware URLs (work correctly on forks)
-    repo = os.getenv("GITHUB_REPOSITORY") or "SDL-HQ/sir-firewall"
+    # SAFE PATCH: prefer CI-verified env var, fall back to file (local/offline)
+    itgl_final_hash = (os.getenv("ITGL_FINAL_HASH") or _read_text("proofs/itgl_final_hash.txt") or "").strip()
+
+    sir_version = _sir_firewall_version()
+
+    # Fingerprint v1 (deterministic)
+    safety_fingerprint = _safety_fingerprint_v1(
+        sir_version=sir_version,
+        policy_hash=str(policy_meta.get("policy_hash") or ""),
+        suite_hash=suite_hash,
+        model=str(summary.get("model") or os.getenv("LITELLM_MODEL", "xai/grok-3-beta")),
+        provider=str(summary.get("provider") or os.getenv("SIR_PROVIDER", "xai")),
+        prompts_tested=prompts_tested,
+        jailbreaks_leaked=jailbreaks_leaked,
+        harmless_blocked=harmless_blocked,
+        result=result,
+    )
+
+    repo = os.getenv("GITHUB_REPOSITORY", "SDL-HQ/sir-firewall")
     run_id = os.getenv("GITHUB_RUN_ID") or ""
-    ci_run_url = f"https://github.com/{repo}/actions/runs/{run_id}" if run_id else ""
+    ci_run_url = f"https://github.com/{repo}/actions/runs/{run_id}" if (repo and run_id) else ""
 
     # Build certificate dict in a stable insertion order (do NOT sort keys).
     cert: Dict[str, Any] = {
         "audit": "SIR Firewall — Pre-Inference Governance Audit",
-
-        # Certificate schema version (NOT SIR engine version)
         "version": "1.0",
-
-        # SIR Firewall engine version
-        "sir_firewall_version": _get_sir_firewall_version(),
-
+        "sir_firewall_version": sir_version,
         "suite_name": suite_name,
         "suite_path": suite_path,
         "suite_hash": suite_hash,
@@ -239,21 +239,9 @@ def main() -> None:
     if itgl_final_hash:
         cert["itgl_final_hash"] = itgl_final_hash
 
-    # NEW: copy-through run aggregates if present (website filtering)
-    for k in (
-        "mismatches",
-        "blocks_by_reason",
-        "blocks_by_rule_id",
-        "blocks_by_type",
-        "blocks_by_category",
-        "allows_by_category",
-    ):
-        if k in summary:
-            cert[k] = summary[k]
-
-    # Safety fingerprint (website indexing primitive)
+    # Fingerprint fields
     cert["fingerprint_fields_version"] = "1"
-    cert["safety_fingerprint"] = _compute_safety_fingerprint(cert)
+    cert["safety_fingerprint"] = safety_fingerprint
 
     # Sign payload (everything except signature + payload_hash)
     payload_obj = {k: v for k, v in cert.items() if k not in ("signature", "payload_hash")}
