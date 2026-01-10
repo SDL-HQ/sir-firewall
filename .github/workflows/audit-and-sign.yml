@@ -42,7 +42,7 @@ jobs:
           SIR_PROVIDER: xai
 
           # Suite selection (P3 packs)
-          SIR_SUITE_PATH: tests/domain_packs/canary_fail.csv
+          SIR_SUITE_PATH: tests/domain_packs/generic_safety.csv
 
           # Template selection
           SIR_TEMPLATE_ID: "EU-AI-Act-ISC-v1"
