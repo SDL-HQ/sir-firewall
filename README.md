@@ -1,208 +1,200 @@
 # SIR v1.0.2 — Signal Integrity Resolver
 
-**Pre-inference firewall · 2025 jailbreak suite on Grok-3 · Cryptographically signed proof**
+**Pre-inference firewall · deterministic rules-only governance gate · cryptographically signed proof**
+
+**Plain language:** SIR sits *in front of* an AI model and inspects a prompt **before** it ever reaches the model. It either **lets the prompt through** (`PASS`) or **blocks it** (`BLOCKED`) using deterministic rules. The goal is simple: prove—using verifiable evidence—that a given safety/governance configuration actually blocks known jailbreak and policy-bypass attempts, without relying on “trust us”.
 
 [![Live Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
-Every successful CI run executes a **pre-inference audit suite** (firewall-only by default) and updates a **signed audit certificate** in `proofs/latest-audit.json`, together with a public HTML page on GitHub Pages backed by the same signed JSON: `proofs/latest-audit.html`.
+---
 
-This repo also emits an **ITGL hash-chained run ledger** (`proofs/itgl_ledger.jsonl`). Its verified final hash (`ITGL_FINAL_HASH`) is embedded into the signed certificate as an additional integrity anchor.
+## What SIR is (and isn’t)
 
-Repo: **https://github.com/SDL-HQ/sir-firewall**  
-SDL: **https://www.structuraldesignlabs.com** · <-- updates + live test benchmarks coming Jan/Feb 26 · @SDL_HQ
+**SIR is:**
+- A **pre-inference firewall** (runs before an LLM sees the text)
+- **Deterministic and explainable** (rules-only; no embeddings, no hidden scoring)
+- A **proof-producing system** (signed certificate + safety fingerprint + ITGL ledger + per-run archive)
+
+**SIR is not:**
+- A post-hoc “moderation” layer that reacts after the model already saw the input
+- A magic alignment solution for all harms
+- A black-box classifier
 
 ---
 
-## What SIR Does
+## Why this exists
 
-SIR is a **pure-rule, pre-inference firewall** that sits in front of an LLM and decides:
-
-- `PASS` → safe to send to the model
-- `BLOCKED` → rejected before the model ever sees it
-
-It is designed to resist real-world prompt obfuscation (ROT13, base64, zero-width characters, spacing games, etc.) and is tested against hardened jailbreak suites.
-
-This repo includes:
-
-- The **firewall core** (`src/sir_firewall`)
-- **Audit suites** (`tests/` and `tests/domain_packs/`)
-- A **CI workflow** that:
-  - Runs an audit suite through SIR (firewall-only by default)
-  - Writes a proof log + summary
-  - Verifies the ITGL hash-chained run ledger
-  - Generates a **signed JSON certificate** in `proofs/latest-audit.json`
-  - Publishes `proofs/latest-audit.html`
-- Verification tools:
-  - `tools/verify_certificate.py` (verifies RSA signature with `spec/sdl.pub`)
-  - `tools/verify_itgl.py` (verifies `proofs/itgl_ledger.jsonl` and emits `ITGL_FINAL_HASH`)
+“Governance” claims are just vibes. SIR is built to make them **verifiable**:
+- What suite was tested?
+- What policy/config was used?
+- What happened during the run?
+- Can an auditor verify the claims offline?
 
 ---
 
-## Verified Proof (One Command)
+## End-state design goals (current direction)
 
-Verify the latest published audit certificate with one command:
+- **Firewall core:** deterministic, rules-only, explainable.
+- **Suites (domain packs):** curated, versioned, testable, portable.
+- **Proof system:**
+  - Signed certificate (who issued it, what it claims)
+  - Safety fingerprint (what configuration + result set it binds to)
+  - ITGL ledger (how the run unfolded, hash chained)
+  - Per-run archive (nothing disappears, failures included)
+- **Two trust surfaces:**
+  - Public GitHub Pages summary for humans
+  - Offline verification for engineers and auditors
+- **Integration evidence:**
+  - Optional live gating runs that prove enforcement, not just claims
+
+---
+
+## Runtime requirements (important)
+
+**Python 3.11+ is required.**
+
+CI runs Python 3.11, and the codebase uses Python 3.10+ syntax. If you run Python 3.9 locally, it will fail.
+
+---
+
+## Repo map
+
+- Firewall core: `src/sir_firewall/`
+- Domain pack suites (CSV): `tests/domain_packs/`
+- Suite schema validator: `tools/validate_domain_pack.py`
+- Runner: `red_team_suite.py` (writes run logs + summary + ITGL)
+- Proofs:
+  - Signed cert (latest pointer): `proofs/latest-audit.json`
+  - Human page (backed by JSON): `proofs/latest-audit.html`
+  - ITGL ledger + final hash: `proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`
+  - Run archive (passes + failures): `proofs/runs/<run_id>/...`
+- Offline verification:
+  - Public key: `spec/sdl.pub`
+  - Verifier: `tools/verify_certificate.py`
+
+---
+
+## Offline verification (auditors / regulators / engineers)
+
+### Verify the latest published certificate (offline)
+
+1) Clone + install deps:
 
 ```bash
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 -m tools.verify_certificate
+git clone https://github.com/SDL-HQ/sir-firewall.git
+cd sir-firewall
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+pip install -e .
 ````
 
-Expected output:
+2. Verify the published cert (no network beyond the download):
+
+```bash
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json \
+  | python tools/verify_certificate.py
+```
+
+Expected:
 
 ```text
 OK: Certificate signature valid and payload_hash matches.
 ```
 
-The HTML summary page is kept in sync:
+### Verify a specific cert file
 
-[https://sdl-hq.github.io/sir-firewall/latest-audit.html](https://sdl-hq.github.io/sir-firewall/latest-audit.html)
+```bash
+python tools/verify_certificate.py proofs/latest-audit.json
+```
+
+### Verify using a different public key (local test signing)
+
+```bash
+python tools/verify_certificate.py proofs/latest-audit.json --pubkey local_keys/local_signing_key.pub.pem
+```
+
+> Note: You can also run the verifier as a module (`python -m tools.verify_certificate`) if your environment supports it, but the file-path form above is the most portable.
 
 ---
 
-## ITGL Ledger Verification (Optional, Stronger Proof)
+## Two trust surfaces
 
-Each audit run also emits an ITGL hash-chained ledger:
+### 1) Public human summary (GitHub Pages)
 
-* `proofs/itgl_ledger.jsonl`
-* `proofs/itgl_final_hash.txt` (a run-level anchor)
-* `itgl_final_hash` is embedded in the signed certificate
+* `docs/latest-audit.html` + `docs/latest-audit.json` are the **latest passing audit pointer**
+* `docs/runs/` is the **truth-preserving run archive** (passes + failures)
 
-Verify the ledger locally:
+### 2) Offline verification for engineers and auditors
 
-```bash
-python3 tools/verify_itgl.py
-```
-
-Expected output:
-
-```text
-ITGL_FINAL_HASH=sha256:<...>
-ITGL ledger verification OK: 25 entries, final_ledger_hash=<...>
-```
+* Download the JSON certificate
+* Verify signature + payload hash using `tools/verify_certificate.py` and `spec/sdl.pub`
+* Inspect governance anchors (policy hash/version, suite hash, ITGL final hash, fingerprint)
 
 ---
 
-## Domain Packs (Suites)
+## Local install (Mac / Linux)
 
-SIR audit suites are just CSV files.
+Recommended (matches CI):
 
-Two supported formats:
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+pip install -e .
+python --version
+```
 
-### 1) Plain/public suites
-
-Columns:
-
-* `id` (optional)
-* `prompt`
-* `expected` (`allow` or `block`)
-* `note` (optional)
-* `category` (optional)
-
-Example: `tests/jailbreak_prompts_public.csv`
-
-### 2) Sensitive/encoded suites
-
-Columns:
-
-* `id`
-* `prompt_b64` (base64-encoded UTF-8 prompt)
-* `expected` (`allow` or `block`)
-* `note` (optional)
-* `category` (optional)
-
-Examples live under: `tests/domain_packs/`
-
-The point of `prompt_b64` is simple: the suite is still deterministic and testable, but the raw prompt text is not sitting in plaintext in the repo.
+You want: **Python 3.11.x**
 
 ---
 
-## Running the Red-Team Audit Locally
+## Run the audit locally (one command)
 
-CI runs a firewall-only audit automatically. You can run the same harness yourself.
+`tools/local_audit.py` runs the same path people normally trip over:
 
-### Firewall-only mode (recommended / matches CI)
+* suite schema validation
+* suite execution (default: firewall-only, no model calls)
+* ITGL verification + export
+* optional signing + cert generation
+* run archive publish
+* optional local HTTP server (so HTML loads)
 
-```bash
-python3 red_team_suite.py --no-model-calls
-```
-
-Run a specific domain pack:
-
-```bash
-python3 red_team_suite.py --suite tests/domain_packs/generic_safety.csv --no-model-calls
-python3 red_team_suite.py --suite tests/domain_packs/mental_health_clinical.csv --no-model-calls
-```
-
-Outputs:
-
-* `proofs/latest-attempts.log` (human readable)
-* `proofs/run_summary.json` (machine readable; generated during runs)
-* `leaks_count.txt` + `harmless_blocked.txt` (back-compat)
-* `proofs/itgl_ledger.jsonl` + `proofs/itgl_final_hash.txt` (ITGL run ledger + anchor)
-
-### Optional: live model-call mode (integration testing)
-
-If you want to prove the firewall is actively gating real calls, run without `--no-model-calls`. This is not required for certificate verification and is typically used for manual integration tests only.
-
-LiteLLM will look for the relevant provider key (see LiteLLM docs). For xAI this is commonly:
+### Default (firewall-only, no signing)
 
 ```bash
-export XAI_API_KEY="your_key_here"
-python3 red_team_suite.py --suite tests/domain_packs/generic_safety.csv
+python tools/local_audit.py --suite tests/domain_packs/generic_safety.csv
 ```
+
+### Generate a locally signed cert (dev/test key, not SDL)
+
+```bash
+python tools/local_audit.py --suite tests/domain_packs/generic_safety.csv --sign local
+```
+
+### Serve the HTML locally (avoids `file://` fetch restrictions)
+
+```bash
+python tools/local_audit.py --suite tests/domain_packs/generic_safety.csv --serve
+```
+
+Then open:
+
+* `http://localhost:8000/proofs/latest-audit.html`
+* `http://localhost:8000/proofs/runs/index.html`
 
 ---
 
-## Certificate Generation (CI / Signing)
+## Notes on local HTML viewing
 
-Most users only ever need to verify the published certificate, not generate one.
+`latest-audit.html` and `runs/index.html` load JSON via `fetch()`.
+If you open them via `file://`, many browsers will block JSON loading.
 
-In CI, the signer runs:
+Serve the repo over HTTP instead:
 
 ```bash
-python3 tools/generate_certificate.py
+python -m http.server 8000
 ```
-
-It produces:
-
-* `proofs/latest-audit.json`
-* `proofs/latest-audit.html`
-* `proofs/audit-certificate-<timestamp>.json` (archival)
-
----
-
-## Files & Layout (Quick Map)
-
-* `.github/workflows/audit-and-sign.yml`
-  CI pipeline runs audit suite through SIR (firewall-only by default), verifies ITGL, generates and signs the certificate, updates the `latest-audit` files.
-
-* `src/sir_firewall/`
-  SIR core logic (normalisation, rule checks, `validate_sir` entry point).
-
-* `red_team_suite.py`
-  Audit harness. Reads a suite CSV, runs SIR gating, and writes `proofs/run_summary.json`.
-
-* `tests/jailbreak_prompts_public.csv`
-  Public 2025 reference prompts.
-
-* `tests/domain_packs/`
-  Additional suites (including base64-encoded packs).
-
-* `proofs/`
-
-  * `latest-audit.json` current signed certificate
-  * `latest-audit.html` HTML view backed by `latest-audit.json`
-  * `template.html` HTML template used by the signer
-  * `itgl_ledger.jsonl` per-prompt hash-chained run ledger
-  * `itgl_final_hash.txt` run-level ITGL final hash (`sha256:<hex>`)
-
-* `tools/`
-
-  * `verify_certificate.py` verifies hash and RSA signature using `spec/sdl.pub`
-  * `verify_itgl.py` verifies ITGL ledger structure and chain integrity
-  * `generate_certificate.py` CI signer
-
-* `spec/sdl.pub`
-  SDL public key used for verifying signatures.
 
 ---
 
@@ -210,5 +202,3 @@ It produces:
 
 MIT Licensed
 © 2025 Structural Design Labs
-
-```
