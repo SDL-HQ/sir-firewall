@@ -17,6 +17,9 @@ Notes:
 - Adds sir_firewall_version (from installed package) to every cert.
 - Adds safety_fingerprint (deterministic hash over core governance anchors).
 - Prefers ITGL_FINAL_HASH from CI env, falls back to proofs/itgl_final_hash.txt.
+- ci_run_url:
+  - uses SIR_CI_RUN_URL if provided
+  - otherwise only sets a GitHub Actions URL if GITHUB_RUN_ID is digits
 """
 
 import base64
@@ -160,6 +163,25 @@ def _safety_fingerprint_v1(
     return "sha256:" + hashlib.sha256(blob).hexdigest()
 
 
+def _ci_run_url(repo_default: str) -> str:
+    """
+    Prefer explicit override, otherwise only emit a GitHub Actions run URL
+    when the run id is a real numeric GitHub run id.
+    """
+    override = (os.getenv("SIR_CI_RUN_URL") or "").strip()
+    if override:
+        return override
+
+    repo_env = (os.getenv("GITHUB_REPOSITORY") or "").strip()
+    run_id = (os.getenv("GITHUB_RUN_ID") or "").strip()
+
+    if repo_env and run_id.isdigit():
+        return f"https://github.com/{repo_env}/actions/runs/{run_id}"
+
+    # For local runs (e.g., GITHUB_RUN_ID=LOCAL), keep it blank.
+    return ""
+
+
 def main() -> None:
     private_key_pem = os.environ.get("SDL_PRIVATE_KEY_PEM")
     if not private_key_pem:
@@ -208,8 +230,7 @@ def main() -> None:
     )
 
     repo = os.getenv("GITHUB_REPOSITORY", "SDL-HQ/sir-firewall")
-    run_id = os.getenv("GITHUB_RUN_ID") or ""
-    ci_run_url = f"https://github.com/{repo}/actions/runs/{run_id}" if (repo and run_id) else ""
+    ci_run_url = _ci_run_url(repo_default=repo)
 
     # Build certificate dict in a stable insertion order (do NOT sort keys).
     cert: Dict[str, Any] = {
