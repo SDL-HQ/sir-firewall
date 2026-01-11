@@ -22,6 +22,7 @@
     .row { display: grid; grid-template-columns: 190px 1fr; gap: 10px; }
     .k { color: var(--muted); }
     .wrap { word-break: break-word; }
+    .pill { display: inline-block; padding: 2px 8px; border: 1px solid var(--border); border-radius: 999px; font-size: 0.85em; color: var(--muted); margin-left: 8px; }
   </style>
 </head>
 <body>
@@ -35,23 +36,32 @@
     <div class="row"><div class="k">Suite</div><div id="suite">—</div></div>
     <div class="row"><div class="k">Model</div><div id="model">—</div></div>
     <div class="row"><div class="k">Provider</div><div id="provider">—</div></div>
-    <div class="row"><div class="k">Audit date</div><div id="date">—</div></div>
+    <div class="row"><div class="k">Audit timestamp (UTC)</div><div id="date" class="mono">—</div></div>
     <div class="row"><div class="k">Prompts tested</div><div id="prompts">—</div></div>
     <div class="row"><div class="k">Successful leaks</div><div id="leaks">—</div></div>
     <div class="row"><div class="k">Harmless blocked</div><div id="harmless">—</div></div>
     <div class="row"><div class="k">Result</div><div id="result">—</div></div>
+
+    <div style="margin-top:16px;"></div>
+
+    <div class="row"><div class="k">Commit SHA</div><div id="commit" class="mono wrap">—</div></div>
+    <div class="row"><div class="k">Payload hash</div><div id="payload-hash" class="mono wrap">—</div></div>
+    <div class="row"><div class="k">Policy hash</div><div id="policy-hash" class="mono wrap">—</div></div>
+    <div class="row"><div class="k">Suite hash</div><div id="suite-hash" class="mono wrap">—</div></div>
+    <div class="row"><div class="k">ITGL final hash</div><div id="itgl-final-hash" class="mono wrap">—</div></div>
   </div>
 
   <div class="box">
     <strong>Live CI proof</strong><br>
     <a href="#" id="ci-link">GitHub Actions run</a>
+    <span class="pill" id="ci-pill" style="display:none;">CI</span>
   </div>
 
   <div class="box">
     <strong>Cryptographic verification</strong><br>
     Verify the signed JSON with one command from a local checkout of this repo:<br><br>
-    <code class="verify mono" id="verify-cmd">curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 -m tools.verify_certificate</code><br><br>
-    <a href="latest-audit.json">Download raw signed JSON</a>
+    <code class="verify mono" id="verify-cmd">curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python tools/verify_certificate.py</code><br><br>
+    <a href="latest-audit.json" id="json-link">Download signed JSON</a>
   </div>
 
   <div class="box">
@@ -71,6 +81,30 @@
   </footer>
 
   <script>
+    function formatUtcTimestamp(iso) {
+      if (!iso) return "—";
+      const s = String(iso).trim();
+      // Most certs already use ISO like 2026-01-11T05:39:15Z
+      if (s.includes("T") && s.endsWith("Z")) {
+        return s.replace("T", " ").replace("Z", " UTC");
+      }
+      // Fallback: try Date parsing
+      try {
+        const d = new Date(s);
+        if (isNaN(d.getTime())) return s;
+        return d.toISOString().replace("T", " ").replace(".000Z", " UTC");
+      } catch {
+        return s;
+      }
+    }
+
+    function setText(id, val, fallback="—") {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const out = (val === undefined || val === null || String(val).trim() === "") ? fallback : String(val);
+      el.textContent = out;
+    }
+
     fetch('latest-audit.json')
       .then(r => r.json())
       .then(data => {
@@ -84,20 +118,19 @@
         const rawJsonUrl = `https://raw.githubusercontent.com/${repo}/main/proofs/latest-audit.json`;
 
         // Basic fields
-        document.getElementById("sir-version").textContent = data.sir_firewall_version || "—";
-        document.getElementById("suite").textContent = data.suite_name ? data.suite_name : (data.suite_path || "—");
-        document.getElementById("model").textContent = data.model || "—";
-        document.getElementById("provider").textContent = data.provider || "—";
+        setText("sir-version", data.sir_firewall_version);
+        setText("suite", data.suite_name ? data.suite_name : (data.suite_path || "—"));
+        setText("model", data.model);
+        setText("provider", data.provider);
 
-        if (data.date) {
-          document.getElementById("date").textContent = String(data.date).split("T")[0];
-        }
+        // Timestamp (full UTC)
+        setText("date", formatUtcTimestamp(data.date));
 
-        document.getElementById("prompts").textContent = prompts ? String(prompts) : "—";
-        document.getElementById("leaks").textContent = String(leaks);
-        document.getElementById("harmless").textContent = String(harmless);
+        setText("prompts", prompts ? String(prompts) : "—");
+        setText("leaks", String(leaks));
+        setText("harmless", String(harmless));
 
-        // Score + result
+        // Result + badge
         const ok = leaks === 0 && harmless === 0;
         const scoreEl = document.getElementById("score");
         scoreEl.textContent = `${leaks} / ${prompts || "—"}`;
@@ -107,20 +140,43 @@
         resultEl.textContent = data.result || (ok ? "AUDIT PASSED" : "AUDIT FAILED");
         resultEl.className = ok ? "success" : "danger";
 
+        // Evidence anchors (human-friendly)
+        setText("commit", data.commit_sha);
+        setText("payload-hash", data.payload_hash);
+        setText("policy-hash", data.policy_hash);
+        setText("suite-hash", data.suite_hash);
+        setText("itgl-final-hash", data.itgl_final_hash);
+
         // CI link
         const runUrl = data.ci_run_url || "#";
         const link = document.getElementById("ci-link");
+        const pill = document.getElementById("ci-pill");
+
         link.href = runUrl;
+
         if (runUrl && runUrl !== "#") {
           const runId = runUrl.split("/").pop() || "";
-          link.textContent = runId ? `GitHub Actions run #${runId}` : "GitHub Actions run";
+          // If LOCAL or non-numeric, keep it simple
+          if (runId && /^\d+$/.test(runId)) {
+            link.textContent = `GitHub Actions run #${runId}`;
+          } else if (runId) {
+            link.textContent = `GitHub Actions run (${runId})`;
+          } else {
+            link.textContent = "GitHub Actions run";
+          }
+          if (pill) pill.style.display = "inline-block";
         } else {
           link.textContent = "GitHub Actions run";
+          if (pill) pill.style.display = "none";
         }
 
-        // Verification command (repo-aware)
+        // Verification command (repo-aware, portable)
         const verifyCmd = document.getElementById("verify-cmd");
-        verifyCmd.textContent = `curl -s ${rawJsonUrl} | python3 -m tools.verify_certificate`;
+        verifyCmd.textContent = `curl -s ${rawJsonUrl} | python tools/verify_certificate.py`;
+
+        // JSON download link (local-friendly; still works on pages)
+        const jsonLink = document.getElementById("json-link");
+        jsonLink.href = "latest-audit.json";
 
         // Repo link
         const repoLink = document.getElementById("repo-link");
@@ -128,8 +184,7 @@
         repoLink.textContent = repoUrl.replace("https://", "");
 
         // Safety fingerprint
-        const sf = data.safety_fingerprint || "—";
-        document.getElementById("safety-fingerprint").textContent = sf;
+        setText("safety-fingerprint", data.safety_fingerprint);
       })
       .catch(() => {
         document.getElementById("score").textContent = "—";
