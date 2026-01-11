@@ -13,7 +13,7 @@ jobs:
   audit-and-sign:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       actions: write
 
     steps:
@@ -34,6 +34,13 @@ jobs:
           pip uninstall -y sir-firewall sir_firewall || true
           pip install --no-cache-dir --force-reinstall -e .
           python -c "import sir_firewall.core as c; print('LOADED FROM →', c.__file__); print('USE_SEMANTIC_CHECK IS →', c.USE_SEMANTIC_CHECK)"
+
+      - name: Validate domain pack (suite CSV) schema (P7 hygiene)
+        env:
+          SIR_SUITE_PATH: tests/domain_packs/generic_safety.csv
+        run: |
+          echo "Validating suite CSV schema: $SIR_SUITE_PATH"
+          python tools/validate_domain_pack.py --file "$SIR_SUITE_PATH"
 
       - name: Run suite through SIR (firewall-only, no live model calls)
         env:
@@ -103,13 +110,37 @@ jobs:
         run: |
           python tools/verify_certificate.py proofs/latest-audit.json
 
-      # IMPORTANT:
-      # Publish/commit ONLY if PASS, so "latest-audit" stays "latest passing audit"
-      - name: Publish proof to docs/ for GitHub Pages (PASS only)
-        if: always() && env.AUDIT_PASS == 'true'
+      - name: Archive this run (P6 truth-preserving per-run archive)
+        if: always()
+        run: |
+          python tools/publish_run.py \
+            --cert proofs/latest-audit.json \
+            --copy proofs/itgl_ledger.jsonl \
+            --copy proofs/itgl_final_hash.txt \
+            --copy proofs/latest-attempts.log \
+            --copy proofs/run_summary.json \
+            --copy itgl_env.txt \
+            --copy leaks_count.txt \
+            --copy harmless_blocked.txt
+
+      - name: Prepare docs/ for GitHub Pages
+        if: always()
         run: |
           mkdir -p docs
           touch docs/.nojekyll
+
+      # Option A:
+      # - Publish per-run archive + index ALWAYS
+      # - Publish latest-audit ONLY if PASS (so latest-audit stays "latest passing audit")
+      - name: Publish run archive to docs/runs (PASS or FAIL)
+        if: always()
+        run: |
+          rm -rf docs/runs || true
+          cp -R proofs/runs docs/runs
+
+      - name: Publish latest PASS proof to docs/ (PASS only)
+        if: always() && env.AUDIT_PASS == 'true'
+        run: |
           cp -f proofs/latest-audit.html docs/latest-audit.html
           cp -f proofs/latest-audit.json docs/latest-audit.json
 
@@ -127,17 +158,34 @@ jobs:
             harmless_blocked.txt
             itgl_env.txt
 
-      - name: Commit proof files back to repo (PASS only)
-        if: always() && env.AUDIT_PASS == 'true' && github.ref == 'refs/heads/main'
+      # Commit behavior (Option A):
+      # - Always commit proofs/runs + docs/runs (truth-preserving archive, failures included)
+      # - Only commit latest-audit + signed policy if PASS
+      - name: Commit proof files back to repo (archive always; latest PASS only)
+        if: always() && github.ref == 'refs/heads/main'
         run: |
           git config user.name "SIR Audit Bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add proofs/ docs/ policy/isc_policy.signed.json
-          git commit -m "SIR Proof: $(cat leaks_count.txt || echo 0) leaks | $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "Nothing to commit"
+          # Make push resilient if main advanced while we were running
+          git pull --rebase origin main || true
+
+          # Always stage the run archive + index (PASS or FAIL)
+          git add proofs/runs/ docs/runs/
+
+          # Only stage latest PASS pointers + signed policy if PASS
+          if [ "$AUDIT_PASS" = "true" ]; then
+            git add proofs/latest-audit.json proofs/latest-audit.html || true
+            git add docs/latest-audit.json docs/latest-audit.html || true
+            git add policy/isc_policy.signed.json || true
+          fi
+
+          leaks="$(cat leaks_count.txt 2>/dev/null || echo 0)"
+          harmless="$(cat harmless_blocked.txt 2>/dev/null || echo 0)"
+          stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          git commit -m "SIR Proof: $AUDIT_PASS | $leaks leaks | $harmless harmless | $stamp" || echo "Nothing to commit"
           git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.SIR_AUDIT_PUSH_TOKEN }}
 
       - name: Finalize CI status (fail if audit failed)
         if: always()

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SIR Firewall — Run Archive</title>
+  <style>
+    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; max-width: 1000px; margin: 40px auto; padding: 0 16px; line-height: 1.5; }
+    h1 { margin: 0 0 8px; }
+    .muted { color: #666; margin: 0 0 24px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e6e6e6; vertical-align: top; }
+    th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #555; }
+    a { color: #0969da; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,monospace; font-size: 12px; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid #ddd; }
+  </style>
+</head>
+<body>
+  <h1>SIR Firewall — Run Archive</h1>
+  <p class="muted">
+    Immutable per-run archives. Latest pointer remains at <a href="../latest-audit.html">proofs/latest-audit.html</a>.
+    Machine index: <a href="index.json">runs/index.json</a>.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Result</th>
+        <th>Leaks</th>
+        <th>Fingerprint</th>
+        <th>Run</th>
+        <th>CI</th>
+      </tr>
+    </thead>
+    <tbody id="rows">
+      <tr><td colspan="6">Loading…</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    const rows = document.getElementById("rows");
+
+    function esc(s) {
+      return (s ?? "").toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    fetch("index.json", { cache: "no-store" })
+      .then(r => r.json())
+      .then(idx => {
+        const runs = Array.isArray(idx.runs) ? idx.runs : [];
+        if (!runs.length) {
+          rows.innerHTML = `<tr><td colspan="6">No archived runs yet.</td></tr>`;
+          return;
+        }
+
+        rows.innerHTML = runs.map(r => {
+          const date = esc(r.date ?? "—");
+          const result = esc(r.result ?? "—");
+          const leaks = esc(r.leaks ?? "—");
+          const fp = esc((r.safety_fingerprint ?? "—").toString().slice(0, 20));
+          const path = esc(r.path ?? "");
+          const runId = esc(r.run_id ?? "");
+          const ci = r.ci_run_url ? `<a href="${esc(r.ci_run_url)}">run</a>` : "—";
+          const runLink = path ? `<a href="../${path}manifest.json"><code>${runId}</code></a>` : `<code>${runId}</code>`;
+          const badge = `<span class="pill">${result}</span>`;
+          return `<tr>
+            <td>${date}</td>
+            <td>${badge}</td>
+            <td>${leaks}</td>
+            <td><code>${fp}</code></td>
+            <td>${runLink}</td>
+            <td>${ci}</td>
+          </tr>`;
+        }).join("");
+      })
+      .catch(() => {
+        rows.innerHTML = `<tr><td colspan="6">Failed to load index.json</td></tr>`;
+      });
+  </script>
+</body>
+</html>
