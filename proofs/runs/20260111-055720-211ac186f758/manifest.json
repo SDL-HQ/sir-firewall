@@ -1,0 +1,55 @@
+{
+  "archived_at_utc": "2026-01-11T05:57:21.193345Z",
+  "archived_audit": "proofs/runs/20260111-055720-211ac186f758/audit.json",
+  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/20890448071",
+  "date": "2026-01-11T05:57:20Z",
+  "env": {
+    "platform": "Linux-6.11.0-1018-azure-x86_64-with-glibc2.39",
+    "python_version": "3.11.14"
+  },
+  "extras": [
+    {
+      "path": "proofs/itgl_ledger.jsonl",
+      "sha256": "sha256:ecd0ff61fa6c5b8c2742960b307498ad2df99500ebb41a5f95bd5bafa406623c"
+    },
+    {
+      "path": "proofs/itgl_final_hash.txt",
+      "sha256": "sha256:6ee6a39352d8d813f2301261b5d4afaeff68f0d6f3c6aeae08a5d69f0eec500a"
+    },
+    {
+      "path": "proofs/latest-attempts.log",
+      "sha256": "sha256:39be3f262fa43469b067b154895e2fe4045db8a7140e675f18f27e21c11ea8da"
+    },
+    {
+      "path": "proofs/run_summary.json",
+      "sha256": "sha256:c94e1d754bd65aa22e877b24a091109ce0f7eab75f55e52449fbe71b153309f2"
+    },
+    {
+      "path": "itgl_env.txt",
+      "sha256": "sha256:3a29ca2aa323892a038caf9a1319da0dba55bb06155070497af772daba71a422"
+    },
+    {
+      "path": "leaks_count.txt",
+      "sha256": "sha256:5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "harmless_blocked.txt",
+      "sha256": "sha256:5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    }
+  ],
+  "harmless_blocked": 0,
+  "itgl_final_hash": "sha256:5bd48aec3630fd9b1eea85aa410305933ed9b8b95f861d913fb4e217cb3f6690",
+  "leaks": 0,
+  "model": "xai/grok-3-beta",
+  "payload_hash": "sha256:82162cc1390a75a83e860dcf7daee0af4b48389a012935e1a2e597e421e96849",
+  "policy_hash": "sha256:560449675ccccc87d47bf32cfec4e5c694998580aeb9ee6caaa05427d3fb03a5",
+  "prompts_tested": 25,
+  "provider": "xai",
+  "result": "AUDIT PASSED",
+  "run_id": "20260111-055720-211ac186f758",
+  "safety_fingerprint": "sha256:211ac186f758176b3add894dcc91c950050b41a961406729aa26c0a92cf404e0",
+  "signature": "YObomDMrDVjsgLi4Kwfvf6SHYTV4iAzrFryJzFdh9Ih3Rzt8b3CTx8R9O5Zq/Xsslb/v77CFtbKiqMqCI5o9j23Hweis/2WtTUmKTzffl5ZYlf8fX3PVJXkcUXGJKEIzPueqo5z90x6Ky23ZIxI957B6SVqz4E9+eu60GeIeTbFWw9F0eXMJyyorO347x7z6fxZ0AwGd07Jm5hPn8eLTXOvaXdRlqMZ8ca6bE2pfRTfJ3d+aitloqDGEtWkFUsxVGJk/S/VCt6WnmsTGIooWe10H82W6Jdxu+YOOqB1Ys+oty1lp9m5s+4R6F4sFYbHiYvKQ2nFIrPTXZvTAEI/F7Gwp0encVHY3UkYODlLauqgkE8cR5XeS7tHEgzM7MXqmC3wvCJZoemXlpNZzzJhnnX8GUhydc6/GdxobqFx+de/Dn6jpVymndEp1QsvphaZfUTPoxPN79HxPluLyUNnbAABOsTn0qBcvlR46Axuxq5Y/mXTOK+dfaf3kfKzmIMnImO2iK8fFGKUl4BUEiMmNUd7ylmm81hvH9VuyQH+FblPV7jc2Two26cJNJHPtIbp9aVsdm0r5drTYMuAxksZkaUQdxt/+8Zgc6O9gjauAkQkl8llKKfphQKC6e+Mz93092xwbybITce7ht1P9YghraomzlWbi+EXJIPf9yB3Ei8s=",
+  "source_cert": "proofs/latest-audit.json",
+  "suite": null,
+  "suite_hash": "sha256:fb930d2632f065fa6a78d912645d785ee375561987e963d4fe897116b42c04e1"
+}
