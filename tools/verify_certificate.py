@@ -1,113 +1,149 @@
 #!/usr/bin/env python3
-"""tools/verify_certificate.py
+"""
+SIR Firewall — Certificate Verifier
 
-Verification utility for SIR audit certificates.
+Verifies:
+- payload_hash matches reconstructed payload
+- RSA signature matches payload using provided public key
 
-Supports:
-- stdin (recommended):  curl .../latest-audit.json | python3 -m tools.verify_certificate
-- file path argument:  python3 -m tools.verify_certificate proofs/latest-audit.json
-- default local path:  proofs/latest-audit.json
+Default behavior:
+- cert: proofs/latest-audit.json
+- pubkey: spec/sdl.pub
 
-Verification checks:
-1) payload_hash matches canonicalised payload (everything except signature + payload_hash)
-2) RSA signature validates against repo public key (spec/sdl.pub)
+Also supports:
+- reading JSON cert from stdin (pipe)
+- verifying any cert path (positional arg)
+- custom pubkey via --pubkey (useful for local test keys)
 """
 
+from __future__ import annotations
+
+import argparse
 import base64
 import hashlib
 import json
 import sys
+from pathlib import Path
 from typing import Any, Dict, Optional
 
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 
-PUBLIC_KEY_CANDIDATES = [
-    "spec/sdl.pub",
-    "spec/sdl_public_key.pem",
-    "policy/sdl_public_key.pem",
-]
-
-
-def _load_public_key():
-    last_err = None
-    for path in PUBLIC_KEY_CANDIDATES:
-        try:
-            with open(path, "rb") as f:
-                return serialization.load_pem_public_key(f.read())
-        except Exception as e:
-            last_err = e
-            continue
-    raise RuntimeError(
-        f"Could not load public key from any known path: {PUBLIC_KEY_CANDIDATES}. Last error: {last_err}"
-    )
+DEFAULT_CERT_PATH = Path("proofs/latest-audit.json")
+DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
 
 
 def _read_json_from_stdin() -> Optional[Dict[str, Any]]:
-    if sys.stdin is None:
+    if sys.stdin is None or sys.stdin.isatty():
+        return None
+    raw = sys.stdin.read().strip()
+    if not raw:
         return None
     try:
-        if sys.stdin.isatty():
-            return None
-    except Exception:
-        return None
-
-    data = sys.stdin.read()
-    if not data.strip():
-        return None
-    return json.loads(data)
+        return json.loads(raw)
+    except Exception as e:
+        raise SystemExit(f"ERROR: failed to parse JSON from stdin: {e}") from e
 
 
-def _read_json_from_file(path: str) -> Dict[str, Any]:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+def _load_cert(cert_path: Optional[str]) -> Dict[str, Any]:
+    # 1) If cert_path provided, read it
+    if cert_path:
+        p = Path(cert_path)
+        try:
+            with p.open("r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            raise SystemExit(f"ERROR: failed to read cert file: {p} ({e})") from e
+
+    # 2) If piped, read from stdin
+    stdin_obj = _read_json_from_stdin()
+    if stdin_obj is not None:
+        return stdin_obj
+
+    # 3) Default: proofs/latest-audit.json
+    try:
+        with DEFAULT_CERT_PATH.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        raise SystemExit(
+            f"ERROR: no cert path provided and could not read default {DEFAULT_CERT_PATH} ({e})"
+        ) from e
 
 
-def _canonical_payload(cert: Dict[str, Any]) -> bytes:
+def _load_pubkey(pubkey_path: str) -> Any:
+    p = Path(pubkey_path)
+    try:
+        data = p.read_bytes()
+        return serialization.load_pem_public_key(data)
+    except Exception as e:
+        raise SystemExit(f"ERROR: failed to load public key: {p} ({e})") from e
+
+
+def _rebuild_payload(cert: Dict[str, Any]) -> bytes:
+    # Must match tools/generate_certificate.py:
+    # json.dumps(payload_obj, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
     payload_obj = {k: v for k, v in cert.items() if k not in ("signature", "payload_hash")}
     return json.dumps(payload_obj, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
-def main() -> None:
-    cert = _read_json_from_stdin()
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Verify a SIR audit certificate JSON.")
+    ap.add_argument(
+        "cert",
+        nargs="?",
+        default=None,
+        help="Path to certificate JSON (default: proofs/latest-audit.json). If omitted and stdin is piped, reads from stdin.",
+    )
+    ap.add_argument(
+        "--pubkey",
+        default=str(DEFAULT_PUBKEY_PATH),
+        help="Path to PEM public key to verify signatures (default: spec/sdl.pub).",
+    )
+    ap.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Only exit code, no success message.",
+    )
+    args = ap.parse_args()
 
-    if cert is None:
-        path = sys.argv[1] if len(sys.argv) > 1 else "proofs/latest-audit.json"
-        cert = _read_json_from_file(path)
+    cert = _load_cert(args.cert)
+    public_key = _load_pubkey(args.pubkey)
 
-    if not isinstance(cert, dict):
-        print("ERROR: certificate payload is not a JSON object")
-        raise SystemExit(1)
+    # Sanity
+    if "signature" not in cert or "payload_hash" not in cert:
+        print("ERROR: missing required fields: signature and/or payload_hash", file=sys.stderr)
+        return 2
 
-    public_key = _load_public_key()
-    payload = _canonical_payload(cert)
+    payload = _rebuild_payload(cert)
 
     expected_hash = "sha256:" + hashlib.sha256(payload).hexdigest()
     if cert.get("payload_hash") != expected_hash:
-        print("ERROR: payload_hash mismatch")
-        print(f"expected: {expected_hash}")
-        print(f"got:      {cert.get('payload_hash')}")
-        raise SystemExit(1)
-
-    sig_b64 = cert.get("signature")
-    if not sig_b64:
-        print("ERROR: missing signature")
-        raise SystemExit(1)
+        print("ERROR: payload_hash mismatch", file=sys.stderr)
+        print(f"  cert: {cert.get('payload_hash')}", file=sys.stderr)
+        print(f"  calc: {expected_hash}", file=sys.stderr)
+        return 3
 
     try:
-        public_key.verify(
-            base64.b64decode(sig_b64),
-            payload,
-            padding.PKCS1v15(),
-            hashes.SHA256(),
-        )
+        sig = base64.b64decode(str(cert["signature"]))
     except Exception as e:
-        print(f"ERROR: signature verification failed: {type(e).__name__}: {e}")
-        raise SystemExit(1)
+        print(f"ERROR: signature is not valid base64 ({e})", file=sys.stderr)
+        return 4
 
-    print("OK: Certificate signature valid and payload_hash matches.")
+    try:
+        public_key.verify(sig, payload, padding.PKCS1v15(), hashes.SHA256())
+    except InvalidSignature:
+        print("ERROR: signature verification failed (InvalidSignature)", file=sys.stderr)
+        return 5
+    except Exception as e:
+        print(f"ERROR: signature verification failed ({e})", file=sys.stderr)
+        return 6
+
+    if not args.quiet:
+        print("OK: Certificate signature valid and payload_hash matches.")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
