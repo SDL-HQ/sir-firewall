@@ -1,4 +1,4 @@
-# SIR v1.0.2 — Signal Integrity Resolver
+ SIR v1.0.2 — Signal Integrity Resolver
 
 **Pre-inference firewall · deterministic rules-only governance gate · cryptographically signed proof**
 
@@ -68,6 +68,7 @@ CI runs Python 3.11, and the codebase uses Python 3.10+ syntax. If you run Pytho
   - Human page (backed by JSON): `proofs/latest-audit.html`
   - ITGL ledger + final hash: `proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`
   - Run archive (passes + failures): `proofs/runs/<run_id>/...`
+  - Local unsigned snapshot (default local runs): `proofs/local-audit.json`, `proofs/local-audit.html`
 - Offline verification:
   - Public key: `spec/sdl.pub`
   - Verifier: `tools/verify_certificate.py`
@@ -78,7 +79,7 @@ CI runs Python 3.11, and the codebase uses Python 3.10+ syntax. If you run Pytho
 
 ### Verify the latest published certificate (offline)
 
-1) Clone + install deps:
+1) Clone + install:
 
 ```bash
 git clone https://github.com/SDL-HQ/sir-firewall.git
@@ -162,14 +163,31 @@ You want: **Python 3.11.x**
 
 ### Default (firewall-only, no signing)
 
+This produces a **LOCAL UNSIGNED snapshot** (so there’s no confusion with CI / SDL-signed proofs):
+
+* `proofs/local-audit.json`
+* `proofs/local-audit.html`
+
 ```bash
 python tools/local_audit.py --suite tests/domain_packs/generic_safety.csv
 ```
 
 ### Generate a locally signed cert (dev/test key, not SDL)
 
+This produces:
+
+* `proofs/latest-audit.json`
+* `proofs/latest-audit.html`
+* plus `local_keys/local_signing_key*.pem`
+
 ```bash
 python tools/local_audit.py --suite tests/domain_packs/generic_safety.csv --sign local
+```
+
+Verify the locally signed cert:
+
+```bash
+python tools/verify_certificate.py proofs/latest-audit.json --pubkey local_keys/local_signing_key.pub.pem
 ```
 
 ### Serve the HTML locally (avoids `file://` fetch restrictions)
@@ -180,14 +198,15 @@ python tools/local_audit.py --suite tests/domain_packs/generic_safety.csv --serv
 
 Then open:
 
-* `http://localhost:8000/proofs/latest-audit.html`
-* `http://localhost:8000/proofs/runs/index.html`
+* Default (`--sign none`): `http://localhost:8000/proofs/local-audit.html`
+* Local-signed (`--sign local`): `http://localhost:8000/proofs/latest-audit.html`
+* Run archive: `http://localhost:8000/proofs/runs/index.html`
 
 ---
 
 ## Notes on local HTML viewing
 
-`latest-audit.html` and `runs/index.html` load JSON via `fetch()`.
+`local-audit.html`, `latest-audit.html`, and `runs/index.html` load JSON via `fetch()`.
 If you open them via `file://`, many browsers will block JSON loading.
 
 Serve the repo over HTTP instead:
