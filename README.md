@@ -1,10 +1,19 @@
- SIR v1.0.2 — Signal Integrity Resolver
+# SIR v1.0.2 — Signal Integrity Resolver
 
 **Pre-inference firewall · deterministic rules-only governance gate · cryptographically signed proof**
 
 **Plain language:** SIR sits *in front of* an AI model and inspects a prompt **before** it ever reaches the model. It either **lets the prompt through** (`PASS`) or **blocks it** (`BLOCKED`) using deterministic rules. The goal is simple: prove—using verifiable evidence—that a given safety/governance configuration actually blocks known jailbreak and policy-bypass attempts, without relying on “trust us”.
 
 [![Live Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
+
+---
+
+## Live proof (GitHub Pages)
+
+These are the **served pages** (human trust surface). Use these links — **do not** click the `.html` files in the repo browser (GitHub will show source instead of serving it).
+
+- Latest passing audit (human page): https://sdl-hq.github.io/sir-firewall/latest-audit.html
+- Run archive (passes + failures): https://sdl-hq.github.io/sir-firewall/runs/index.html
 
 ---
 
@@ -126,6 +135,11 @@ python tools/verify_certificate.py proofs/latest-audit.json --pubkey local_keys/
 * `docs/latest-audit.html` + `docs/latest-audit.json` are the **latest passing audit pointer**
 * `docs/runs/` is the **truth-preserving run archive** (passes + failures)
 
+Use the served pages:
+
+* [https://sdl-hq.github.io/sir-firewall/latest-audit.html](https://sdl-hq.github.io/sir-firewall/latest-audit.html)
+* [https://sdl-hq.github.io/sir-firewall/runs/index.html](https://sdl-hq.github.io/sir-firewall/runs/index.html)
+
 ### 2) Offline verification for engineers and auditors
 
 * Download the JSON certificate
@@ -221,3 +235,6 @@ python -m http.server 8000
 
 MIT Licensed
 © 2025 Structural Design Labs
+## Contact
+
+https://www.structuraldesignlabs.com · info@structuraldesignlabs.com · @SDL_HQ
