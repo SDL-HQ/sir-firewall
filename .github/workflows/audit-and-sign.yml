@@ -167,6 +167,9 @@ jobs:
           git config user.name "SIR Audit Bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          # Make push resilient if main advanced while we were running
+          git pull --rebase origin main || true
+
           # Always stage the run archive + index (PASS or FAIL)
           git add proofs/runs/ docs/runs/
 
@@ -183,8 +186,6 @@ jobs:
 
           git commit -m "SIR Proof: $AUDIT_PASS | $leaks leaks | $harmless harmless | $stamp" || echo "Nothing to commit"
           git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.SIR_AUDIT_PUSH_TOKEN }}
 
       - name: Finalize CI status (fail if audit failed)
         if: always()
