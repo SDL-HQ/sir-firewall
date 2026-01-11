@@ -47,6 +47,28 @@
       return (s ?? "").toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
+    function ciLabelAndLink(ciUrl) {
+      if (!ciUrl) return { html: '<span class="pill">OFFLINE</span>' };
+
+      const u = ciUrl.toString();
+      const tail = (u.split("/").pop() || "").trim();
+
+      // If it's a normal GitHub Actions run URL, tail should be digits.
+      const isDigits = /^[0-9]+$/.test(tail);
+
+      if (isDigits) {
+        return { html: `<a href="${esc(u)}">#${esc(tail)}</a>` };
+      }
+
+      // Common local/offline patterns
+      if (tail.toUpperCase() === "LOCAL" || u.toUpperCase().includes("/RUNS/LOCAL")) {
+        return { html: '<span class="pill">LOCAL</span>' };
+      }
+
+      // Unknown but present (still link it)
+      return { html: `<a href="${esc(u)}">CI</a>` };
+    }
+
     fetch("index.json", { cache: "no-store" })
       .then(r => r.json())
       .then(idx => {
@@ -63,9 +85,17 @@
           const fp = esc((r.safety_fingerprint ?? "—").toString().slice(0, 20));
           const path = esc(r.path ?? "");
           const runId = esc(r.run_id ?? "");
-          const ci = r.ci_run_url ? `<a href="${esc(r.ci_run_url)}">run</a>` : "—";
-          const runLink = path ? `<a href="../${path}manifest.json"><code>${runId}</code></a>` : `<code>${runId}</code>`;
+
+          const ci = ciLabelAndLink(r.ci_run_url).html;
+
+          // NOTE: index.html lives at runs/index.html.
+          // "path" is stored as "runs/<run_id>/", so "../${path}manifest.json" resolves correctly.
+          const runLink = path
+            ? `<a href="../${path}manifest.json"><code>${runId}</code></a>`
+            : `<code>${runId}</code>`;
+
           const badge = `<span class="pill">${result}</span>`;
+
           return `<tr>
             <td>${date}</td>
             <td>${badge}</td>
