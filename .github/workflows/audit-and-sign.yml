@@ -129,7 +129,7 @@ jobs:
           mkdir -p docs
           touch docs/.nojekyll
 
-      # Option A:
+      # Option A (publishing):
       # - Publish per-run archive + index ALWAYS
       # - Publish latest-audit ONLY if PASS (so latest-audit stays "latest passing audit")
       - name: Publish run archive to docs/runs (PASS or FAIL)
@@ -158,10 +158,11 @@ jobs:
             harmless_blocked.txt
             itgl_env.txt
 
-      # Commit behavior (Option A):
+      # Commit behavior (Option B):
       # - Always commit proofs/runs + docs/runs (truth-preserving archive, failures included)
       # - Only commit latest-audit + signed policy if PASS
-      - name: Commit proof files back to repo (archive always; latest PASS only)
+      # - ALSO commit latest proof sidecars in proofs/ (PASS only) to keep repo "latest bundle" coherent
+      - name: Commit proof files back to repo (archive always; latest PASS + sidecars only)
         if: always() && github.ref == 'refs/heads/main'
         run: |
           git config user.name "SIR Audit Bot"
@@ -173,11 +174,14 @@ jobs:
           # Always stage the run archive + index (PASS or FAIL)
           git add proofs/runs/ docs/runs/
 
-          # Only stage latest PASS pointers + signed policy if PASS
+          # Only stage latest PASS pointers + signed policy + latest sidecars if PASS
           if [ "$AUDIT_PASS" = "true" ]; then
             git add proofs/latest-audit.json proofs/latest-audit.html || true
             git add docs/latest-audit.json docs/latest-audit.html || true
             git add policy/isc_policy.signed.json || true
+
+            # Keep "latest" proof sidecars coherent in proofs/
+            git add proofs/itgl_ledger.jsonl proofs/itgl_final_hash.txt proofs/latest-attempts.log proofs/run_summary.json || true
           fi
 
           leaks="$(cat leaks_count.txt 2>/dev/null || echo 0)"
