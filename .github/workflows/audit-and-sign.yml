@@ -13,7 +13,7 @@ jobs:
   audit-and-sign:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       actions: write
 
     steps:
