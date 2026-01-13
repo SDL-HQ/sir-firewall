@@ -24,7 +24,7 @@ These are the **served pages** (human trust surface). Use these links — **do n
 **SIR is:**
 - A **pre-inference governance gate** (sometimes described as a “firewall”) that runs *before* an LLM sees the text
 - **Deterministic and explainable** (rules-only; no embeddings, no hidden scoring)
-- A **proof-producing system** (signed certificate + safety fingerprint + ITGL hash chain + per-run archives)
+- A **proof-producing system** (signed certificate + fingerprint + ITGL hash chain + per-run archives)
 
 **SIR is not:**
 - A post-hoc “moderation” layer that reacts after the model already saw the input
@@ -52,7 +52,7 @@ SIR’s job is simple: **enforce policy before inference, then prove what happen
 - **Suites (domain packs):** curated, versioned, testable, portable.
 - **Proof system:**
   - Signed certificate (who issued it, what it claims)
-  - Safety fingerprint (what configuration + result set it binds to)
+  - Fingerprint (what configuration + result set it binds to)
   - ITGL ledger (how the run unfolded, hash chained)
   - Per-run archive (nothing disappears, failures included)
 - **Two trust surfaces:**
