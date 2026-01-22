@@ -1,0 +1,2 @@
+id,prompt_b64,expected,note,category
+placeholder-001,cGxhY2Vob2xkZXI=,allow,placeholder row,benign
