@@ -1,10 +1,10 @@
-# SIR v1.0.2 — Signal Integrity Resolver
+# SIR v1.0.2: Signal Integrity Resolver
 
 **Deterministic pre-inference governance gate · rules-only · cryptographically signed proof**
 
 **Plain language:** SIR sits in front of an AI model (or agent) and inspects a prompt **before** it reaches inference. It either **lets the prompt through** (`PASS`) or **blocks it** (`BLOCKED`) using deterministic, versioned rules.
 
-Models provide capability. **SIR makes governance deterministic and verifiable.** It does not claim model alignment. It claims deterministic enforcement and verifiable evidence for a given policy and test suite.
+Models provide capability. **SIR makes governance enforceable and provable.** It does not claim model alignment. It claims deterministic enforcement and verifiable evidence for a given policy and test suite.
 
 SIR is built for **high-stakes AI**: regulated systems and agents that touch real money, real data, or real-world decisions. The goal is simple: produce **verifiable evidence** that a given governance configuration actually enforces what it claims, without relying on “trust us”.
 
@@ -37,7 +37,7 @@ These are the **served pages** (human trust surface). Use these links. Do not cl
 
 ## Why this exists
 
-Most “governance”, “safety”, and “compliance” claims are unverifiable. SIR exists to turn them into **auditable evidence** that security review, compliance, and where applicable insurance review can actually consume.
+Most “governance”, “safety”, and “compliance” claims are unverifiable. SIR exists to turn them into **auditable evidence** that security review, compliance, and (where applicable) underwriting can actually consume.
 
 Accountability sits in two versioned, auditable boxes:
 - **Policy (domain pack):** human-written, versioned rules you set
@@ -46,7 +46,7 @@ Accountability sits in two versioned, auditable boxes:
 Questions SIR answers with evidence:
 - What suite was tested?
 - What policy and configuration was enforced?
-- What happened during the run, including failures?
+- What happened during the run (including failures)?
 - Can an independent party verify the claim **offline**?
 
 SIR’s job is simple: **enforce policy before inference, then prove what happened without relying on “trust us”.**
@@ -70,11 +70,11 @@ SIR’s job is simple: **enforce policy before inference, then prove what happen
 
 ---
 
-## Runtime requirements (important)
+## Runtime requirements
 
-**Python 3.11+ is required.**
+**Python 3 is required.**
 
-CI runs Python 3.11, and the codebase uses Python 3.10+ syntax. If you run Python 3.9 locally, it will fail.
+If `python3` is not installed on your machine, install Python first. If your organisation blocks installs, use a machine where you are allowed to install developer tooling.
 
 ---
 
@@ -100,26 +100,55 @@ Note: GitHub Pages serves the published proof surfaces at:
 
 ---
 
+## Quick verify (paste this)
+
+This is the simplest way to verify the latest published certificate on a Mac or Linux machine.
+
+Paste this into Terminal:
+
+```bash
+git clone https://github.com/SDL-HQ/sir-firewall.git && cd sir-firewall && \
+python3 -m venv .venv && source .venv/bin/activate && \
+python3 -m pip install -U pip && python3 -m pip install -e . && \
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py
+````
+
+Expected:
+
+```text
+OK: Certificate signature valid and payload_hash matches.
+```
+
+If you see an error about `cryptography` not being installed, run:
+
+```bash
+python3 -m pip install cryptography
+```
+
+If you see an error that `python3` is not found, Python is not installed on this machine.
+
+---
+
 ## Offline verification (auditors, regulators, engineers)
 
 ### Verify the latest published certificate (offline)
 
-1) Clone and install:
+1. Clone and install:
 
 ```bash
 git clone https://github.com/SDL-HQ/sir-firewall.git
 cd sir-firewall
-python3.11 -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
-pip install -U pip
-pip install -e .
-````
+python3 -m pip install -U pip
+python3 -m pip install -e .
+```
 
-2. Verify the published cert (no network beyond the download):
+2. Verify the published certificate (no network beyond the download):
 
 ```bash
 curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json \
-  | python tools/verify_certificate.py
+  | python3 tools/verify_certificate.py
 ```
 
 Expected:
@@ -128,18 +157,18 @@ Expected:
 OK: Certificate signature valid and payload_hash matches.
 ```
 
-Note (optional): You can also run `python -m tools.verify_certificate` if your environment supports module execution.
+Note (optional): You can also run `python3 -m tools.verify_certificate` if your environment supports module execution.
 
-### Verify a specific cert file
+### Verify a specific certificate file
 
 ```bash
-python tools/verify_certificate.py proofs/latest-audit.json
+python3 tools/verify_certificate.py proofs/latest-audit.json
 ```
 
 ### Verify using a different public key (local test signing)
 
 ```bash
-python tools/verify_certificate.py proofs/latest-audit.json --pubkey local_keys/local_signing_key.pub.pem
+python3 tools/verify_certificate.py proofs/latest-audit.json --pubkey local_keys/local_signing_key.pub.pem
 ```
 
 ---
@@ -166,43 +195,39 @@ Use the served pages:
 
 ## Local install (Mac, Linux)
 
-Recommended (matches CI):
-
 ```bash
-python3.11 -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
-pip install -U pip
-pip install -e .
-python --version
+python3 -m pip install -U pip
+python3 -m pip install -e .
+python3 --version
 ```
-
-You want: **Python 3.11.x**
 
 ---
 
 ## Run the audit locally (one command)
 
-`tools/local_audit.py` runs the same path people normally trip over:
+`tools/local_audit.py` runs:
 
 * suite schema validation
 * suite execution (default: gate-only, no model calls)
 * ITGL verification and export
-* optional signing and cert generation
+* optional signing and certificate generation
 * run archive publish
 * optional local HTTP server (so HTML loads)
 
 ### Default (gate-only, no signing)
 
-This produces a **LOCAL UNSIGNED** snapshot (so there’s no confusion with CI or SDL-signed proofs):
+This produces a **LOCAL UNSIGNED** snapshot:
 
 * `proofs/local-audit.json`
 * `proofs/local-audit.html`
 
 ```bash
-python tools/local_audit.py --suite tests/domain_packs/generic_safety.csv
+python3 tools/local_audit.py --suite tests/domain_packs/generic_safety.csv
 ```
 
-### Generate a locally signed cert (dev/test key, not SDL)
+### Generate a locally signed certificate (dev/test key, not SDL)
 
 This produces:
 
@@ -211,19 +236,19 @@ This produces:
 * plus `local_keys/local_signing_key*.pem`
 
 ```bash
-python tools/local_audit.py --suite tests/domain_packs/generic_safety.csv --sign local
+python3 tools/local_audit.py --suite tests/domain_packs/generic_safety.csv --sign local
 ```
 
-Verify the locally signed cert:
+Verify the locally signed certificate:
 
 ```bash
-python tools/verify_certificate.py proofs/latest-audit.json --pubkey local_keys/local_signing_key.pub.pem
+python3 tools/verify_certificate.py proofs/latest-audit.json --pubkey local_keys/local_signing_key.pub.pem
 ```
 
 ### Serve the HTML locally (avoids `file://` fetch restrictions)
 
 ```bash
-python tools/local_audit.py --suite tests/domain_packs/generic_safety.csv --serve
+python3 tools/local_audit.py --suite tests/domain_packs/generic_safety.csv --serve
 ```
 
 Then open:
@@ -242,14 +267,14 @@ If you open them via `file://`, many browsers will block JSON loading.
 Serve the repo over HTTP instead:
 
 ```bash
-python -m http.server 8000
+python3 -m http.server 8000
 ```
 
 ---
 
 ## Licence
 
-MIT Licence
+MIT Licensed
 © 2025 Structural Design Labs
 
 ---
@@ -257,3 +282,5 @@ MIT Licence
 ## Contact
 
 [https://www.structuraldesignlabs.com](https://www.structuraldesignlabs.com) · [info@structuraldesignlabs.com](mailto:info@structuraldesignlabs.com) · @SDL_HQ
+::contentReference[oaicite:0]{index=0}
+```
