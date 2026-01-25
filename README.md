@@ -2,9 +2,11 @@
 
 **Deterministic pre-inference governance gate · rules-only · cryptographically signed proof**
 
-**Plain language:** SIR sits *in front of* an AI model (or agent) and inspects a prompt **before** it reaches inference. It either **lets the prompt through** (`PASS`) or **blocks it** (`BLOCKED`) using deterministic, versioned rules.
+**Plain language:** SIR sits in front of an AI model (or agent) and inspects a prompt **before** it reaches inference. It either **lets the prompt through** (`PASS`) or **blocks it** (`BLOCKED`) using deterministic, versioned rules.
 
-SIR is built for **high-stakes AI**: regulated systems and agents that touch real money, real data, or real-world decisions. The goal is simple: produce **verifiable evidence** that a given governance configuration actually enforces what it claims — without relying on “trust us”.
+Models provide capability. **SIR makes governance enforceable and provable.** It does not claim model alignment. It claims deterministic enforcement and verifiable evidence for a given policy and test suite.
+
+SIR is built for **high-stakes AI**: regulated systems and agents that touch real money, real data, or real-world decisions. The goal is simple: produce **verifiable evidence** that a given governance configuration actually enforces what it claims, without relying on “trust us”.
 
 [![Live Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
@@ -12,7 +14,7 @@ SIR is built for **high-stakes AI**: regulated systems and agents that touch rea
 
 ## Live proof (GitHub Pages)
 
-These are the **served pages** (human trust surface). Use these links — **do not** click the `.html` files in the repo browser (GitHub will show source instead of serving it).
+These are the **served pages** (human trust surface). Use these links. Do not click the `.html` files in the repo browser (GitHub will show source instead of serving it).
 
 - Latest passing audit (human page): https://sdl-hq.github.io/sir-firewall/latest-audit.html
 - Run archive (passes + failures): https://sdl-hq.github.io/sir-firewall/runs/index.html
@@ -22,23 +24,28 @@ These are the **served pages** (human trust surface). Use these links — **do n
 ## What SIR is (and isn’t)
 
 **SIR is:**
-- A **pre-inference governance gate** (sometimes described as a “firewall”) that runs *before* an LLM sees the text
+- A **pre-inference governance gate** (sometimes described as a firewall) that runs before an LLM sees the text
 - **Deterministic and explainable** (rules-only; no embeddings, no hidden scoring)
 - A **proof-producing system** (signed certificate + fingerprint + ITGL hash chain + per-run archives)
 
 **SIR is not:**
-- A post-hoc “moderation” layer that reacts after the model already saw the input
-- A probabilistic “trust score” or black-box classifier
-- A magic alignment solution for all harms
+- A post-hoc moderation layer that reacts after the model already saw the input
+- A probabilistic trust score or black-box classifier
+- A general alignment or ethics solution
 
 ---
 
 ## Why this exists
 
-Most “governance”, “safety”, and “compliance” claims are unverifiable. SIR exists to turn them into **auditable evidence** — the kind that security review, compliance, and (where applicable) underwriting can actually consume:
+Most “governance”, “safety”, and “compliance” claims are unverifiable. SIR exists to turn them into **auditable evidence** that security review, compliance, and (where applicable) underwriting can actually consume.
 
+Accountability sits in two versioned, auditable boxes:
+- **Policy (domain pack):** human-written, versioned rules you set
+- **Enforcement (SIR):** deterministic gate that enforces those rules exactly and produces signed proof
+
+Questions SIR answers with evidence:
 - What suite was tested?
-- What policy/config was enforced?
+- What policy and configuration was enforced?
 - What happened during the run (including failures)?
 - Can an independent party verify the claim **offline**?
 
@@ -52,7 +59,7 @@ SIR’s job is simple: **enforce policy before inference, then prove what happen
 - **Suites (domain packs):** curated, versioned, testable, portable.
 - **Proof system:**
   - Signed certificate (who issued it, what it claims)
-  - Fingerprint (what configuration + result set it binds to)
+  - Fingerprint (what configuration and result set it binds to)
   - ITGL ledger (how the run unfolded, hash chained)
   - Per-run archive (nothing disappears, failures included)
 - **Two trust surfaces:**
@@ -77,7 +84,7 @@ CI runs Python 3.11, and the codebase uses Python 3.10+ syntax. If you run Pytho
 - Domain pack suites (CSV): `tests/domain_packs/`
 - Suite schema validator: `tools/validate_domain_pack.py`
 - Runner: `red_team_suite.py` (writes run logs + summary + ITGL)
-- Proofs (repo artifacts):
+- Proofs (repo artefacts):
   - Signed cert (latest pointer): `proofs/latest-audit.json`
   - Human page (backed by JSON): `proofs/latest-audit.html`
   - ITGL ledger + final hash: `proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`
@@ -87,16 +94,17 @@ CI runs Python 3.11, and the codebase uses Python 3.10+ syntax. If you run Pytho
   - Public key: `spec/sdl.pub`
   - Verifier: `tools/verify_certificate.py`
 
-> Note: GitHub Pages serves the published proof surfaces at:
-> `https://sdl-hq.github.io/sir-firewall/latest-audit.html` and `https://sdl-hq.github.io/sir-firewall/runs/index.html`.
+Note: GitHub Pages serves the published proof surfaces at:
+- `https://sdl-hq.github.io/sir-firewall/latest-audit.html`
+- `https://sdl-hq.github.io/sir-firewall/runs/index.html`
 
 ---
 
-## Offline verification (auditors / regulators / engineers)
+## Offline verification (auditors, regulators, engineers)
 
 ### Verify the latest published certificate (offline)
 
-1) Clone + install:
+1) Clone and install:
 
 ```bash
 git clone https://github.com/SDL-HQ/sir-firewall.git
@@ -120,6 +128,8 @@ Expected:
 OK: Certificate signature valid and payload_hash matches.
 ```
 
+Note (optional): You can also run `python -m tools.verify_certificate` if your environment supports module execution.
+
 ### Verify a specific cert file
 
 ```bash
@@ -132,15 +142,13 @@ python tools/verify_certificate.py proofs/latest-audit.json
 python tools/verify_certificate.py proofs/latest-audit.json --pubkey local_keys/local_signing_key.pub.pem
 ```
 
-> Note: You can also run the verifier as a module (`python -m tools.verify_certificate`) if your environment supports it, but the file-path form above is the most portable.
-
 ---
 
 ## Two trust surfaces
 
 ### 1) Public human summary (GitHub Pages)
 
-* `latest-audit.html` + `latest-audit.json` represent the **latest passing audit pointer**
+* `latest-audit.html` and `latest-audit.json` represent the **latest passing audit pointer**
 * `runs/` is the **truth-preserving run archive** (passes + failures)
 
 Use the served pages:
@@ -151,12 +159,12 @@ Use the served pages:
 ### 2) Offline verification for engineers and auditors
 
 * Download the JSON certificate
-* Verify signature + payload hash using `tools/verify_certificate.py` and `spec/sdl.pub`
+* Verify signature and payload hash using `tools/verify_certificate.py` and `spec/sdl.pub`
 * Inspect governance anchors (policy hash/version, suite hash, ITGL final hash, fingerprint)
 
 ---
 
-## Local install (Mac / Linux)
+## Local install (Mac, Linux)
 
 Recommended (matches CI):
 
@@ -185,7 +193,7 @@ You want: **Python 3.11.x**
 
 ### Default (gate-only, no signing)
 
-This produces a **LOCAL UNSIGNED snapshot** (so there’s no confusion with CI / SDL-signed proofs):
+This produces a **LOCAL UNSIGNED** snapshot (so there’s no confusion with CI or SDL-signed proofs):
 
 * `proofs/local-audit.json`
 * `proofs/local-audit.html`
@@ -239,7 +247,7 @@ python -m http.server 8000
 
 ---
 
-## License
+## Licence
 
 MIT Licensed
 © 2025 Structural Design Labs
