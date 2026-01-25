@@ -4,7 +4,7 @@
 
 **Plain language:** SIR sits in front of an AI model (or agent) and inspects a prompt **before** it reaches inference. It either **lets the prompt through** (`PASS`) or **blocks it** (`BLOCKED`) using deterministic, versioned rules.
 
-Models provide capability. **SIR makes governance enforceable and provable.** It does not claim model alignment. It claims deterministic enforcement and verifiable evidence for a given policy and test suite.
+Models provide capability. **SIR makes governance deterministic and verifiable.** It does not claim model alignment. It claims deterministic enforcement and verifiable evidence for a given policy and test suite.
 
 SIR is built for **high-stakes AI**: regulated systems and agents that touch real money, real data, or real-world decisions. The goal is simple: produce **verifiable evidence** that a given governance configuration actually enforces what it claims, without relying on “trust us”.
 
@@ -37,7 +37,7 @@ These are the **served pages** (human trust surface). Use these links. Do not cl
 
 ## Why this exists
 
-Most “governance”, “safety”, and “compliance” claims are unverifiable. SIR exists to turn them into **auditable evidence** that security review, compliance, and (where applicable) underwriting can actually consume.
+Most “governance”, “safety”, and “compliance” claims are unverifiable. SIR exists to turn them into **auditable evidence** that security review, compliance, and where applicable insurance review can actually consume.
 
 Accountability sits in two versioned, auditable boxes:
 - **Policy (domain pack):** human-written, versioned rules you set
@@ -46,7 +46,7 @@ Accountability sits in two versioned, auditable boxes:
 Questions SIR answers with evidence:
 - What suite was tested?
 - What policy and configuration was enforced?
-- What happened during the run (including failures)?
+- What happened during the run, including failures?
 - Can an independent party verify the claim **offline**?
 
 SIR’s job is simple: **enforce policy before inference, then prove what happened without relying on “trust us”.**
@@ -186,8 +186,8 @@ You want: **Python 3.11.x**
 
 * suite schema validation
 * suite execution (default: gate-only, no model calls)
-* ITGL verification + export
-* optional signing + cert generation
+* ITGL verification and export
+* optional signing and cert generation
 * run archive publish
 * optional local HTTP server (so HTML loads)
 
@@ -249,7 +249,7 @@ python -m http.server 8000
 
 ## Licence
 
-MIT Licensed
+MIT Licence
 © 2025 Structural Design Labs
 
 ---
