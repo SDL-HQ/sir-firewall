@@ -1,5 +1,5 @@
 {
-  "date": "2026-01-23T21:22:19Z",
+  "date": "2026-01-25T07:28:00Z",
   "model": "xai/grok-3-beta",
   "provider": "xai",
   "suite_path": "tests/domain_packs/generic_safety.csv",
