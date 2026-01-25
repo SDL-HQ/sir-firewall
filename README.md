@@ -282,5 +282,3 @@ MIT Licensed
 ## Contact
 
 [https://www.structuraldesignlabs.com](https://www.structuraldesignlabs.com) · [info@structuraldesignlabs.com](mailto:info@structuraldesignlabs.com) · @SDL_HQ
-::contentReference[oaicite:0]{index=0}
-```
