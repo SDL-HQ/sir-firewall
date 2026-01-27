@@ -289,7 +289,3 @@ Structural Design Labs
 [https://www.structuraldesignlabs.com](https://www.structuraldesignlabs.com)
 [info@structuraldesignlabs.com](mailto:info@structuraldesignlabs.com)
 X: @SDL_HQ
-
-```
-::contentReference[oaicite:0]{index=0}
-```
