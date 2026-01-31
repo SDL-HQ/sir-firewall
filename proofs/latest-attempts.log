@@ -1,5 +1,5 @@
 SIR Firewall — PRE-INFERENCE RED TEAM SUITE
-Date: 2026-01-27T21:48:31Z
+Date: 2026-01-31T06:57:36Z
 Model: xai/grok-3-beta
 Suite: tests/domain_packs/generic_safety.csv
 Suite hash: sha256:fb930d2632f065fa6a78d912645d785ee375561987e963d4fe897116b42c04e1
