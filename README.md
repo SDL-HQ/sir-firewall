@@ -24,7 +24,7 @@ These are the **served pages** (human trust surface). Use these links. Do not cl
 ## What SIR is (and isn’t)
 
 **SIR is:**
-- A **pre-inference governance gate** (sometimes described as a firewall) that runs before an LLM sees the text
+- A **pre-inference governance gate** that runs before an LLM sees the text
 - **Deterministic and explainable** (rules-only; no embeddings, no hidden scoring)
 - A **proof-producing system** (signed certificate + fingerprint + ITGL hash chain + per-run archives)
 
@@ -32,6 +32,13 @@ These are the **served pages** (human trust surface). Use these links. Do not cl
 - A post-hoc moderation layer that reacts after the model already saw the input
 - A probabilistic trust score or black-box classifier
 - A general alignment or ethics solution
+
+---
+
+## Modes of operation
+
+- **Audit-only:** run suites and publish signed proof without affecting production traffic
+- **Gating:** enforce policy in real time at ingress, `PASS` or `BLOCK` with reasons
 
 ---
 
@@ -50,31 +57,6 @@ Questions SIR answers with evidence:
 - Can an independent party verify the claim **offline**?
 
 SIR’s job is simple: **enforce policy before inference, then prove what happened without relying on “trust us”.**
-
----
-
-## End-state design goals (current direction)
-
-- **Gate core:** deterministic, rules-only, explainable.
-- **Suites (domain packs):** curated, versioned, testable, portable.
-- **Proof system:**
-  - Signed certificate (who issued it, what it claims)
-  - Fingerprint (what configuration and result set it binds to)
-  - ITGL ledger (how the run unfolded, hash chained)
-  - Per-run archive (nothing disappears, failures included)
-- **Two trust surfaces:**
-  - Public GitHub Pages summary for humans
-  - Offline verification for engineers and auditors
-- **Integration evidence:**
-  - Optional live gating runs that prove enforcement, not just claims
-
----
-
-## Runtime requirements
-
-**Python 3 is required.**
-
-If `python3` is not installed on your machine, install Python first. If your organisation blocks installs, use a machine where you are allowed to install developer tooling.
 
 ---
 
@@ -129,146 +111,10 @@ If you see an error that `python3` is not found, Python is not installed on this
 
 ---
 
-## Offline verification (auditors, regulators, engineers)
+## Guides
 
-### Verify the latest published certificate (offline)
-
-1. Clone and install:
-
-```bash
-git clone https://github.com/SDL-HQ/sir-firewall.git
-cd sir-firewall
-python3 -m venv .venv
-source .venv/bin/activate
-python3 -m pip install -U pip
-python3 -m pip install -e .
-```
-
-2. Verify the published certificate (no network beyond the download):
-
-```bash
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json \
-  | python3 tools/verify_certificate.py
-```
-
-Expected:
-
-```text
-OK: Certificate signature valid and payload_hash matches.
-```
-
-Note (optional): You can also run `python3 -m tools.verify_certificate` if your environment supports module execution.
-
-### Verify a specific certificate file
-
-```bash
-python3 tools/verify_certificate.py proofs/latest-audit.json
-```
-
-### Verify using a different public key (local test signing)
-
-```bash
-python3 tools/verify_certificate.py proofs/latest-audit.json --pubkey local_keys/local_signing_key.pub.pem
-```
-
----
-
-## Two trust surfaces
-
-### 1) Public human summary (GitHub Pages)
-
-* `latest-audit.html` and `latest-audit.json` represent the **latest passing audit pointer**
-* `runs/` is the **truth-preserving run archive** (passes + failures)
-
-Use the served pages:
-
-* [https://sdl-hq.github.io/sir-firewall/latest-audit.html](https://sdl-hq.github.io/sir-firewall/latest-audit.html)
-* [https://sdl-hq.github.io/sir-firewall/runs/index.html](https://sdl-hq.github.io/sir-firewall/runs/index.html)
-
-### 2) Offline verification for engineers and auditors
-
-* Download the JSON certificate
-* Verify signature and payload hash using `tools/verify_certificate.py` and `spec/sdl.pub`
-* Inspect governance anchors (policy hash/version, suite hash, ITGL final hash, fingerprint)
-
----
-
-## Local install (Mac, Linux)
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python3 -m pip install -U pip
-python3 -m pip install -e .
-python3 --version
-```
-
----
-
-## Run the audit locally (one command)
-
-`tools/local_audit.py` runs:
-
-* suite schema validation
-* suite execution (default: gate-only, no model calls)
-* ITGL verification and export
-* optional signing and certificate generation
-* run archive publish
-* optional local HTTP server (so HTML loads)
-
-### Default (gate-only, no signing)
-
-This produces a **LOCAL UNSIGNED** snapshot:
-
-* `proofs/local-audit.json`
-* `proofs/local-audit.html`
-
-```bash
-python3 tools/local_audit.py --suite tests/domain_packs/generic_safety.csv
-```
-
-### Generate a locally signed certificate (dev/test key, not SDL)
-
-This produces:
-
-* `proofs/latest-audit.json`
-* `proofs/latest-audit.html`
-* plus `local_keys/local_signing_key*.pem`
-
-```bash
-python3 tools/local_audit.py --suite tests/domain_packs/generic_safety.csv --sign local
-```
-
-Verify the locally signed certificate:
-
-```bash
-python3 tools/verify_certificate.py proofs/latest-audit.json --pubkey local_keys/local_signing_key.pub.pem
-```
-
-### Serve the HTML locally (avoids `file://` fetch restrictions)
-
-```bash
-python3 tools/local_audit.py --suite tests/domain_packs/generic_safety.csv --serve
-```
-
-Then open:
-
-* Default (`--sign none`): `http://localhost:8000/proofs/local-audit.html`
-* Local-signed (`--sign local`): `http://localhost:8000/proofs/latest-audit.html`
-* Run archive: `http://localhost:8000/proofs/runs/index.html`
-
----
-
-## Notes on local HTML viewing
-
-`local-audit.html`, `latest-audit.html`, and `runs/index.html` load JSON via `fetch()`.
-If you open them via `file://`, many browsers will block JSON loading.
-
-Serve the repo over HTTP instead:
-
-```bash
-python3 -m http.server 8000
-```
+* Engineer guide (local runs, signing, serving): `docs/engineer-guide.md`
+* Trial guide (auditors, insurers, evidence capture): `docs/trial-guide.md`
 
 ---
 
@@ -282,3 +128,4 @@ MIT Licensed
 ## Contact
 
 [https://www.structuraldesignlabs.com](https://www.structuraldesignlabs.com) · [info@structuraldesignlabs.com](mailto:info@structuraldesignlabs.com) · @SDL_HQ
+
