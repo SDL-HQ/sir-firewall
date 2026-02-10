@@ -58,9 +58,20 @@
   </div>
 
   <div class="box">
+    <strong>Latest run status</strong><br>
+    <div class="row"><div class="k">Status</div><div id="latest-status" class="mono">—</div></div>
+    <div class="row"><div class="k">Timestamp (UTC)</div><div id="latest-ts" class="mono wrap">—</div></div>
+    <div class="row"><div class="k">Run ID</div><div id="latest-run" class="mono wrap">—</div></div>
+    <div class="row"><div class="k">SHA</div><div id="latest-sha" class="mono wrap">—</div></div>
+    <div style="margin-top:10px;"></div>
+    <a href="latest-run.json" id="latest-run-link">View latest-run.json</a>
+    <div class="k" style="margin-top:6px;">Note: <span class="mono">latest-audit</span> is the latest PASS proof. <span class="mono">latest-run</span> reflects the most recent run, including FAIL or INCONCLUSIVE.</div>
+  </div>
+
+  <div class="box">
     <strong>Cryptographic verification</strong><br>
     Verify the signed JSON with one command from a local checkout of this repo:<br><br>
-    <code class="verify mono" id="verify-cmd">curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python tools/verify_certificate.py</code><br><br>
+    <code class="verify mono" id="verify-cmd">curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python tools/verify_certificate.py -</code><br><br>
     <a href="latest-audit.json" id="json-link">Download signed JSON</a>
   </div>
 
@@ -84,11 +95,9 @@
     function formatUtcTimestamp(iso) {
       if (!iso) return "—";
       const s = String(iso).trim();
-      // Most certs already use ISO like 2026-01-11T05:39:15Z
       if (s.includes("T") && s.endsWith("Z")) {
         return s.replace("T", " ").replace("Z", " UTC");
       }
-      // Fallback: try Date parsing
       try {
         const d = new Date(s);
         if (isNaN(d.getTime())) return s;
@@ -105,6 +114,20 @@
       el.textContent = out;
     }
 
+    function setLatestRun(data) {
+      if (!data) return;
+      setText("latest-status", data.status);
+      setText("latest-ts", formatUtcTimestamp(data.timestamp_utc));
+      setText("latest-run", data.run_id);
+      setText("latest-sha", data.sha);
+    }
+
+    // Load latest-run.json first (non-fatal if missing)
+    fetch('latest-run.json')
+      .then(r => r.ok ? r.json() : null)
+      .then(setLatestRun)
+      .catch(() => {});
+
     fetch('latest-audit.json')
       .then(r => r.json())
       .then(data => {
@@ -112,25 +135,21 @@
         const harmless = Number(data.harmless_blocked ?? 0);
         const prompts = Number(data.prompts_tested ?? 0);
 
-        // Repo-aware links (works on forks)
         const repo = data.repository || "SDL-HQ/sir-firewall";
         const repoUrl = `https://github.com/${repo}`;
         const rawJsonUrl = `https://raw.githubusercontent.com/${repo}/main/proofs/latest-audit.json`;
 
-        // Basic fields
         setText("sir-version", data.sir_firewall_version);
         setText("suite", data.suite_name ? data.suite_name : (data.suite_path || "—"));
         setText("model", data.model);
         setText("provider", data.provider);
 
-        // Timestamp (full UTC)
         setText("date", formatUtcTimestamp(data.date));
 
         setText("prompts", prompts ? String(prompts) : "—");
         setText("leaks", String(leaks));
         setText("harmless", String(harmless));
 
-        // Result + badge
         const ok = leaks === 0 && harmless === 0;
         const scoreEl = document.getElementById("score");
         scoreEl.textContent = `${leaks} / ${prompts || "—"}`;
@@ -140,14 +159,12 @@
         resultEl.textContent = data.result || (ok ? "AUDIT PASSED" : "AUDIT FAILED");
         resultEl.className = ok ? "success" : "danger";
 
-        // Evidence anchors (human-friendly)
         setText("commit", data.commit_sha);
         setText("payload-hash", data.payload_hash);
         setText("policy-hash", data.policy_hash);
         setText("suite-hash", data.suite_hash);
         setText("itgl-final-hash", data.itgl_final_hash);
 
-        // CI link
         const runUrl = data.ci_run_url || "#";
         const link = document.getElementById("ci-link");
         const pill = document.getElementById("ci-pill");
@@ -156,7 +173,6 @@
 
         if (runUrl && runUrl !== "#") {
           const runId = runUrl.split("/").pop() || "";
-          // If LOCAL or non-numeric, keep it simple
           if (runId && /^\d+$/.test(runId)) {
             link.textContent = `GitHub Actions run #${runId}`;
           } else if (runId) {
@@ -170,20 +186,16 @@
           if (pill) pill.style.display = "none";
         }
 
-        // Verification command (repo-aware, portable)
         const verifyCmd = document.getElementById("verify-cmd");
-        verifyCmd.textContent = `curl -s ${rawJsonUrl} | python tools/verify_certificate.py`;
+        verifyCmd.textContent = `curl -s ${rawJsonUrl} | python tools/verify_certificate.py -`;
 
-        // JSON download link (local-friendly; still works on pages)
         const jsonLink = document.getElementById("json-link");
         jsonLink.href = "latest-audit.json";
 
-        // Repo link
         const repoLink = document.getElementById("repo-link");
         repoLink.href = repoUrl;
         repoLink.textContent = repoUrl.replace("https://", "");
 
-        // Safety fingerprint
         setText("safety-fingerprint", data.safety_fingerprint);
       })
       .catch(() => {
