@@ -48,7 +48,6 @@ def _read_json_from_stdin_strict() -> Dict[str, Any]:
 
 
 def _load_cert(cert_arg: str) -> tuple[Dict[str, Any], str]:
-    # "-" means stdin
     if cert_arg == "-":
         return _read_json_from_stdin_strict(), "stdin"
 
@@ -70,31 +69,22 @@ def _load_pubkey(pubkey_path: str) -> Any:
 
 
 def _rebuild_payload(cert: Dict[str, Any]) -> bytes:
-    # Must match tools/generate_certificate.py:
-    # json.dumps(payload_obj, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
     payload_obj = {k: v for k, v in cert.items() if k not in ("signature", "payload_hash")}
     return json.dumps(payload_obj, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Verify a SIR audit certificate JSON.")
-    ap.add_argument(
-        "cert",
-        help='Path to certificate JSON, or "-" to read from stdin.',
-    )
+    ap.add_argument("cert", help='Path to certificate JSON, or "-" to read from stdin.')
     ap.add_argument(
         "--pubkey",
         default=str(DEFAULT_PUBKEY_PATH),
         help="Path to PEM public key to verify signatures (default: spec/sdl.pub).",
     )
-    ap.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Only exit code, no success message.",
-    )
+    ap.add_argument("--quiet", action="store_true", help="Only exit code, no success message.")
     args = ap.parse_args()
 
-    cert, source = _load_cert(args.cert)
+    cert, _source = _load_cert(args.cert)
     public_key = _load_pubkey(args.pubkey)
 
     if "signature" not in cert or "payload_hash" not in cert:
@@ -126,7 +116,7 @@ def main() -> int:
         return 6
 
     if not args.quiet:
-        print(f"OK: Certificate signature valid and payload_hash matches. (source={source})")
+        print("OK: Certificate signature valid and payload_hash matches.")
     return 0
 
 
