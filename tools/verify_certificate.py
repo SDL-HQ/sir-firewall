@@ -6,14 +6,12 @@ Verifies:
 - payload_hash matches reconstructed payload
 - RSA signature matches payload using provided public key
 
-Default behavior:
-- cert: proofs/latest-audit.json
-- pubkey: spec/sdl.pub
+Input:
+- cert path (positional arg), OR
+- "-" to read JSON cert from stdin
 
-Also supports:
-- reading JSON cert from stdin (pipe)
-- verifying any cert path (positional arg)
-- custom pubkey via --pubkey (useful for local test keys)
+Defaults:
+- pubkey: spec/sdl.pub
 """
 
 from __future__ import annotations
@@ -24,52 +22,42 @@ import hashlib
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 
-DEFAULT_CERT_PATH = Path("proofs/latest-audit.json")
 DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
 
 
-def _read_json_from_stdin() -> Optional[Dict[str, Any]]:
-    if sys.stdin is None or sys.stdin.isatty():
-        return None
-    raw = sys.stdin.read().strip()
+def _read_json_from_stdin_strict() -> Dict[str, Any]:
+    if sys.stdin is None:
+        raise SystemExit("ERROR: stdin is unavailable")
+    raw = sys.stdin.read()
+    if raw is None:
+        raise SystemExit("ERROR: failed to read stdin")
+    raw = raw.strip()
     if not raw:
-        return None
+        raise SystemExit("ERROR: no JSON provided on stdin")
     try:
         return json.loads(raw)
     except Exception as e:
         raise SystemExit(f"ERROR: failed to parse JSON from stdin: {e}") from e
 
 
-def _load_cert(cert_path: Optional[str]) -> Dict[str, Any]:
-    # 1) If cert_path provided, read it
-    if cert_path:
-        p = Path(cert_path)
-        try:
-            with p.open("r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            raise SystemExit(f"ERROR: failed to read cert file: {p} ({e})") from e
+def _load_cert(cert_arg: str) -> tuple[Dict[str, Any], str]:
+    # "-" means stdin
+    if cert_arg == "-":
+        return _read_json_from_stdin_strict(), "stdin"
 
-    # 2) If piped, read from stdin
-    stdin_obj = _read_json_from_stdin()
-    if stdin_obj is not None:
-        return stdin_obj
-
-    # 3) Default: proofs/latest-audit.json
+    p = Path(cert_arg)
     try:
-        with DEFAULT_CERT_PATH.open("r", encoding="utf-8") as f:
-            return json.load(f)
+        with p.open("r", encoding="utf-8") as f:
+            return json.load(f), str(p)
     except Exception as e:
-        raise SystemExit(
-            f"ERROR: no cert path provided and could not read default {DEFAULT_CERT_PATH} ({e})"
-        ) from e
+        raise SystemExit(f"ERROR: failed to read cert file: {p} ({e})") from e
 
 
 def _load_pubkey(pubkey_path: str) -> Any:
@@ -92,9 +80,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Verify a SIR audit certificate JSON.")
     ap.add_argument(
         "cert",
-        nargs="?",
-        default=None,
-        help="Path to certificate JSON (default: proofs/latest-audit.json). If omitted and stdin is piped, reads from stdin.",
+        help='Path to certificate JSON, or "-" to read from stdin.',
     )
     ap.add_argument(
         "--pubkey",
@@ -108,10 +94,9 @@ def main() -> int:
     )
     args = ap.parse_args()
 
-    cert = _load_cert(args.cert)
+    cert, source = _load_cert(args.cert)
     public_key = _load_pubkey(args.pubkey)
 
-    # Sanity
     if "signature" not in cert or "payload_hash" not in cert:
         print("ERROR: missing required fields: signature and/or payload_hash", file=sys.stderr)
         return 2
@@ -141,7 +126,7 @@ def main() -> int:
         return 6
 
     if not args.quiet:
-        print("OK: Certificate signature valid and payload_hash matches.")
+        print(f"OK: Certificate signature valid and payload_hash matches. (source={source})")
     return 0
 
 
