@@ -1,3 +1,7 @@
+## Full replacement: `README.md`
+
+Paste this whole file:
+
 # SIR v1.0.2: Signal Integrity Resolver
 
 **Deterministic pre-inference governance gate · rules-only · cryptographically signed proof**
@@ -17,7 +21,13 @@ SIR is built for **high-stakes AI**: regulated systems and agents that touch rea
 These are the **served pages** (human trust surface). Use these links. Do not click the `.html` files in the repo browser (GitHub will show source instead of serving it).
 
 - Latest passing audit (human page): https://sdl-hq.github.io/sir-firewall/latest-audit.html
+- Latest run status (PASS / FAIL / INCONCLUSIVE): https://sdl-hq.github.io/sir-firewall/latest-run.json
 - Run archive (passes + failures): https://sdl-hq.github.io/sir-firewall/runs/index.html
+
+**Important semantics:**
+- `latest-audit.*` means **latest PASSING audit** (last known good proof).
+- `latest-run.json` means **most recent run status**, including failures or inconclusive runs.
+- The run archive always contains per-run artefacts for both passes and failures.
 
 ---
 
@@ -77,8 +87,9 @@ SIR’s job is simple: **enforce policy before inference, then prove what happen
   - Verifier: `tools/verify_certificate.py`
 
 Note: GitHub Pages serves the published proof surfaces at:
-- `https://sdl-hq.github.io/sir-firewall/latest-audit.html`
-- `https://sdl-hq.github.io/sir-firewall/runs/index.html`
+- https://sdl-hq.github.io/sir-firewall/latest-audit.html
+- https://sdl-hq.github.io/sir-firewall/latest-run.json
+- https://sdl-hq.github.io/sir-firewall/runs/index.html
 
 ---
 
@@ -92,7 +103,7 @@ Paste this into Terminal:
 git clone https://github.com/SDL-HQ/sir-firewall.git && cd sir-firewall && \
 python3 -m venv .venv && source .venv/bin/activate && \
 python3 -m pip install -U pip && python3 -m pip install -e . && \
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
 ````
 
 Expected:
@@ -128,4 +139,3 @@ MIT Licensed
 ## Contact
 
 [https://www.structuraldesignlabs.com](https://www.structuraldesignlabs.com) · [info@structuraldesignlabs.com](mailto:info@structuraldesignlabs.com) · @SDL_HQ
-
