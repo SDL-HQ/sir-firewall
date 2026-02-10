@@ -129,20 +129,68 @@ jobs:
           mkdir -p docs
           touch docs/.nojekyll
 
-      # Option A (publishing):
-      # - Publish per-run archive + index ALWAYS
-      # - Publish latest-audit ONLY if PASS (so latest-audit stays "latest passing audit")
+      # Always publish per-run archive + index.
       - name: Publish run archive to docs/runs (PASS or FAIL)
         if: always()
         run: |
           rm -rf docs/runs || true
           cp -R proofs/runs docs/runs
 
+      # Publish latest PASS proof to docs/ (PASS only)
       - name: Publish latest PASS proof to docs/ (PASS only)
         if: always() && env.AUDIT_PASS == 'true'
         run: |
           cp -f proofs/latest-audit.html docs/latest-audit.html
           cp -f proofs/latest-audit.json docs/latest-audit.json
+
+      # Publish latest run status marker ALWAYS (PASS / FAIL / INCONCLUSIVE)
+      - name: Publish latest run marker to docs/ (always)
+        if: always()
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          leaks="$(cat leaks_count.txt 2>/dev/null || echo 0)"
+          harmless="$(cat harmless_blocked.txt 2>/dev/null || echo 0)"
+
+          inconclusive="false"
+
+          # Mark INCONCLUSIVE if critical artifacts are missing or integrity checks did not produce expected signals.
+          if [ ! -f "proofs/latest-audit.json" ]; then inconclusive="true"; fi
+          if [ ! -f "proofs/latest-audit.html" ]; then inconclusive="true"; fi
+          if [ ! -f "proofs/run_summary.json" ]; then inconclusive="true"; fi
+          if [ ! -f "proofs/itgl_final_hash.txt" ]; then inconclusive="true"; fi
+          if ! grep -q '^ITGL_FINAL_HASH=' itgl_env.txt 2>/dev/null; then inconclusive="true"; fi
+
+          status="FAIL"
+          if [ "$inconclusive" = "true" ]; then
+            status="INCONCLUSIVE"
+          else
+            if [ "$AUDIT_PASS" = "true" ]; then
+              status="PASS"
+            else
+              status="FAIL"
+            fi
+          fi
+
+          cat > docs/latest-run.json <<EOF
+          {
+            "status": "${status}",
+            "audit_pass": ${AUDIT_PASS},
+            "inconclusive": ${inconclusive},
+            "leaks": ${leaks},
+            "harmless_blocked": ${harmless},
+            "run_id": "${GITHUB_RUN_ID}",
+            "sha": "${GITHUB_SHA}",
+            "repository": "${GITHUB_REPOSITORY}",
+            "timestamp_utc": "${stamp}"
+          }
+          EOF
+
+          echo "Wrote docs/latest-run.json:"
+          cat docs/latest-run.json
 
       - name: Upload proof artifact (always)
         if: always()
@@ -158,45 +206,81 @@ jobs:
             harmless_blocked.txt
             itgl_env.txt
 
-      # Commit behavior (Option B):
-      # - Always commit proofs/runs + docs/runs (truth-preserving archive, failures included)
-      # - Only commit latest-audit + signed policy if PASS
-      # - ALSO commit latest proof sidecars in proofs/ (PASS only) to keep repo "latest bundle" coherent
+      # Commit behavior:
+      # - Always commit proofs/runs + docs/runs + latest-run marker
+      # - Only commit latest-audit + signed policy + latest sidecars if PASS
       - name: Commit proof files back to repo (archive always; latest PASS + sidecars only)
         if: always() && github.ref == 'refs/heads/main'
         run: |
+          set -euo pipefail
+
           git config user.name "SIR Audit Bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Make push resilient if main advanced while we were running
-          git pull --rebase origin main || true
+          # Retry pull/rebase + push to avoid races with concurrent runs.
+          for attempt in 1 2 3; do
+            echo "Git sync attempt $attempt/3..."
+            git fetch origin main
 
-          # Always stage the run archive + index (PASS or FAIL)
-          git add proofs/runs/ docs/runs/
+            # Rebase our work on the latest main. If this fails, retry.
+            if ! git pull --rebase origin main; then
+              echo "Rebase failed on attempt $attempt. Retrying..."
+              git rebase --abort || true
+              sleep 2
+              continue
+            fi
 
-          # Only stage latest PASS pointers + signed policy + latest sidecars if PASS
-          if [ "$AUDIT_PASS" = "true" ]; then
-            git add proofs/latest-audit.json proofs/latest-audit.html || true
-            git add docs/latest-audit.json docs/latest-audit.html || true
-            git add policy/isc_policy.signed.json || true
+            # Always stage the run archive + index + latest-run marker (PASS or FAIL)
+            git add proofs/runs/ docs/runs/ docs/latest-run.json
 
-            # Keep "latest" proof sidecars coherent in proofs/
-            git add proofs/itgl_ledger.jsonl proofs/itgl_final_hash.txt proofs/latest-attempts.log proofs/run_summary.json || true
-          fi
+            # Only stage latest PASS pointers + signed policy + latest sidecars if PASS
+            if [ "${AUDIT_PASS}" = "true" ]; then
+              git add proofs/latest-audit.json proofs/latest-audit.html || true
+              git add docs/latest-audit.json docs/latest-audit.html || true
+              git add policy/isc_policy.signed.json || true
 
-          leaks="$(cat leaks_count.txt 2>/dev/null || echo 0)"
-          harmless="$(cat harmless_blocked.txt 2>/dev/null || echo 0)"
-          stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              # Keep "latest" proof sidecars coherent in proofs/
+              git add proofs/itgl_ledger.jsonl proofs/itgl_final_hash.txt proofs/latest-attempts.log proofs/run_summary.json || true
+            fi
 
-          git commit -m "SIR Proof: $AUDIT_PASS | $leaks leaks | $harmless harmless | $stamp" || echo "Nothing to commit"
-          git push
+            leaks="$(cat leaks_count.txt 2>/dev/null || echo 0)"
+            harmless="$(cat harmless_blocked.txt 2>/dev/null || echo 0)"
+            stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-      - name: Finalize CI status (fail if audit failed)
+            git commit -m "SIR Proof: ${AUDIT_PASS} | ${leaks} leaks | ${harmless} harmless | ${stamp}" || echo "Nothing to commit"
+
+            if git push; then
+              echo "Push succeeded."
+              break
+            else
+              echo "Push failed on attempt $attempt. Retrying..."
+              sleep 2
+            fi
+
+            if [ "$attempt" -eq 3 ]; then
+              echo "ERROR: failed to push proof updates after 3 attempts"
+              exit 1
+            fi
+          done
+
+      - name: Finalize CI status (fail if audit failed or inconclusive)
         if: always()
         run: |
           echo "AUDIT_PASS=$AUDIT_PASS"
           echo "LEAKS=$LEAKS"
           echo "HARMLESS_BLOCKED=$HARMLESS_BLOCKED"
+
+          inconclusive="false"
+          if [ ! -f "proofs/latest-audit.json" ]; then inconclusive="true"; fi
+          if [ ! -f "proofs/latest-audit.html" ]; then inconclusive="true"; fi
+          if [ ! -f "proofs/run_summary.json" ]; then inconclusive="true"; fi
+          if [ ! -f "proofs/itgl_final_hash.txt" ]; then inconclusive="true"; fi
+          if ! grep -q '^ITGL_FINAL_HASH=' itgl_env.txt 2>/dev/null; then inconclusive="true"; fi
+
+          if [ "$inconclusive" = "true" ]; then
+            echo "Audit INCONCLUSIVE — failing CI after preserving proof."
+            exit 1
+          fi
 
           if [ "$AUDIT_PASS" != "true" ]; then
             echo "Audit FAILED (leaks=$LEAKS harmless_blocked=$HARMLESS_BLOCKED) — failing CI after preserving proof."
