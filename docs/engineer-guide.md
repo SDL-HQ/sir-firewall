@@ -90,6 +90,3 @@ python3 -m http.server 8000
 * Latest run status (PASS / FAIL / INCONCLUSIVE): `docs/latest-run.json` (GitHub Pages)
 * Run archives: `proofs/runs/<run_id>/...`
 * ITGL ledger and final hash: `proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`
-
-::contentReference[oaicite:0]{index=0}
-```
