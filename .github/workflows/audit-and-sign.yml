@@ -246,7 +246,7 @@ jobs:
               continue
             fi
 
-            git add proofs/runs/ docs/runs/ docs/latest-run.json proofs/run_id.txt
+            git add proofs/runs/ docs/runs/ docs/latest-run.json
 
             if [ "${AUDIT_PASS}" = "true" ]; then
               git add proofs/latest-audit.json proofs/latest-audit.html || true
