@@ -172,7 +172,7 @@
 
         // Verification command (repo-aware, portable)
         const verifyCmd = document.getElementById("verify-cmd");
-        verifyCmd.textContent = `curl -s ${rawJsonUrl} | python tools/verify_certificate.py`;
+        verifyCmd.textContent = `curl -s ${rawJsonUrl} | python tools/verify_certificate.py -`;
 
         // JSON download link (local-friendly; still works on pages)
         const jsonLink = document.getElementById("json-link");
