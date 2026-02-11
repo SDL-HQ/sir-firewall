@@ -146,13 +146,8 @@ jobs:
           rm -rf docs/runs || true
           cp -R proofs/runs docs/runs
 
-      - name: Publish latest PASS proof to docs/ (PASS only)
-        if: always() && env.AUDIT_PASS == 'true'
-        run: |
-          set -euo pipefail
-          cp -f proofs/latest-audit.html docs/latest-audit.html
-          cp -f proofs/latest-audit.json docs/latest-audit.json
-
+      # Publish latest run status marker ALWAYS (PASS / FAIL / INCONCLUSIVE)
+      # This becomes the "truth surface" for the most recent run (even if latest-audit remains last PASS).
       - name: Publish latest run marker to docs/ (always)
         if: always()
         env:
@@ -208,6 +203,16 @@ jobs:
           echo "LATEST_RUN_STATUS=${status}" >> "$GITHUB_ENV"
           echo "LATEST_ARCHIVE_RUN_ID=${archive_run_id}" >> "$GITHUB_ENV"
           echo "LATEST_CI_RUN_URL=${ci_run_url}" >> "$GITHUB_ENV"
+
+      # Publish latest PASS proof to docs/ (PASS only) — gated on not inconclusive
+      - name: Publish latest PASS proof to docs/ (PASS only)
+        if: always() && env.AUDIT_PASS == 'true' && env.INCONCLUSIVE != 'true'
+        run: |
+          set -euo pipefail
+          test -f proofs/latest-audit.html
+          test -f proofs/latest-audit.json
+          cp -f proofs/latest-audit.html docs/latest-audit.html
+          cp -f proofs/latest-audit.json docs/latest-audit.json
 
       - name: Upload proof artifact (always)
         if: always()
