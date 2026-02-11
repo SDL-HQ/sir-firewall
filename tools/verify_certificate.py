@@ -22,12 +22,11 @@ import hashlib
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
-
 
 DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
 
@@ -35,19 +34,27 @@ DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
 def _read_json_from_stdin_strict() -> Dict[str, Any]:
     if sys.stdin is None:
         raise SystemExit("ERROR: stdin is unavailable")
+
+    # If the user runs: python tools/verify_certificate.py - (interactive),
+    # stdin will be a TTY and read() will block until EOF. Fail fast with guidance.
+    if hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
+        raise SystemExit('ERROR: stdin is a TTY. Pipe JSON into "-" or pass a certificate file path.')
+
     raw = sys.stdin.read()
     if raw is None:
         raise SystemExit("ERROR: failed to read stdin")
+
     raw = raw.strip()
     if not raw:
         raise SystemExit("ERROR: no JSON provided on stdin")
+
     try:
         return json.loads(raw)
     except Exception as e:
         raise SystemExit(f"ERROR: failed to parse JSON from stdin: {e}") from e
 
 
-def _load_cert(cert_arg: str) -> tuple[Dict[str, Any], str]:
+def _load_cert(cert_arg: str) -> Tuple[Dict[str, Any], str]:
     if cert_arg == "-":
         return _read_json_from_stdin_strict(), "stdin"
 
