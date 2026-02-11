@@ -30,6 +30,7 @@ jobs:
 
       - name: Clean install SIR Firewall (NO CACHE)
         run: |
+          set -euo pipefail
           python -m pip install --upgrade pip
           pip uninstall -y sir-firewall sir_firewall || true
           pip install --no-cache-dir --force-reinstall -e .
@@ -39,6 +40,7 @@ jobs:
         env:
           SIR_SUITE_PATH: tests/domain_packs/generic_safety.csv
         run: |
+          set -euo pipefail
           echo "Validating suite CSV schema: $SIR_SUITE_PATH"
           python tools/validate_domain_pack.py --file "$SIR_SUITE_PATH"
 
@@ -54,6 +56,7 @@ jobs:
           # Template selection
           SIR_TEMPLATE_ID: "EU-AI-Act-ISC-v1"
         run: |
+          set -euo pipefail
           echo "Context model label: $LITELLM_MODEL"
           echo "SIR_PROVIDER: $SIR_PROVIDER"
           echo "SIR_SUITE_PATH: $SIR_SUITE_PATH"
@@ -63,6 +66,7 @@ jobs:
       - name: Compute audit verdict (PASS/FAIL) from counters
         if: always()
         run: |
+          set -euo pipefail
           leaks="$(cat leaks_count.txt 2>/dev/null || echo 0)"
           harmless="$(cat harmless_blocked.txt 2>/dev/null || echo 0)"
 
@@ -80,6 +84,7 @@ jobs:
       - name: Verify ITGL ledger hash chain and export ITGL_FINAL_HASH
         if: always()
         run: |
+          set -euo pipefail
           python tools/verify_itgl.py | tee itgl_env.txt
 
           if grep '^ITGL_FINAL_HASH=' itgl_env.txt >> "$GITHUB_ENV"; then
@@ -93,6 +98,7 @@ jobs:
         env:
           SDL_PRIVATE_KEY_PEM: ${{ secrets.SDL_PRIVATE_KEY_PEM }}
         run: |
+          set -euo pipefail
           python tools/sign_policy.py
 
       - name: Generate signed certificate + HTML
@@ -103,16 +109,19 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
+          set -euo pipefail
           python tools/generate_certificate.py
 
       - name: Verify certificate signature
         if: always()
         run: |
+          set -euo pipefail
           python tools/verify_certificate.py proofs/latest-audit.json
 
       - name: Archive this run (P6 truth-preserving per-run archive)
         if: always()
         run: |
+          set -euo pipefail
           python tools/publish_run.py \
             --cert proofs/latest-audit.json \
             --copy proofs/itgl_ledger.jsonl \
@@ -126,31 +135,30 @@ jobs:
       - name: Prepare docs/ for GitHub Pages
         if: always()
         run: |
+          set -euo pipefail
           mkdir -p docs
           touch docs/.nojekyll
 
-      # Always publish per-run archive + index.
       - name: Publish run archive to docs/runs (PASS or FAIL)
         if: always()
         run: |
+          set -euo pipefail
           rm -rf docs/runs || true
           cp -R proofs/runs docs/runs
 
-      # Publish latest PASS proof to docs/ (PASS only)
       - name: Publish latest PASS proof to docs/ (PASS only)
         if: always() && env.AUDIT_PASS == 'true'
         run: |
+          set -euo pipefail
           cp -f proofs/latest-audit.html docs/latest-audit.html
           cp -f proofs/latest-audit.json docs/latest-audit.json
 
-      # Publish latest run status marker ALWAYS (PASS / FAIL / INCONCLUSIVE)
-      # This becomes the "truth surface" for the most recent run (even if latest-audit remains last PASS).
       - name: Publish latest run marker to docs/ (always)
         if: always()
         env:
-          GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
 
@@ -159,10 +167,7 @@ jobs:
           harmless="$(cat harmless_blocked.txt 2>/dev/null || echo 0)"
 
           inconclusive="false"
-
-          # Mark INCONCLUSIVE if critical artifacts are missing or integrity checks did not produce expected signals.
           if [ ! -f "proofs/latest-audit.json" ]; then inconclusive="true"; fi
-          if [ ! -f "proofs/latest-audit.html" ]; then inconclusive="true"; fi
           if [ ! -f "proofs/run_summary.json" ]; then inconclusive="true"; fi
           if [ ! -f "proofs/itgl_final_hash.txt" ]; then inconclusive="true"; fi
           if ! grep -q '^ITGL_FINAL_HASH=' itgl_env.txt 2>/dev/null; then inconclusive="true"; fi
@@ -171,47 +176,15 @@ jobs:
           if [ "$inconclusive" = "true" ]; then
             status="INCONCLUSIVE"
           else
-            if [ "${AUDIT_PASS}" = "true" ]; then
-              status="PASS"
-            else
-              status="FAIL"
-            fi
+            if [ "${AUDIT_PASS}" = "true" ]; then status="PASS"; else status="FAIL"; fi
           fi
 
-          # Pull the most recent archive run_id + ci_run_url from proofs/runs/index.json if available.
-          # This is the canonical "just archived" run identifier for the served archive.
           archive_run_id="unknown"
-          ci_run_url=""
-
-          if [ -f "proofs/runs/index.json" ]; then
-            archive_run_id="$(python - <<'PY'
-import json
-try:
-    d=json.load(open("proofs/runs/index.json","r",encoding="utf-8"))
-    runs=d.get("runs") or []
-    if isinstance(runs,list) and runs:
-        rid = runs[0].get("run_id") or "unknown"
-        print(rid)
-    else:
-        print("unknown")
-except Exception:
-    print("unknown")
-PY
-)"
-            ci_run_url="$(python - <<'PY'
-import json
-try:
-    d=json.load(open("proofs/runs/index.json","r",encoding="utf-8"))
-    runs=d.get("runs") or []
-    if isinstance(runs,list) and runs:
-        print((runs[0].get("ci_run_url") or "").strip())
-    else:
-        print("")
-except Exception:
-    print("")
-PY
-)"
+          if [ -f "proofs/run_id.txt" ]; then
+            archive_run_id="$(cat proofs/run_id.txt | tr -d '\n' | tr -d '\r')"
           fi
+
+          ci_run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
           cat > docs/latest-run.json <<EOF
           {
@@ -231,7 +204,6 @@ PY
           echo "Wrote docs/latest-run.json:"
           cat docs/latest-run.json
 
-          # Export once so later steps don't recompute drift-prone logic.
           echo "INCONCLUSIVE=${inconclusive}" >> "$GITHUB_ENV"
           echo "LATEST_RUN_STATUS=${status}" >> "$GITHUB_ENV"
           echo "LATEST_ARCHIVE_RUN_ID=${archive_run_id}" >> "$GITHUB_ENV"
@@ -251,9 +223,6 @@ PY
             harmless_blocked.txt
             itgl_env.txt
 
-      # Commit behavior:
-      # - Always commit proofs/runs + docs/runs + latest-run marker
-      # - Only commit latest-audit + signed policy + latest sidecars if PASS
       - name: Commit proof files back to repo (archive always; latest PASS + sidecars only)
         if: always() && github.ref == 'refs/heads/main'
         run: |
@@ -266,7 +235,6 @@ PY
           harmless="$(cat harmless_blocked.txt 2>/dev/null || echo 0)"
           stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-          # Retry pull/rebase + push to avoid races with concurrent runs.
           for attempt in 1 2 3; do
             echo "Git sync attempt $attempt/3..."
             git fetch origin main
@@ -278,10 +246,8 @@ PY
               continue
             fi
 
-            # Always stage the run archive + index + latest-run marker (PASS/FAIL/INCONCLUSIVE)
-            git add proofs/runs/ docs/runs/ docs/latest-run.json
+            git add proofs/runs/ docs/runs/ docs/latest-run.json proofs/run_id.txt
 
-            # Only stage latest PASS pointers + signed policy + latest sidecars if PASS
             if [ "${AUDIT_PASS}" = "true" ]; then
               git add proofs/latest-audit.json proofs/latest-audit.html || true
               git add docs/latest-audit.json docs/latest-audit.html || true
@@ -308,10 +274,12 @@ PY
       - name: Finalize CI status (fail if audit failed or inconclusive)
         if: always()
         run: |
+          set -euo pipefail
           echo "AUDIT_PASS=$AUDIT_PASS"
           echo "INCONCLUSIVE=${INCONCLUSIVE:-false}"
           echo "LATEST_RUN_STATUS=${LATEST_RUN_STATUS:-unknown}"
           echo "LATEST_ARCHIVE_RUN_ID=${LATEST_ARCHIVE_RUN_ID:-unknown}"
+          echo "LATEST_CI_RUN_URL=${LATEST_CI_RUN_URL:-unknown}"
           echo "LEAKS=$LEAKS"
           echo "HARMLESS_BLOCKED=$HARMLESS_BLOCKED"
 
