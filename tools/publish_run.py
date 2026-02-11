@@ -49,6 +49,13 @@ def _short(s: Optional[str], n: int = 12) -> str:
 
 
 def _safe_run_id(cert: Dict[str, Any]) -> str:
+    """
+    Build a collision-resistant run_id.
+
+    - Use timestamp with microseconds.
+    - Include GitHub run id if available (unique in CI).
+    - Keep a short suffix from safety_fingerprint/payload_hash/signature for human scanning.
+    """
     raw_date = cert.get("date")
     ts: dt.datetime
     if isinstance(raw_date, str) and raw_date:
@@ -59,12 +66,33 @@ def _safe_run_id(cert: Dict[str, Any]) -> str:
     else:
         ts = dt.datetime.now(dt.timezone.utc)
 
-    stamp = ts.strftime("%Y%m%d-%H%M%S")
+    stamp = ts.strftime("%Y%m%d-%H%M%S") + f"-{ts.microsecond:06d}"
 
     fp = cert.get("safety_fingerprint") or cert.get("payload_hash") or cert.get("signature")
     suffix = _short(fp, 12)
 
-    return f"{stamp}-{suffix}"
+    gh_run_id = (os.getenv("GITHUB_RUN_ID") or "").strip()
+    gh_part = f"-gh{gh_run_id}" if gh_run_id else ""
+
+    return f"{stamp}{gh_part}-{suffix}"
+
+
+def _unique_run_dir(runs_dir: Path, base_run_id: str) -> tuple[str, Path]:
+    """
+    Preserve immutability (never overwrite), but disambiguate if a collision occurs.
+
+    Collisions should be extremely rare after microseconds + GITHUB_RUN_ID, but this
+    keeps CI truth-preserving even under weird rerun/concurrency edge cases.
+    """
+    for i in range(0, 50):
+        run_id = base_run_id if i == 0 else f"{base_run_id}-{i+1:02d}"
+        run_dir = runs_dir / run_id
+        try:
+            run_dir.mkdir(parents=True, exist_ok=False)
+            return run_id, run_dir
+        except FileExistsError:
+            continue
+    raise SystemExit(f"ERROR: unable to allocate unique run archive dir after 50 attempts: {base_run_id}")
 
 
 def _collect_optional_artifacts(repo_root: Path, extra_paths: List[str]) -> List[Dict[str, str]]:
@@ -103,15 +131,9 @@ def main() -> int:
         raise SystemExit(f"Missing certificate: {cert_path}")
 
     cert = _read_json(cert_path)
-    run_id = _safe_run_id(cert)
 
-    run_dir = runs_dir / run_id
-
-    # Immutable archive: refuse to overwrite an existing run directory.
-    try:
-        run_dir.mkdir(parents=True, exist_ok=False)
-    except FileExistsError:
-        raise SystemExit(f"ERROR: run archive already exists (refusing to overwrite): {run_dir}")
+    base_run_id = _safe_run_id(cert)
+    run_id, run_dir = _unique_run_dir(runs_dir, base_run_id)
 
     archived_audit = run_dir / "audit.json"
     shutil.copy2(cert_path, archived_audit)
