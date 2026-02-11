@@ -109,8 +109,11 @@ def main() -> int:
         "cert",
         nargs="?",
         default=None,
-        help='Path to certificate JSON, or "-" to read from stdin. If omitted and stdin is piped, reads from stdin; '
-             f'otherwise defaults to {DEFAULT_CERT_PATH}.',
+        help=(
+            'Path to certificate JSON, or "-" to read from stdin. '
+            "If omitted and stdin is piped, reads from stdin; otherwise "
+            f"attempts to use {DEFAULT_CERT_PATH} if it exists."
+        ),
     )
     ap.add_argument(
         "--pubkey",
