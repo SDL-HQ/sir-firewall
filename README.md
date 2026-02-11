@@ -108,6 +108,15 @@ Expected:
 OK: Certificate signature valid and payload_hash matches.
 ```
 
+**Note on the trailing `-`:** some older pages/publications may show the command without `-`.
+In this repo, `-` explicitly means “read JSON from stdin” (the pipe). It is the explicit/portable form we standardise on here.
+
+If you download the file instead of piping, run:
+
+```bash
+python3 tools/verify_certificate.py proofs/latest-audit.json
+```
+
 If you see an error about `cryptography` not being installed, run:
 
 ```bash
