@@ -6,14 +6,16 @@ Verifies:
 - payload_hash matches reconstructed payload
 - RSA signature matches payload using provided public key
 
-Default behavior:
-- cert: proofs/latest-audit.json
-- pubkey: spec/sdl.pub
+Inputs:
+- cert path (positional arg), OR
+- "-" to read JSON cert from stdin, OR
+- if cert arg omitted and stdin is piped, read from stdin
 
-Also supports:
-- reading JSON cert from stdin (pipe)
-- verifying any cert path (positional arg)
-- custom pubkey via --pubkey (useful for local test keys)
+Default (when cert omitted and stdin is a TTY):
+- proofs/latest-audit.json (if it exists)
+
+Defaults:
+- pubkey: spec/sdl.pub
 """
 
 from __future__ import annotations
@@ -24,52 +26,78 @@ import hashlib
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 
-DEFAULT_CERT_PATH = Path("proofs/latest-audit.json")
 DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
+DEFAULT_CERT_PATH = Path("proofs/latest-audit.json")
 
 
-def _read_json_from_stdin() -> Optional[Dict[str, Any]]:
-    if sys.stdin is None or sys.stdin.isatty():
-        return None
-    raw = sys.stdin.read().strip()
+def _require_json_object(obj: Any, source: str) -> Dict[str, Any]:
+    if not isinstance(obj, dict):
+        raise SystemExit(f"ERROR: expected a JSON object for certificate from {source}, but got {type(obj).__name__}")
+    # typing: we just asserted it's a dict
+    return obj  # type: ignore[return-value]
+
+
+def _read_json_from_stdin_strict() -> Dict[str, Any]:
+    if sys.stdin is None:
+        raise SystemExit("ERROR: stdin is unavailable")
+
+    # If user explicitly asked for stdin ("-") but stdin is a TTY, fail fast with guidance.
+    if hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
+        raise SystemExit('ERROR: stdin is a TTY. Pipe JSON into stdin, or pass a certificate file path.')
+
+    raw = sys.stdin.read()
+    if raw is None:
+        raise SystemExit("ERROR: failed to read stdin")
+
+    raw = raw.strip()
     if not raw:
-        return None
+        raise SystemExit("ERROR: no JSON provided on stdin")
+
     try:
-        return json.loads(raw)
+        obj = json.loads(raw)
     except Exception as e:
         raise SystemExit(f"ERROR: failed to parse JSON from stdin: {e}") from e
 
+    return _require_json_object(obj, "stdin")
 
-def _load_cert(cert_path: Optional[str]) -> Dict[str, Any]:
-    # 1) If cert_path provided, read it
-    if cert_path:
-        p = Path(cert_path)
-        try:
-            with p.open("r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            raise SystemExit(f"ERROR: failed to read cert file: {p} ({e})") from e
 
-    # 2) If piped, read from stdin
-    stdin_obj = _read_json_from_stdin()
-    if stdin_obj is not None:
-        return stdin_obj
-
-    # 3) Default: proofs/latest-audit.json
+def _load_cert_from_file(path: Path) -> Dict[str, Any]:
     try:
-        with DEFAULT_CERT_PATH.open("r", encoding="utf-8") as f:
-            return json.load(f)
+        with path.open("r", encoding="utf-8") as f:
+            obj = json.load(f)
     except Exception as e:
+        raise SystemExit(f"ERROR: failed to read cert file: {path} ({e})") from e
+
+    return _require_json_object(obj, str(path))
+
+
+def _load_cert(cert_arg: str | None) -> tuple[Dict[str, Any], str]:
+    # Explicit stdin mode.
+    if cert_arg == "-":
+        return _read_json_from_stdin_strict(), "stdin"
+
+    # If cert omitted: read from stdin if piped; else fall back to default file path.
+    if cert_arg is None:
+        if sys.stdin is not None and hasattr(sys.stdin, "isatty") and not sys.stdin.isatty():
+            return _read_json_from_stdin_strict(), "stdin"
+        if DEFAULT_CERT_PATH.exists():
+            return _load_cert_from_file(DEFAULT_CERT_PATH), str(DEFAULT_CERT_PATH)
         raise SystemExit(
-            f"ERROR: no cert path provided and could not read default {DEFAULT_CERT_PATH} ({e})"
-        ) from e
+            f"ERROR: no cert argument provided, stdin is not piped, and default cert not found: {DEFAULT_CERT_PATH}"
+        )
+
+    # File path mode.
+    p = Path(cert_arg)
+    if not p.exists():
+        raise SystemExit(f"ERROR: cert file does not exist: {p}")
+    return _load_cert_from_file(p), str(p)
 
 
 def _load_pubkey(pubkey_path: str) -> Any:
@@ -82,8 +110,6 @@ def _load_pubkey(pubkey_path: str) -> Any:
 
 
 def _rebuild_payload(cert: Dict[str, Any]) -> bytes:
-    # Must match tools/generate_certificate.py:
-    # json.dumps(payload_obj, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
     payload_obj = {k: v for k, v in cert.items() if k not in ("signature", "payload_hash")}
     return json.dumps(payload_obj, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
@@ -94,24 +120,23 @@ def main() -> int:
         "cert",
         nargs="?",
         default=None,
-        help="Path to certificate JSON (default: proofs/latest-audit.json). If omitted and stdin is piped, reads from stdin.",
+        help=(
+            'Path to certificate JSON, or "-" to read from stdin. '
+            "If omitted and stdin is piped, reads from stdin; otherwise "
+            f"attempts to use {DEFAULT_CERT_PATH} if it exists."
+        ),
     )
     ap.add_argument(
         "--pubkey",
         default=str(DEFAULT_PUBKEY_PATH),
         help="Path to PEM public key to verify signatures (default: spec/sdl.pub).",
     )
-    ap.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Only exit code, no success message.",
-    )
+    ap.add_argument("--quiet", action="store_true", help="Only exit code, no success message.")
     args = ap.parse_args()
 
-    cert = _load_cert(args.cert)
+    cert, _source = _load_cert(args.cert)
     public_key = _load_pubkey(args.pubkey)
 
-    # Sanity
     if "signature" not in cert or "payload_hash" not in cert:
         print("ERROR: missing required fields: signature and/or payload_hash", file=sys.stderr)
         return 2
