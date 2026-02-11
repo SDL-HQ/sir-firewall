@@ -105,3 +105,20 @@ Note: On GitHub Pages, the `docs/` folder is the site root, so `docs/latest-run.
 ### ITGL artefacts (repo files)
 
 * ITGL ledger and final hash: `proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`
+
+## Optional: verify the published SDL-signed certificate locally
+
+If you want to verify the currently published certificate (not a local run), you can do it two ways.
+
+Pipe form (stdin). The trailing `-` means “read JSON from stdin”:
+
+```bash
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
+```
+
+Or download then verify (file path):
+
+```bash
+curl -s -o latest-audit.json https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json
+python3 tools/verify_certificate.py latest-audit.json
+```
