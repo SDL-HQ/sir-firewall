@@ -35,10 +35,14 @@ def _read_json_from_stdin_strict() -> Dict[str, Any]:
     if sys.stdin is None:
         raise SystemExit("ERROR: stdin is unavailable")
 
-    # If the user runs: python tools/verify_certificate.py - (interactive),
-    # stdin will be a TTY and read() will block until EOF. Fail fast with guidance.
-    if hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
-        raise SystemExit('ERROR: stdin is a TTY. Pipe JSON into "-" or pass a certificate file path.')
+    # If a user runs: python tools/verify_certificate.py -
+    # interactively, stdin is a TTY and will block waiting for EOF.
+    try:
+        if hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
+            raise SystemExit('ERROR: stdin is a TTY. Pipe JSON into "-" or pass a cert file path.')
+    except Exception:
+        # If isatty blows up for some reason, keep going and let read() decide.
+        pass
 
     raw = sys.stdin.read()
     if raw is None:
