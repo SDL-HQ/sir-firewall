@@ -12,6 +12,10 @@ Public proof surfaces:
 
 Published proof is signed by SDL. Local runs can be signed with local dev keys for testing, but they are not SDL-signed certificates.
 
+Important semantics:
+- `latest-audit.*` is the latest PASS proof (last known good).
+- `latest-run.json` reflects the most recent run status, including FAIL or INCONCLUSIVE.
+
 ## Minimal offline verification
 
 This verifies the latest published certificate locally.
@@ -58,7 +62,7 @@ When reviewing the certificate JSON, these are the fields that matter:
 * ITGL final hash
   The final hash of the governance ledger for the run. This proves the run log chain matches the result.
 
-* Fingerprint
+* Safety fingerprint (`safety_fingerprint`)
   A stable identifier for the run configuration and outcome binding.
 
 ## What to record for evidence
