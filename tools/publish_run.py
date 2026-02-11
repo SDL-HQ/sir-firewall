@@ -85,7 +85,8 @@ def _unique_run_dir(runs_dir: Path, base_run_id: str) -> tuple[str, Path]:
     keeps CI truth-preserving even under weird rerun/concurrency edge cases.
     """
     for i in range(0, 50):
-        run_id = base_run_id if i == 0 else f"{base_run_id}-{i+1:02d}"
+        # base_run_id, base_run_id-01, base_run_id-02, ...
+        run_id = base_run_id if i == 0 else f"{base_run_id}-{i:02d}"
         run_dir = runs_dir / run_id
         try:
             run_dir.mkdir(parents=True, exist_ok=False)
