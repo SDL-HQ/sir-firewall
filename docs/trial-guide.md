@@ -43,6 +43,15 @@ Expected output:
 OK: Certificate signature valid and payload_hash matches.
 ```
 
+**Note on the trailing `-`:** `-` means “read JSON from stdin” (the piped output). Some older pages/publications may show the command without `-`, but this repo standardises on the explicit stdin form.
+
+If you prefer to download the file instead of piping:
+
+```bash
+curl -s -o latest-audit.json https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json
+python3 tools/verify_certificate.py latest-audit.json
+```
+
 If you see an error about `cryptography` not being installed:
 
 ```bash
