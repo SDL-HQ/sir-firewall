@@ -184,7 +184,7 @@ jobs:
           cat > docs/latest-run.json <<EOF
           {
             "status": "${status}",
-            "audit_pass": ${AUDIT_PASS},
+            "audit_pass": ${AUDIT_PASS:-false},
             "inconclusive": ${inconclusive},
             "leaks": ${leaks},
             "harmless_blocked": ${harmless},
