@@ -57,14 +57,14 @@
     <span class="pill" id="ci-pill" style="display:none;">CI</span>
   </div>
 
-  <div class="box">
+  <div class="box" id="latest-run-box" style="display:none;">
     <strong>Latest run status</strong><br>
     <div class="row"><div class="k">Status</div><div id="latest-status" class="mono">—</div></div>
     <div class="row"><div class="k">Timestamp (UTC)</div><div id="latest-ts" class="mono wrap">—</div></div>
     <div class="row"><div class="k">Run ID</div><div id="latest-run" class="mono wrap">—</div></div>
     <div class="row"><div class="k">SHA</div><div id="latest-sha" class="mono wrap">—</div></div>
     <div style="margin-top:10px;"></div>
-    <a href="latest-run.json" id="latest-run-link">View latest-run.json</a>
+    <a href="#" id="latest-run-link">View latest-run.json</a>
     <div class="k" style="margin-top:6px;">Note: <span class="mono">latest-audit</span> is the latest PASS proof. <span class="mono">latest-run</span> reflects the most recent run, including FAIL or INCONCLUSIVE.</div>
   </div>
 
@@ -114,6 +114,18 @@
       el.textContent = out;
     }
 
+    async function fetchJsonFirstOk(paths) {
+      for (const p of paths) {
+        try {
+          const r = await fetch(p, { cache: "no-store" });
+          if (!r.ok) continue;
+          const j = await r.json();
+          return { data: j, path: p };
+        } catch {}
+      }
+      return { data: null, path: null };
+    }
+
     function setLatestRun(data) {
       if (!data) return;
       setText("latest-status", data.status);
@@ -122,11 +134,19 @@
       setText("latest-sha", data.sha);
     }
 
-    // Load latest-run.json first (non-fatal if missing)
-    fetch('latest-run.json')
-      .then(r => r.ok ? r.json() : null)
-      .then(setLatestRun)
-      .catch(() => {});
+    (async () => {
+      // Served (GitHub Pages): /latest-audit.html -> /latest-run.json (same dir)
+      // Local dev (http://localhost:8000/proofs/latest-audit.html): fallback -> ../docs/latest-run.json
+      const candidates = ["latest-run.json", "../docs/latest-run.json"];
+
+      const { data, path } = await fetchJsonFirstOk(candidates);
+      if (data && path) {
+        document.getElementById("latest-run-box").style.display = "block";
+        const link = document.getElementById("latest-run-link");
+        link.href = path;
+        setLatestRun(data);
+      }
+    })();
 
     fetch('latest-audit.json')
       .then(r => r.json())
