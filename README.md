@@ -1,7 +1,3 @@
-## Full replacement: `README.md`
-
-Paste this whole file:
-
 # SIR v1.0.2: Signal Integrity Resolver
 
 **Deterministic pre-inference governance gate · rules-only · cryptographically signed proof**
@@ -104,7 +100,7 @@ git clone https://github.com/SDL-HQ/sir-firewall.git && cd sir-firewall && \
 python3 -m venv .venv && source .venv/bin/activate && \
 python3 -m pip install -U pip && python3 -m pip install -e . && \
 curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
-````
+```
 
 Expected:
 
