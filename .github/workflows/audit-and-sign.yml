@@ -244,9 +244,12 @@ jobs:
             echo "Git sync attempt $attempt/3..."
             git fetch origin main
 
-            if ! git pull --rebase origin main; then
+            # KEY FIX: allow rebase even though we have generated/modified files in the workspace
+            if ! git pull --rebase --autostash origin main; then
               echo "Rebase failed on attempt $attempt. Retrying..."
               git rebase --abort || true
+              # autostash should clean itself up, but be defensive
+              git stash pop || true
               sleep 2
               continue
             fi
