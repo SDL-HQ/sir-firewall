@@ -144,6 +144,7 @@ jobs:
           cp -f proofs/latest-audit.json docs/latest-audit.json
 
       # Publish latest run status marker ALWAYS (PASS / FAIL / INCONCLUSIVE)
+      # This becomes the "truth surface" for the most recent run (even if latest-audit remains last PASS).
       - name: Publish latest run marker to docs/ (always)
         if: always()
         env:
@@ -151,6 +152,8 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
+          set -euo pipefail
+
           stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           leaks="$(cat leaks_count.txt 2>/dev/null || echo 0)"
           harmless="$(cat harmless_blocked.txt 2>/dev/null || echo 0)"
@@ -168,11 +171,46 @@ jobs:
           if [ "$inconclusive" = "true" ]; then
             status="INCONCLUSIVE"
           else
-            if [ "$AUDIT_PASS" = "true" ]; then
+            if [ "${AUDIT_PASS}" = "true" ]; then
               status="PASS"
             else
               status="FAIL"
             fi
+          fi
+
+          # Pull the most recent archive run_id + ci_run_url from proofs/runs/index.json if available.
+          # This is the canonical "just archived" run identifier for the served archive.
+          archive_run_id="unknown"
+          ci_run_url=""
+
+          if [ -f "proofs/runs/index.json" ]; then
+            archive_run_id="$(python - <<'PY'
+import json
+try:
+    d=json.load(open("proofs/runs/index.json","r",encoding="utf-8"))
+    runs=d.get("runs") or []
+    if isinstance(runs,list) and runs:
+        rid = runs[0].get("run_id") or "unknown"
+        print(rid)
+    else:
+        print("unknown")
+except Exception:
+    print("unknown")
+PY
+)"
+            ci_run_url="$(python - <<'PY'
+import json
+try:
+    d=json.load(open("proofs/runs/index.json","r",encoding="utf-8"))
+    runs=d.get("runs") or []
+    if isinstance(runs,list) and runs:
+        print((runs[0].get("ci_run_url") or "").strip())
+    else:
+        print("")
+except Exception:
+    print("")
+PY
+)"
           fi
 
           cat > docs/latest-run.json <<EOF
@@ -182,15 +220,22 @@ jobs:
             "inconclusive": ${inconclusive},
             "leaks": ${leaks},
             "harmless_blocked": ${harmless},
-            "run_id": "${GITHUB_RUN_ID}",
+            "run_id": "${archive_run_id}",
             "sha": "${GITHUB_SHA}",
             "repository": "${GITHUB_REPOSITORY}",
+            "ci_run_url": "${ci_run_url}",
             "timestamp_utc": "${stamp}"
           }
           EOF
 
           echo "Wrote docs/latest-run.json:"
           cat docs/latest-run.json
+
+          # Export once so later steps don't recompute drift-prone logic.
+          echo "INCONCLUSIVE=${inconclusive}" >> "$GITHUB_ENV"
+          echo "LATEST_RUN_STATUS=${status}" >> "$GITHUB_ENV"
+          echo "LATEST_ARCHIVE_RUN_ID=${archive_run_id}" >> "$GITHUB_ENV"
+          echo "LATEST_CI_RUN_URL=${ci_run_url}" >> "$GITHUB_ENV"
 
       - name: Upload proof artifact (always)
         if: always()
@@ -217,12 +262,15 @@ jobs:
           git config user.name "SIR Audit Bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          leaks="$(cat leaks_count.txt 2>/dev/null || echo 0)"
+          harmless="$(cat harmless_blocked.txt 2>/dev/null || echo 0)"
+          stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
           # Retry pull/rebase + push to avoid races with concurrent runs.
           for attempt in 1 2 3; do
             echo "Git sync attempt $attempt/3..."
             git fetch origin main
 
-            # Rebase our work on the latest main. If this fails, retry.
             if ! git pull --rebase origin main; then
               echo "Rebase failed on attempt $attempt. Retrying..."
               git rebase --abort || true
@@ -230,7 +278,7 @@ jobs:
               continue
             fi
 
-            # Always stage the run archive + index + latest-run marker (PASS or FAIL)
+            # Always stage the run archive + index + latest-run marker (PASS/FAIL/INCONCLUSIVE)
             git add proofs/runs/ docs/runs/ docs/latest-run.json
 
             # Only stage latest PASS pointers + signed policy + latest sidecars if PASS
@@ -238,14 +286,8 @@ jobs:
               git add proofs/latest-audit.json proofs/latest-audit.html || true
               git add docs/latest-audit.json docs/latest-audit.html || true
               git add policy/isc_policy.signed.json || true
-
-              # Keep "latest" proof sidecars coherent in proofs/
               git add proofs/itgl_ledger.jsonl proofs/itgl_final_hash.txt proofs/latest-attempts.log proofs/run_summary.json || true
             fi
-
-            leaks="$(cat leaks_count.txt 2>/dev/null || echo 0)"
-            harmless="$(cat harmless_blocked.txt 2>/dev/null || echo 0)"
-            stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
             git commit -m "SIR Proof: ${AUDIT_PASS} | ${leaks} leaks | ${harmless} harmless | ${stamp}" || echo "Nothing to commit"
 
@@ -267,17 +309,13 @@ jobs:
         if: always()
         run: |
           echo "AUDIT_PASS=$AUDIT_PASS"
+          echo "INCONCLUSIVE=${INCONCLUSIVE:-false}"
+          echo "LATEST_RUN_STATUS=${LATEST_RUN_STATUS:-unknown}"
+          echo "LATEST_ARCHIVE_RUN_ID=${LATEST_ARCHIVE_RUN_ID:-unknown}"
           echo "LEAKS=$LEAKS"
           echo "HARMLESS_BLOCKED=$HARMLESS_BLOCKED"
 
-          inconclusive="false"
-          if [ ! -f "proofs/latest-audit.json" ]; then inconclusive="true"; fi
-          if [ ! -f "proofs/latest-audit.html" ]; then inconclusive="true"; fi
-          if [ ! -f "proofs/run_summary.json" ]; then inconclusive="true"; fi
-          if [ ! -f "proofs/itgl_final_hash.txt" ]; then inconclusive="true"; fi
-          if ! grep -q '^ITGL_FINAL_HASH=' itgl_env.txt 2>/dev/null; then inconclusive="true"; fi
-
-          if [ "$inconclusive" = "true" ]; then
+          if [ "${INCONCLUSIVE:-false}" = "true" ]; then
             echo "Audit INCONCLUSIVE — failing CI after preserving proof."
             exit 1
           fi
