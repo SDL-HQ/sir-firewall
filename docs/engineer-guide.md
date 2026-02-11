@@ -85,7 +85,8 @@ python3 -m http.server 8000
 
 * Public key for SDL-signed certificates: `spec/sdl.pub`
 * Verifier script: `tools/verify_certificate.py`
-* Latest pointer certificate: `proofs/latest-audit.json`
-* Human page backed by JSON: `proofs/latest-audit.html`
+* Latest PASS pointer certificate: `proofs/latest-audit.json`
+* Latest PASS human page backed by JSON: `proofs/latest-audit.html`
+* Latest run status (PASS / FAIL / INCONCLUSIVE): `docs/latest-run.json` (GitHub Pages)
 * Run archives: `proofs/runs/<run_id>/...`
 * ITGL ledger and final hash: `proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`
