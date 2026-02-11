@@ -5,7 +5,8 @@ This guide is for auditors, insurers, regulators, and cautious organisations tha
 ## What you can verify today
 
 Public proof surfaces:
-- Human certificate page: https://sdl-hq.github.io/sir-firewall/latest-audit.html
+- Human certificate page (latest PASS): https://sdl-hq.github.io/sir-firewall/latest-audit.html
+- Latest run status (PASS / FAIL / INCONCLUSIVE): https://sdl-hq.github.io/sir-firewall/latest-run.json
 - Run archives (passes + failures): https://sdl-hq.github.io/sir-firewall/runs/index.html
 - Raw signed JSON certificate: https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json
 
@@ -29,7 +30,7 @@ python3 -m pip install -e .
 ### Step 2. Verify the published certificate
 
 ```bash
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
 ```
 
 Expected output:
@@ -66,7 +67,7 @@ For an internal governance record or underwriting file, capture:
 
 * The raw signed certificate JSON (`latest-audit.json`)
 * The verification output line (`OK: ...`)
-* The human certificate URL and run archive URL
+* The human certificate URL, latest-run URL, and run archive URL
 * The date and run identifier shown in the certificate
 
 ## Optional local trial (no production impact)
