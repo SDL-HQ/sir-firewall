@@ -14,7 +14,7 @@ source .venv/bin/activate
 python3 -m pip install -U pip
 python3 -m pip install -e .
 python3 --version
-````
+```
 
 ## Run the audit locally (one command)
 
@@ -29,7 +29,7 @@ python3 --version
 
 ### Default (gate-only, no signing)
 
-This produces a LOCAL UNSIGNED snapshot:
+This produces a local unsigned snapshot:
 
 * `proofs/local-audit.json`
 * `proofs/local-audit.html`
@@ -68,14 +68,13 @@ Then open:
 
 * Default (`--sign none`): `http://localhost:8000/proofs/local-audit.html`
 * Local-signed (`--sign local`): `http://localhost:8000/proofs/latest-audit.html`
-* Run archive: `http://localhost:8000/proofs/runs/index.html`
+* Run archive index: `http://localhost:8000/proofs/runs/index.html`
 
 ## Notes on local HTML viewing
 
 `local-audit.html`, `latest-audit.html`, and `runs/index.html` load JSON via `fetch()`.
-If you open them via `file://`, many browsers will block JSON loading.
 
-Serve the repo over HTTP instead:
+If you open them via `file://`, many browsers will block JSON loading. Serve the repo over HTTP instead:
 
 ```bash
 python3 -m http.server 8000
@@ -85,8 +84,24 @@ python3 -m http.server 8000
 
 * Public key for SDL-signed certificates: `spec/sdl.pub`
 * Verifier script: `tools/verify_certificate.py`
+
+### Latest PASS proof (repo files)
+
 * Latest PASS pointer certificate: `proofs/latest-audit.json`
 * Latest PASS human page backed by JSON: `proofs/latest-audit.html`
-* Latest run status (PASS / FAIL / INCONCLUSIVE): `docs/latest-run.json` (GitHub Pages)
-* Run archives: `proofs/runs/<run_id>/...`
+
+### Latest run status (repo file and served URL)
+
+* Repo path: `docs/latest-run.json`
+* Served on GitHub Pages as: `/latest-run.json`
+
+Note: On GitHub Pages, the `docs/` folder is the site root, so `docs/latest-run.json` is served as `https://sdl-hq.github.io/sir-firewall/latest-run.json`.
+
+### Run archives (repo files)
+
+* Run archives (passes + failures): `proofs/runs/<run_id>/...`
+* Run archive index: `proofs/runs/index.json` and `proofs/runs/index.html`
+
+### ITGL artefacts (repo files)
+
 * ITGL ledger and final hash: `proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`
