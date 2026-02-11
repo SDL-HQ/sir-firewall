@@ -116,6 +116,11 @@ def main() -> int:
     archived_audit = run_dir / "audit.json"
     shutil.copy2(cert_path, archived_audit)
 
+    # Persist run_id for workflow consumers (e.g. docs/latest-run.json publishing).
+    run_id_path = repo_root / "proofs" / "run_id.txt"
+    run_id_path.parent.mkdir(parents=True, exist_ok=True)
+    run_id_path.write_text(run_id + "\n", encoding="utf-8")
+
     env = {
         "python_version": platform.python_version(),
         "platform": platform.platform(),
@@ -181,6 +186,7 @@ def main() -> int:
     _write_json(index_path, new_index)
 
     print(f"OK: Archived run {run_id} -> {run_dir}")
+    print(f"OK: Wrote run id -> {run_id_path}")
     print(f"OK: Updated index -> {index_path}")
     return 0
 
