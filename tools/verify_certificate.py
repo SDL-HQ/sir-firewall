@@ -37,6 +37,13 @@ DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
 DEFAULT_CERT_PATH = Path("proofs/latest-audit.json")
 
 
+def _require_json_object(obj: Any, source: str) -> Dict[str, Any]:
+    if not isinstance(obj, dict):
+        raise SystemExit(f"ERROR: expected a JSON object for certificate from {source}, but got {type(obj).__name__}")
+    # typing: we just asserted it's a dict
+    return obj  # type: ignore[return-value]
+
+
 def _read_json_from_stdin_strict() -> Dict[str, Any]:
     if sys.stdin is None:
         raise SystemExit("ERROR: stdin is unavailable")
@@ -58,10 +65,7 @@ def _read_json_from_stdin_strict() -> Dict[str, Any]:
     except Exception as e:
         raise SystemExit(f"ERROR: failed to parse JSON from stdin: {e}") from e
 
-    if not isinstance(obj, dict):
-        raise SystemExit(f"ERROR: expected a JSON object on stdin, but got {type(obj).__name__}")
-
-    return obj
+    return _require_json_object(obj, "stdin")
 
 
 def _load_cert_from_file(path: Path) -> Dict[str, Any]:
@@ -71,10 +75,7 @@ def _load_cert_from_file(path: Path) -> Dict[str, Any]:
     except Exception as e:
         raise SystemExit(f"ERROR: failed to read cert file: {path} ({e})") from e
 
-    if not isinstance(obj, dict):
-        raise SystemExit(f"ERROR: expected a JSON object in cert file, but got {type(obj).__name__}")
-
-    return obj
+    return _require_json_object(obj, str(path))
 
 
 def _load_cert(cert_arg: str | None) -> tuple[Dict[str, Any], str]:
