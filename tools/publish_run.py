@@ -44,31 +44,56 @@ def _sha256_file(path: Path) -> str:
 def _short(s: Optional[str], n: int = 12) -> str:
     if not s:
         return "unknown"
-    # allow values like "sha256:...."
     s2 = s.split(":", 1)[-1]
     return s2[:n]
 
 
 def _safe_run_id(cert: Dict[str, Any]) -> str:
-    # Prefer cert date if present; fall back to UTC now.
+    """
+    Build a collision-resistant run_id.
+
+    - Use timestamp with microseconds.
+    - Include GitHub run id if available (unique in CI).
+    - Keep a short suffix from safety_fingerprint/payload_hash/signature for human scanning.
+    """
     raw_date = cert.get("date")
     ts: dt.datetime
     if isinstance(raw_date, str) and raw_date:
         try:
-            # allow "2025-12-13T16:19:00Z" or similar
             ts = dt.datetime.fromisoformat(raw_date.replace("Z", "+00:00")).astimezone(dt.timezone.utc)
         except Exception:
             ts = dt.datetime.now(dt.timezone.utc)
     else:
         ts = dt.datetime.now(dt.timezone.utc)
 
-    stamp = ts.strftime("%Y%m%d-%H%M%S")
+    stamp = ts.strftime("%Y%m%d-%H%M%S") + f"-{ts.microsecond:06d}"
 
-    # Prefer safety_fingerprint; else payload_hash; else signature; else random-ish.
     fp = cert.get("safety_fingerprint") or cert.get("payload_hash") or cert.get("signature")
     suffix = _short(fp, 12)
 
-    return f"{stamp}-{suffix}"
+    gh_run_id = (os.getenv("GITHUB_RUN_ID") or "").strip()
+    gh_part = f"-gh{gh_run_id}" if gh_run_id else ""
+
+    return f"{stamp}{gh_part}-{suffix}"
+
+
+def _unique_run_dir(runs_dir: Path, base_run_id: str) -> tuple[str, Path]:
+    """
+    Preserve immutability (never overwrite), but disambiguate if a collision occurs.
+
+    Collisions should be extremely rare after microseconds + GITHUB_RUN_ID, but this
+    keeps CI truth-preserving even under weird rerun/concurrency edge cases.
+    """
+    for i in range(0, 50):
+        # base_run_id, base_run_id-01, base_run_id-02, ...
+        run_id = base_run_id if i == 0 else f"{base_run_id}-{i:02d}"
+        run_dir = runs_dir / run_id
+        try:
+            run_dir.mkdir(parents=True, exist_ok=False)
+            return run_id, run_dir
+        except FileExistsError:
+            continue
+    raise SystemExit(f"ERROR: unable to allocate unique run archive dir after 50 attempts: {base_run_id}")
 
 
 def _collect_optional_artifacts(repo_root: Path, extra_paths: List[str]) -> List[Dict[str, str]]:
@@ -107,22 +132,23 @@ def main() -> int:
         raise SystemExit(f"Missing certificate: {cert_path}")
 
     cert = _read_json(cert_path)
-    run_id = _safe_run_id(cert)
 
-    run_dir = runs_dir / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
+    base_run_id = _safe_run_id(cert)
+    run_id, run_dir = _unique_run_dir(runs_dir, base_run_id)
 
-    # Archive cert as audit.json (immutable record)
     archived_audit = run_dir / "audit.json"
     shutil.copy2(cert_path, archived_audit)
 
-    # Minimal environment capture (helps reproduction without adding “crap”)
+    # Persist run_id for workflow consumers (e.g. docs/latest-run.json publishing).
+    run_id_path = repo_root / "proofs" / "run_id.txt"
+    run_id_path.parent.mkdir(parents=True, exist_ok=True)
+    run_id_path.write_text(run_id + "\n", encoding="utf-8")
+
     env = {
         "python_version": platform.python_version(),
         "platform": platform.platform(),
     }
 
-    # Optional extra artifacts (only if they exist)
     extras = _collect_optional_artifacts(repo_root, args.copy)
 
     manifest = {
@@ -132,7 +158,6 @@ def main() -> int:
         "archived_audit": os.path.relpath(archived_audit, repo_root),
         "env": env,
         "extras": extras,
-        # A few convenient “index fields” (don’t depend on exact schema)
         "date": cert.get("date"),
         "suite": cert.get("suite") or cert.get("domain_pack"),
         "model": cert.get("model"),
@@ -152,7 +177,6 @@ def main() -> int:
 
     _write_json(run_dir / "manifest.json", manifest)
 
-    # Update index.json
     index_path = runs_dir / "index.json"
     if index_path.exists():
         index = _read_json(index_path)
@@ -161,9 +185,6 @@ def main() -> int:
             runs = []
     else:
         runs = []
-
-    # Remove existing entry with same run_id (idempotent)
-    runs = [r for r in runs if isinstance(r, dict) and r.get("run_id") != run_id]
 
     entry = {
         "run_id": run_id,
@@ -174,7 +195,7 @@ def main() -> int:
         "safety_fingerprint": manifest.get("safety_fingerprint"),
         "itgl_final_hash": manifest.get("itgl_final_hash"),
         "ci_run_url": manifest.get("ci_run_url"),
-        "path": f"runs/{run_id}/",  # relative under proofs/
+        "path": f"runs/{run_id}/",
     }
 
     runs.insert(0, entry)
@@ -188,6 +209,7 @@ def main() -> int:
     _write_json(index_path, new_index)
 
     print(f"OK: Archived run {run_id} -> {run_dir}")
+    print(f"OK: Wrote run id -> {run_id_path}")
     print(f"OK: Updated index -> {index_path}")
     return 0
 
