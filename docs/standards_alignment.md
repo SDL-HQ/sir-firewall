@@ -1,104 +1,98 @@
-# SIR Firewall – Standards & Governance Alignment (Round 3)
+# SIR – Standards and Governance Alignment
 
-This document explains how SIR’s pre-inference firewall, Domain ISC packs, and audit artefacts map to common governance and assurance frameworks.
+This document explains how SIR’s pre inference governance gate, ISC policy and templates, suite domain packs, and audit artefacts map to common governance and assurance frameworks.
 
 ## 1. Core architecture
 
-**Component:** SIR pre-inference firewall (`sir_firewall`)
+**Component:** SIR pre inference governance gate (`src/sir_firewall/`)
 
 - **What it does:** Enforces policy on a structured ISC envelope before any prompt is sent to the model.
 - **Key properties:**
-  - Deterministic, pure-rule Python — no training, no heuristics, no side channels.
-  - Fail-closed on malformed ISC or disallowed templates.
-  - Obfuscation normalisation and 2025 jailbreak pattern checks.
+  - Deterministic rules only execution in Python. No training. No heuristics.
+  - Fail closed on malformed ISC or disallowed templates.
+  - Normalisation and jailbreak pattern checks (suite driven).
+  - Produces evidence artefacts suitable for audit.
 
 **Standards hooks:**
+- **EU AI Act:** supports technical controls for robustness, monitoring, and auditability in high risk contexts.
+- **NIST AI RMF:** aligns with Govern and Measure as a pre inference control surface with measurable evidence.
+- **ISO IEC 42001:** supports implementing and demonstrating operational controls for AI system governance.
 
-- **EU AI Act:** fits the “technical measures and controls” requirement for high-risk systems (Article 15 / logging and technical robustness).
-- **NIST AI RMF:** sits in the “Govern” and “Measure” functions as a pre-inference control surface.
-- **ISO/IEC 42001 (AI management systems):** implements a concrete control for policy-driven prompt handling.
+## 2. Policy and templates (ISC policy)
 
-## 2. Domain ISC packs (HIPAA, PCI, generic)
+**Component:** ISC policy file and signature
+- Policy source: `policy/isc_policy.json`
+- Signed policy: `policy/isc_policy.signed.json`
+- Signing tool: `tools/sign_policy.py`
 
-**Component:** Domain ISC packs (`src/sir_firewall/policy/isc_packs/*.json`)
-
-- `generic_safety.json` – baseline jailbreak + high-risk content firewall.
-- `hipaa_mental_health.json` – tuned for PHI and mental health workloads.
-- `pci_payments.json` – tuned for payment card / PCI-style workloads.
-
-Each pack defines:
-
-- `pack_id` – the domain name stamped into every decision.
-- `templates.max_tokens` – per-template friction caps (rough token limits).
-- `flags`:
-  - `STRICT_ISC_ENFORCEMENT`
-  - `CHECKSUM_ENFORCED`
-  - `CRYPTO_ENFORCED` (ready for RSA enforcement when keys are wired).
-
-At runtime, `validate_sir`:
-
-- Loads the active pack based on `SIR_ISC_PACK` (or defaults to `generic_safety`).
-- Applies the pack’s friction + enforcement flags.
-- Returns `domain_pack` in every result and records it in the ITGL ledger.
+- **What it does:** Defines allowed ISC templates and constraints that the gate enforces deterministically before inference.
+- **Why it matters:** Provides provenance and tamper detection for the policy that governs pre inference enforcement.
 
 **Standards hooks:**
+- **ISO IEC 42001:** supports controlled documentation, change control, and evidence of implemented governance controls.
+- **Assurance and audit:** signed policy helps demonstrate that the enforced policy is the approved policy.
 
-- **HIPAA / PHI:** `hipaa_mental_health` makes ISC handling and friction limits explicit for PHI workloads.
-- **PCI DSS:** `pci_payments` constrains payment templates and can be referenced as a named control in PCI documentation.
-- **EU AI Act / sectoral law:** pack IDs can be mapped to specific risk classes / domains in the organisation’s AI inventory.
+## 3. Suite domain packs (test suites)
 
-## 3. ITGL ledger (hash-chained runtime log)
+**Component:** Suite CSV files (domain packs)
+- Location: `tests/domain_packs/`
+- Example: `tests/domain_packs/generic_safety.csv`
+- Validator: `tools/validate_domain_pack.py`
+- Runner: `red_team_suite.py`
 
-**Component:** ITGL ledger (`proofs/itgl_ledger.jsonl` from `red_team_suite.py`)
-
-Each decision chain includes:
-
-- Timestamp and component steps (`isc_structure`, `crypto_checksum`, `friction`, `jailbreak`, `final`).
-- The active `domain_pack` (HIPAA / PCI / generic).
-- Inputs/outputs per step, plus a hash that chains each entry to the previous one.
-
-**Standards hooks:**
-
-- **EU AI Act logging:** satisfies auditability/logging requirements for high-risk systems by providing a tamper-evident, step-level log.
-- **NIST AI RMF – Measure:** provides structured evidence for red-team runs and production behaviour.
-- **Assurance / insurance:** supports post-incident reconstruction and independent verification that the correct domain pack governed each decision.
-
-## 4. Signed audit certificates (CI)
-
-**Component:** Signed audit (`proofs/latest-audit.json` + `proofs/latest-audit.html`)
-
-Generated by `tools/generate_certificate.py` from CI red-team runs.
-
-The signed JSON payload includes:
-
-- `prompts_tested`
-- `jailbreaks_leaked`
-- `harmless_blocked`
-- `date`
-- `model` / `provider`
-- `repository` / `commit_sha`
-- `ci_run_url`
-- **Round 3 fields:** `domain_pack`, `suite_path`
-- `payload_hash` (sha256) and an RSA signature (`signature`)
-
-The HTML view (`proofs/latest-audit.html`) is just a thin UI over `latest-audit.json`.
+- **What they do:** Define prompts, expected outcomes, and categories for repeatable evaluation runs.
+- **Why it matters:** Provides stable, versionable inputs for regression testing and audit evidence.
 
 **Standards hooks:**
+- **NIST AI RMF Measure:** supports repeatable evaluation and evidence generation.
+- **EU AI Act monitoring:** supports documented testing and oversight artefacts.
 
-- **EU AI Act / NIST AI RMF:** gives a verifiable snapshot of the model + policy + domain pack that passed the latest jailbreak suite.
-- **ISO/IEC 42001:** can be attached as evidence for control implementation and monitoring.
-- **Insurability:** provides a machine-verifiable artefact that a specific model + domain pack combination was tested against a known suite, with no leaks.
+## 4. ITGL ledger (hash chained run log)
 
-## 5. How to cite SIR in governance documents
+**Component:** ITGL ledger
+- Ledger: `proofs/itgl_ledger.jsonl`
+- Final hash: `proofs/itgl_final_hash.txt`
+- Verifier: `tools/verify_itgl.py`
+
+Each run records a structured decision trace and a hash chain so the log history is tamper evident.
+
+**Standards hooks:**
+- **EU AI Act logging:** supports auditability with step level evidence.
+- **NIST AI RMF Measure:** provides structured trace evidence for runs.
+- **Assurance and insurance:** supports reconstruction and independent verification that the recorded run matches the claimed outcome.
+
+## 5. Signed audit certificates and proof surfaces (CI)
+
+**Component:** Signed audit certificate and human view
+- Latest PASS proof pointer: `proofs/latest-audit.json` and `proofs/latest-audit.html`
+- Latest run status marker: `docs/latest-run.json`
+- Run archives: `proofs/runs/<run_id>/...`
+
+Published proof surfaces (GitHub Pages):
+- Latest PASS human page: `/latest-audit.html`
+- Latest run status (PASS, FAIL, INCONCLUSIVE): `/latest-run.json`
+- Run archive index: `/runs/index.html`
+
+**Semantics:**
+- `latest-audit.*` means latest passing audit proof (last known good).
+- `latest-run.json` reflects the most recent run status, including FAIL or INCONCLUSIVE.
+- The run archive is per run artefacts intended to be truth preserving.
+
+**Standards hooks:**
+- **ISO IEC 42001:** supports evidence of monitoring, review, and control operation.
+- **NIST AI RMF:** supports Govern and Measure with machine verifiable artefacts.
+- **Insurability and assurance:** provides a stable evidence object that binds configuration and results.
+
+## 6. How to cite SIR in governance documents
 
 When describing SIR in internal policies, you can refer to it as:
 
-> “A pre-inference firewall (SIR) that enforces Domain ISC packs (HIPAA / PCI / generic) before any prompt reaches the model. Every decision is logged into a hash-chained ITGL ledger, and CI red-team runs produce RSA-signed audit certificates that bind the active domain pack and test suite into a verifiable payload.”
+> “A deterministic pre inference governance gate (SIR) that enforces a signed ISC policy and records results into a hash chained ITGL ledger. CI runs publish signed audit certificates and per run archives that can be verified offline.”
 
 Pointers:
-
-- Core firewall: `src/sir_firewall/core.py`
-- Domain ISC packs: `src/sir_firewall/policy/isc_packs/`
-- ITGL ledger: `proofs/itgl_ledger.jsonl`
-- Signed audit: `proofs/latest-audit.json` + `proofs/latest-audit.html`
-- CI entrypoint: `red_team_suite.py` + `tools/generate_certificate.py`
+- Core gate: `src/sir_firewall/`
+- Policy and signing: `policy/isc_policy.json`, `policy/isc_policy.signed.json`, `tools/sign_policy.py`
+- Suites (domain packs): `tests/domain_packs/`
+- ITGL ledger: `proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`
+- Signed audit: `proofs/latest-audit.json`, `proofs/latest-audit.html`
+- CI entrypoint: `red_team_suite.py`, `tools/generate_certificate.py`
