@@ -1,6 +1,7 @@
 # SIR – Standards and Governance Alignment
 
 This document explains how SIR’s pre inference governance gate, ISC policy and templates, suite domain packs, and audit artefacts map to common governance and assurance frameworks.
+- FYI: ISC (Instruction Structured Container): the structured prompt envelope that must pass policy enforcement before inference.
 
 ## 1. Core architecture
 
