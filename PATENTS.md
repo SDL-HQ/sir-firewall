@@ -4,4 +4,4 @@ Structural Design Labs holds and/or is pursuing patent protection for certain te
 
 This does not change the MIT license.
 
-IP/licensing: info@structuraldesignlabs.com
+info@structuraldesignlabs.com
