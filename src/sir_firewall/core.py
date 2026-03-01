@@ -8,6 +8,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+from .deterministic_rules import find_rule_hits
+
 # Deliberately unused — kept as a loud reminder that we win without it
 USE_SEMANTIC_CHECK = False
 
@@ -324,6 +326,7 @@ def _build_block(
     itgl_log: List[Dict[str, Any]],
     block_type: str | None = None,
     domain_pack: str | None = None,
+    rule_hits: List[str] | None = None,
 ) -> Dict[str, Any]:
     result: Dict[str, Any] = {
         "status": "BLOCKED",
@@ -334,6 +337,8 @@ def _build_block(
         result["type"] = block_type
     if domain_pack is not None:
         result["domain_pack"] = domain_pack
+    if rule_hits:
+        result["rule_hits"] = list(rule_hits)
     return result
 
 
@@ -355,6 +360,8 @@ def _sr_block(
     }
     if domain_pack is not None:
         result["domain_pack"] = domain_pack
+    if rule_hits:
+        result["rule_hits"] = list(rule_hits)
     return result
 
 
@@ -530,7 +537,7 @@ def _check_jailbreak(
     isc: Dict[str, Any],
     log: List[Dict[str, Any]],
     prev_hash: str,
-) -> Tuple[bool, List[Dict[str, Any]], str, str | None]:
+) -> Tuple[bool, List[Dict[str, Any]], str, str | None, List[str]]:
     raw_payload = str(isc.get("payload", ""))
     normalized = normalize_obfuscation(raw_payload)
 
@@ -539,10 +546,13 @@ def _check_jailbreak(
     has_high_risk = any(k in normalized for k in _HIGH_RISK_KEYWORDS)
 
     step_input = {"payload_len": len(normalized)}
+    rule_hits = find_rule_hits(normalized)
+
     step_output = {
         "has_danger": has_danger,
         "has_safety": has_safety,
         "has_high_risk": has_high_risk,
+        "rule_hits": rule_hits,
     }
 
     if has_high_risk:
@@ -554,7 +564,7 @@ def _check_jailbreak(
             log,
             prev_hash,
         )
-        return False, log, prev_hash, "high_risk_content"
+        return False, log, prev_hash, "high_risk_content", rule_hits
 
     if has_danger and has_safety:
         log, prev_hash = _append_itgl(
@@ -565,7 +575,18 @@ def _check_jailbreak(
             log,
             prev_hash,
         )
-        return False, log, prev_hash, "danger+safety_combo"
+        return False, log, prev_hash, "danger+safety_combo", rule_hits
+
+    if rule_hits:
+        log, prev_hash = _append_itgl(
+            "jailbreak",
+            "fail",
+            step_input,
+            step_output,
+            log,
+            prev_hash,
+        )
+        return False, log, prev_hash, "deterministic_rule_match", rule_hits
 
     log, prev_hash = _append_itgl(
         "jailbreak",
@@ -575,7 +596,7 @@ def _check_jailbreak(
         log,
         prev_hash,
     )
-    return True, log, prev_hash, None
+    return True, log, prev_hash, None, []
 
 
 # ---------------------------------------------------------------------------
@@ -678,7 +699,7 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
             domain_pack=domain_pack_id,
         )
 
-    ok, itgl_log, prev_hash, block_type = _check_jailbreak(
+    ok, itgl_log, prev_hash, block_type, rule_hits = _check_jailbreak(
         isc,
         itgl_log,
         prev_hash,
@@ -689,6 +710,7 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
             itgl_log,
             block_type=block_type,
             domain_pack=domain_pack_id,
+            rule_hits=rule_hits,
         )
 
     isc_template = str(isc.get("template_id", ""))
@@ -728,10 +750,13 @@ def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
     except Exception:
         pass
 
-    return {
+    result = {
         "status": "PASS",
         "reason": "clean",
         "domain_pack": domain_pack_id,
         "governance_context": governance_context,
         "itgl_log": itgl_log,
     }
+    if rule_hits:
+        result["rule_hits"] = list(rule_hits)
+    return result

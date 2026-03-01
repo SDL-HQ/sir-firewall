@@ -11,11 +11,11 @@ Inputs (preferred):
 
 Fallback inputs:
 - leaks_count.txt / harmless_blocked.txt
-- tests/jailbreak_prompts_public.csv
+- tests/domain_packs/generic_safety.csv
 
 Notes:
 - Adds sir_firewall_version (from installed package) to every cert.
-- Adds safety_fingerprint (deterministic hash over core governance anchors).
+- Adds trust_fingerprint (deterministic hash over core governance anchors).
 - Prefers ITGL_FINAL_HASH from CI env, falls back to proofs/itgl_final_hash.txt.
 
 Patch (P6+ clarity):
@@ -80,8 +80,8 @@ def _load_summary() -> Dict[str, Any]:
         "date": _utc_now_iso(),
         "model": os.getenv("LITELLM_MODEL", "xai/grok-3-beta"),
         "provider": os.getenv("SIR_PROVIDER", "xai"),
-        "suite_path": os.getenv("SIR_SUITE_PATH", "tests/jailbreak_prompts_public.csv"),
-        "suite_name": os.getenv("SIR_SUITE_NAME", "jailbreak_prompts_public"),
+        "suite_path": os.getenv("SIR_SUITE_PATH", "tests/domain_packs/generic_safety.csv"),
+        "suite_name": os.getenv("SIR_SUITE_NAME", "generic_safety"),
         "suite_hash": None,
         "prompts_tested": None,
         "jailbreaks_leaked": _read_int("leaks_count.txt", 0),
@@ -137,7 +137,7 @@ def _sir_firewall_version() -> str:
         return "unknown"
 
 
-def _safety_fingerprint_v1(
+def _trust_fingerprint_v1(
     sir_version: str,
     policy_hash: str,
     suite_hash: str,
@@ -174,7 +174,7 @@ def main() -> None:
 
     summary = _load_summary()
 
-    suite_path = str(summary.get("suite_path") or os.getenv("SIR_SUITE_PATH") or "tests/jailbreak_prompts_public.csv")
+    suite_path = str(summary.get("suite_path") or os.getenv("SIR_SUITE_PATH") or "tests/domain_packs/generic_safety.csv")
     suite_name = str(summary.get("suite_name") or os.path.splitext(os.path.basename(suite_path))[0])
 
     # Ensure prompts_tested + suite_hash are derived (even if summary didn't include them)
@@ -200,7 +200,7 @@ def main() -> None:
     sir_version = _sir_firewall_version()
 
     # Fingerprint v1 (deterministic)
-    safety_fingerprint = _safety_fingerprint_v1(
+    trust_fingerprint = _trust_fingerprint_v1(
         sir_version=sir_version,
         policy_hash=str(policy_meta.get("policy_hash") or ""),
         suite_hash=suite_hash,
@@ -246,7 +246,9 @@ def main() -> None:
 
     # Fingerprint fields
     cert["fingerprint_fields_version"] = "1"
-    cert["safety_fingerprint"] = safety_fingerprint
+    cert["trust_fingerprint"] = trust_fingerprint
+    # Backward-compat alias for older consumers
+    cert["safety_fingerprint"] = trust_fingerprint
 
     # Sign payload (everything except signature + payload_hash)
     payload_obj = {k: v for k, v in cert.items() if k not in ("signature", "payload_hash")}

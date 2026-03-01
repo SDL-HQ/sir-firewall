@@ -82,7 +82,7 @@
           const date = esc(r.date ?? "—");
           const result = esc(r.result ?? "—");
           const leaks = esc(r.leaks ?? "—");
-          const fp = esc((r.safety_fingerprint ?? "—").toString().slice(0, 20));
+          const fp = esc((r.trust_fingerprint ?? r.safety_fingerprint ?? "—").toString().slice(0, 20));
           const path = esc(r.path ?? "");
           const runId = esc(r.run_id ?? "");
 

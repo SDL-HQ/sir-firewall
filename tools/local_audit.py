@@ -186,7 +186,8 @@ def _build_local_unsigned_snapshot(
         payload["policy_hash"] = policy_meta["policy_hash"]
 
     payload["fingerprint_fields_version"] = "local-unsigned-1"
-    payload["safety_fingerprint"] = _fingerprint_local_unsigned_v1(payload)
+    payload["trust_fingerprint"] = _fingerprint_local_unsigned_v1(payload)
+    payload["safety_fingerprint"] = payload["trust_fingerprint"]
 
     out_json = proofs_dir / "local-audit.json"
     out_html = proofs_dir / "local-audit.html"

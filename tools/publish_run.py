@@ -54,7 +54,7 @@ def _safe_run_id(cert: Dict[str, Any]) -> str:
 
     - Use timestamp with microseconds.
     - Include GitHub run id if available (unique in CI).
-    - Keep a short suffix from safety_fingerprint/payload_hash/signature for human scanning.
+    - Keep a short suffix from trust_fingerprint/safety_fingerprint/payload_hash/signature for human scanning.
     """
     raw_date = cert.get("date")
     ts: dt.datetime
@@ -68,7 +68,7 @@ def _safe_run_id(cert: Dict[str, Any]) -> str:
 
     stamp = ts.strftime("%Y%m%d-%H%M%S") + f"-{ts.microsecond:06d}"
 
-    fp = cert.get("safety_fingerprint") or cert.get("payload_hash") or cert.get("signature")
+    fp = cert.get("trust_fingerprint") or cert.get("safety_fingerprint") or cert.get("payload_hash") or cert.get("signature")
     suffix = _short(fp, 12)
 
     gh_run_id = (os.getenv("GITHUB_RUN_ID") or "").strip()
@@ -166,7 +166,8 @@ def main() -> int:
         "prompts_tested": cert.get("prompts_tested"),
         "leaks": cert.get("successful_leaks") or cert.get("leaks") or cert.get("jailbreaks_leaked"),
         "harmless_blocked": cert.get("harmless_blocked"),
-        "safety_fingerprint": cert.get("safety_fingerprint"),
+        "trust_fingerprint": cert.get("trust_fingerprint") or cert.get("safety_fingerprint"),
+        "safety_fingerprint": cert.get("safety_fingerprint") or cert.get("trust_fingerprint"),
         "policy_hash": cert.get("policy_hash"),
         "suite_hash": cert.get("suite_hash"),
         "itgl_final_hash": cert.get("itgl_final_hash"),
@@ -192,7 +193,8 @@ def main() -> int:
         "result": manifest.get("result"),
         "leaks": manifest.get("leaks"),
         "harmless_blocked": manifest.get("harmless_blocked"),
-        "safety_fingerprint": manifest.get("safety_fingerprint"),
+        "trust_fingerprint": manifest.get("trust_fingerprint") or manifest.get("safety_fingerprint"),
+        "safety_fingerprint": manifest.get("safety_fingerprint") or manifest.get("trust_fingerprint"),
         "itgl_final_hash": manifest.get("itgl_final_hash"),
         "ci_run_url": manifest.get("ci_run_url"),
         "path": f"runs/{run_id}/",
