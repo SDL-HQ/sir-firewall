@@ -11,7 +11,7 @@ Inputs (preferred):
 
 Fallback inputs:
 - leaks_count.txt / harmless_blocked.txt
-- tests/jailbreak_prompts_public.csv
+- tests/domain_packs/generic_safety.csv
 
 Notes:
 - Adds sir_firewall_version (from installed package) to every cert.
@@ -80,8 +80,8 @@ def _load_summary() -> Dict[str, Any]:
         "date": _utc_now_iso(),
         "model": os.getenv("LITELLM_MODEL", "xai/grok-3-beta"),
         "provider": os.getenv("SIR_PROVIDER", "xai"),
-        "suite_path": os.getenv("SIR_SUITE_PATH", "tests/jailbreak_prompts_public.csv"),
-        "suite_name": os.getenv("SIR_SUITE_NAME", "jailbreak_prompts_public"),
+        "suite_path": os.getenv("SIR_SUITE_PATH", "tests/domain_packs/generic_safety.csv"),
+        "suite_name": os.getenv("SIR_SUITE_NAME", "generic_safety"),
         "suite_hash": None,
         "prompts_tested": None,
         "jailbreaks_leaked": _read_int("leaks_count.txt", 0),
@@ -174,7 +174,7 @@ def main() -> None:
 
     summary = _load_summary()
 
-    suite_path = str(summary.get("suite_path") or os.getenv("SIR_SUITE_PATH") or "tests/jailbreak_prompts_public.csv")
+    suite_path = str(summary.get("suite_path") or os.getenv("SIR_SUITE_PATH") or "tests/domain_packs/generic_safety.csv")
     suite_name = str(summary.get("suite_name") or os.path.splitext(os.path.basename(suite_path))[0])
 
     # Ensure prompts_tested + suite_hash are derived (even if summary didn't include them)
