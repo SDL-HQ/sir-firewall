@@ -35,7 +35,7 @@ from litellm import completion
 from sir_firewall import validate_sir
 
 
-DEFAULT_SUITE = os.getenv("SIR_SUITE_PATH", "tests/jailbreak_prompts_public.csv")
+DEFAULT_SUITE = os.getenv("SIR_SUITE_PATH", "tests/domain_packs/generic_safety.csv")
 DEFAULT_MODEL = os.getenv("LITELLM_MODEL", "xai/grok-3-beta")
 DEFAULT_TEMPLATE_ID = os.getenv("SIR_TEMPLATE_ID", "EU-AI-Act-ISC-v1")
 
