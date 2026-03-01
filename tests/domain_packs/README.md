@@ -16,4 +16,4 @@ Portable policy artefacts for testing governance enforcement.
 ## Artefacts
 
 - Test suites: `tests/domain_packs/*.csv`
-- CSV schema: `id,prompt_b64,expected,note,category`
+- CSV schema (supported): `id,prompt,expected,note,category` or `id,prompt_b64,expected,note,category`
