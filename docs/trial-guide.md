@@ -71,7 +71,7 @@ When reviewing the certificate JSON, these are the fields that matter:
 * ITGL final hash
   The final hash of the governance ledger for the run. This proves the run log chain matches the result.
 
-* Safety fingerprint (`safety_fingerprint`)
+* Trust fingerprint (`trust_fingerprint`, with `safety_fingerprint` as legacy alias)
   A stable identifier for the run configuration and outcome binding.
 
 ## What to record for evidence
