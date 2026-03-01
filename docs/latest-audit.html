@@ -76,7 +76,7 @@
   </div>
 
   <div class="box">
-    <strong>Safety fingerprint</strong><br>
+    <strong>Trust fingerprint</strong><br>
     <div class="mono wrap" id="safety-fingerprint">—</div>
     <div class="k" style="margin-top:6px;">Deterministic hash over SIR version + policy hash + suite hash + model/provider + results.</div>
   </div>
@@ -216,7 +216,7 @@
         repoLink.href = repoUrl;
         repoLink.textContent = repoUrl.replace("https://", "");
 
-        setText("safety-fingerprint", data.safety_fingerprint);
+        setText("safety-fingerprint", data.trust_fingerprint ?? data.safety_fingerprint);
       })
       .catch(() => {
         document.getElementById("score").textContent = "—";

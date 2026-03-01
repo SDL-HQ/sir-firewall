@@ -15,7 +15,7 @@ Fallback inputs:
 
 Notes:
 - Adds sir_firewall_version (from installed package) to every cert.
-- Adds safety_fingerprint (deterministic hash over core governance anchors).
+- Adds trust_fingerprint (deterministic hash over core governance anchors).
 - Prefers ITGL_FINAL_HASH from CI env, falls back to proofs/itgl_final_hash.txt.
 
 Patch (P6+ clarity):
@@ -137,7 +137,7 @@ def _sir_firewall_version() -> str:
         return "unknown"
 
 
-def _safety_fingerprint_v1(
+def _trust_fingerprint_v1(
     sir_version: str,
     policy_hash: str,
     suite_hash: str,
@@ -200,7 +200,7 @@ def main() -> None:
     sir_version = _sir_firewall_version()
 
     # Fingerprint v1 (deterministic)
-    safety_fingerprint = _safety_fingerprint_v1(
+    trust_fingerprint = _trust_fingerprint_v1(
         sir_version=sir_version,
         policy_hash=str(policy_meta.get("policy_hash") or ""),
         suite_hash=suite_hash,
@@ -246,7 +246,9 @@ def main() -> None:
 
     # Fingerprint fields
     cert["fingerprint_fields_version"] = "1"
-    cert["safety_fingerprint"] = safety_fingerprint
+    cert["trust_fingerprint"] = trust_fingerprint
+    # Backward-compat alias for older consumers
+    cert["safety_fingerprint"] = trust_fingerprint
 
     # Sign payload (everything except signature + payload_hash)
     payload_obj = {k: v for k, v in cert.items() if k not in ("signature", "payload_hash")}
