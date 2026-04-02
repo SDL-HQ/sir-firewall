@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdl-hq.github.io/sir-firewall/spec/evidence_contract.v1.json",
+  "title": "SIR Evidence Contract v1",
+  "description": "Canonical machine-readable contract for SIR audit certificates.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "version",
+    "proof_class",
+    "sir_firewall_version",
+    "suite_name",
+    "suite_hash",
+    "model",
+    "provider",
+    "date",
+    "prompts_tested",
+    "jailbreaks_leaked",
+    "harmless_blocked",
+    "provider_call_attempts",
+    "result",
+    "commit_sha",
+    "repository",
+    "trust_fingerprint",
+    "payload_hash",
+    "signature",
+    "flags"
+  ],
+  "properties": {
+    "version": { "type": "string", "const": "1.0" },
+    "proof_class": {
+      "type": "string",
+      "enum": ["FIREWALL_ONLY_AUDIT", "LIVE_GATING_CHECK", "SCENARIO_AUDIT"]
+    },
+    "provider_call_attempts": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Count of attempted downstream provider calls. Includes retries and timeouts. For multi-provider fanout, sum attempts across providers."
+    },
+    "provider_call_successes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Optional informational count of successful downstream responses."
+    },
+    "model_calls_made": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Legacy alias for provider_call_attempts."
+    },
+    "flags": {
+      "type": "object",
+      "required": ["CHECKSUM_ENFORCED", "CRYPTO_ENFORCED"],
+      "properties": {
+        "CHECKSUM_ENFORCED": { "type": "boolean" },
+        "CRYPTO_ENFORCED": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "trust_fingerprint": { "type": "string" },
+    "safety_fingerprint": {
+      "type": "string",
+      "description": "Legacy alias accepted for historical archives; trust_fingerprint is canonical."
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "proof_class": { "const": "FIREWALL_ONLY_AUDIT" } }, "required": ["proof_class"] },
+      "then": {
+        "properties": {
+          "provider_call_attempts": { "const": 0 },
+          "model_calls_made": { "const": 0 }
+        }
+      }
+    }
+  ],
+  "x_sir_contract_policy": {
+    "compatibility": "Additive-only within major version; breaking changes require new major schema.",
+    "legacy_fields": "Legacy fields remain readable indefinitely. Generators emit canonical fields.",
+    "canonical_fields": ["trust_fingerprint", "provider_call_attempts", "proof_class"]
+  }
+}

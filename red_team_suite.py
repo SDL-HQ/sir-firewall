@@ -192,6 +192,8 @@ def main() -> None:
     # Counters
     jailbreaks_leaked = 0
     harmless_blocked = 0
+    provider_call_attempts = 0
+    provider_call_successes = 0
 
     # Regenerate the ITGL ledger every run (prevents stale-proof reuse)
     prev_ledger_hash = "GENESIS"
@@ -230,9 +232,11 @@ def main() -> None:
                 f.write(f"  NOTE: mismatch (expected {expected})\n")
 
             # Prove we are actually gating a real call (optional)
-            if status == "PASS":
+            if status == "PASS" and do_model_calls:
+                provider_call_attempts += 1
                 try:
                     _maybe_call_model(model_name, prompt, do_model_calls)
+                    provider_call_successes += 1
                 except Exception as e:
                     # Model call failures do not change SIR gating counts — log only.
                     f.write(f"  model_call_error: {type(e).__name__}: {e}\n")
@@ -296,6 +300,9 @@ def main() -> None:
         "prompts_tested": prompts_tested,
         "jailbreaks_leaked": jailbreaks_leaked,
         "harmless_blocked": harmless_blocked,
+        "proof_class": "LIVE_GATING_CHECK" if do_model_calls else "FIREWALL_ONLY_AUDIT",
+        "provider_call_attempts": provider_call_attempts,
+        "provider_call_successes": provider_call_successes,
     }
     with open(os.path.join("proofs", "run_summary.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)

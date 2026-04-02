@@ -127,6 +127,22 @@ If you see an error that `python3` is not found, Python is not installed on this
 
 ---
 
+
+## Evidence contract (canonical)
+
+SIR certificate semantics are versioned in `spec/evidence_contract.v1.json`.
+
+Key points in v1:
+- `proof_class` is required (`FIREWALL_ONLY_AUDIT`, `LIVE_GATING_CHECK`, `SCENARIO_AUDIT`).
+- `provider_call_attempts` counts attempted downstream provider calls (including retries/timeouts).
+- `model_calls_made` is retained as a legacy alias for compatibility.
+- `flags` snapshot is required and currently includes `CHECKSUM_ENFORCED` and `CRYPTO_ENFORCED`.
+
+Compatibility policy:
+- additive-only changes within major version
+- breaking changes require a major schema bump
+- legacy fields remain readable; generators emit canonical fields
+
 ## Guides
 
 * Engineer guide (local runs, signing, serving): `docs/engineer-guide.md`

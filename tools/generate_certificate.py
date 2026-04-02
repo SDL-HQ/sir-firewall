@@ -53,15 +53,20 @@ def _read_text(path: str) -> Optional[str]:
         return None
 
 
-def _canonical_policy_hash(policy_path: str) -> Optional[Dict[str, str]]:
-    """Return {policy_version, policy_hash} if policy file exists."""
+def _canonical_policy_hash(policy_path: str) -> Optional[Dict[str, Any]]:
+    """Return policy metadata (version/hash/flags) if policy file exists."""
     try:
         with open(policy_path, "r", encoding="utf-8") as f:
             policy = json.load(f)
         blob = json.dumps(policy, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        flags = policy.get("flags") if isinstance(policy.get("flags"), dict) else {}
         return {
             "policy_version": str(policy.get("version", "")),
             "policy_hash": "sha256:" + hashlib.sha256(blob).hexdigest(),
+            "flags": {
+                "CHECKSUM_ENFORCED": bool(flags.get("CHECKSUM_ENFORCED", True)),
+                "CRYPTO_ENFORCED": bool(flags.get("CRYPTO_ENFORCED", False)),
+            },
         }
     except Exception:
         return None
@@ -189,6 +194,14 @@ def main() -> None:
 
     jailbreaks_leaked = int(summary.get("jailbreaks_leaked") or 0)
     harmless_blocked = int(summary.get("harmless_blocked") or 0)
+    proof_class = str(summary.get("proof_class") or "FIREWALL_ONLY_AUDIT")
+    provider_call_attempts = int(summary.get("provider_call_attempts") or 0)
+    provider_call_successes = int(summary.get("provider_call_successes") or 0)
+
+    # Deterministic call-count semantics by proof class.
+    if proof_class == "FIREWALL_ONLY_AUDIT":
+        provider_call_attempts = 0
+        provider_call_successes = 0
 
     result = "AUDIT PASSED" if (jailbreaks_leaked == 0 and harmless_blocked == 0) else "AUDIT FAILED"
 
@@ -220,6 +233,7 @@ def main() -> None:
     cert: Dict[str, Any] = {
         "audit": "SIR Firewall — Pre-Inference Governance Audit",
         "version": "1.0",
+        "proof_class": proof_class,
         "sir_firewall_version": sir_version,
         "suite_name": suite_name,
         "suite_path": suite_path,
@@ -230,6 +244,10 @@ def main() -> None:
         "prompts_tested": prompts_tested,
         "jailbreaks_leaked": jailbreaks_leaked,
         "harmless_blocked": harmless_blocked,
+        "provider_call_attempts": provider_call_attempts,
+        "provider_call_successes": provider_call_successes,
+        # Backward-compatible alias retained for dashboards that still consume it.
+        "model_calls_made": provider_call_attempts,
         "result": result,
         "ci_run_url": ci_run_url,
         "commit_sha": os.getenv("GITHUB_SHA", ""),
@@ -243,6 +261,12 @@ def main() -> None:
         cert["policy_hash"] = policy_meta["policy_hash"]
     if itgl_final_hash:
         cert["itgl_final_hash"] = itgl_final_hash
+
+    flags = policy_meta.get("flags") if isinstance(policy_meta.get("flags"), dict) else {}
+    cert["flags"] = {
+        "CHECKSUM_ENFORCED": bool(flags.get("CHECKSUM_ENFORCED", True)),
+        "CRYPTO_ENFORCED": bool(flags.get("CRYPTO_ENFORCED", False)),
+    }
 
     # Fingerprint fields
     cert["fingerprint_fields_version"] = "1"

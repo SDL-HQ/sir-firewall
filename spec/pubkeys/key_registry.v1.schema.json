@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdl-hq.github.io/sir-firewall/spec/pubkeys/key_registry.v1.schema.json",
+  "title": "SIR Signing Key Registry v1",
+  "type": "object",
+  "required": ["version", "keys"],
+  "properties": {
+    "version": { "type": "string", "const": "1" },
+    "keys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key_id", "pubkey_pem", "created_utc", "valid_from_utc", "status"],
+        "properties": {
+          "key_id": { "type": "string", "minLength": 1 },
+          "pubkey_pem": { "type": "string", "minLength": 1 },
+          "created_utc": { "type": "string", "format": "date-time" },
+          "valid_from_utc": { "type": "string", "format": "date-time" },
+          "valid_until_utc": { "type": ["string", "null"], "format": "date-time" },
+          "status": { "type": "string", "enum": ["active", "retired", "revoked"] },
+          "revoked_utc": { "type": ["string", "null"], "format": "date-time" },
+          "revocation_reason": { "type": ["string", "null"] }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "status": { "const": "revoked" } }, "required": ["status"] },
+            "then": { "required": ["revoked_utc", "revocation_reason"] }
+          }
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "x_verifier_rules": {
+    "revoked_behavior": "Proofs with proof_timestamp_utc >= revoked_utc fail closed. Proofs before revoked_utc remain valid.",
+    "timestamp_requirement": "If proof_timestamp_utc is missing for revoked-key verification, fail closed."
+  }
+}

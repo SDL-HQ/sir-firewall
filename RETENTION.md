@@ -21,7 +21,7 @@ The certificate binds to:
   - `policy_hash` / `policy_version`
   - `suite_hash`
   - `itgl_final_hash`
-  - `safety_fingerprint`
+  - `trust_fingerprint`
 
 ### B) Run evidence (how the run unfolded)
 - `proofs/latest-attempts.log` — attempt-by-attempt log
@@ -169,7 +169,7 @@ SIR binds:
 - `policy_hash` + `policy_version` (when available)
 - `suite_hash`
 - `itgl_final_hash`
-- `safety_fingerprint`
+- `trust_fingerprint`
 
 ---
 
@@ -268,7 +268,7 @@ Optional deep inspection:
   * `policy_hash`
   * `suite_hash`
   * `itgl_final_hash`
-  * `safety_fingerprint`
+  * `trust_fingerprint`
 * verify ITGL ledger separately if required:
 
   * `python tools/verify_itgl.py`

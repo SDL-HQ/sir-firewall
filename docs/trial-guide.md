@@ -60,7 +60,7 @@ python3 -m pip install cryptography
 
 ## What the certificate binds to
 
-When reviewing the certificate JSON, these are the fields that matter:
+When reviewing the certificate JSON, these are the fields that matter (contract: `spec/evidence_contract.v1.json`):
 
 * Suite hash
   The SHA-256 fingerprint of the test suite used for the run.
@@ -73,6 +73,12 @@ When reviewing the certificate JSON, these are the fields that matter:
 
 * Trust fingerprint (`trust_fingerprint`, with `safety_fingerprint` as legacy alias)
   A stable identifier for the run configuration and outcome binding.
+
+* Proof class + call counters (`proof_class`, `provider_call_attempts`)
+  `provider_call_attempts` counts attempted downstream provider calls (including retries/timeouts). For `FIREWALL_ONLY_AUDIT`, this value must be `0`.
+
+* Flags snapshot (`flags.CHECKSUM_ENFORCED`, `flags.CRYPTO_ENFORCED`)
+  Captures enforcement mode at proof time to prevent misinterpretation.
 
 ## What to record for evidence
 
