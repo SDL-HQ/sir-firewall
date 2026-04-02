@@ -81,6 +81,8 @@ SIR’s job is simple: **enforce policy before inference, then prove what happen
 - Offline verification:
   - Public key: `spec/sdl.pub`
   - Verifier: `tools/verify_certificate.py`
+  - Evidence contract: `spec/evidence_contract.v1.json`
+  - Contract validator: `tools/validate_certificate_contract.py`
 
 Note: GitHub Pages serves the published proof surfaces at:
 - https://sdl-hq.github.io/sir-firewall/latest-audit.html
@@ -115,7 +117,15 @@ If you download the file instead of piping, run:
 
 ```bash
 python3 tools/verify_certificate.py proofs/latest-audit.json
+python3 tools/validate_certificate_contract.py proofs/latest-audit.json
 ```
+
+Evidence semantics in this contract:
+- `proof_class` is explicit (`FIREWALL_ONLY_AUDIT`, `LIVE_GATING_CHECK`, `SCENARIO_AUDIT`).
+- `provider_call_attempts` counts attempted downstream calls (including retries/timeouts).
+- `provider_call_successes` is informational successful-call count.
+- `model_calls_made` is a legacy alias equal to `provider_call_attempts`.
+- `trust_fingerprint` is canonical; `safety_fingerprint` is retained as legacy alias.
 
 If you see an error about `cryptography` not being installed, run:
 
