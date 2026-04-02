@@ -50,6 +50,7 @@ If you prefer to download the file instead of piping:
 ```bash
 curl -s -o latest-audit.json https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json
 python3 tools/verify_certificate.py latest-audit.json
+python3 tools/validate_certificate_contract.py latest-audit.json
 ```
 
 If you see an error about `cryptography` not being installed:
@@ -73,6 +74,15 @@ When reviewing the certificate JSON, these are the fields that matter:
 
 * Trust fingerprint (`trust_fingerprint`, with `safety_fingerprint` as legacy alias)
   A stable identifier for the run configuration and outcome binding.
+
+* Evidence contract (versioned)
+  `spec/evidence_contract.v1.json` defines proof classes and required certificate semantics.
+
+Additional semantics:
+- `proof_class` labels the proof mode (`FIREWALL_ONLY_AUDIT`, `LIVE_GATING_CHECK`, `SCENARIO_AUDIT`).
+- `provider_call_attempts` counts attempted downstream calls (including retries/timeouts).
+- `provider_call_successes` is informational successful-call count.
+- `model_calls_made` is a legacy alias equal to `provider_call_attempts`.
 
 ## What to record for evidence
 

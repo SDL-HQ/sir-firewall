@@ -3,6 +3,7 @@
 SIR produces **cryptographically verifiable audit proofs** (signed certificates + hash-bound run logs) and maintains a **truth-preserving per-run archive**. This document explains how those proofs are retained long-term in a way that is **auditor-friendly**, **repeatable**, and **durable**.
 
 This is intentionally written in plain language for auditors, regulators, and security teams.
+The machine-readable certificate contract is versioned at `spec/evidence_contract.v1.json`.
 
 ---
 
@@ -21,7 +22,8 @@ The certificate binds to:
   - `policy_hash` / `policy_version`
   - `suite_hash`
   - `itgl_final_hash`
-  - `safety_fingerprint`
+  - `trust_fingerprint` (`safety_fingerprint` legacy alias)
+  - `proof_class` + provider call counters (`provider_call_attempts`, `provider_call_successes`, legacy `model_calls_made`)
 
 ### B) Run evidence (how the run unfolded)
 - `proofs/latest-attempts.log` — attempt-by-attempt log
@@ -169,7 +171,7 @@ SIR binds:
 - `policy_hash` + `policy_version` (when available)
 - `suite_hash`
 - `itgl_final_hash`
-- `safety_fingerprint`
+- `trust_fingerprint` (`safety_fingerprint` as legacy alias)
 
 ---
 
@@ -242,7 +244,7 @@ A proof is considered auditor-verifiable if:
    - suite hash
    - policy hash/version (if used)
    - ITGL final hash
-   - safety fingerprint
+   - trust fingerprint (legacy alias: safety fingerprint)
 4) per-run archive exists and is retained under the declared retention controls
 
 ---
@@ -268,7 +270,7 @@ Optional deep inspection:
   * `policy_hash`
   * `suite_hash`
   * `itgl_final_hash`
-  * `safety_fingerprint`
+  * `trust_fingerprint` (legacy alias: `safety_fingerprint`)
 * verify ITGL ledger separately if required:
 
   * `python tools/verify_itgl.py`

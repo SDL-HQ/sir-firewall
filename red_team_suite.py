@@ -97,6 +97,22 @@ def _suite_hash(rows_decoded: List[Dict[str, str]]) -> str:
     return "sha256:" + hashlib.sha256(blob).hexdigest()
 
 
+def _policy_flags(policy_path: str = "policy/isc_policy.json") -> Dict[str, bool]:
+    defaults = {"CRYPTO_ENFORCED": False, "CHECKSUM_ENFORCED": True}
+    try:
+        with open(policy_path, "r", encoding="utf-8") as f:
+            policy = json.load(f)
+        flags = policy.get("flags") if isinstance(policy, dict) else None
+        if not isinstance(flags, dict):
+            return defaults
+        return {
+            "CRYPTO_ENFORCED": bool(flags.get("CRYPTO_ENFORCED", defaults["CRYPTO_ENFORCED"])),
+            "CHECKSUM_ENFORCED": bool(flags.get("CHECKSUM_ENFORCED", defaults["CHECKSUM_ENFORCED"])),
+        }
+    except Exception:
+        return defaults
+
+
 def _build_isc_envelope(prompt: str, template_id: str) -> Dict[str, str]:
     checksum = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
     return {
@@ -109,9 +125,9 @@ def _build_isc_envelope(prompt: str, template_id: str) -> Dict[str, str]:
     }
 
 
-def _maybe_call_model(model: str, prompt: str, enable: bool) -> None:
+def _maybe_call_model(model: str, prompt: str, enable: bool) -> bool:
     if not enable:
-        return
+        return False
     # Keep this minimal: we're proving SIR is in front of a real model call.
     # The audit result is still based on SIR gating outcomes, not model content.
     completion(
@@ -120,6 +136,7 @@ def _maybe_call_model(model: str, prompt: str, enable: bool) -> None:
         temperature=0,
         max_tokens=64,
     )
+    return True
 
 
 def _prompt_hash(prompt: str) -> str:
@@ -192,6 +209,8 @@ def main() -> None:
     # Counters
     jailbreaks_leaked = 0
     harmless_blocked = 0
+    provider_call_attempts = 0
+    provider_call_successes = 0
 
     # Regenerate the ITGL ledger every run (prevents stale-proof reuse)
     prev_ledger_hash = "GENESIS"
@@ -231,8 +250,11 @@ def main() -> None:
 
             # Prove we are actually gating a real call (optional)
             if status == "PASS":
+                if do_model_calls:
+                    provider_call_attempts += 1
                 try:
-                    _maybe_call_model(model_name, prompt, do_model_calls)
+                    if _maybe_call_model(model_name, prompt, do_model_calls):
+                        provider_call_successes += 1
                 except Exception as e:
                     # Model call failures do not change SIR gating counts — log only.
                     f.write(f"  model_call_error: {type(e).__name__}: {e}\n")
@@ -286,8 +308,11 @@ def main() -> None:
         f.write(str(harmless_blocked))
 
     # Preferred machine-readable summary for certificate generation
+    summary_ts = _utc_now_iso()
     summary = {
-        "date": _utc_now_iso(),
+        "date": summary_ts,
+        "timestamp_utc": summary_ts,
+        "proof_class": "LIVE_GATING_CHECK" if do_model_calls else "FIREWALL_ONLY_AUDIT",
         "model": model_name,
         "provider": os.getenv("SIR_PROVIDER", "xai"),
         "suite_path": suite_path,
@@ -296,6 +321,9 @@ def main() -> None:
         "prompts_tested": prompts_tested,
         "jailbreaks_leaked": jailbreaks_leaked,
         "harmless_blocked": harmless_blocked,
+        "provider_call_attempts": provider_call_attempts,
+        "provider_call_successes": provider_call_successes,
+        "flags": _policy_flags(),
     }
     with open(os.path.join("proofs", "run_summary.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)

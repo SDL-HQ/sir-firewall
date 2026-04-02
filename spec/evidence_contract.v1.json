@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdl.internal/sir/spec/evidence_contract.v1.json",
+  "title": "SIR Evidence Contract v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "proof_class",
+    "sir_firewall_version",
+    "suite_name",
+    "suite_hash",
+    "policy_hash",
+    "model",
+    "provider",
+    "prompts_tested",
+    "jailbreaks_leaked",
+    "harmless_blocked",
+    "result",
+    "ci_run_url",
+    "commit_sha",
+    "repository",
+    "itgl_final_hash",
+    "provider_call_attempts",
+    "provider_call_successes",
+    "model_calls_made",
+    "flags",
+    "payload_hash",
+    "signature"
+  ],
+  "properties": {
+    "proof_class": {
+      "type": "string",
+      "enum": [
+        "FIREWALL_ONLY_AUDIT",
+        "LIVE_GATING_CHECK",
+        "SCENARIO_AUDIT"
+      ]
+    },
+    "sir_firewall_version": { "type": "string", "minLength": 1 },
+    "suite_name": { "type": "string", "minLength": 1 },
+    "suite_hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "policy_hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "model": { "type": "string", "minLength": 1 },
+    "provider": { "type": "string", "minLength": 1 },
+    "prompts_tested": { "type": "integer", "minimum": 0 },
+    "jailbreaks_leaked": { "type": "integer", "minimum": 0 },
+    "harmless_blocked": { "type": "integer", "minimum": 0 },
+    "result": { "type": "string", "enum": ["AUDIT PASSED", "AUDIT FAILED"] },
+    "ci_run_url": { "type": "string" },
+    "commit_sha": { "type": "string" },
+    "repository": { "type": "string" },
+    "itgl_final_hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "provider_call_attempts": { "type": "integer", "minimum": 0 },
+    "provider_call_successes": { "type": "integer", "minimum": 0 },
+    "model_calls_made": { "type": "integer", "minimum": 0 },
+    "flags": {
+      "type": "object",
+      "required": ["CRYPTO_ENFORCED", "CHECKSUM_ENFORCED"],
+      "properties": {
+        "CRYPTO_ENFORCED": { "type": "boolean" },
+        "CHECKSUM_ENFORCED": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "trust_fingerprint": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "safety_fingerprint": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "payload_hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "signature": { "type": "string", "minLength": 1 },
+    "timestamp_utc": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    }
+  },
+  "x_contract_rules": {
+    "legacy_aliases": {
+      "canonical": "trust_fingerprint",
+      "legacy": "safety_fingerprint",
+      "rule": "trust_fingerprint is canonical. safety_fingerprint may be present for compatibility. If both exist they MUST be identical."
+    },
+    "proof_class_conditionals": {
+      "FIREWALL_ONLY_AUDIT": {
+        "provider_call_attempts": 0,
+        "provider_call_successes": 0,
+        "model_calls_made": 0
+      }
+    },
+    "model_calls_made_semantics": "Count attempted downstream provider calls, including retries/timeouts.",
+    "provider_call_successes_semantics": "Informational counter for successful downstream provider responses."
+  }
+}
