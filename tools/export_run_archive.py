@@ -157,6 +157,7 @@ def _prepare_export_root(out_dir: Path, force: bool) -> Path:
         raise SystemExit(3)
 
     if force:
+        out_dir.parent.mkdir(parents=True, exist_ok=True)
         tmp_root = Path(tempfile.mkdtemp(prefix=f".export-{out_dir.name}-", dir=str(out_dir.parent)))
         return tmp_root
 

@@ -75,6 +75,11 @@ def main() -> int:
         default=str(DEFAULT_KEY_REGISTRY),
         help="Path to key registry JSON used when signing_key_id is present.",
     )
+    ap.add_argument(
+        "--require-registry",
+        action="store_true",
+        help="Fail when signing_key_id is present but key registry is missing/unreadable.",
+    )
     args = ap.parse_args()
 
     try:
@@ -115,15 +120,20 @@ def main() -> int:
     missing = sorted(required_receipt_fields - set(receipt.keys()))
     if missing:
         print(f"ERROR: archive_receipt.json missing required fields: {', '.join(missing)}", file=sys.stderr)
-        return 2
+        return 3
+
+    signing_key_id = receipt.get("signing_key_id")
+    if not isinstance(signing_key_id, str) or not signing_key_id:
+        print("ERROR: signing_key_id must be a non-empty string", file=sys.stderr)
+        return 3
 
     try:
         registry_path = Path(args.key_registry)
         if registry_path.exists():
-            entry = find_registry_key(registry_path, str(receipt.get("signing_key_id")))
+            entry = find_registry_key(registry_path, signing_key_id)
             if entry is None:
                 print(
-                    f"ERROR: signing_key_id not found in key registry: {receipt.get('signing_key_id')}",
+                    f"ERROR: signing_key_id not found in key registry: {signing_key_id}",
                     file=sys.stderr,
                 )
                 return 2
@@ -133,7 +143,30 @@ def main() -> int:
                 return 2
             public_key = serialization.load_pem_public_key(public_key_pem_from_entry(entry).encode("utf-8"))
         else:
+            if args.require_registry:
+                print(
+                    f"ERROR: key registry not found: {registry_path} (required for signing_key_id={signing_key_id})",
+                    file=sys.stderr,
+                )
+                return 3
+            print(
+                "WARNING: signing_key_id present but key registry unavailable; falling back to --pubkey verification only (revocation checks not enforced).",
+                file=sys.stderr,
+            )
             public_key = serialization.load_pem_public_key(Path(args.pubkey).read_bytes())
+    except ValueError as e:
+        if args.require_registry:
+            print(f"ERROR: failed to load required key registry {args.key_registry} ({e})", file=sys.stderr)
+            return 3
+        print(
+            "WARNING: signing_key_id present but key registry unreadable; falling back to --pubkey verification only (revocation checks not enforced).",
+            file=sys.stderr,
+        )
+        try:
+            public_key = serialization.load_pem_public_key(Path(args.pubkey).read_bytes())
+        except Exception as ex:
+            print(f"ERROR: failed to load verification key ({ex})", file=sys.stderr)
+            return 3
     except Exception as e:
         print(f"ERROR: failed to load verification key ({e})", file=sys.stderr)
         return 3
