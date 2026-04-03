@@ -243,6 +243,7 @@ def main() -> None:
     repo = os.getenv("GITHUB_REPOSITORY", "SDL-HQ/sir-firewall")
     run_id = os.getenv("GITHUB_RUN_ID") or ""
     ci_run_url = f"https://github.com/{repo}/actions/runs/{run_id}" if (repo and run_id) else ""
+    signing_key_id = (os.getenv("SDL_SIGNING_KEY_ID") or "default").strip() or "default"
 
     # Build certificate dict in a stable insertion order (do NOT sort keys).
     cert: Dict[str, Any] = {
@@ -268,6 +269,7 @@ def main() -> None:
         "ci_run_url": ci_run_url,
         "commit_sha": os.getenv("GITHUB_SHA", ""),
         "repository": repo,
+        "signing_key_id": signing_key_id,
     }
 
     # Optional governance anchors (only set if available)

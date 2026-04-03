@@ -1,0 +1,18 @@
+{
+  "version": "v1",
+  "keys": [
+    {
+      "key_id": "default",
+      "pubkey_pem": "-----BEGIN PUBLIC KEY-----\nMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAuqVNy5bsi/o1nJNrVCrM\nmpEOpDshG7V+xT67+VkpVvYK1n0G1EUnxvkKPj0Q3rJzjEq+a5kGNZ2+GLnkDp0B\nix/xSKoakL+QHOyFvDU6CAu0pq+DAF3IXArAeAmfoajBiB5sFujRVp+Y8ZXnMnl/\nITNgYNJC0d/dAHYhHn4fduFpTAD0OQL100k/H3CxJmwjA/Iko1GYmCmqQUFpmLNC\nqlrPq4z6KI9UHBOz1Ofh9NNgPOPZadcU1GUb36QYFuJfngiaV/WYkPssCi2h2D9k\n5lzGi9u00rK1XhUKt4yFPscB+hqnTaA3h49YQmrsge5dNeBtg5uA+oiMOo6JGTG+\n3dV+a1bA3R/cZYJfA+N5YwES1bYjypxHKom/JdfL+YP9UYLM810+3uDoo+Uygz/A\n09Qm1ACXmDUM+5xc3ict6o7HAItU6bO5c9jGNCxTFV+DFOEnC3lSIr3pJlYezkUc\nrqsKpuxLK+Px85lUnGJi+JIuB7vPfnzxAcxdQ4wofdoXudoklxqeFbSLu/k8WhcE\nTd3uQDTDr3iQjaPMoaUr1s0B2xZllB+ukefUWbC6MUTBrSHjsrFDbYobqLXVH7UQ\nUH9HTjr3zSSdix/J2cLVQm8bI77GxP8vKkMlhRh5M26y2x6l4Ccj3z4PmoQQHX0C\nxkm64QYQWpNOgGZBUf8wZGMCAwEAAQ==\n-----END PUBLIC KEY-----\n",
+      "created_utc": "2025-01-01T00:00:00Z",
+      "valid_from_utc": "2025-01-01T00:00:00Z",
+      "status": "active",
+      "revocation_reason": ""
+    }
+  ],
+  "x_verifier_expectations": {
+    "revocation_behavior": "Do not retroactively invalidate proofs signed before revoked_utc. Fail verification only for proofs where timestamp_utc >= revoked_utc for that key.",
+    "timestamp_requirement": "If proof timestamp_utc is missing during revocation checks, fail closed.",
+    "timestamp_format": "UTC ISO-8601 with Z suffix required for comparisons."
+  }
+}

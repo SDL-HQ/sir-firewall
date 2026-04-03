@@ -314,6 +314,7 @@ python tools/verify_export_bundle.py /tmp/sir_bundle_tar
 Notes:
 
 * The default workflow is fully offline and deterministic.
+* If `--out` already exists and is non-empty, pass `--force` to overwrite it.
 * `bundle_manifest.json` is a convenience descriptor (not a replacement for `archive_receipt.json`).
 * S3/Object Lock upload is a reference option via optional flags (`--s3-bucket`, `--s3-prefix`) and is not required for OSS users or CI.
 
