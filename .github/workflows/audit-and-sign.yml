@@ -1,12 +1,16 @@
 name: SIR Real Governance Audit
 
 on:
+  pull_request:
+    branches: [ main ]
+
   push:
     branches: [ main ]
     paths-ignore:
       - 'proofs/**'
       - 'docs/**'
       - 'policy/isc_policy.signed.json'
+
   workflow_dispatch:
 
 # Hardening: prevent overlapping runs from fighting over commits / pages.
@@ -25,7 +29,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.SIR_AUDIT_PUSH_TOKEN }}
+          # Use push token only when we're on main (needed for committing proofs back).
+          # PR runs use the default token (no secret dependency).
+          token: ${{ github.ref == 'refs/heads/main' && secrets.SIR_AUDIT_PUSH_TOKEN || github.token }}
           fetch-depth: 0
 
       - name: Set up Python 3.11
@@ -131,6 +137,8 @@ jobs:
 
       - name: Archive this run (P6 truth-preserving per-run archive)
         if: always()
+        env:
+          SDL_PRIVATE_KEY_PEM: ${{ secrets.SDL_PRIVATE_KEY_PEM }}
         run: |
           set -euo pipefail
           python tools/publish_run.py \
@@ -157,8 +165,6 @@ jobs:
           rm -rf docs/runs || true
           cp -R proofs/runs docs/runs
 
-      # Publish latest run status marker ALWAYS (PASS / FAIL / INCONCLUSIVE)
-      # This becomes the "truth surface" for the most recent run (even if latest-audit remains last PASS).
       - name: Publish latest run marker to docs/ (always)
         if: always()
         env:
@@ -215,7 +221,6 @@ jobs:
           echo "LATEST_ARCHIVE_RUN_ID=${archive_run_id}" >> "$GITHUB_ENV"
           echo "LATEST_CI_RUN_URL=${ci_run_url}" >> "$GITHUB_ENV"
 
-      # Publish latest PASS proof to docs/ (PASS only) — gated on not inconclusive
       - name: Publish latest PASS proof to docs/ (PASS only)
         if: always() && env.AUDIT_PASS == 'true' && env.INCONCLUSIVE != 'true'
         run: |
@@ -255,7 +260,6 @@ jobs:
             echo "Git sync attempt $attempt/3..."
             git fetch origin main
 
-            # Hardening: allow rebase even though generated files modified the workspace.
             if ! git pull --rebase --autostash origin main; then
               echo "Rebase failed on attempt $attempt. Retrying..."
               git rebase --abort || true
