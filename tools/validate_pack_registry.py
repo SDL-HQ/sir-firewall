@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-ALLOWED_SCHEMA = {"csv_single_turn_v1"}
+ALLOWED_SCHEMA = {"csv_single_turn_v1", "scenario_json_v1"}
 ALLOWED_RISK_CLASS = {"baseline", "encoded_high_risk", "domain"}
 ALLOWED_STATUS = {"active", "draft", "deprecated"}
 REQUIRED_PACK_FIELDS = {

@@ -98,13 +98,35 @@ jobs:
           print(f"OK: generic_safety -> {suite_path}")
           PY
 
-      - name: Validate domain pack (suite CSV) schema (P7 hygiene)
+      - name: Validate active pack schema
         env:
-          SIR_SUITE_PATH: tests/domain_packs/generic_safety.csv
+          DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
         run: |
           set -euo pipefail
-          echo "Validating suite CSV schema: $SIR_SUITE_PATH"
-          python tools/validate_domain_pack.py --file "$SIR_SUITE_PATH"
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+
+          pack_id = os.environ.get("DISPATCH_PACK", "generic_safety")
+          with open("spec/packs/pack_registry.v1.json", "r", encoding="utf-8") as f:
+              registry = json.load(f)
+          packs = registry.get("packs", [])
+          match = next((p for p in packs if p.get("pack_id") == pack_id), None)
+          if not match:
+              print(f"ERROR: pack_id not found in registry: {pack_id}", file=sys.stderr)
+              raise SystemExit(1)
+
+          schema = match.get("schema")
+          suite_path = match.get("suite_path")
+          if schema == "scenario_json_v1":
+              cmd = ["python", "tools/validate_scenario_pack.py", "--file", suite_path]
+          else:
+              cmd = ["python", "tools/validate_domain_pack.py", "--file", suite_path]
+          print("Running:", " ".join(cmd))
+          raise SystemExit(subprocess.call(cmd))
+          PY
 
       - name: Run suite through SIR (firewall-only, no live model calls)
         env:

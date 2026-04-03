@@ -260,6 +260,8 @@ def main() -> None:
         "pack_id": str(summary.get("pack_id") or ""),
         "pack_version": str(summary.get("pack_version") or ""),
         "suite_hash": suite_hash,
+        "scenario_id": str(summary.get("scenario_id") or ""),
+        "scenario_hash": str(summary.get("scenario_hash") or ""),
         "model": str(summary.get("model") or os.getenv("LITELLM_MODEL", "xai/grok-3-beta")),
         "provider": str(summary.get("provider") or os.getenv("SIR_PROVIDER", "xai")),
         "date": str(summary.get("date") or _utc_now_iso()),
