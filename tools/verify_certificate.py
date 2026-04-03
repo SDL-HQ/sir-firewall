@@ -8,8 +8,7 @@ Verifies:
 
 Inputs:
 - cert path (positional arg), OR
-- "-" to read JSON cert from stdin, OR
-- if cert arg omitted and stdin is piped, read from stdin
+- "-" to read JSON cert from stdin
 
 Defaults:
 - pubkey: spec/sdl.pub
