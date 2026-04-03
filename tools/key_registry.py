@@ -20,9 +20,12 @@ def parse_utc_z(ts: str) -> datetime:
 
 
 def load_registry(path: Path) -> Dict[str, Any]:
-    obj = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        obj = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as e:
+        raise ValueError(f"failed to parse key registry JSON {path}: {e}") from e
     if not isinstance(obj, dict):
-        raise ValueError(f"expected JSON object in {path}")
+        raise ValueError(f"expected JSON object in {path}, got {type(obj).__name__}")
     return obj
 
 

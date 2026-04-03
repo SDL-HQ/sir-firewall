@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
@@ -23,7 +24,13 @@ def _utc_now_z() -> str:
 
 
 def _load_registry(path: Path) -> Dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        obj = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as e:
+        raise SystemExit(f"ERROR: failed to parse key registry JSON: {path} ({e})") from e
+    if not isinstance(obj, dict):
+        raise SystemExit(f"ERROR: key registry must be a JSON object: {path}")
+    return obj
 
 
 def _write_json(path: Path, data: Dict[str, Any]) -> None:
@@ -51,7 +58,7 @@ def main() -> int:
     ap.add_argument("--current-pub", default=str(DEFAULT_CURRENT_PUB), help="Canonical current public key path.")
     ap.add_argument("--pubkey-dir", default=str(DEFAULT_PUBKEY_DIR), help="Directory for historical pubkeys.")
     ap.add_argument("--key-id", help="New key id (default: sdl-<UTC stamp>).")
-    ap.add_argument("--private-out", help="Optional private key output path.")
+    ap.add_argument("--private-out", help="Private key output path (required).")
     args = ap.parse_args()
 
     now = _utc_now_z()
@@ -95,8 +102,12 @@ def main() -> int:
     current_pub_path = Path(args.current_pub)
     current_pub_path.write_text(pub_pem, encoding="utf-8")
 
-    private_out = Path(args.private_out) if args.private_out else pubkey_dir / f"{new_key_id}.private.pem"
+    if not args.private_out:
+        raise SystemExit("ERROR: --private-out is required (do not write private keys into the repo).")
+    private_out = Path(args.private_out)
+    private_out.parent.mkdir(parents=True, exist_ok=True)
     private_out.write_text(priv_pem, encoding="utf-8")
+    os.chmod(private_out, 0o600)
 
     print(f"OK: rotated keys; retired active keys: {active_count}")
     print(f"OK: new key_id={new_key_id}")
