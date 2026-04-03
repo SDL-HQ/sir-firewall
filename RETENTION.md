@@ -293,14 +293,36 @@ Notes:
 
 * This verifies chain-of-custody evidence (`manifest.json` + signed `archive_receipt.json`) for a single archived run.
 * Default verifier key is `spec/sdl.pub`; override with `--pubkey <path>` for local/dev signing keys.
-* Tier B export/mirroring workflow comes next (P9) and is not required for this offline verification step.
+* Tier B export/verification workflow is now available via `tools/export_run_archive.py` and `tools/verify_export_bundle.py`.
+
+
+
+### Verify an exported Tier B bundle offline
+
+```bash
+python tools/export_run_archive.py --run-path proofs/runs/<run_id>/ --out /tmp/sir_bundle --format dir
+python tools/verify_export_bundle.py /tmp/sir_bundle
+```
+
+Optional deterministic tar output:
+
+```bash
+python tools/export_run_archive.py --run-path proofs/runs/<run_id>/ --out /tmp/sir_bundle_tar --format tar
+python tools/verify_export_bundle.py /tmp/sir_bundle_tar
+```
+
+Notes:
+
+* The default workflow is fully offline and deterministic.
+* `bundle_manifest.json` is a convenience descriptor (not a replacement for `archive_receipt.json`).
+* S3/Object Lock upload is a reference option via optional flags (`--s3-bucket`, `--s3-prefix`) and is not required for OSS users or CI.
 
 ---
 
 ## 9) Current status
 
 * Tier A is live (repo + Pages + run archive)
-* Tier B is the next planned implementation for auditor-grade retention
+* Tier B reference implementation is now available as an optional offline-first export bundle workflow
 * Tier C is optional and may be added if required by stakeholders
 
 ---
