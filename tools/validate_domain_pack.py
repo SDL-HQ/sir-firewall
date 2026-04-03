@@ -80,6 +80,8 @@ def validate_file(path: Path) -> Tuple[bool, List[str]]:
             if has_prompt and has_prompt_b64:
                 if not prompt_val and not prompt_b64_val:
                     errors.append(f"{path}: line {i}: prompt and prompt_b64 are both empty")
+                if prompt_val and prompt_b64_val:
+                    errors.append(f"{path}: line {i}: prompt and prompt_b64 cannot both be populated")
             elif has_prompt:
                 if not prompt_val:
                     errors.append(f"{path}: line {i}: prompt is empty")

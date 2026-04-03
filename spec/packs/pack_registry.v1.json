@@ -1,0 +1,104 @@
+{
+  "registry_version": "v1",
+  "packs": [
+    {
+      "pack_id": "generic_safety",
+      "schema": "csv_single_turn_v1",
+      "risk_class": "baseline",
+      "status": "active",
+      "version": "1.0.0",
+      "suite_path": "tests/domain_packs/generic_safety.csv",
+      "hash_binds_to": "decoded_prompt_content",
+      "doc_path": "tests/domain_packs/generic_safety.md"
+    },
+    {
+      "pack_id": "pii_protection",
+      "schema": "csv_single_turn_v1",
+      "risk_class": "domain",
+      "status": "active",
+      "version": "1.0.0",
+      "suite_path": "tests/domain_packs/pii_protection.csv",
+      "hash_binds_to": "decoded_prompt_content",
+      "doc_path": "tests/domain_packs/pii_protection.md"
+    },
+    {
+      "pack_id": "financial_services",
+      "schema": "csv_single_turn_v1",
+      "risk_class": "domain",
+      "status": "active",
+      "version": "1.0.0",
+      "suite_path": "tests/domain_packs/financial_services.csv",
+      "hash_binds_to": "decoded_prompt_content",
+      "doc_path": "tests/domain_packs/financial_services.md"
+    },
+    {
+      "pack_id": "healthcare_compliance",
+      "schema": "csv_single_turn_v1",
+      "risk_class": "domain",
+      "status": "active",
+      "version": "1.0.0",
+      "suite_path": "tests/domain_packs/healthcare_compliance.csv",
+      "hash_binds_to": "decoded_prompt_content",
+      "doc_path": "tests/domain_packs/healthcare_compliance.md"
+    },
+    {
+      "pack_id": "legal_contracts",
+      "schema": "csv_single_turn_v1",
+      "risk_class": "domain",
+      "status": "active",
+      "version": "1.0.0",
+      "suite_path": "tests/domain_packs/legal_contracts.csv",
+      "hash_binds_to": "decoded_prompt_content",
+      "doc_path": "tests/domain_packs/legal_contracts.md"
+    },
+    {
+      "pack_id": "insurance_underwriting",
+      "schema": "csv_single_turn_v1",
+      "risk_class": "domain",
+      "status": "active",
+      "version": "1.0.0",
+      "suite_path": "tests/domain_packs/insurance_underwriting.csv",
+      "hash_binds_to": "decoded_prompt_content",
+      "doc_path": "tests/domain_packs/insurance_underwriting.md"
+    },
+    {
+      "pack_id": "educational_content",
+      "schema": "csv_single_turn_v1",
+      "risk_class": "domain",
+      "status": "active",
+      "version": "1.0.0",
+      "suite_path": "tests/domain_packs/educational_content.csv",
+      "hash_binds_to": "decoded_prompt_content",
+      "doc_path": "tests/domain_packs/educational_content.md"
+    },
+    {
+      "pack_id": "code_generation_safety",
+      "schema": "csv_single_turn_v1",
+      "risk_class": "domain",
+      "status": "active",
+      "version": "1.0.0",
+      "suite_path": "tests/domain_packs/code_generation_safety.csv",
+      "hash_binds_to": "decoded_prompt_content",
+      "doc_path": "tests/domain_packs/code_generation_safety.md"
+    },
+    {
+      "pack_id": "mental_health_clinical",
+      "schema": "csv_single_turn_v1",
+      "risk_class": "encoded_high_risk",
+      "status": "active",
+      "version": "1.0.0",
+      "suite_path": "tests/domain_packs/mental_health_clinical.csv",
+      "hash_binds_to": "decoded_prompt_content",
+      "doc_path": "tests/domain_packs/mental_health_clinical.md"
+    },
+    {
+      "pack_id": "canary_fail",
+      "schema": "csv_single_turn_v1",
+      "risk_class": "baseline",
+      "status": "draft",
+      "version": "1.0.0",
+      "suite_path": "tests/domain_packs/canary_fail.csv",
+      "hash_binds_to": "decoded_prompt_content"
+    }
+  ]
+}
