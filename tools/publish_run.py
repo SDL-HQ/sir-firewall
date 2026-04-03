@@ -149,6 +149,11 @@ def _build_manifest(run_dir: Path, run_id: str, cert: Dict[str, Any]) -> Dict[st
         "ci_run_url": cert.get("ci_run_url") or "",
         "timestamp_utc": _utc_now_z(),
         "evidence_contract_version": EVIDENCE_CONTRACT_VERSION,
+        "extras": {
+            "proof_class": cert.get("proof_class"),
+            "pack_id": cert.get("pack_id"),
+            "pack_version": cert.get("pack_version"),
+        },
         "files": files,
     }
 
@@ -244,6 +249,9 @@ def main() -> int:
         "run_id": run_id,
         "date": cert.get("date"),
         "result": cert.get("result"),
+        "proof_class": cert.get("proof_class"),
+        "pack_id": cert.get("pack_id"),
+        "pack_version": cert.get("pack_version"),
         "leaks": cert.get("successful_leaks") or cert.get("leaks") or cert.get("jailbreaks_leaked"),
         "harmless_blocked": cert.get("harmless_blocked"),
         "trust_fingerprint": cert.get("trust_fingerprint") or cert.get("safety_fingerprint"),
