@@ -11,9 +11,6 @@ Inputs:
 - "-" to read JSON cert from stdin, OR
 - if cert arg omitted and stdin is piped, read from stdin
 
-Default (when cert omitted and stdin is a TTY):
-- proofs/latest-audit.json (if it exists)
-
 Defaults:
 - pubkey: spec/sdl.pub
 """
@@ -35,7 +32,6 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from key_registry import find_registry_key, public_key_pem_from_entry, revocation_allows_proof
 
 DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
-DEFAULT_CERT_PATH = Path("proofs/latest-audit.json")
 DEFAULT_KEY_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
 
 
@@ -80,20 +76,10 @@ def _load_cert_from_file(path: Path) -> Dict[str, Any]:
     return _require_json_object(obj, str(path))
 
 
-def _load_cert(cert_arg: str | None) -> tuple[Dict[str, Any], str]:
+def _load_cert(cert_arg: str) -> tuple[Dict[str, Any], str]:
     # Explicit stdin mode.
     if cert_arg == "-":
         return _read_json_from_stdin_strict(), "stdin"
-
-    # If cert omitted: read from stdin if piped; else fall back to default file path.
-    if cert_arg is None:
-        if sys.stdin is not None and hasattr(sys.stdin, "isatty") and not sys.stdin.isatty():
-            return _read_json_from_stdin_strict(), "stdin"
-        if DEFAULT_CERT_PATH.exists():
-            return _load_cert_from_file(DEFAULT_CERT_PATH), str(DEFAULT_CERT_PATH)
-        raise SystemExit(
-            f"ERROR: no cert argument provided, stdin is not piped, and default cert not found: {DEFAULT_CERT_PATH}"
-        )
 
     # File path mode.
     p = Path(cert_arg)
@@ -160,13 +146,7 @@ def _parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Verify a SIR audit certificate JSON.")
     ap.add_argument(
         "cert",
-        nargs="?",
-        default=None,
-        help=(
-            'Path to certificate JSON, or "-" to read from stdin. '
-            "If omitted and stdin is piped, reads from stdin; otherwise "
-            f"attempts to use {DEFAULT_CERT_PATH} if it exists."
-        ),
+        help='Path to certificate JSON, or "-" to read from stdin.',
     )
     ap.add_argument(
         "--pubkey",
