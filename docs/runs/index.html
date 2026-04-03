@@ -29,7 +29,6 @@
       <tr>
         <th>Date</th>
         <th>Result</th>
-        <th>Proof/Pack</th>
         <th>Leaks</th>
         <th>Fingerprint</th>
         <th>Run</th>
@@ -37,7 +36,7 @@
       </tr>
     </thead>
     <tbody id="rows">
-      <tr><td colspan="7">Loading…</td></tr>
+      <tr><td colspan="6">Loading…</td></tr>
     </tbody>
   </table>
 
@@ -75,7 +74,7 @@
       .then(idx => {
         const runs = Array.isArray(idx.runs) ? idx.runs : [];
         if (!runs.length) {
-          rows.innerHTML = `<tr><td colspan="7">No archived runs yet.</td></tr>`;
+          rows.innerHTML = `<tr><td colspan="6">No archived runs yet.</td></tr>`;
           return;
         }
 
@@ -83,9 +82,6 @@
           const date = esc(r.date ?? "—");
           const result = esc(r.result ?? "—");
           const leaks = esc(r.leaks ?? "—");
-          const proofClass = esc(r.proof_class ?? "—");
-          const packId = esc(r.pack_id ?? "—");
-          const packVersion = esc(r.pack_version ?? "—");
           const fp = esc((r.safety_fingerprint ?? "—").toString().slice(0, 20));
           const path = esc(r.path ?? "");
           const runId = esc(r.run_id ?? "");
@@ -103,7 +99,6 @@
           return `<tr>
             <td>${date}</td>
             <td>${badge}</td>
-            <td><code>${proofClass}</code><br><code>${packId}@${packVersion}</code></td>
             <td>${leaks}</td>
             <td><code>${fp}</code></td>
             <td>${runLink}</td>
@@ -112,7 +107,7 @@
         }).join("");
       })
       .catch(() => {
-        rows.innerHTML = `<tr><td colspan="7">Failed to load index.json</td></tr>`;
+        rows.innerHTML = `<tr><td colspan="6">Failed to load index.json</td></tr>`;
       });
   </script>
 </body>
