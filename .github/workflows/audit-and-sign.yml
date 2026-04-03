@@ -131,6 +131,8 @@ jobs:
 
       - name: Archive this run (P6 truth-preserving per-run archive)
         if: always()
+        env:
+          SDL_PRIVATE_KEY_PEM: ${{ secrets.SDL_PRIVATE_KEY_PEM }}
         run: |
           set -euo pipefail
           python tools/publish_run.py \

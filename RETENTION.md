@@ -275,6 +275,26 @@ Optional deep inspection:
 
   * `python tools/verify_itgl.py`
 
+### Verify a run archive offline (chain-of-custody)
+
+From a clean checkout:
+
+```bash
+python tools/verify_archive_receipt.py proofs/runs/<run_id>/
+```
+
+Expected:
+
+```text
+OK: archive receipt verified for proofs/runs/<run_id>
+```
+
+Notes:
+
+* This verifies chain-of-custody evidence (`manifest.json` + signed `archive_receipt.json`) for a single archived run.
+* Default verifier key is `spec/sdl.pub`; override with `--pubkey <path>` for local/dev signing keys.
+* Tier B export/mirroring workflow comes next (P9) and is not required for this offline verification step.
+
 ---
 
 ## 9) Current status
