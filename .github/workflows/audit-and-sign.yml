@@ -50,6 +50,40 @@ jobs:
           pip install --no-cache-dir --force-reinstall -e .
           python -c "import sir_firewall.core as c; print('LOADED FROM →', c.__file__); print('USE_SEMANTIC_CHECK IS →', c.USE_SEMANTIC_CHECK)"
 
+      - name: Validate pack registry (v1)
+        run: |
+          set -euo pipefail
+          python tools/validate_pack_registry.py --file spec/packs/pack_registry.v1.json
+
+      - name: Ensure generic_safety maps to active suite path
+        env:
+          SIR_SUITE_PATH: tests/domain_packs/generic_safety.csv
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          suite_path = os.environ["SIR_SUITE_PATH"]
+          with open("spec/packs/pack_registry.v1.json", "r", encoding="utf-8") as f:
+              registry = json.load(f)
+
+          packs = registry.get("packs", [])
+          match = next((p for p in packs if p.get("pack_id") == "generic_safety"), None)
+          if match is None:
+              print("ERROR: generic_safety pack_id is missing from registry", file=sys.stderr)
+              raise SystemExit(1)
+          if match.get("suite_path") != suite_path:
+              print(
+                  "ERROR: generic_safety suite_path mismatch "
+                  f"(registry={match.get('suite_path')!r}, env={suite_path!r})",
+                  file=sys.stderr,
+              )
+              raise SystemExit(1)
+          print(f"OK: generic_safety -> {suite_path}")
+          PY
+
       - name: Validate domain pack (suite CSV) schema (P7 hygiene)
         env:
           SIR_SUITE_PATH: tests/domain_packs/generic_safety.csv
