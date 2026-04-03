@@ -144,6 +144,20 @@ def _validate_contract_rules(cert: Dict[str, Any], contract: Dict[str, Any], err
     if isinstance(cert.get("provider_call_attempts"), int) and isinstance(cert.get("provider_call_successes"), int):
         if cert["provider_call_successes"] > cert["provider_call_attempts"]:
             errors.append("provider_call_successes cannot exceed provider_call_attempts")
+        if cert.get("proof_class") == "FIREWALL_ONLY_AUDIT" and cert["provider_call_attempts"] != 0:
+            errors.append("FIREWALL_ONLY_AUDIT requires provider_call_attempts == 0")
+        if cert["provider_call_attempts"] > 0 and cert.get("proof_class") != "LIVE_GATING_CHECK":
+            errors.append("provider_call_attempts > 0 requires proof_class == LIVE_GATING_CHECK")
+
+    if "provider_call_failures" in cert:
+        failures = cert.get("provider_call_failures")
+        attempts = cert.get("provider_call_attempts")
+        successes = cert.get("provider_call_successes")
+        if not isinstance(failures, int) or failures < 0:
+            errors.append("provider_call_failures must be integer >= 0 when present")
+        elif isinstance(attempts, int) and isinstance(successes, int):
+            if attempts < (successes + failures):
+                errors.append("provider_call_attempts must be >= provider_call_successes + provider_call_failures")
 
 
 def _enforce_key_expectations_if_relevant(cert: Dict[str, Any], key_schema: Dict[str, Any], errors: List[str]) -> None:
