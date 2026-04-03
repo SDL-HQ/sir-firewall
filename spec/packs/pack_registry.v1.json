@@ -99,6 +99,24 @@
       "version": "1.0.0",
       "suite_path": "tests/domain_packs/canary_fail.csv",
       "hash_binds_to": "decoded_prompt_content"
+    },
+    {
+      "pack_id": "scenario_injection_chain",
+      "schema": "scenario_json_v1",
+      "risk_class": "baseline",
+      "status": "active",
+      "version": "1.0.0",
+      "suite_path": "tests/scenario_packs/scenario_injection_chain.json",
+      "hash_binds_to": "decoded_prompt_content"
+    },
+    {
+      "pack_id": "scenario_tool_injection",
+      "schema": "scenario_json_v1",
+      "risk_class": "baseline",
+      "status": "active",
+      "version": "1.0.0",
+      "suite_path": "tests/scenario_packs/scenario_tool_injection.json",
+      "hash_binds_to": "decoded_prompt_content"
     }
   ]
 }

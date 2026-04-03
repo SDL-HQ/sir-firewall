@@ -159,6 +159,22 @@ def _validate_contract_rules(cert: Dict[str, Any], contract: Dict[str, Any], err
             if attempts < (successes + failures):
                 errors.append("provider_call_attempts must be >= provider_call_successes + provider_call_failures")
 
+    suite_hash = cert.get("suite_hash")
+    scenario_hash = cert.get("scenario_hash")
+    if not isinstance(suite_hash, str):
+        suite_hash = ""
+    if not isinstance(scenario_hash, str):
+        scenario_hash = ""
+    if not suite_hash and not scenario_hash:
+        errors.append("either suite_hash or scenario_hash must be present")
+
+    scenario_id = cert.get("scenario_id")
+    if isinstance(scenario_id, str) and scenario_id.strip():
+        if not scenario_hash:
+            errors.append("scenario_id present requires scenario_hash")
+        if suite_hash and scenario_hash and suite_hash != scenario_hash:
+            errors.append("scenario_hash must match suite_hash when both are present for scenario runs")
+
 
 def _enforce_key_expectations_if_relevant(cert: Dict[str, Any], key_schema: Dict[str, Any], errors: List[str]) -> None:
     # Validation step only checks contract-level expectations; runtime revoked-key behavior
