@@ -7,7 +7,6 @@ import argparse
 import json
 import re
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -15,9 +14,6 @@ DEFAULT_CERT = Path("proofs/latest-audit.json")
 DEFAULT_CONTRACT = Path("spec/evidence_contract.v1.json")
 DEFAULT_KEY_SCHEMA = Path("spec/pubkeys/key_registry.v1.schema.json")
 DEFAULT_KEY_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
-
-
-TS_Z_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 
 
 def _parse_args() -> argparse.Namespace:
@@ -46,12 +42,6 @@ def _load_json(path: Path, label: str) -> Dict[str, Any]:
     if not isinstance(obj, dict):
         raise RuntimeError(f"{label} must be a JSON object: {path}")
     return obj
-
-
-def _parse_utc(ts: str) -> datetime:
-    if not isinstance(ts, str) or TS_Z_RE.match(ts) is None:
-        raise ValueError("timestamp must be UTC ISO-8601 with Z suffix")
-    return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
 
 
 def _validate_required(cert: Dict[str, Any], contract: Dict[str, Any], errors: List[str]) -> None:
@@ -156,10 +146,9 @@ def _validate_contract_rules(cert: Dict[str, Any], contract: Dict[str, Any], err
             errors.append("provider_call_successes cannot exceed provider_call_attempts")
 
 
-def _enforce_key_expectations_if_relevant(
-    cert: Dict[str, Any], key_schema: Dict[str, Any], key_registry_path: Path, errors: List[str]
-) -> None:
-    # Enforce only when certificate declares a signing key id.
+def _enforce_key_expectations_if_relevant(cert: Dict[str, Any], key_schema: Dict[str, Any], errors: List[str]) -> None:
+    # Validation step only checks contract-level expectations; runtime revoked-key behavior
+    # is enforced by signature verifiers.
     signing_key_id = cert.get("signing_key_id")
     if signing_key_id is None:
         return
@@ -170,58 +159,6 @@ def _enforce_key_expectations_if_relevant(
     x_exp = key_schema.get("properties", {}).get("x_verifier_expectations")
     if x_exp is None:
         errors.append("key schema missing x_verifier_expectations")
-
-    if "timestamp_utc" not in cert:
-        errors.append("timestamp_utc missing in proof (fail closed for revocation checks)")
-        return
-
-    try:
-        cert_ts = _parse_utc(str(cert["timestamp_utc"]))
-    except Exception:
-        errors.append("timestamp_utc must be UTC ISO-8601 with Z suffix")
-        return
-
-    if not key_registry_path.exists():
-        errors.append(f"key registry file required for signing_key_id checks but not found: {key_registry_path}")
-        return
-
-    try:
-        reg = _load_json(key_registry_path, "key registry")
-    except RuntimeError as e:
-        errors.append(str(e))
-        return
-
-    keys = reg.get("keys")
-    if not isinstance(keys, list):
-        errors.append("key registry keys must be a list")
-        return
-
-    selected = None
-    for entry in keys:
-        if isinstance(entry, dict) and entry.get("key_id") == signing_key_id:
-            selected = entry
-            break
-    if selected is None:
-        errors.append(f"signing_key_id not found in key registry: {signing_key_id}")
-        return
-
-    status = selected.get("status")
-    revoked_utc = selected.get("revoked_utc")
-    if status == "revoked":
-        if not isinstance(revoked_utc, str):
-            errors.append(f"revoked key missing revoked_utc for key_id={signing_key_id}")
-            return
-        try:
-            revoked_ts = _parse_utc(revoked_utc)
-        except Exception:
-            errors.append(f"revoked_utc invalid for key_id={signing_key_id}")
-            return
-
-        if cert_ts >= revoked_ts:
-            errors.append(
-                f"proof timestamp_utc {cert['timestamp_utc']} is at/after revoked_utc {revoked_utc} for key_id={signing_key_id}"
-            )
-
 
 def main() -> int:
     args = _parse_args()
@@ -245,7 +182,7 @@ def main() -> int:
         except RuntimeError as e:
             print(f"ERROR: {e}", file=sys.stderr)
             return 3
-        _enforce_key_expectations_if_relevant(cert, key_schema, Path(args.key_registry), errors)
+        _enforce_key_expectations_if_relevant(cert, key_schema, errors)
 
     if errors:
         print("ERROR: certificate contract validation failed:", file=sys.stderr)

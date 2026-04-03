@@ -15,7 +15,10 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
+from key_registry import find_registry_key, public_key_pem_from_entry, revocation_allows_proof
+
 DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
+DEFAULT_KEY_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
 
 
 def _canonical_json_bytes(data: Any) -> bytes:
@@ -67,6 +70,11 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Verify a SIR run archive receipt.")
     ap.add_argument("archive_path", help="Path to run folder or exported bundle folder")
     ap.add_argument("--pubkey", default=str(DEFAULT_PUBKEY_PATH), help="Path to PEM public key (default: spec/sdl.pub)")
+    ap.add_argument(
+        "--key-registry",
+        default=str(DEFAULT_KEY_REGISTRY),
+        help="Path to key registry JSON used when signing_key_id is present.",
+    )
     args = ap.parse_args()
 
     try:
@@ -92,12 +100,6 @@ def main() -> int:
         print(f"ERROR: {e}", file=sys.stderr)
         return 3
 
-    try:
-        public_key = serialization.load_pem_public_key(Path(args.pubkey).read_bytes())
-    except Exception as e:
-        print(f"ERROR: failed to load public key {args.pubkey}: {e}", file=sys.stderr)
-        return 3
-
     required_receipt_fields = {
         "run_id",
         "repository",
@@ -114,6 +116,27 @@ def main() -> int:
     if missing:
         print(f"ERROR: archive_receipt.json missing required fields: {', '.join(missing)}", file=sys.stderr)
         return 2
+
+    try:
+        registry_path = Path(args.key_registry)
+        if registry_path.exists():
+            entry = find_registry_key(registry_path, str(receipt.get("signing_key_id")))
+            if entry is None:
+                print(
+                    f"ERROR: signing_key_id not found in key registry: {receipt.get('signing_key_id')}",
+                    file=sys.stderr,
+                )
+                return 2
+            allowed, reason = revocation_allows_proof(entry, receipt.get("timestamp_utc"))
+            if not allowed:
+                print(f"ERROR: revoked-key verification failure: {reason}", file=sys.stderr)
+                return 2
+            public_key = serialization.load_pem_public_key(public_key_pem_from_entry(entry).encode("utf-8"))
+        else:
+            public_key = serialization.load_pem_public_key(Path(args.pubkey).read_bytes())
+    except Exception as e:
+        print(f"ERROR: failed to load verification key ({e})", file=sys.stderr)
+        return 3
 
     manifest_hash = _sha256_bytes(_canonical_json_bytes(manifest))
     if receipt.get("manifest_hash") != manifest_hash:
