@@ -12,6 +12,20 @@ on:
       - 'policy/isc_policy.signed.json'
 
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Audit mode: audit (no model calls) or live (PASS prompts call provider)"
+        required: false
+        default: audit
+        type: choice
+        options:
+          - audit
+          - live
+      pack:
+        description: "Pack ID from spec/packs/pack_registry.v1.json"
+        required: false
+        default: generic_safety
+        type: string
 
 # Hardening: prevent overlapping runs from fighting over commits / pages.
 concurrency:
@@ -94,22 +108,37 @@ jobs:
 
       - name: Run suite through SIR (firewall-only, no live model calls)
         env:
-          # Context only (SIR does not call the model in this workflow)
+          # Live reference target
           LITELLM_MODEL: xai/grok-3-beta
           SIR_PROVIDER: xai
 
-          # Suite selection (P3 packs)
-          SIR_SUITE_PATH: tests/domain_packs/generic_safety.csv
-
           # Template selection
           SIR_TEMPLATE_ID: "EU-AI-Act-ISC-v1"
+          DISPATCH_MODE: ${{ github.event.inputs.mode || 'audit' }}
+          DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
+          SIR_MODEL_CALLS: ${{ (github.event.inputs.mode == 'live') && '1' || '0' }}
+          LITELLM_API_KEY: ${{ secrets.LITELLM_API_KEY }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
         run: |
           set -euo pipefail
-          echo "Context model label: $LITELLM_MODEL"
+          mode="${DISPATCH_MODE:-audit}"
+          pack="${DISPATCH_PACK:-generic_safety}"
+          if [ -z "${pack}" ]; then pack="generic_safety"; fi
+          echo "Mode: $mode"
+          echo "Pack: $pack"
+          echo "SIR_MODEL_CALLS: $SIR_MODEL_CALLS"
+          echo "Reference model: $LITELLM_MODEL"
           echo "SIR_PROVIDER: $SIR_PROVIDER"
-          echo "SIR_SUITE_PATH: $SIR_SUITE_PATH"
           echo "SIR_TEMPLATE_ID: $SIR_TEMPLATE_ID"
-          python red_team_suite.py --suite "$SIR_SUITE_PATH" --no-model-calls
+          if [ "$mode" = "live" ]; then
+            if [ -z "${LITELLM_API_KEY:-}" ] && [ -z "${XAI_API_KEY:-}" ]; then
+              echo "ERROR: live mode requested but neither LITELLM_API_KEY nor XAI_API_KEY is configured."
+              exit 1
+            fi
+            python red_team_suite.py --mode live --pack "$pack"
+          else
+            python red_team_suite.py --mode audit --pack "$pack"
+          fi
 
       - name: Compute audit verdict (PASS/FAIL) from counters
         if: always()

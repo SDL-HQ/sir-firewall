@@ -36,6 +36,7 @@ from sir_firewall import validate_sir
 
 
 DEFAULT_SUITE = os.getenv("SIR_SUITE_PATH", "tests/domain_packs/generic_safety.csv")
+PACK_REGISTRY_PATH = "spec/packs/pack_registry.v1.json"
 DEFAULT_MODEL = os.getenv("LITELLM_MODEL", "xai/grok-3-beta")
 DEFAULT_TEMPLATE_ID = os.getenv("SIR_TEMPLATE_ID", "EU-AI-Act-ISC-v1")
 
@@ -79,6 +80,69 @@ def _read_suite(path: str) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
         rows_decoded.append(r2)
 
     return rows_raw, rows_decoded
+
+
+def _load_pack_registry(path: str = PACK_REGISTRY_PATH) -> Dict[str, Dict[str, str]]:
+    with open(path, "r", encoding="utf-8") as f:
+        registry = json.load(f)
+    packs = registry.get("packs", [])
+    if not isinstance(packs, list):
+        raise ValueError(f"Invalid registry format in {path}: packs must be an array")
+
+    out: Dict[str, Dict[str, str]] = {}
+    for p in packs:
+        if not isinstance(p, dict):
+            continue
+        pack_id = str(p.get("pack_id") or "").strip()
+        if not pack_id:
+            continue
+        out[pack_id] = {
+            "pack_id": pack_id,
+            "pack_version": str(p.get("pack_version") or p.get("version") or "").strip(),
+            "suite_path": str(p.get("suite_path") or "").strip(),
+        }
+    return out
+
+
+def _resolve_suite_and_pack(
+    suite_arg: Optional[str],
+    pack_arg: Optional[str],
+    env_suite: str,
+    default_suite: str,
+    registry_path: str = PACK_REGISTRY_PATH,
+) -> Tuple[str, str, str]:
+    registry = _load_pack_registry(registry_path)
+
+    if suite_arg:
+        suite_path = suite_arg
+    elif pack_arg:
+        pack = registry.get(pack_arg)
+        if not pack:
+            raise ValueError(f"Unknown --pack '{pack_arg}'. Check {registry_path}.")
+        suite_path = pack.get("suite_path") or ""
+        if not suite_path:
+            raise ValueError(f"Pack '{pack_arg}' missing suite_path in {registry_path}.")
+    elif env_suite:
+        suite_path = env_suite
+    else:
+        suite_path = default_suite
+
+    resolved_pack_id = ""
+    resolved_pack_version = ""
+    if pack_arg:
+        pack = registry.get(pack_arg)
+        if pack:
+            resolved_pack_id = pack.get("pack_id", "")
+            resolved_pack_version = pack.get("pack_version", "")
+    else:
+        suite_norm = os.path.normpath(suite_path)
+        for pack in registry.values():
+            if os.path.normpath(pack.get("suite_path", "")) == suite_norm:
+                resolved_pack_id = pack.get("pack_id", "")
+                resolved_pack_version = pack.get("pack_version", "")
+                break
+
+    return suite_path, resolved_pack_id, resolved_pack_version
 
 
 def _suite_hash(rows_decoded: List[Dict[str, str]]) -> str:
@@ -134,7 +198,7 @@ def _maybe_call_model(model: str, prompt: str, enable: bool) -> bool:
         model=model,
         messages=[{"role": "user", "content": prompt}],
         temperature=0,
-        max_tokens=64,
+        max_tokens=1,
     )
     return True
 
@@ -188,16 +252,27 @@ def _final_hash_from_verdict(verdict: Dict[str, object]) -> Optional[str]:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--suite", default=DEFAULT_SUITE, help="Path to CSV suite file")
+    ap.add_argument("--mode", choices=["audit", "live"], default="audit", help="Run mode: audit|live")
+    ap.add_argument("--pack", default=None, help="Pack ID from spec/packs/pack_registry.v1.json")
+    ap.add_argument("--suite", default=None, help="Path to CSV suite file (explicit override)")
     ap.add_argument("--model", default=DEFAULT_MODEL, help="LiteLLM model name")
     ap.add_argument("--template", default=DEFAULT_TEMPLATE_ID, help="ISC template_id to use")
     ap.add_argument("--no-model-calls", action="store_true", help="Skip model calls even for PASS prompts")
     args = ap.parse_args()
 
-    suite_path = args.suite
+    if args.mode == "live" and args.no_model_calls:
+        raise SystemExit("ERROR: --mode live cannot be used with --no-model-calls.")
+
+    suite_path, pack_id, pack_version = _resolve_suite_and_pack(
+        suite_arg=args.suite,
+        pack_arg=args.pack,
+        env_suite=os.getenv("SIR_SUITE_PATH", "").strip(),
+        default_suite=DEFAULT_SUITE,
+    )
     model_name = args.model
     template_id = args.template
-    do_model_calls = (os.getenv("SIR_MODEL_CALLS", "1").strip() != "0") and (not args.no_model_calls)
+    do_model_calls = args.mode == "live"
+    proof_class = "LIVE_GATING_CHECK" if args.mode == "live" else "FIREWALL_ONLY_AUDIT"
 
     os.makedirs("proofs", exist_ok=True)
     log_path = os.path.join("proofs", "latest-attempts.log")
@@ -211,6 +286,7 @@ def main() -> None:
     harmless_blocked = 0
     provider_call_attempts = 0
     provider_call_successes = 0
+    provider_call_failures = 0
 
     # Regenerate the ITGL ledger every run (prevents stale-proof reuse)
     prev_ledger_hash = "GENESIS"
@@ -249,14 +325,18 @@ def main() -> None:
                 f.write(f"  NOTE: mismatch (expected {expected})\n")
 
             # Prove we are actually gating a real call (optional)
-            if status == "PASS":
-                if do_model_calls:
-                    provider_call_attempts += 1
+            provider_call_attempted = False
+            if status == "PASS" and do_model_calls:
+                # Counting rule (deterministic): increment once per attempted downstream call.
+                # Retries/timeouts are separate attempts and must each increment this counter.
+                provider_call_attempted = True
+                provider_call_attempts += 1
                 try:
                     if _maybe_call_model(model_name, prompt, do_model_calls):
                         provider_call_successes += 1
                 except Exception as e:
-                    # Model call failures do not change SIR gating counts — log only.
+                    provider_call_failures += 1
+                    # Never persist model response content. Only record call error metadata.
                     f.write(f"  model_call_error: {type(e).__name__}: {e}\n")
 
             # Build per-prompt ledger entry
@@ -290,6 +370,7 @@ def main() -> None:
                 "domain_pack": domain_pack,
                 "status": status,
                 "expected": expected,
+                "provider_call_attempted": bool(provider_call_attempted),
                 "leak_flag": leak_flag,
                 # Both fields included for compatibility
                 "final_hash": final_hash_raw,
@@ -312,9 +393,11 @@ def main() -> None:
     summary = {
         "date": summary_ts,
         "timestamp_utc": summary_ts,
-        "proof_class": "LIVE_GATING_CHECK" if do_model_calls else "FIREWALL_ONLY_AUDIT",
+        "proof_class": proof_class,
         "model": model_name,
         "provider": os.getenv("SIR_PROVIDER", "xai"),
+        "pack_id": pack_id,
+        "pack_version": pack_version,
         "suite_path": suite_path,
         "suite_name": os.path.splitext(os.path.basename(suite_path))[0],
         "suite_hash": suite_hash,
@@ -323,6 +406,8 @@ def main() -> None:
         "harmless_blocked": harmless_blocked,
         "provider_call_attempts": provider_call_attempts,
         "provider_call_successes": provider_call_successes,
+        "provider_call_failures": provider_call_failures,
+        "model_calls_made": provider_call_attempts,
         "flags": _policy_flags(),
     }
     with open(os.path.join("proofs", "run_summary.json"), "w", encoding="utf-8") as f:

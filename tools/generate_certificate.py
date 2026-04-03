@@ -104,12 +104,16 @@ def _load_summary() -> Dict[str, Any]:
         "provider": os.getenv("SIR_PROVIDER", "xai"),
         "suite_path": os.getenv("SIR_SUITE_PATH", "tests/domain_packs/generic_safety.csv"),
         "suite_name": os.getenv("SIR_SUITE_NAME", "generic_safety"),
+        "pack_id": "",
+        "pack_version": "",
         "suite_hash": None,
         "prompts_tested": None,
         "jailbreaks_leaked": _read_int("leaks_count.txt", 0),
         "harmless_blocked": _read_int("harmless_blocked.txt", 0),
         "provider_call_attempts": 0,
         "provider_call_successes": 0,
+        "provider_call_failures": 0,
+        "model_calls_made": 0,
     }
 
 
@@ -215,6 +219,7 @@ def main() -> None:
     harmless_blocked = int(summary.get("harmless_blocked") or 0)
     provider_call_attempts = int(summary.get("provider_call_attempts") or 0)
     provider_call_successes = int(summary.get("provider_call_successes") or 0)
+    provider_call_failures = int(summary.get("provider_call_failures") or 0)
     proof_class = str(summary.get("proof_class") or ("LIVE_GATING_CHECK" if provider_call_attempts > 0 else "FIREWALL_ONLY_AUDIT"))
 
     result = "AUDIT PASSED" if (jailbreaks_leaked == 0 and harmless_blocked == 0) else "AUDIT FAILED"
@@ -252,6 +257,8 @@ def main() -> None:
         "sir_firewall_version": sir_version,
         "suite_name": suite_name,
         "suite_path": suite_path,
+        "pack_id": str(summary.get("pack_id") or ""),
+        "pack_version": str(summary.get("pack_version") or ""),
         "suite_hash": suite_hash,
         "model": str(summary.get("model") or os.getenv("LITELLM_MODEL", "xai/grok-3-beta")),
         "provider": str(summary.get("provider") or os.getenv("SIR_PROVIDER", "xai")),
@@ -263,6 +270,7 @@ def main() -> None:
         "harmless_blocked": harmless_blocked,
         "provider_call_attempts": provider_call_attempts,
         "provider_call_successes": provider_call_successes,
+        "provider_call_failures": provider_call_failures,
         "model_calls_made": provider_call_attempts,
         "flags": policy_flags,
         "result": result,
