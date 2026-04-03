@@ -7,8 +7,10 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import os
 import shutil
 import tarfile
+import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -138,12 +140,51 @@ def _create_deterministic_tar(src_root: Path, tar_path: Path) -> None:
                 tf.addfile(info, f)
 
 
+def _dir_has_contents(path: Path) -> bool:
+    try:
+        next(path.iterdir())
+        return True
+    except StopIteration:
+        return False
+
+
+def _prepare_export_root(out_dir: Path, force: bool) -> Path:
+    if out_dir.exists() and out_dir.is_file():
+        raise SystemExit(f"ERROR: output path is a file: {out_dir}")
+
+    if out_dir.exists() and _dir_has_contents(out_dir) and not force:
+        print("ERROR: output path exists; use --force to overwrite")
+        raise SystemExit(3)
+
+    if force:
+        tmp_root = Path(tempfile.mkdtemp(prefix=f".export-{out_dir.name}-", dir=str(out_dir.parent)))
+        return tmp_root
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    return out_dir
+
+
+def _finalize_export_root(staging_dir: Path, out_dir: Path, force: bool) -> None:
+    if not force:
+        return
+
+    if out_dir.exists():
+        backup = out_dir.parent / f".{out_dir.name}.backup-{os.getpid()}-{int(dt.datetime.now(dt.timezone.utc).timestamp())}"
+        out_dir.rename(backup)
+        staging_dir.rename(out_dir)
+        shutil.rmtree(backup, ignore_errors=True)
+        return
+
+    staging_dir.rename(out_dir)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Export a deterministic run-archive bundle")
     ap.add_argument("--run-id", help="Run id under proofs/runs/<run_id>")
     ap.add_argument("--run-path", help="Path to proofs/runs/<run_id>")
     ap.add_argument("--out", required=True, help="Output directory path")
     ap.add_argument("--format", choices=("dir", "tar"), default="dir", help="Bundle output format")
+    ap.add_argument("--force", action="store_true", help="Overwrite non-empty --out path")
     ap.add_argument("--s3-bucket", help="Optional S3 bucket for upload")
     ap.add_argument("--s3-prefix", default="", help="Optional S3 key prefix")
     args = ap.parse_args()
@@ -155,20 +196,20 @@ def main() -> int:
         raise SystemExit(f"ERROR: {e}")
 
     out_dir = Path(args.out).resolve()
-    if out_dir.exists():
-        shutil.rmtree(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    staging_out_dir = _prepare_export_root(out_dir, force=bool(args.force))
 
-    bundle_root = out_dir / "proofs" / "runs" / source_run_id
+    bundle_root = staging_out_dir / "proofs" / "runs" / source_run_id
     _copy_run_tree(source_run, bundle_root)
     _assert_byte_preserving_copy(source_run, bundle_root)
 
-    bundle_manifest = _build_bundle_manifest(out_dir, bundle_root)
-    _write_json(out_dir / "bundle_manifest.json", bundle_manifest)
+    bundle_manifest = _build_bundle_manifest(staging_out_dir, bundle_root)
+    _write_json(staging_out_dir / "bundle_manifest.json", bundle_manifest)
 
     if args.format == "tar":
-        tar_path = out_dir / "bundle.tar"
-        _create_deterministic_tar(out_dir / "proofs", tar_path)
+        tar_path = staging_out_dir / "bundle.tar"
+        _create_deterministic_tar(staging_out_dir / "proofs", tar_path)
+
+    _finalize_export_root(staging_out_dir, out_dir, force=bool(args.force))
 
     if args.s3_bucket:
         try:

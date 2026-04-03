@@ -32,9 +32,11 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
+from key_registry import find_registry_key, public_key_pem_from_entry, revocation_allows_proof
 
 DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
 DEFAULT_CERT_PATH = Path("proofs/latest-audit.json")
+DEFAULT_KEY_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
 
 
 def _require_json_object(obj: Any, source: str) -> Dict[str, Any]:
@@ -109,6 +111,28 @@ def _load_pubkey(pubkey_path: str) -> Any:
         raise SystemExit(f"ERROR: failed to load public key: {p} ({e})") from e
 
 
+def _load_pubkey_with_registry(cert: Dict[str, Any], pubkey_path: str, key_registry_path: str) -> Any:
+    signing_key_id = cert.get("signing_key_id")
+    registry_path = Path(key_registry_path)
+
+    if registry_path.exists() and isinstance(signing_key_id, str) and signing_key_id:
+        try:
+            entry = find_registry_key(registry_path, signing_key_id)
+            if entry is None:
+                raise SystemExit(f"ERROR: signing_key_id not found in key registry: {signing_key_id}")
+            allowed, reason = revocation_allows_proof(entry, cert.get("timestamp_utc"))
+            if not allowed:
+                raise SystemExit(f"ERROR: revoked-key verification failure: {reason}")
+            pem = public_key_pem_from_entry(entry)
+            return serialization.load_pem_public_key(pem.encode("utf-8"))
+        except SystemExit:
+            raise
+        except Exception as e:
+            raise SystemExit(f"ERROR: failed key-registry verification step: {e}") from e
+
+    return _load_pubkey(pubkey_path)
+
+
 def _rebuild_payload(cert: Dict[str, Any]) -> bytes:
     payload_obj = {k: v for k, v in cert.items() if k not in ("signature", "payload_hash")}
     return json.dumps(payload_obj, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
@@ -131,11 +155,16 @@ def main() -> int:
         default=str(DEFAULT_PUBKEY_PATH),
         help="Path to PEM public key to verify signatures (default: spec/sdl.pub).",
     )
+    ap.add_argument(
+        "--key-registry",
+        default=str(DEFAULT_KEY_REGISTRY),
+        help="Path to key registry JSON used with signing_key_id if present (default: spec/pubkeys/key_registry.v1.json).",
+    )
     ap.add_argument("--quiet", action="store_true", help="Only exit code, no success message.")
     args = ap.parse_args()
 
     cert, _source = _load_cert(args.cert)
-    public_key = _load_pubkey(args.pubkey)
+    public_key = _load_pubkey_with_registry(cert, args.pubkey, args.key_registry)
 
     if "signature" not in cert or "payload_hash" not in cert:
         print("ERROR: missing required fields: signature and/or payload_hash", file=sys.stderr)

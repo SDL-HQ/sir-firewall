@@ -18,6 +18,9 @@ concurrency:
   group: sir-audit-and-sign-main
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   audit-and-sign:
     runs-on: ubuntu-latest
