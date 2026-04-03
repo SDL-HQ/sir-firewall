@@ -11,14 +11,20 @@ Designed to be called from CI AFTER proofs/latest-audit.json exists.
 from __future__ import annotations
 
 import argparse
+import base64
 import datetime as dt
 import hashlib
 import json
 import os
-import platform
 import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
+
+
+EVIDENCE_CONTRACT_VERSION = "v1"
 
 
 def _read_json(path: Path) -> Dict[str, Any]:
@@ -33,12 +39,24 @@ def _write_json(path: Path, data: Any) -> None:
     )
 
 
+def _canonical_json_bytes(data: Any) -> bytes:
+    return json.dumps(data, separators=(",", ":"), ensure_ascii=False, sort_keys=True).encode("utf-8")
+
+
+def _sha256_bytes(data: bytes) -> str:
+    return "sha256:" + hashlib.sha256(data).hexdigest()
+
+
 def _sha256_file(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as f:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             h.update(chunk)
     return "sha256:" + h.hexdigest()
+
+
+def _utc_now_z() -> str:
+    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _short(s: Optional[str], n: int = 12) -> str:
@@ -96,18 +114,76 @@ def _unique_run_dir(runs_dir: Path, base_run_id: str) -> tuple[str, Path]:
     raise SystemExit(f"ERROR: unable to allocate unique run archive dir after 50 attempts: {base_run_id}")
 
 
-def _collect_optional_artifacts(repo_root: Path, extra_paths: List[str]) -> List[Dict[str, str]]:
-    collected: List[Dict[str, str]] = []
+def _copy_optional_artifacts(repo_root: Path, run_dir: Path, extra_paths: List[str]) -> List[str]:
+    copied: List[str] = []
     for p in extra_paths:
-        src = (repo_root / p).resolve()
+        rel = Path(p)
+        src = (repo_root / rel).resolve()
         if src.exists() and src.is_file():
-            collected.append(
-                {
-                    "path": p,
-                    "sha256": _sha256_file(src),
-                }
-            )
-    return collected
+            dst = (run_dir / rel).resolve()
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+            copied.append(rel.as_posix())
+    return copied
+
+
+def _build_manifest(run_dir: Path, run_id: str, cert: Dict[str, Any]) -> Dict[str, Any]:
+    files: List[Dict[str, Any]] = []
+
+    for path in sorted(p for p in run_dir.rglob("*") if p.is_file()):
+        rel = path.relative_to(run_dir).as_posix()
+        if rel in {"manifest.json", "archive_receipt.json"}:
+            continue
+        files.append(
+            {
+                "path": rel,
+                "sha256": _sha256_file(path),
+                "size_bytes": path.stat().st_size,
+            }
+        )
+
+    return {
+        "run_id": run_id,
+        "repository": cert.get("repository") or os.getenv("GITHUB_REPOSITORY", ""),
+        "commit_sha": cert.get("commit_sha") or os.getenv("GITHUB_SHA", ""),
+        "ci_run_url": cert.get("ci_run_url") or "",
+        "timestamp_utc": _utc_now_z(),
+        "evidence_contract_version": EVIDENCE_CONTRACT_VERSION,
+        "files": files,
+    }
+
+
+def _build_archive_receipt(manifest: Dict[str, Any], cert: Dict[str, Any], private_key_pem: str, run_dir: Path) -> Dict[str, Any]:
+    manifest_bytes = _canonical_json_bytes(manifest)
+    manifest_hash = _sha256_bytes(manifest_bytes)
+
+    parts = [f"{entry['path']}:{entry['sha256']}" for entry in manifest.get("files", [])]
+    run_folder_hash = _sha256_bytes("\n".join(parts).encode("utf-8"))
+
+    receipt: Dict[str, Any] = {
+        "run_id": manifest.get("run_id"),
+        "repository": manifest.get("repository", ""),
+        "commit_sha": manifest.get("commit_sha", ""),
+        "ci_run_url": manifest.get("ci_run_url", ""),
+        "manifest_hash": manifest_hash,
+        "run_folder_hash": run_folder_hash,
+        "timestamp_utc": _utc_now_z(),
+        "signing_key_id": cert.get("signing_key_id") or "default",
+    }
+
+    payload = _canonical_json_bytes(receipt)
+    receipt["payload_hash"] = _sha256_bytes(payload)
+
+    private_key = serialization.load_pem_private_key(private_key_pem.encode("utf-8"), password=None)
+    signature = private_key.sign(payload, padding.PKCS1v15(), hashes.SHA256())
+    receipt["signature"] = base64.b64encode(signature).decode("ascii")
+
+    # Defensive check to guarantee we sign exactly the payload fields.
+    payload_after = _canonical_json_bytes({k: v for k, v in receipt.items() if k not in ("payload_hash", "signature")})
+    if payload != payload_after:
+        raise SystemExit(f"ERROR: payload instability while signing archive receipt in {run_dir}")
+
+    return receipt
 
 
 def main() -> int:
@@ -138,45 +214,22 @@ def main() -> int:
 
     archived_audit = run_dir / "audit.json"
     shutil.copy2(cert_path, archived_audit)
+    _copy_optional_artifacts(repo_root, run_dir, args.copy)
 
     # Persist run_id for workflow consumers (e.g. docs/latest-run.json publishing).
     run_id_path = repo_root / "proofs" / "run_id.txt"
     run_id_path.parent.mkdir(parents=True, exist_ok=True)
     run_id_path.write_text(run_id + "\n", encoding="utf-8")
 
-    env = {
-        "python_version": platform.python_version(),
-        "platform": platform.platform(),
-    }
-
-    extras = _collect_optional_artifacts(repo_root, args.copy)
-
-    manifest = {
-        "run_id": run_id,
-        "archived_at_utc": dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z"),
-        "source_cert": os.path.relpath(cert_path, repo_root),
-        "archived_audit": os.path.relpath(archived_audit, repo_root),
-        "env": env,
-        "extras": extras,
-        "date": cert.get("date"),
-        "suite": cert.get("suite") or cert.get("domain_pack"),
-        "model": cert.get("model"),
-        "provider": cert.get("provider"),
-        "result": cert.get("result"),
-        "prompts_tested": cert.get("prompts_tested"),
-        "leaks": cert.get("successful_leaks") or cert.get("leaks") or cert.get("jailbreaks_leaked"),
-        "harmless_blocked": cert.get("harmless_blocked"),
-        "trust_fingerprint": cert.get("trust_fingerprint") or cert.get("safety_fingerprint"),
-        "safety_fingerprint": cert.get("safety_fingerprint") or cert.get("trust_fingerprint"),
-        "policy_hash": cert.get("policy_hash"),
-        "suite_hash": cert.get("suite_hash"),
-        "itgl_final_hash": cert.get("itgl_final_hash"),
-        "ci_run_url": cert.get("ci_run_url"),
-        "payload_hash": cert.get("payload_hash"),
-        "signature": cert.get("signature"),
-    }
-
+    manifest = _build_manifest(run_dir=run_dir, run_id=run_id, cert=cert)
     _write_json(run_dir / "manifest.json", manifest)
+
+    private_key_pem = os.getenv("SDL_PRIVATE_KEY_PEM", "").strip()
+    if not private_key_pem:
+        raise SystemExit("ERROR: SDL_PRIVATE_KEY_PEM is required to sign archive_receipt.json")
+
+    receipt = _build_archive_receipt(manifest=manifest, cert=cert, private_key_pem=private_key_pem, run_dir=run_dir)
+    _write_json(run_dir / "archive_receipt.json", receipt)
 
     index_path = runs_dir / "index.json"
     if index_path.exists():
@@ -189,14 +242,14 @@ def main() -> int:
 
     entry = {
         "run_id": run_id,
-        "date": manifest.get("date"),
-        "result": manifest.get("result"),
-        "leaks": manifest.get("leaks"),
-        "harmless_blocked": manifest.get("harmless_blocked"),
-        "trust_fingerprint": manifest.get("trust_fingerprint") or manifest.get("safety_fingerprint"),
-        "safety_fingerprint": manifest.get("safety_fingerprint") or manifest.get("trust_fingerprint"),
-        "itgl_final_hash": manifest.get("itgl_final_hash"),
-        "ci_run_url": manifest.get("ci_run_url"),
+        "date": cert.get("date"),
+        "result": cert.get("result"),
+        "leaks": cert.get("successful_leaks") or cert.get("leaks") or cert.get("jailbreaks_leaked"),
+        "harmless_blocked": cert.get("harmless_blocked"),
+        "trust_fingerprint": cert.get("trust_fingerprint") or cert.get("safety_fingerprint"),
+        "safety_fingerprint": cert.get("safety_fingerprint") or cert.get("trust_fingerprint"),
+        "itgl_final_hash": cert.get("itgl_final_hash"),
+        "ci_run_url": cert.get("ci_run_url"),
         "path": f"runs/{run_id}/",
     }
 
@@ -204,7 +257,7 @@ def main() -> int:
     runs = runs[: max(1, int(args.keep))]
 
     new_index = {
-        "updated_at_utc": dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z"),
+        "updated_at_utc": _utc_now_z(),
         "count": len(runs),
         "runs": runs,
     }
@@ -212,6 +265,8 @@ def main() -> int:
 
     print(f"OK: Archived run {run_id} -> {run_dir}")
     print(f"OK: Wrote run id -> {run_id_path}")
+    print(f"OK: Wrote manifest -> {run_dir / 'manifest.json'}")
+    print(f"OK: Wrote archive receipt -> {run_dir / 'archive_receipt.json'}")
     print(f"OK: Updated index -> {index_path}")
     return 0
 
