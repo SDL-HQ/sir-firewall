@@ -22,14 +22,17 @@ This verifies the latest published certificate locally.
 
 ### Step 1. Get the verifier (one time)
 
+Mac/Linux:
+
 ```bash
-git clone https://github.com/SDL-HQ/sir-firewall.git
-cd sir-firewall
-python3 -m venv .venv
-source .venv/bin/activate
-python3 -m pip install -U pip
-python3 -m pip install -e .
+git clone https://github.com/SDL-HQ/sir-firewall.git && cd sir-firewall && \
+python3 -m venv .venv && source .venv/bin/activate && \
+python3 -m pip install -U pip && python3 -m pip install -e .
 ```
+
+Windows (PowerShell):
+
+* Use PowerShell and activate the venv with: `.\.venv\Scripts\Activate.ps1` (or run in WSL).
 
 ### Step 2. Verify the published certificate
 
@@ -59,6 +62,22 @@ If you see an error about `cryptography` not being installed:
 python3 -m pip install cryptography
 ```
 
+## Optional: verify a specific run archive (chain-of-custody)
+
+If you want to verify a specific archived run folder offline:
+
+```bash
+python tools/verify_archive_receipt.py proofs/runs/<run_id>/
+```
+
+Expected output:
+
+```text
+OK: archive receipt verified for proofs/runs/<run_id>
+```
+
+This verifies the per-run manifest inventory and the signed `archive_receipt.json`.
+
 ## What the certificate binds to
 
 When reviewing the certificate JSON, these are the fields that matter:
@@ -66,8 +85,8 @@ When reviewing the certificate JSON, these are the fields that matter:
 * Suite hash
   The SHA-256 fingerprint of the test suite used for the run.
 
-* Policy hash or policy version
-  The policy configuration and version that was enforced.
+* Policy hash (and policy version when present)
+  The policy configuration that was enforced.
 
 * ITGL final hash
   The final hash of the governance ledger for the run. This proves the run log chain matches the result.
@@ -79,10 +98,11 @@ When reviewing the certificate JSON, these are the fields that matter:
   `spec/evidence_contract.v1.json` defines proof classes and required certificate semantics.
 
 Additional semantics:
-- `proof_class` labels the proof mode (`FIREWALL_ONLY_AUDIT`, `LIVE_GATING_CHECK`, `SCENARIO_AUDIT`).
-- `provider_call_attempts` counts attempted downstream calls (including retries/timeouts).
-- `provider_call_successes` is informational successful-call count.
-- `model_calls_made` is a legacy alias equal to `provider_call_attempts`.
+
+* `proof_class` labels the proof mode (`FIREWALL_ONLY_AUDIT`, `LIVE_GATING_CHECK`, `SCENARIO_AUDIT`).
+* `provider_call_attempts` counts attempted downstream calls (including retries/timeouts).
+* `provider_call_successes` is informational successful-call count.
+* `model_calls_made` is a legacy alias equal to `provider_call_attempts`.
 
 ## What to record for evidence
 
