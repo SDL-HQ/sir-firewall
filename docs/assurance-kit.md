@@ -4,6 +4,8 @@ This document is the canonical evaluation and verification path for SIR.
 
 It is for operators, auditors, buyers, and reviewers who need a compact, evidence-first way to understand what SIR does and verify outputs without repo archaeology.
 
+Terminology: this document uses **governance gate** for public/operator description. Canonical technical identifiers (for example `sir-firewall`, `sir_firewall`, proof class names, commands, URLs, and paths) remain unchanged. See `docs/terminology.md`.
+
 ## Scope
 
 This assurance kit explains:
