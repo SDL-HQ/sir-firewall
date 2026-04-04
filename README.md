@@ -120,6 +120,24 @@ python3 tools/verify_certificate.py proofs/latest-audit.json
 python3 tools/validate_certificate_contract.py proofs/latest-audit.json
 ```
 
+## Rando quickstart (Mac + Windows friendly)
+
+Two common paths:
+
+1) Local audit (no model calls, no signing required):
+
+```bash
+python red_team_suite.py --mode audit --pack generic_safety
+```
+
+2) Verify SDL proof (no private key):
+
+```bash
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python tools/verify_certificate.py -
+```
+
+`publish_run.py` produces signed archive receipts and requires `SDL_PRIVATE_KEY_PEM`; it is for producing proofs, not basic evaluation.
+
 Evidence semantics in this contract:
 - `proof_class` is explicit (`FIREWALL_ONLY_AUDIT`, `LIVE_GATING_CHECK`, `SCENARIO_AUDIT`).
 - `provider_call_attempts` counts attempted downstream calls (including retries/timeouts).

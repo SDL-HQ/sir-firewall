@@ -30,8 +30,6 @@ import os
 from datetime import datetime, timezone
 from typing import Dict, List, Tuple, Optional, Any
 
-from litellm import completion
-
 from sir_firewall import validate_sir
 
 
@@ -290,6 +288,10 @@ def _build_isc_envelope(prompt: str, template_id: str) -> Dict[str, str]:
 def _maybe_call_model(model: str, messages: List[Dict[str, str]], enable: bool) -> bool:
     if not enable:
         return False
+    try:
+        from litellm import completion
+    except ImportError as exc:
+        raise SystemExit("ERROR: LIVE mode requires litellm installed.") from exc
     # Keep this minimal: we're proving SIR is in front of a real model call.
     # The audit result is still based on SIR gating outcomes, not model content.
     completion(
@@ -361,6 +363,15 @@ def main() -> None:
 
     if args.mode == "live" and args.no_model_calls:
         raise SystemExit("ERROR: --mode live cannot be used with --no-model-calls.")
+    if args.mode == "live":
+        if not os.getenv("XAI_API_KEY", "").strip():
+            raise SystemExit(
+                "ERROR: LIVE mode requires your own provider credentials (XAI_API_KEY). SIR does not ship keys."
+            )
+        try:
+            from litellm import completion as _completion  # noqa: F401
+        except ImportError as exc:
+            raise SystemExit("ERROR: LIVE mode requires litellm installed.") from exc
 
     suite_path, scenario_path, pack_id, pack_version, pack_schema = _resolve_suite_and_pack(
         suite_arg=args.suite,
