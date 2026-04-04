@@ -18,7 +18,7 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -37,6 +37,66 @@ def _write_json(path: Path, data: Any) -> None:
         json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+
+
+def _coerce_runs_payload(index_payload: Any) -> List[Dict[str, Any]]:
+    if isinstance(index_payload, list):
+        return [r for r in index_payload if isinstance(r, dict)]
+    if isinstance(index_payload, dict):
+        runs = index_payload.get("runs", [])
+        if isinstance(runs, list):
+            return [r for r in runs if isinstance(r, dict)]
+    return []
+
+
+def _first_not_none(*vals: Any) -> Any:
+    for v in vals:
+        if v is not None:
+            return v
+    return None
+
+
+def _index_entry_from_audit(run_id: str, audit: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "run_id": run_id,
+        "date": audit.get("date") or audit.get("timestamp_utc"),
+        "result": audit.get("result"),
+        "proof_class": audit.get("proof_class"),
+        "pack_id": audit.get("pack_id"),
+        "pack_version": audit.get("pack_version"),
+        "leaks": _first_not_none(audit.get("successful_leaks"), audit.get("leaks"), audit.get("jailbreaks_leaked")),
+        "harmless_blocked": _first_not_none(audit.get("harmless_blocked")),
+        "trust_fingerprint": audit.get("trust_fingerprint") or audit.get("safety_fingerprint"),
+        "safety_fingerprint": audit.get("safety_fingerprint") or audit.get("trust_fingerprint"),
+        "itgl_final_hash": audit.get("itgl_final_hash"),
+        "ci_run_url": audit.get("ci_run_url"),
+        "path": f"runs/{run_id}/",
+    }
+
+
+def _rebuild_runs_index_from_archives(runs_dir: Path) -> List[Dict[str, Any]]:
+    rebuilt: List[Tuple[str, Dict[str, Any]]] = []
+    for run_dir in sorted((p for p in runs_dir.iterdir() if p.is_dir()), key=lambda p: p.name, reverse=True):
+        audit_path = run_dir / "audit.json"
+        if not audit_path.exists():
+            continue
+        try:
+            audit = _read_json(audit_path)
+        except json.JSONDecodeError:
+            continue
+        rebuilt.append((run_dir.name, _index_entry_from_audit(run_dir.name, audit)))
+    return [entry for _, entry in rebuilt]
+
+
+def _load_existing_runs(index_path: Path, runs_dir: Path) -> List[Dict[str, Any]]:
+    if not index_path.exists():
+        return []
+    try:
+        index_payload = _read_json(index_path)
+        return _coerce_runs_payload(index_payload)
+    except json.JSONDecodeError:
+        print(f"WARN: Existing index is invalid JSON, rebuilding from archived runs: {index_path}")
+        return _rebuild_runs_index_from_archives(runs_dir)
 
 
 def _canonical_json_bytes(data: Any) -> bytes:
@@ -237,29 +297,9 @@ def main() -> int:
     _write_json(run_dir / "archive_receipt.json", receipt)
 
     index_path = runs_dir / "index.json"
-    if index_path.exists():
-        index = _read_json(index_path)
-        runs = index.get("runs", [])
-        if not isinstance(runs, list):
-            runs = []
-    else:
-        runs = []
+    runs = _load_existing_runs(index_path=index_path, runs_dir=runs_dir)
 
-    entry = {
-        "run_id": run_id,
-        "date": cert.get("date"),
-        "result": cert.get("result"),
-        "proof_class": cert.get("proof_class"),
-        "pack_id": cert.get("pack_id"),
-        "pack_version": cert.get("pack_version"),
-        "leaks": cert.get("successful_leaks") or cert.get("leaks") or cert.get("jailbreaks_leaked"),
-        "harmless_blocked": cert.get("harmless_blocked"),
-        "trust_fingerprint": cert.get("trust_fingerprint") or cert.get("safety_fingerprint"),
-        "safety_fingerprint": cert.get("safety_fingerprint") or cert.get("trust_fingerprint"),
-        "itgl_final_hash": cert.get("itgl_final_hash"),
-        "ci_run_url": cert.get("ci_run_url"),
-        "path": f"runs/{run_id}/",
-    }
+    entry = _index_entry_from_audit(run_id=run_id, audit=cert)
 
     runs.insert(0, entry)
     runs = runs[: max(1, int(args.keep))]

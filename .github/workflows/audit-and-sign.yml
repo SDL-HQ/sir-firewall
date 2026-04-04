@@ -264,6 +264,15 @@ jobs:
           rm -rf docs/runs || true
           cp -R proofs/runs docs/runs
 
+      - name: Validate published run archive index JSON
+        if: always()
+        run: |
+          set -euo pipefail
+          test -f proofs/runs/index.json
+          test -f docs/runs/index.json
+          python -m json.tool proofs/runs/index.json >/dev/null
+          python -m json.tool docs/runs/index.json >/dev/null
+
       - name: Publish latest run marker to docs/ (always)
         if: always()
         env:
