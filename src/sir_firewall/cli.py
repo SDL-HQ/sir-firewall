@@ -21,6 +21,29 @@ def _cmd_run(ns: argparse.Namespace) -> int:
     if ns.mode not in {"audit", "live", "scenario"}:
         raise SystemExit(f"ERROR: unsupported --mode {ns.mode}")
 
+    if ns.mode == "scenario":
+        if ns.suite:
+            print("ERROR: --mode scenario does not support --suite. Use --scenario or a scenario pack.", file=sys.stderr)
+            return 2
+        if ns.scenario and ns.pack:
+            print("ERROR: --mode scenario accepts only one of --scenario or --pack.", file=sys.stderr)
+            return 2
+        if ns.pack:
+            reg = _load_registry()
+            pack = next((p for p in reg.get("packs", []) if p.get("pack_id") == ns.pack), None)
+            if not pack:
+                print(f"ERROR: unknown pack_id {ns.pack}", file=sys.stderr)
+                return 2
+            if pack.get("schema") != "scenario_json_v1":
+                print(
+                    f"ERROR: --mode scenario requires a scenario_json_v1 pack; got {ns.pack} ({pack.get('schema')}).",
+                    file=sys.stderr,
+                )
+                return 2
+        elif not ns.scenario:
+            print("ERROR: --mode scenario requires --scenario or a scenario_json_v1 --pack.", file=sys.stderr)
+            return 2
+
     argv: list[str] = []
     if ns.mode == "scenario":
         argv.extend(["--mode", "audit"])
@@ -47,8 +70,15 @@ def _cmd_run(ns: argparse.Namespace) -> int:
         if summary_path.exists():
             try:
                 summary = json.loads(summary_path.read_text(encoding="utf-8"))
-                summary["proof_class"] = "SCENARIO_AUDIT"
-                summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+                if summary.get("scenario_id") or summary.get("scenario_hash"):
+                    summary["proof_class"] = "SCENARIO_AUDIT"
+                    summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+                else:
+                    print(
+                        f"WARNING: skipping scenario proof_class rewrite at {summary_path}: "
+                        "summary does not include scenario_id/scenario_hash",
+                        file=sys.stderr,
+                    )
             except (json.JSONDecodeError, OSError) as exc:
                 print(f"WARNING: failed to update scenario summary at {summary_path}: {exc}", file=sys.stderr)
 
