@@ -4,13 +4,15 @@ version = "0.1.0"
 
 dependencies = [
   "cryptography",
-  "litellm",
-  "openai",
   "pydantic",
+  "ecdsa",
   "requests",
   "pytest",
   "pandas"
 ]
+
+[project.optional-dependencies]
+live = ["openai", "litellm"]
 
 [build-system]
 requires = ["setuptools>=45", "wheel"]
