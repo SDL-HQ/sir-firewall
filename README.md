@@ -1,5 +1,7 @@
 # SIR v1.0.2: Signal Integrity Resolver
 
+[![SIR Real Governance Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
+
 Deterministic pre-inference governance gate · rules-only · cryptographically signed proof
 
 Plain language: SIR sits in front of an AI model (or agent) and inspects a prompt before it reaches inference. It either lets the prompt through (PASS) or blocks it (BLOCKED) using deterministic, versioned rules.
