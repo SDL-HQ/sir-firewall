@@ -2,6 +2,8 @@
 
 This document defines the key governance readiness layer for SIR.
 
+Terminology follows `docs/terminology.md`: prefer **governance gate** in descriptive text, while keeping stable canonical identifiers unchanged.
+
 It does not enable `CRYPTO_ENFORCED`.
 It does not change proof generation or verification behavior.
 It defines trust surfaces, authority boundaries, and readiness conditions for a future hardening step.

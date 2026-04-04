@@ -10,6 +10,8 @@ Models provide capability. SIR makes governance enforceable and provable. It doe
 
 SIR is built for high-stakes AI: regulated systems and agents that touch real money, real data, or real-world decisions. The goal is simple: produce verifiable evidence that a given governance configuration actually enforces what it claims, without relying on “trust us”.
 
+Terminology note: in public/operator wording we prefer **governance gate**. Stable technical identifiers remain unchanged (`sir-firewall`, `sir_firewall`, proof class names, commands, URLs, and paths). See `docs/terminology.md`.
+
 ---
 
 ## Live proof (GitHub Pages)
