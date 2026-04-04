@@ -151,7 +151,7 @@ SIR provides:
 - Can they re-run the suite locally?
 
 SIR provides:
-- deterministic firewall-only audit path (`tools/local_audit.py`)
+- deterministic firewall-only audit path (`python red_team_suite.py --mode audit --pack <pack_id>`)
 - suite schema validation (`tools/validate_domain_pack.py`)
 - offline verification without model calls
 
@@ -229,7 +229,7 @@ When rotating the authoritative signing key:
 
 Recommended future state:
 - `spec/pubkeys/` (multiple public keys)
-- `spec/keyring.json` (public key registry + metadata)
+- `spec/pubkeys/key_registry.v1.json` (public key registry + metadata)
 
 ---
 
@@ -255,13 +255,15 @@ From a clean checkout:
 
 ```bash
 python tools/verify_certificate.py proofs/latest-audit.json
-````
+```
 
 Expected:
 
 ```text
 OK: Certificate signature valid and payload_hash matches.
 ```
+
+Windows note: use PowerShell; paths use backslashes. The verifier scripts are platform-neutral.
 
 Optional deep inspection:
 
@@ -293,9 +295,7 @@ Notes:
 
 * This verifies chain-of-custody evidence (`manifest.json` + signed `archive_receipt.json`) for a single archived run.
 * Default verifier key is `spec/sdl.pub`; override with `--pubkey <path>` for local/dev signing keys.
-* Tier B export/verification workflow is now available via `tools/export_run_archive.py` and `tools/verify_export_bundle.py`.
-
-
+* Tier B export/verification workflow is available via `tools/export_run_archive.py` and `tools/verify_export_bundle.py`.
 
 ### Verify an exported Tier B bundle offline
 
@@ -323,7 +323,7 @@ Notes:
 ## 9) Current status
 
 * Tier A is live (repo + Pages + run archive)
-* Tier B reference implementation is now available as an optional offline-first export bundle workflow
+* Tier B reference implementation is available as an optional offline-first export bundle workflow
 * Tier C is optional and may be added if required by stakeholders
 
 ---
@@ -334,3 +334,6 @@ Structural Design Labs
 [https://www.structuraldesignlabs.com](https://www.structuraldesignlabs.com)
 [info@structuraldesignlabs.com](mailto:info@structuraldesignlabs.com)
 X: @SDL_HQ
+
+```
+```
