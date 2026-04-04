@@ -2,6 +2,8 @@
 
 This guide is for running SIR locally, generating artefacts, and serving proof pages during development.
 
+For the canonical evaluation and offline verification path, use `docs/assurance-kit.md`.
+
 ## Runtime requirements
 
 - Python 3.11+
