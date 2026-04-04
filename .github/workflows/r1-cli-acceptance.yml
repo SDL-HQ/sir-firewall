@@ -134,7 +134,7 @@ jobs:
             --copy proofs/run_summary.json \
             --copy leaks_count.txt \
             --copy harmless_blocked.txt
-          RUN_DIR="$(ls -dt proofs/runs/* | head -n 1)"
+          RUN_DIR="$(find proofs/runs -mindepth 1 -maxdepth 1 -type d | sort | tail -n 1)"
           sir verify archive --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json "$RUN_DIR"
 
       - name: Live mode fails fast without credentials (no stale summary)
