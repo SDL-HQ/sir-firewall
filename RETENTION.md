@@ -69,7 +69,7 @@ But it is not a regulator-grade retention guarantee by itself (platform policies
 The authoritative proof is the signed JSON certificate, which can be verified offline:
 
 - Verify signature and payload hash:
-  - `python tools/verify_certificate.py proofs/latest-audit.json`
+  - `sir verify cert proofs/latest-audit.json`
 
 Offline verification is:
 - provider-independent
@@ -151,7 +151,7 @@ SIR provides:
 - Can they re-run the suite locally?
 
 SIR provides:
-- deterministic firewall-only audit path (`python red_team_suite.py --mode audit --pack <pack_id>`)
+- deterministic firewall-only audit path (`sir run --mode audit --pack <pack_id>`)
 - suite schema validation (`tools/validate_domain_pack.py`)
 - offline verification without model calls
 
@@ -251,10 +251,23 @@ A proof is considered auditor-verifiable if:
 
 ## 8) Minimal verification procedure (offline)
 
+Canonical install paths:
+
+```bash
+# audit mode
+python3 -m pip install -e .
+
+# live mode
+python3 -m pip install -e ".[live]"
+
+# verify-only (published certificate, no local run)
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
+```
+
 From a clean checkout:
 
 ```bash
-python tools/verify_certificate.py proofs/latest-audit.json
+sir verify cert proofs/latest-audit.json
 ```
 
 Expected:
@@ -275,14 +288,14 @@ Optional deep inspection:
   * `trust_fingerprint` (legacy alias: `safety_fingerprint`)
 * verify ITGL ledger separately if required:
 
-  * `python tools/verify_itgl.py`
+  * `python3 tools/verify_itgl.py`
 
 ### Verify a run archive offline (chain-of-custody)
 
 From a clean checkout:
 
 ```bash
-python tools/verify_archive_receipt.py proofs/runs/<run_id>/
+sir verify archive proofs/runs/<run_id>/
 ```
 
 Expected:
@@ -300,15 +313,15 @@ Notes:
 ### Verify an exported Tier B bundle offline
 
 ```bash
-python tools/export_run_archive.py --run-path proofs/runs/<run_id>/ --out /tmp/sir_bundle --format dir
-python tools/verify_export_bundle.py /tmp/sir_bundle
+python3 tools/export_run_archive.py --run-path proofs/runs/<run_id>/ --out /tmp/sir_bundle --format dir
+python3 tools/verify_export_bundle.py /tmp/sir_bundle
 ```
 
 Optional deterministic tar output:
 
 ```bash
-python tools/export_run_archive.py --run-path proofs/runs/<run_id>/ --out /tmp/sir_bundle_tar --format tar
-python tools/verify_export_bundle.py /tmp/sir_bundle_tar
+python3 tools/export_run_archive.py --run-path proofs/runs/<run_id>/ --out /tmp/sir_bundle_tar --format tar
+python3 tools/verify_export_bundle.py /tmp/sir_bundle_tar
 ```
 
 Notes:
