@@ -29,6 +29,7 @@ jobs:
         run: |
           set -euo pipefail
           openssl genrsa -out /tmp/sir_ci_priv.pem 2048 >/dev/null 2>&1
+          openssl rsa -in /tmp/sir_ci_priv.pem -pubout -out /tmp/sir_ci_pub.pem >/dev/null 2>&1
           {
             echo "SDL_PRIVATE_KEY_PEM<<EOF"
             cat /tmp/sir_ci_priv.pem
@@ -74,8 +75,8 @@ jobs:
       - name: CLI verify smoke (cert path + stdin)
         run: |
           set -euo pipefail
-          sir verify cert proofs/latest-audit.json
-          cat proofs/latest-audit.json | sir verify cert -
+          sir verify cert proofs/latest-audit.json --key /tmp/sir_ci_pub.pem
+          cat proofs/latest-audit.json | sir verify cert - --key /tmp/sir_ci_pub.pem
 
       - name: Run scenario mode (scenario_injection_chain)
         run: |
@@ -118,8 +119,8 @@ jobs:
       - name: CLI verify smoke (cert path + stdin after scenario)
         run: |
           set -euo pipefail
-          sir verify cert proofs/latest-audit.json
-          cat proofs/latest-audit.json | sir verify cert -
+          sir verify cert proofs/latest-audit.json --key /tmp/sir_ci_pub.pem
+          cat proofs/latest-audit.json | sir verify cert - --key /tmp/sir_ci_pub.pem
 
       - name: Create archive and verify archive via CLI
         env:
@@ -134,7 +135,7 @@ jobs:
             --copy leaks_count.txt \
             --copy harmless_blocked.txt
           RUN_DIR="$(ls -dt proofs/runs/* | head -n 1)"
-          sir verify archive "$RUN_DIR"
+          sir verify archive "$RUN_DIR" --key /tmp/sir_ci_pub.pem
 
       - name: Live mode fails fast without credentials (no stale summary)
         run: |

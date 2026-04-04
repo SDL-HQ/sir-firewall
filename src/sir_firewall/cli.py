@@ -56,11 +56,17 @@ def _cmd_run(ns: argparse.Namespace) -> int:
 
 
 def _cmd_verify_cert(ns: argparse.Namespace) -> int:
-    return _run_py("tools/verify_certificate.py", [ns.path])
+    args = [ns.path]
+    if ns.key:
+        args.extend(["--pubkey", ns.key])
+    return _run_py("tools/verify_certificate.py", args)
 
 
 def _cmd_verify_archive(ns: argparse.Namespace) -> int:
-    return _run_py("tools/verify_archive_receipt.py", [ns.path])
+    args = [ns.path]
+    if ns.key:
+        args.extend(["--pubkey", ns.key])
+    return _run_py("tools/verify_archive_receipt.py", args)
 
 
 def _load_registry() -> dict:
@@ -106,10 +112,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     vcert = verify_sub.add_parser("cert")
     vcert.add_argument("path")
+    vcert.add_argument("--key", default=None, help="Path to PEM public key for signature verification.")
     vcert.set_defaults(fn=_cmd_verify_cert)
 
     varch = verify_sub.add_parser("archive")
     varch.add_argument("path")
+    varch.add_argument("--key", default=None, help="Path to PEM public key for signature verification.")
     varch.set_defaults(fn=_cmd_verify_archive)
 
     packs = sub.add_parser("packs")
