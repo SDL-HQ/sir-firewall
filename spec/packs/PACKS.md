@@ -1,6 +1,6 @@
 # Pack Scale and Hygiene
 
-This file is the canonical pack guidance for R5.
+This file is the canonical pack guidance for the current pack registry model.
 
 ## What a pack is
 
@@ -12,7 +12,7 @@ A pack entry exists to make selection, validation, and review deterministic.
 
 - Domain packs are CSV suites under `tests/domain_packs/`.
 - Scenario packs use scenario JSON suites under `tests/scenario_packs/`.
-- The registry already contains both pack types. R5 does not add new scenario semantics.
+- The registry already contains both pack types. This guidance does not introduce new scenario-pack semantics.
 
 ## Required metadata
 

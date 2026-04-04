@@ -16,7 +16,7 @@ def test_run_py_invokes_subprocess_from_repo_root(monkeypatch):
     cli = _load_cli_module()
     captured = {}
 
-    def _fake_call(cmd, cwd):
+    def _fake_call(cmd, cwd=None, **kwargs):
         captured["cmd"] = cmd
         captured["cwd"] = cwd
         return 0
