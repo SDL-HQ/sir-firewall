@@ -103,3 +103,26 @@ def test_benchmark_entry_marks_invalid_archived_audit_json(tmp_path, capsys):
     assert "WARN: invalid JSON" in captured.err
     assert "evidence_error" in entry
     assert "invalid JSON" in entry["evidence_error"]
+
+
+def test_benchmark_index_skips_malformed_run_ids(tmp_path, capsys):
+    publish_run = _load_publish_run_module()
+
+    runs_dir = tmp_path / "runs"
+    good_run = runs_dir / "run-good"
+    good_run.mkdir(parents=True)
+    (good_run / "audit.json").write_text(json.dumps({"result": "AUDIT PASSED"}), encoding="utf-8")
+
+    index = publish_run._build_benchmark_index(
+        runs_dir=runs_dir,
+        runs=[
+            {"run_id": "", "path": "runs//", "result": "AUDIT FAILED"},
+            {"run_id": "../escape", "path": "runs/../escape/", "result": "AUDIT FAILED"},
+            {"run_id": "run-good", "path": "runs/run-good/", "result": "AUDIT PASSED"},
+        ],
+    )
+
+    captured = capsys.readouterr()
+    assert "WARN: skipping malformed run index entry" in captured.err
+    assert [entry["run_id"] for entry in index["entries"]] == ["run-good"]
+    assert index["latest_run"]["run_id"] == "run-good"

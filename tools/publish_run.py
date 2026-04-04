@@ -82,8 +82,19 @@ def _is_passing_result(result: Any) -> bool:
     return result.strip().upper() in {"AUDIT PASSED"}
 
 
+def _validated_run_id(raw_run_id: Any) -> str:
+    run_id = str(raw_run_id or "")
+    if not run_id:
+        raise ValueError("run_id is empty")
+    if any(sep in run_id for sep in ("/", "\\")):
+        raise ValueError(f"run_id contains path separator: {run_id!r}")
+    if run_id in {".", ".."} or ".." in run_id:
+        raise ValueError(f"run_id contains traversal-like segment: {run_id!r}")
+    return run_id
+
+
 def _benchmark_entry_from_run(runs_dir: Path, run: Dict[str, Any]) -> Dict[str, Any]:
-    run_id = str(run.get("run_id") or "")
+    run_id = _validated_run_id(run.get("run_id"))
     run_path = str(run.get("path") or f"runs/{run_id}/")
     run_dir = runs_dir / run_id
 
@@ -152,7 +163,14 @@ def _benchmark_entry_from_run(runs_dir: Path, run: Dict[str, Any]) -> Dict[str, 
 
 
 def _build_benchmark_index(runs_dir: Path, runs: List[Dict[str, Any]]) -> Dict[str, Any]:
-    entries = [_benchmark_entry_from_run(runs_dir=runs_dir, run=r) for r in runs]
+    entries: List[Dict[str, Any]] = []
+    for run in runs:
+        try:
+            entry = _benchmark_entry_from_run(runs_dir=runs_dir, run=run)
+        except ValueError as exc:
+            print(f"WARN: skipping malformed run index entry: {exc}", file=sys.stderr)
+            continue
+        entries.append(entry)
 
     latest_run = entries[0] if entries else None
     latest_passing_run = next((entry for entry in entries if _is_passing_result(entry.get("result"))), None)
