@@ -69,24 +69,35 @@
       return { html: `<a href="${esc(u)}">CI</a>` };
     }
 
-    fetch("index.json", { cache: "no-store" })
-      .then(r => r.json())
-      .then(idx => {
-        const runs = Array.isArray(idx.runs) ? idx.runs : [];
+    async function loadRuns() {
+      try {
+        const response = await fetch("./index.json", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} ${response.statusText || ""}`.trim());
+        }
+
+        let idx;
+        try {
+          idx = await response.json();
+        } catch (e) {
+          throw new Error(`HTTP ${response.status}: JSON parse error (${e?.message || "invalid JSON"})`);
+        }
+
+        const runs = Array.isArray(idx) ? idx : (Array.isArray(idx?.runs) ? idx.runs : []);
         if (!runs.length) {
           rows.innerHTML = `<tr><td colspan="6">No archived runs yet.</td></tr>`;
           return;
         }
 
         rows.innerHTML = runs.map(r => {
-          const date = esc(r.date ?? "—");
+          const date = esc(r.date ?? r.timestamp_utc ?? "—");
           const result = esc(r.result ?? "—");
-          const leaks = esc(r.leaks ?? "—");
-          const fp = esc((r.safety_fingerprint ?? "—").toString().slice(0, 20));
+          const leaks = esc(r.leaks ?? r.jailbreaks_leaked ?? "—");
+          const fp = esc((r.trust_fingerprint ?? r.safety_fingerprint ?? "—").toString().slice(0, 20));
           const path = esc(r.path ?? "");
           const runId = esc(r.run_id ?? "");
 
-          const ci = ciLabelAndLink(r.ci_run_url).html;
+          const ci = ciLabelAndLink(r.ci_run_url ?? "").html;
 
           // NOTE: index.html lives at runs/index.html.
           // "path" is stored as "runs/<run_id>/", so "../${path}manifest.json" resolves correctly.
@@ -105,10 +116,13 @@
             <td>${ci}</td>
           </tr>`;
         }).join("");
-      })
-      .catch(() => {
-        rows.innerHTML = `<tr><td colspan="6">Failed to load index.json</td></tr>`;
-      });
+      } catch (e) {
+        const reason = esc(e?.message || "Unknown error");
+        rows.innerHTML = `<tr><td colspan="6">Failed to load index.json (${reason})</td></tr>`;
+      }
+    }
+
+    loadRuns();
   </script>
 </body>
 </html>
