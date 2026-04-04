@@ -14,7 +14,7 @@ PACK_REGISTRY = ROOT / "spec" / "packs" / "pack_registry.v1.json"
 def _run_py(script_rel: str, args: list[str]) -> int:
     script = ROOT / script_rel
     cmd = [sys.executable, str(script), *args]
-    return subprocess.call(cmd)
+    return subprocess.call(cmd, cwd=ROOT)
 
 
 def _cmd_run(ns: argparse.Namespace) -> int:

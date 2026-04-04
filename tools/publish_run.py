@@ -78,7 +78,7 @@ def _index_entry_from_audit(run_id: str, audit: Dict[str, Any]) -> Dict[str, Any
 def _is_passing_result(result: Any) -> bool:
     if not isinstance(result, str):
         return False
-    return "PASS" in result.upper()
+    return result.strip().upper() in {"AUDIT PASSED"}
 
 
 def _benchmark_entry_from_run(runs_dir: Path, run: Dict[str, Any]) -> Dict[str, Any]:
