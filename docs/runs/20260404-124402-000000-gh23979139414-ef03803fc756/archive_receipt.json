@@ -1,0 +1,12 @@
+{
+  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/23979139414",
+  "commit_sha": "c1318235490d3b94190cd235019e7fa709ebe32e",
+  "manifest_hash": "sha256:a9ee6045a478d3c9a40581edea9501a71d39da16833e95e4ba861dbdd18fc0dc",
+  "payload_hash": "sha256:76879ce92e26103aee8d09e8754c5b7fc6093a06085bd1854935d8b31e83b4c4",
+  "repository": "SDL-HQ/sir-firewall",
+  "run_folder_hash": "sha256:65fe56729bf554d06acd8cf398773f6c896c59f78747c4570945911dc00236df",
+  "run_id": "20260404-124402-000000-gh23979139414-ef03803fc756",
+  "signature": "alAdYZAEWtiXC55NmVXzWM+EaKAZiIpZTSWpJxat3cjxkxtgMbVzHt0/KXHW7VKpNTz2kxZb2u/MgzEUej35/bKDkpLc4E/y3xT3tshm/sJZTnbdDYx154vwFTzrKgGFoLHnWOnbj77okBz0nmIaHrY2k9bk9+LtlN68FC1rcrwhKoq9Unh+akrBqo9xP7GZV6xPGV6Xbyh1toYbkkYQ3gUFM9THSIj8On0DDJFofK1YxzvXlgfplE21zrwOOajZF+Vp+7q1v2uuk+BN0M8xF84GLRWvugAmCjFDJpOYiR3dne0c/GhU/m3hLoI1dfAYecUsXasMMYhLyTxOcy0ZnkaBvbWXktq2lvqoMocI+P4qJDSAs63j4hsSGlDDiSJfqM2tMjWvzPl9Dj/HEKQA9SqmQyDXdZdVDl7cjMPszui7p7U73jWucH9kTn81JOYRxyaJigrRRzWvdNDQBimUiZ8ZhZcoB4MTNXZdye+6J0H4dmq+FFOIx/I6pVODaEsmMG3V5UpE3efAK+gpxTgi0058EZMdNvKe8nu882lRSPiiDfoF7s58WQoeYMIMEFnEYkGZymJe07BAwUrl4gWXuwpwbOiyXD4rpNguYpzL9TetR3R5KLNdoHqJyjqOjcHdCyTBSD8YR843ETi92WfbrPlhceWAWJyvLQLwpixBw90=",
+  "signing_key_id": "default",
+  "timestamp_utc": "2026-04-04T12:44:03Z"
+}
