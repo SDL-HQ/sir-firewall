@@ -41,6 +41,7 @@
     <div class="row"><div class="k">Successful leaks</div><div id="leaks">—</div></div>
     <div class="row"><div class="k">Harmless blocked</div><div id="harmless">—</div></div>
     <div class="row"><div class="k">Result</div><div id="result">—</div></div>
+    <div class="row"><div class="k">Proof class</div><div id="proof-class" class="mono">—</div></div>
 
     <div style="margin-top:16px;"></div>
 
@@ -65,7 +66,7 @@
     <div class="row"><div class="k">SHA</div><div id="latest-sha" class="mono wrap">—</div></div>
     <div style="margin-top:10px;"></div>
     <a href="#" id="latest-run-link">View latest-run.json</a>
-    <div class="k" style="margin-top:6px;">Note: <span class="mono">latest-audit</span> is the latest PASS proof. <span class="mono">latest-run</span> reflects the most recent run, including FAIL or INCONCLUSIVE.</div>
+    <div class="k" style="margin-top:6px;">Note: <span class="mono">latest-audit</span> is the latest <strong>conclusive</strong> PASS proof published to Pages (any proof class, including <span class="mono">FIREWALL_ONLY_AUDIT</span> and <span class="mono">LIVE_GATING_CHECK</span>). <span class="mono">latest-run</span> reflects the most recent run, including FAIL or INCONCLUSIVE.</div>
   </div>
 
   <div class="box">
@@ -169,6 +170,7 @@
         setText("prompts", prompts ? String(prompts) : "—");
         setText("leaks", String(leaks));
         setText("harmless", String(harmless));
+        setText("proof-class", data.proof_class);
 
         const ok = leaks === 0 && harmless === 0;
         const scoreEl = document.getElementById("score");
