@@ -108,8 +108,10 @@ def _benchmark_entry_from_run(runs_dir: Path, run: Dict[str, Any]) -> Dict[str, 
 
     try:
         run_dir.resolve().relative_to(runs_dir.resolve())
-    except ValueError:
-        raise SystemExit(f"ERROR: resolved run directory escapes runs_dir for run_id={run_id!r}")
+    except ValueError as exc:
+        raise ValueError(
+            f"resolved run directory escapes runs_dir for run_id={run_id!r}"
+        ) from exc
 
     audit: Dict[str, Any] = {}
     audit_parse_error: Optional[str] = None
