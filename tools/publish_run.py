@@ -90,7 +90,8 @@ def _benchmark_entry_from_run(runs_dir: Path, run: Dict[str, Any]) -> Dict[str, 
     expected_run_path = f"runs/{run_id}/"
     if run_path != expected_run_path:
         print(
-            f"WARN: ignoring unexpected run path for run_id={run_id!r}: {run_path!r} (expected {expected_run_path!r})",
+            f"WARN: unexpected run path for run_id={run_id!r}: {run_path!r} "
+            f"(expected {expected_run_path!r}); using run_id-derived paths",
             file=sys.stderr,
         )
 

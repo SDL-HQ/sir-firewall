@@ -104,7 +104,11 @@ def _cmd_verify_archive(ns: argparse.Namespace) -> int:
 
 
 def _load_registry() -> dict:
-    return json.loads(PACK_REGISTRY.read_text(encoding="utf-8"))
+    try:
+        return json.loads(PACK_REGISTRY.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"ERROR: failed to load pack registry {PACK_REGISTRY}: {exc}", file=sys.stderr)
+        raise SystemExit(2)
 
 
 def _cmd_packs_list(_: argparse.Namespace) -> int:

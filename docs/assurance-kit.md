@@ -93,13 +93,19 @@ Path A. Verify published SDL-signed certificate:
 curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
 ```
 
-Path B. Verify a local certificate if one has already been generated separately:
+Path B. Verify an SDL/public certificate from local disk using default trust anchors:
 
 ```bash
 sir verify cert proofs/latest-audit.json
 ```
 
-Note: certificate generation is a separate step and is not automatic from `sir run`.
+Path C. Verify a local/non-authoritative certificate using its matching public key:
+
+```bash
+sir verify cert proofs/latest-audit.json --key <pubkey.pem>
+```
+
+Note: certificate generation is a separate step and is not automatic from `sir run`. Local/non-authoritative certificates may not validate against default trust anchors unless `--key` (or a matching key registry) is provided.
 
 ### 5) Verify archived run receipt offline
 
