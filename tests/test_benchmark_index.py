@@ -75,3 +75,12 @@ def test_benchmark_index_keeps_latest_run_and_latest_passing_run(tmp_path):
     assert index["entries"][0]["proof_class"] == "FIREWALL_ONLY_AUDIT"
     assert index["entries"][0]["evidence"]["audit"] == "runs/run-fail/audit.json"
     assert index["entries"][1]["evidence"]["audit"] == "runs/run-inconclusive/audit.json"
+
+
+def test_is_passing_result_only_accepts_canonical_pass_value():
+    publish_run = _load_publish_run_module()
+
+    assert publish_run._is_passing_result("AUDIT PASSED")
+    assert publish_run._is_passing_result("  audit passed  ")
+    assert not publish_run._is_passing_result("BYPASS")
+    assert not publish_run._is_passing_result("AUDIT FAILED")
