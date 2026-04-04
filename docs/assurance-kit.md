@@ -14,6 +14,8 @@ This assurance kit explains:
 - one canonical evaluation path
 - how to verify evidence offline
 - how to interpret latest pass, latest run, run archive, and benchmark index
+- how authoritative and non-authoritative signing trust is scoped
+- what must be true before `CRYPTO_ENFORCED` can be enabled safely
 
 ## What SIR does
 
@@ -125,6 +127,10 @@ Read `proofs/runs/benchmark_index.v1.json` as an evidence index:
 | `proofs/latest-audit.json` | Signed certificate payload | `sir verify cert ...` or `python3 tools/verify_certificate.py ...` |
 | `proofs/runs/<run_id>/archive_receipt.json` | Run archive chain-of-custody receipt | `sir verify archive proofs/runs/<run_id>/` |
 | `proofs/runs/benchmark_index.v1.json` | Honest map of runs and pointers | schema + direct inspection |
+
+## Key governance readiness reference
+
+For key authority boundaries, trust-source semantics, and the `CRYPTO_ENFORCED` readiness checklist, see `docs/key-governance-readiness.md`.
 
 ## Semantics to preserve
 

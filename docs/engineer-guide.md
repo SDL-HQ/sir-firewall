@@ -194,3 +194,7 @@ curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest
 SDL public key:
 
 * `spec/sdl.pub`
+
+Key governance readiness reference:
+
+* `docs/key-governance-readiness.md`
