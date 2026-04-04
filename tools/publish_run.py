@@ -17,6 +17,7 @@ import hashlib
 import json
 import os
 import shutil
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -88,12 +89,15 @@ def _benchmark_entry_from_run(runs_dir: Path, run: Dict[str, Any]) -> Dict[str, 
     run_dir = runs_dir / rel_dir
 
     audit: Dict[str, Any] = {}
+    audit_parse_error: Optional[str] = None
     audit_path = run_dir / "audit.json"
     if audit_path.exists():
         try:
             audit = _read_json(audit_path)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as exc:
             audit = {}
+            audit_parse_error = f"invalid JSON in {audit_path}: {exc}"
+            print(f"WARN: {audit_parse_error}", file=sys.stderr)
 
     def artifact_path(name: str) -> str:
         return f"runs/{run_id}/{name}"
@@ -108,7 +112,7 @@ def _benchmark_entry_from_run(runs_dir: Path, run: Dict[str, Any]) -> Dict[str, 
         "attempt_log": artifact_path("proofs/latest-attempts.log"),
     }
 
-    return {
+    entry: Dict[str, Any] = {
         "run_id": run_id,
         "run_timestamp_utc": run.get("date") or audit.get("date") or audit.get("timestamp_utc"),
         "result": run.get("result") or audit.get("result"),
@@ -130,6 +134,9 @@ def _benchmark_entry_from_run(runs_dir: Path, run: Dict[str, Any]) -> Dict[str, 
         "ci_run_url": run.get("ci_run_url") or audit.get("ci_run_url"),
         "evidence": evidence,
     }
+    if audit_parse_error:
+        entry["evidence_error"] = audit_parse_error
+    return entry
 
 
 def _build_benchmark_index(runs_dir: Path, runs: List[Dict[str, Any]]) -> Dict[str, Any]:

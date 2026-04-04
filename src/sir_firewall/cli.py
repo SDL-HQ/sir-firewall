@@ -49,8 +49,8 @@ def _cmd_run(ns: argparse.Namespace) -> int:
                 summary = json.loads(summary_path.read_text(encoding="utf-8"))
                 summary["proof_class"] = "SCENARIO_AUDIT"
                 summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
-            except Exception:
-                pass
+            except (json.JSONDecodeError, OSError) as exc:
+                print(f"WARNING: failed to update scenario summary at {summary_path}: {exc}", file=sys.stderr)
 
     return rc
 

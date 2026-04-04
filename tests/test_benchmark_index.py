@@ -84,3 +84,22 @@ def test_is_passing_result_only_accepts_canonical_pass_value():
     assert publish_run._is_passing_result("  audit passed  ")
     assert not publish_run._is_passing_result("BYPASS")
     assert not publish_run._is_passing_result("AUDIT FAILED")
+
+
+def test_benchmark_entry_marks_invalid_archived_audit_json(tmp_path, capsys):
+    publish_run = _load_publish_run_module()
+
+    runs_dir = tmp_path / "runs"
+    run_dir = runs_dir / "run-bad-audit"
+    run_dir.mkdir(parents=True)
+    (run_dir / "audit.json").write_text("{not-json", encoding="utf-8")
+
+    entry = publish_run._benchmark_entry_from_run(
+        runs_dir=runs_dir,
+        run={"run_id": "run-bad-audit", "path": "runs/run-bad-audit/"},
+    )
+
+    captured = capsys.readouterr()
+    assert "WARN: invalid JSON" in captured.err
+    assert "evidence_error" in entry
+    assert "invalid JSON" in entry["evidence_error"]

@@ -216,6 +216,9 @@
               }
             },
             "additionalProperties": false
+          },
+          "evidence_error": {
+            "type": "string"
           }
         },
         "additionalProperties": false
