@@ -20,6 +20,19 @@ Important semantics:
 
 This verifies the latest published certificate locally.
 
+Canonical install paths:
+
+```bash
+# audit mode
+python3 -m pip install -e .
+
+# live mode
+python3 -m pip install -e ".[live]"
+
+# verify-only (published certificate, no local run)
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
+```
+
 ### Step 1. Get the verifier (one time)
 
 Mac/Linux:
@@ -37,7 +50,8 @@ Windows (PowerShell):
 ### Step 2. Verify the published certificate
 
 ```bash
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
+curl -s -o latest-audit.json https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json
+sir verify cert latest-audit.json
 ```
 
 Expected output:
@@ -46,13 +60,19 @@ Expected output:
 OK: Certificate signature valid and payload_hash matches.
 ```
 
-**Note on the trailing `-`:** `-` means “read JSON from stdin” (the piped output). Some older pages/publications may show the command without `-`, but this repo standardises on the explicit stdin form.
+Low-level fallback (stdin form):
+
+```bash
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
+```
+
+**Note on the trailing `-`:** `-` means “read JSON from stdin” (the piped output).
 
 If you prefer to download the file instead of piping:
 
 ```bash
 curl -s -o latest-audit.json https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json
-python3 tools/verify_certificate.py latest-audit.json
+sir verify cert latest-audit.json
 python3 tools/validate_certificate_contract.py latest-audit.json
 ```
 
@@ -67,7 +87,7 @@ python3 -m pip install cryptography
 If you want to verify a specific archived run folder offline:
 
 ```bash
-python tools/verify_archive_receipt.py proofs/runs/<run_id>/
+sir verify archive proofs/runs/<run_id>/
 ```
 
 Expected output:

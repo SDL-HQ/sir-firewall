@@ -7,6 +7,19 @@ This guide is for running SIR locally, generating artefacts, and serving proof p
 - Python 3.11+
 - Git
 
+## Quickstart install paths (canonical)
+
+```bash
+# audit mode
+python3 -m pip install -e .
+
+# live mode
+python3 -m pip install -e ".[live]"
+
+# verify-only (published certificate, no local run)
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
+```
+
 ## Local install (Mac/Linux)
 
 ```bash
@@ -42,7 +55,7 @@ Modes:
 ## Run an audit locally (no model calls)
 
 ```bash
-python red_team_suite.py --mode audit --pack generic_safety
+sir run --mode audit --pack generic_safety
 ```
 
 Outputs (local run artefacts):
@@ -57,7 +70,7 @@ Outputs (local run artefacts):
 Verify ITGL:
 
 ```bash
-python tools/verify_itgl.py
+python3 tools/verify_itgl.py
 ```
 
 ## Run a live gating check (PASS prompts call provider)
@@ -70,7 +83,7 @@ LIVE requires:
 Install live extras:
 
 ```bash
-pip install -e ".[live]"
+python3 -m pip install -e ".[live]"
 ```
 
 Set provider credentials (example: xAI):
@@ -82,7 +95,7 @@ export XAI_API_KEY="paste_key_here"
 Run live:
 
 ```bash
-python red_team_suite.py --mode live --pack generic_safety
+sir run --mode live --pack generic_safety
 ```
 
 The run summary records:
@@ -107,9 +120,9 @@ openssl rsa -in /tmp/sir_dev_priv.pem -pubout -out /tmp/sir_dev_pub.pem >/dev/nu
 Generate certificate + validate + verify (using your dev pubkey):
 
 ```bash
-python tools/generate_certificate.py
-python tools/validate_certificate_contract.py proofs/latest-audit.json
-python tools/verify_certificate.py proofs/latest-audit.json --pubkey /tmp/sir_dev_pub.pem
+python3 tools/generate_certificate.py
+python3 tools/validate_certificate_contract.py proofs/latest-audit.json
+python3 tools/verify_certificate.py proofs/latest-audit.json --pubkey /tmp/sir_dev_pub.pem
 ```
 
 ## Publish a local run archive (signed receipt)
@@ -123,7 +136,7 @@ Publishing a run archive creates:
 It requires `SDL_PRIVATE_KEY_PEM` to be set.
 
 ```bash
-python tools/publish_run.py --cert proofs/latest-audit.json \
+python3 tools/publish_run.py --cert proofs/latest-audit.json \
   --copy proofs/itgl_ledger.jsonl \
   --copy proofs/itgl_final_hash.txt \
   --copy proofs/latest-attempts.log \
@@ -136,7 +149,7 @@ Verify the latest archived run (dev pubkey):
 
 ```bash
 RUN_DIR="$(ls -dt proofs/runs/* | head -n 1)"
-python tools/verify_archive_receipt.py "$RUN_DIR" --pubkey /tmp/sir_dev_pub.pem
+python3 tools/verify_archive_receipt.py "$RUN_DIR" --pubkey /tmp/sir_dev_pub.pem
 ```
 
 ## Serve proof pages locally
@@ -155,18 +168,17 @@ Open:
 
 ## Verify the published SDL-signed certificate locally (optional)
 
-Pipe form (stdin). The trailing `-` means “read JSON from stdin”:
-
-```bash
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
-```
-
-Or download then verify:
+Operator path:
 
 ```bash
 curl -s -o latest-audit.json https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json
-python3 tools/verify_certificate.py latest-audit.json
-python3 tools/validate_certificate_contract.py latest-audit.json
+sir verify cert latest-audit.json
+```
+
+Low-level fallback (stdin). The trailing `-` means “read JSON from stdin”:
+
+```bash
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
 ```
 
 SDL public key:
