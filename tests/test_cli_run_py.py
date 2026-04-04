@@ -43,7 +43,7 @@ def test_scenario_summary_update_warns_for_invalid_json(tmp_path, monkeypatch, c
         mode="scenario",
         pack=None,
         suite=None,
-        scenario=None,
+        scenario="tests/scenario_packs/scenario_injection_chain.json",
         model=None,
         template=None,
         no_model_calls=False,
@@ -64,7 +64,10 @@ def test_scenario_summary_update_warns_for_write_error(tmp_path, monkeypatch, ca
     proofs_dir = tmp_path / "proofs"
     proofs_dir.mkdir(parents=True)
     summary_path = proofs_dir / "run_summary.json"
-    summary_path.write_text(json.dumps({"proof_class": "FIREWALL_ONLY_AUDIT"}), encoding="utf-8")
+    summary_path.write_text(
+        json.dumps({"proof_class": "FIREWALL_ONLY_AUDIT", "scenario_id": "s1", "scenario_hash": "sha256:abc"}),
+        encoding="utf-8",
+    )
 
     monkeypatch.setattr(cli, "_run_py", lambda *_args, **_kwargs: 0)
     monkeypatch.setattr(cli.Path, "write_text", lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("disk full")))
@@ -72,7 +75,7 @@ def test_scenario_summary_update_warns_for_write_error(tmp_path, monkeypatch, ca
         mode="scenario",
         pack=None,
         suite=None,
-        scenario=None,
+        scenario="tests/scenario_packs/scenario_injection_chain.json",
         model=None,
         template=None,
         no_model_calls=False,
@@ -83,3 +86,48 @@ def test_scenario_summary_update_warns_for_write_error(tmp_path, monkeypatch, ca
     captured = capsys.readouterr()
     assert rc == 0
     assert "WARNING: failed to update scenario summary" in captured.err
+
+
+def test_scenario_mode_rejects_suite_input(monkeypatch, capsys):
+    cli = _load_cli_module()
+    monkeypatch.setattr(cli, "_run_py", lambda *_args, **_kwargs: 0)
+    ns = cli.argparse.Namespace(
+        mode="scenario",
+        pack=None,
+        suite="tests/domain_packs/generic_safety.csv",
+        scenario=None,
+        model=None,
+        template=None,
+        no_model_calls=False,
+    )
+
+    rc = cli._cmd_run(ns)
+
+    captured = capsys.readouterr()
+    assert rc == 2
+    assert "does not support --suite" in captured.err
+
+
+def test_scenario_mode_rejects_non_scenario_pack(monkeypatch, capsys):
+    cli = _load_cli_module()
+    monkeypatch.setattr(
+        cli,
+        "_load_registry",
+        lambda: {"packs": [{"pack_id": "generic_safety", "schema": "csv_single_turn_v1"}]},
+    )
+    monkeypatch.setattr(cli, "_run_py", lambda *_args, **_kwargs: 0)
+    ns = cli.argparse.Namespace(
+        mode="scenario",
+        pack="generic_safety",
+        suite=None,
+        scenario=None,
+        model=None,
+        template=None,
+        no_model_calls=False,
+    )
+
+    rc = cli._cmd_run(ns)
+
+    captured = capsys.readouterr()
+    assert rc == 2
+    assert "requires a scenario_json_v1 pack" in captured.err
