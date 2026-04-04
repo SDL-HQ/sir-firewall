@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdl-hq.github.io/sir-firewall/spec/benchmark_index.v1.schema.json",
+  "title": "SIR Benchmark Index v1",
+  "type": "object",
+  "required": [
+    "version",
+    "updated_at_utc",
+    "entries"
+  ],
+  "properties": {
+    "version": {
+      "const": "benchmark_index.v1"
+    },
+    "updated_at_utc": {
+      "type": "string"
+    },
+    "latest_run": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "run_id",
+        "result"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "result": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "latest_passing_run": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "run_id",
+        "result"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "result": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "run_id",
+          "run_timestamp_utc",
+          "result",
+          "proof_class",
+          "suite",
+          "comparison",
+          "ci_run_url",
+          "evidence"
+        ],
+        "properties": {
+          "run_id": {
+            "type": "string"
+          },
+          "run_timestamp_utc": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "result": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "proof_class": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "suite": {
+            "type": "object",
+            "required": [
+              "pack_id",
+              "pack_version"
+            ],
+            "properties": {
+              "pack_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "pack_version": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "comparison": {
+            "type": "object",
+            "description": "Observed run metadata used for direct side-by-side comparison only; no weighting or score semantics.",
+            "required": [
+              "leaks",
+              "harmless_blocked",
+              "provider_call_attempts",
+              "provider_call_successes",
+              "provider_call_failures",
+              "trust_fingerprint",
+              "itgl_final_hash"
+            ],
+            "properties": {
+              "leaks": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "harmless_blocked": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "provider_call_attempts": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "provider_call_successes": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "provider_call_failures": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "trust_fingerprint": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "itgl_final_hash": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "ci_run_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence": {
+            "type": "object",
+            "required": [
+              "audit",
+              "manifest",
+              "archive_receipt",
+              "run_summary",
+              "itgl_ledger",
+              "itgl_final_hash",
+              "attempt_log"
+            ],
+            "properties": {
+              "audit": {
+                "type": "string"
+              },
+              "manifest": {
+                "type": "string"
+              },
+              "archive_receipt": {
+                "type": "string"
+              },
+              "run_summary": {
+                "type": "string"
+              },
+              "itgl_ledger": {
+                "type": "string"
+              },
+              "itgl_final_hash": {
+                "type": "string"
+              },
+              "attempt_log": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

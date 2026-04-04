@@ -132,6 +132,7 @@ Publishing a run archive creates:
 * `proofs/runs/<run_id>/manifest.json`
 * `proofs/runs/<run_id>/audit.json`
 * `proofs/runs/<run_id>/archive_receipt.json` (signed)
+* `proofs/runs/benchmark_index.v1.json` (machine-readable benchmark/index summary)
 
 It requires `SDL_PRIVATE_KEY_PEM` to be set.
 
@@ -151,6 +152,13 @@ Verify the latest archived run (dev pubkey):
 RUN_DIR="$(ls -dt proofs/runs/* | head -n 1)"
 python3 tools/verify_archive_receipt.py "$RUN_DIR" --pubkey /tmp/sir_dev_pub.pem
 ```
+
+Benchmark/index semantics:
+
+* `proofs/runs/benchmark_index.v1.json` is an evidence map, not a score.
+* It records per-run suite (`pack_id`, `pack_version`), `proof_class`, `result`, and evidence paths.
+* It includes both `latest_run` and `latest_passing_run` pointers so fail/pass truth stays explicit.
+* `comparison` is raw run metadata for side-by-side reading only (counts, hashes, and provider call totals), not a ranking model.
 
 ## Serve proof pages locally
 
