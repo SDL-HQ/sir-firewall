@@ -1,0 +1,166 @@
+name: R1 CLI acceptance
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  r1_cli_acceptance:
+    name: R1 CLI acceptance (semantic-only, strict scenario mode)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package (sir entrypoint must exist)
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install -e .
+          command -v sir
+
+      - name: Create one ephemeral signing key (reused in this job)
+        run: |
+          set -euo pipefail
+          openssl genrsa -out /tmp/sir_ci_priv.pem 2048 >/dev/null 2>&1
+          {
+            echo "SDL_PRIVATE_KEY_PEM<<EOF"
+            cat /tmp/sir_ci_priv.pem
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Run audit mode (generic_safety)
+        run: |
+          set -euo pipefail
+          sir run --mode audit --pack generic_safety
+          test -f proofs/run_summary.json
+
+      - name: Validate evidence artefact semantics (audit summary)
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          s = json.load(open("proofs/run_summary.json", "r", encoding="utf-8"))
+
+          assert s.get("pack_id") == "generic_safety", s
+
+          if "suite_name" in s:
+              assert s.get("suite_name") == "generic_safety", s
+
+          assert s.get("proof_class") == "FIREWALL_ONLY_AUDIT", s
+          assert int(s.get("prompts_tested", 0)) > 0, s
+          assert int(s.get("jailbreaks_leaked", -1)) == 0, s
+          assert int(s.get("harmless_blocked", -1)) == 0, s
+          assert int(s.get("provider_call_attempts", -1)) == 0, s
+          assert int(s.get("provider_call_successes", -1)) == 0, s
+          assert int(s.get("provider_call_failures", -1)) == 0, s
+          print("OK: audit summary semantic checks passed")
+          PY
+
+      - name: Generate cert from current run and validate certificate contract (audit)
+        env:
+          SDL_PRIVATE_KEY_PEM: ${{ env.SDL_PRIVATE_KEY_PEM }}
+        run: |
+          set -euo pipefail
+          python tools/generate_certificate.py
+          python tools/validate_certificate_contract.py proofs/latest-audit.json
+
+      - name: CLI verify smoke (cert path + stdin)
+        run: |
+          set -euo pipefail
+          sir verify cert proofs/latest-audit.json
+          cat proofs/latest-audit.json | sir verify cert -
+
+      - name: Run scenario mode (scenario_injection_chain)
+        run: |
+          set -euo pipefail
+          sir run --mode scenario --pack scenario_injection_chain
+          test -f proofs/run_summary.json
+
+      - name: Validate evidence artefact semantics (scenario summary)
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          s = json.load(open("proofs/run_summary.json", "r", encoding="utf-8"))
+
+          assert s.get("pack_id") == "scenario_injection_chain", s
+
+          if "suite_name" in s:
+              assert s.get("suite_name") == "scenario_injection_chain", s
+
+          assert s.get("scenario_id"), s
+
+          assert s.get("proof_class") == "SCENARIO_AUDIT", s
+          assert int(s.get("prompts_tested", 0)) > 0, s
+          assert int(s.get("jailbreaks_leaked", -1)) == 0, s
+          assert int(s.get("harmless_blocked", -1)) == 0, s
+          assert int(s.get("provider_call_attempts", -1)) == 0, s
+          assert int(s.get("provider_call_successes", -1)) == 0, s
+          assert int(s.get("provider_call_failures", -1)) == 0, s
+          print("OK: scenario summary semantic checks passed")
+          PY
+
+      - name: Generate cert from scenario run and validate certificate contract
+        env:
+          SDL_PRIVATE_KEY_PEM: ${{ env.SDL_PRIVATE_KEY_PEM }}
+        run: |
+          set -euo pipefail
+          python tools/generate_certificate.py
+          python tools/validate_certificate_contract.py proofs/latest-audit.json
+
+      - name: CLI verify smoke (cert path + stdin after scenario)
+        run: |
+          set -euo pipefail
+          sir verify cert proofs/latest-audit.json
+          cat proofs/latest-audit.json | sir verify cert -
+
+      - name: Create archive and verify archive via CLI
+        env:
+          SDL_PRIVATE_KEY_PEM: ${{ env.SDL_PRIVATE_KEY_PEM }}
+        run: |
+          set -euo pipefail
+          python tools/publish_run.py --cert proofs/latest-audit.json \
+            --copy proofs/itgl_ledger.jsonl \
+            --copy proofs/itgl_final_hash.txt \
+            --copy proofs/latest-attempts.log \
+            --copy proofs/run_summary.json \
+            --copy leaks_count.txt \
+            --copy harmless_blocked.txt
+          RUN_DIR="$(ls -dt proofs/runs/* | head -n 1)"
+          sir verify archive "$RUN_DIR"
+
+      - name: Live mode fails fast without credentials (no stale summary)
+        run: |
+          set -euo pipefail
+
+          rm -f proofs/run_summary.json
+
+          set +e
+          output="$(sir run --mode live --pack generic_safety 2>&1)"
+          code=$?
+          set -e
+
+          echo "$output"
+          if [ "$code" -eq 0 ]; then
+            echo "ERROR: live run unexpectedly succeeded without credentials"
+            exit 1
+          fi
+          echo "$output" | grep -F "requires your own provider credentials"
+
+          if [ -f proofs/run_summary.json ]; then
+            python - <<'PY'
+            import json
+            s = json.load(open("proofs/run_summary.json", "r", encoding="utf-8"))
+            assert int(s.get("provider_call_attempts", 0)) == 0, s
+            print("OK: fail-fast emitted summary with provider_call_attempts == 0")
+            PY
+          else
+            echo "OK: fail-fast emitted no summary"
+          fi
