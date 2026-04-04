@@ -156,12 +156,7 @@ jobs:
           echo "$output" | grep -F "requires your own provider credentials"
 
           if [ -f proofs/run_summary.json ]; then
-            python - <<'PY'
-            import json
-            s = json.load(open("proofs/run_summary.json", "r", encoding="utf-8"))
-            assert int(s.get("provider_call_attempts", 0)) == 0, s
-            print("OK: fail-fast emitted summary with provider_call_attempts == 0")
-            PY
+            python -c 'import json; s=json.load(open("proofs/run_summary.json", "r", encoding="utf-8")); assert int(s.get("provider_call_attempts", 0)) == 0, s; print("OK: fail-fast emitted summary with provider_call_attempts == 0")'
           else
             echo "OK: fail-fast emitted no summary"
           fi
