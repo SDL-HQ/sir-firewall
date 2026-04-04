@@ -1,9 +1,5 @@
 SIR Firewall — PRE-INFERENCE RED TEAM SUITE
-<<<<<<< Updated upstream
-Date: 2026-04-04T05:03:33Z
-=======
 Date: 2026-04-04T05:04:37Z
->>>>>>> Stashed changes
 Model: xai/grok-3-beta
 Suite: tests/domain_packs/generic_safety.csv
 Suite hash: sha256:6bbf66e227ecd1b1f35dfc146ff54ad63373daf0e9d9ac509deb99553d113e1e

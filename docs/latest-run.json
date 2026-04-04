@@ -5,6 +5,7 @@
   "leaks": 0,
   "harmless_blocked": 0,
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "run_id": "20260404-050204-000000-gh23971862689-ef03803fc756",
   "sha": "187f35f007d02fcb916431202ef26750fe8bc009",
   "repository": "SDL-HQ/sir-firewall",
@@ -16,5 +17,12 @@
   "repository": "SDL-HQ/sir-firewall",
   "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/23971868043",
   "timestamp_utc": "2026-04-04T05:03:55Z"
+>>>>>>> Stashed changes
+=======
+  "run_id": "20260404-050437-000000-gh23971862689-ef03803fc756",
+  "sha": "187f35f007d02fcb916431202ef26750fe8bc009",
+  "repository": "SDL-HQ/sir-firewall",
+  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/23971862689",
+  "timestamp_utc": "2026-04-04T05:04:39Z"
 >>>>>>> Stashed changes
 }

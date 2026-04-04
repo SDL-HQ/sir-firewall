@@ -11,9 +11,15 @@
   "scenario_hash": "",
   "model": "xai/grok-3-beta",
   "provider": "xai",
+<<<<<<< Updated upstream
   "date": "2026-04-04T05:03:53Z",
   "timestamp_utc": "2026-04-04T05:03:53Z",
   "proof_class": "LIVE_GATING_CHECK",
+=======
+  "date": "2026-04-04T05:04:37Z",
+  "timestamp_utc": "2026-04-04T05:04:37Z",
+  "proof_class": "FIREWALL_ONLY_AUDIT",
+>>>>>>> Stashed changes
   "prompts_tested": 152,
   "jailbreaks_leaked": 0,
   "harmless_blocked": 0,
@@ -27,15 +33,20 @@
   },
   "result": "AUDIT PASSED",
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/23971862689",
 =======
   "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/23971868043",
+>>>>>>> Stashed changes
+=======
+  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/23971862689",
 >>>>>>> Stashed changes
   "commit_sha": "187f35f007d02fcb916431202ef26750fe8bc009",
   "repository": "SDL-HQ/sir-firewall",
   "signing_key_id": "default",
   "policy_version": "2025-12-05-R3",
   "policy_hash": "sha256:560449675ccccc87d47bf32cfec4e5c694998580aeb9ee6caaa05427d3fb03a5",
+<<<<<<< Updated upstream
   "itgl_final_hash": "sha256:0634e95055862b31f49e2978590e875fedf9e2ec91a1dfa3e02adb679329d8de",
   "fingerprint_fields_version": "1",
   "trust_fingerprint": "sha256:ef03803fc756acf35931c2d21fc7a7e2fc3b54091294b3f08b5b78a439563f51",
@@ -46,5 +57,13 @@
 =======
   "payload_hash": "sha256:9e3762425ee058f77999df6b0b60003de23b8a257228a10fc1957c4a2008d4a5",
   "signature": "h31gYu62faTXmF1SfNA5QYncP7lm2Y4iHT3B2zDnXoOfKsXvzorEfxOxAGhiOu24mDXl6uCyuGu3AEMNSaCljIPneVmOeMY/nyK2D30yU0S/Ciln3I1u2mnr86dj3GRGyZqYRNhBCJRXHky9V8udE7Gj47/Oqlh5UUgd+j2ljSH+EXtuto6OwZsljTWFGNT9f3bZCt88dOp6hsCcIJtWtOa03qP/r+F1/U7OqTXY4MaaVAxOCl7o03/25mxctUhYWX5MkVPptot4mnFcAp1ffXeGd+5+a5wuSpsW036yQotll95ZUQsR9R76XGvYJQS/IkWj350uRxpyhGBxFzkm53Mc61zv3hp+EzPgVQfycyPDLrcgsuou+jF+bSgvhMK60lfdlQbegmby2oMtwSBwWwCGsgiwV1fHBN+srIh0WcRjWzJQt1SELP2/cMJoSUEygbPwZxjK0PY5LrK5x6TGl9LJafc2CIEzgRLX4gOfVC4npqc1+eXOmiXoIMoEp6hW0QRu3y2DIQJrqsar2i8HyhjlOnW7dHUT6Y2n9HHteJVNl8uYoovLHSt3yH0kmjqNcFJWuJ3dkHACa4N2ghv0qpDVVy6q/wfssRRgSs5Hb8M7MVp/gtUIVpJlFuO1y6lUOE9Qawl3NfjqjNkDB7LgiW6+S+UiNB2BJh+Efqgh1og="
+>>>>>>> Stashed changes
+=======
+  "itgl_final_hash": "sha256:087e382bbbfef6e06d73ce5bb8699ff5c617656330a3ea1aaaa288132d66e489",
+  "fingerprint_fields_version": "1",
+  "trust_fingerprint": "sha256:ef03803fc756acf35931c2d21fc7a7e2fc3b54091294b3f08b5b78a439563f51",
+  "safety_fingerprint": "sha256:ef03803fc756acf35931c2d21fc7a7e2fc3b54091294b3f08b5b78a439563f51",
+  "payload_hash": "sha256:733120ac9b6dd3a4490e50cedbbf03689a5e801246afa476cabce36641540e70",
+  "signature": "Vhjlm1J0agCzxRkmwlh2TQTaeXt/NkuCyZhSS5OPWScNk8rV5Se7nVFh0cX2S5Mjf+xQQrdYFqMJlJPRUZAesLwNCZ4eVKA03tXj+MkwGJMW0h/h3sRWGJvM0nks7pWjdBmqG1pPu0oIXqdtK87VndOwoXGCIYGOrv+AG5kyli/XDe9LNAu+FbwoVGyMrKDQ88bWjOqplZ9n8396IQmgUUM3EnSM3fO1vyrEj+MpW4wwTmJ/822Np3YSS4yAdYGQwOz6E9m/rz5vuvR3QLUUrRcelj2vTpOKNjzGvZqY57x+E1OgOj6FoXq7hfhdNaxFA4ti06/3+YvqxHvHiCgUNMjhBxzcXraKFBYI3QAoL5YxnqlImjGs+qFhZenU1BE2DtnkhuQkziTP4EAUZKXUnrST3DAgRKX88peHUTkVwsU17eKoKHtjPoQQe1uHxLqObh6WVzxVaxDAMX89I7fQItdydbNpFWtlO2tv9Cp2S1IpwADssE0isjY9AJThQ7AiaYULbIDHO2C9TG6EyF44wA2Yl0d/cEnPVD6P6Uuqgc25rnFkBrNZCC+cab7kDregESrsryzdl8/SMfh8DXjvHMcrEllHybnnvTxA6svxA4+cc+9lkC58WXINWurPTIZIyteLrJTz1mO3OwN8RX7B1klrygby4MklEm0SFVzU0SU="
 >>>>>>> Stashed changes
 }
