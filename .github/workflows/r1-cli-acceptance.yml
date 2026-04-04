@@ -75,8 +75,8 @@ jobs:
       - name: CLI verify smoke (cert path + stdin)
         run: |
           set -euo pipefail
-          sir verify cert proofs/latest-audit.json --key /tmp/sir_ci_pub.pem
-          cat proofs/latest-audit.json | sir verify cert - --key /tmp/sir_ci_pub.pem
+          sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json proofs/latest-audit.json
+          cat proofs/latest-audit.json | sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json -
 
       - name: Run scenario mode (scenario_injection_chain)
         run: |
@@ -119,8 +119,8 @@ jobs:
       - name: CLI verify smoke (cert path + stdin after scenario)
         run: |
           set -euo pipefail
-          sir verify cert proofs/latest-audit.json --key /tmp/sir_ci_pub.pem
-          cat proofs/latest-audit.json | sir verify cert - --key /tmp/sir_ci_pub.pem
+          sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json proofs/latest-audit.json
+          cat proofs/latest-audit.json | sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json -
 
       - name: Create archive and verify archive via CLI
         env:
@@ -135,7 +135,7 @@ jobs:
             --copy leaks_count.txt \
             --copy harmless_blocked.txt
           RUN_DIR="$(ls -dt proofs/runs/* | head -n 1)"
-          sir verify archive "$RUN_DIR" --key /tmp/sir_ci_pub.pem
+          sir verify archive --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json "$RUN_DIR"
 
       - name: Live mode fails fast without credentials (no stale summary)
         run: |

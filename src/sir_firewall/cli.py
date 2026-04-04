@@ -59,6 +59,8 @@ def _cmd_verify_cert(ns: argparse.Namespace) -> int:
     args = [ns.path]
     if ns.key:
         args.extend(["--pubkey", ns.key])
+    if ns.key_registry:
+        args.extend(["--key-registry", ns.key_registry])
     return _run_py("tools/verify_certificate.py", args)
 
 
@@ -66,6 +68,8 @@ def _cmd_verify_archive(ns: argparse.Namespace) -> int:
     args = [ns.path]
     if ns.key:
         args.extend(["--pubkey", ns.key])
+    if ns.key_registry:
+        args.extend(["--key-registry", ns.key_registry])
     return _run_py("tools/verify_archive_receipt.py", args)
 
 
@@ -113,11 +117,13 @@ def build_parser() -> argparse.ArgumentParser:
     vcert = verify_sub.add_parser("cert")
     vcert.add_argument("path")
     vcert.add_argument("--key", default=None, help="Path to PEM public key for signature verification.")
+    vcert.add_argument("--key-registry", default=None, help="Path to key registry JSON for signing_key_id lookup.")
     vcert.set_defaults(fn=_cmd_verify_cert)
 
     varch = verify_sub.add_parser("archive")
     varch.add_argument("path")
     varch.add_argument("--key", default=None, help="Path to PEM public key for signature verification.")
+    varch.add_argument("--key-registry", default=None, help="Path to key registry JSON for signing_key_id lookup.")
     varch.set_defaults(fn=_cmd_verify_archive)
 
     packs = sub.add_parser("packs")
