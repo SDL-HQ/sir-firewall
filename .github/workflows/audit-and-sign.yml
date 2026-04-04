@@ -57,11 +57,22 @@ jobs:
           python-version: '3.11'
 
       - name: Clean install SIR Firewall (NO CACHE)
+        env:
+          DISPATCH_MODE: ${{ github.event.inputs.mode || 'audit' }}
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
           pip uninstall -y sir-firewall sir_firewall || true
-          pip install --no-cache-dir --force-reinstall -e .
+
+          mode="${DISPATCH_MODE:-audit}"
+          echo "Install mode: $mode"
+
+          if [ "$mode" = "live" ]; then
+            pip install --no-cache-dir --force-reinstall -e ".[live]"
+          else
+            pip install --no-cache-dir --force-reinstall -e .
+          fi
+
           python -c "import sir_firewall.core as c; print('LOADED FROM →', c.__file__); print('USE_SEMANTIC_CHECK IS →', c.USE_SEMANTIC_CHECK)"
 
       - name: Validate pack registry (v1)
