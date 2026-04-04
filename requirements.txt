@@ -1,7 +1,6 @@
 cryptography
-litellm
-openai
 pydantic
+ecdsa
 requests
 pytest
 pandas
