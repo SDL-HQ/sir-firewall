@@ -26,11 +26,7 @@
     "CHECKSUM_ENFORCED": true
   },
   "result": "AUDIT PASSED",
-<<<<<<< Updated upstream
-  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/23971862689",
-=======
   "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/23971868043",
->>>>>>> Stashed changes
   "commit_sha": "187f35f007d02fcb916431202ef26750fe8bc009",
   "repository": "SDL-HQ/sir-firewall",
   "signing_key_id": "default",
@@ -40,11 +36,6 @@
   "fingerprint_fields_version": "1",
   "trust_fingerprint": "sha256:ef03803fc756acf35931c2d21fc7a7e2fc3b54091294b3f08b5b78a439563f51",
   "safety_fingerprint": "sha256:ef03803fc756acf35931c2d21fc7a7e2fc3b54091294b3f08b5b78a439563f51",
-<<<<<<< Updated upstream
-  "payload_hash": "sha256:2e0ba15ec0be19c43a1747aba9247d531255bbafa324d36101fe45ac23542e19",
-  "signature": "lTLoXLQA0iePDTW6xzsUt33fsgzjAW1ixh+op/HLmU6EIRnpoNLnimHvKjWOyaljUZmtb472U2yCSvHhZqcZsgHzZqJ8ZxDtVC+3tnZUc+VQPPTBbrzDIgsnbz0oIYW2WzybSRi/aoA8NJrwff5PjGJ+6PYGEGBildLVl7pJtvMgPAiS9pme48I2U65ROAeDy65Hrces+cTlzSsSgPKrpAiJXqt9Y0GoLMR+aWGoQHYAz8yPmTExLfKnG4EY2NtI7vUTNPl2+edSv+Zemrcr/rUcR3LxYMVNiLP9Q8cbtVvGzNjY+CC4/HdIiTEZNwoXvB1g3EXrCSBdLqwYmh12D3o+eZfzLgxoGYmZyAKjoXFFfNRI/3C5x7Yf8xBaGhMQVQ8s30UAskqEjiukJeU8yO6e+0xw8DUyEx/KvPlS/JHFiTRKxsTdEF4uKLNsLiPoHN53/bbMNR+ZkVbzOql/Iq/HK/3+hIlHhDSplIGsfDSTB+PjyUKeVeb94jM5t1SXaKC/mGQk+xJhZtS8XzQZvFuRXF/0Ea+c+rYDploVFCePtxlowHZ52h6ODalCVdCFFKA/vI8t9pd05B5aLRDiqkufjdakI/Q51pQIfbLEmN95UEZnJ34PsulJek4f0K7Hxmzko5/k2c9blpSElzqR7xahb63nBAxbjcWdKMkBfoA="
-=======
   "payload_hash": "sha256:9e3762425ee058f77999df6b0b60003de23b8a257228a10fc1957c4a2008d4a5",
   "signature": "h31gYu62faTXmF1SfNA5QYncP7lm2Y4iHT3B2zDnXoOfKsXvzorEfxOxAGhiOu24mDXl6uCyuGu3AEMNSaCljIPneVmOeMY/nyK2D30yU0S/Ciln3I1u2mnr86dj3GRGyZqYRNhBCJRXHky9V8udE7Gj47/Oqlh5UUgd+j2ljSH+EXtuto6OwZsljTWFGNT9f3bZCt88dOp6hsCcIJtWtOa03qP/r+F1/U7OqTXY4MaaVAxOCl7o03/25mxctUhYWX5MkVPptot4mnFcAp1ffXeGd+5+a5wuSpsW036yQotll95ZUQsR9R76XGvYJQS/IkWj350uRxpyhGBxFzkm53Mc61zv3hp+EzPgVQfycyPDLrcgsuou+jF+bSgvhMK60lfdlQbegmby2oMtwSBwWwCGsgiwV1fHBN+srIh0WcRjWzJQt1SELP2/cMJoSUEygbPwZxjK0PY5LrK5x6TGl9LJafc2CIEzgRLX4gOfVC4npqc1+eXOmiXoIMoEp6hW0QRu3y2DIQJrqsar2i8HyhjlOnW7dHUT6Y2n9HHteJVNl8uYoovLHSt3yH0kmjqNcFJWuJ3dkHACa4N2ghv0qpDVVy6q/wfssRRgSs5Hb8M7MVp/gtUIVpJlFuO1y6lUOE9Qawl3NfjqjNkDB7LgiW6+S+UiNB2BJh+Efqgh1og="
->>>>>>> Stashed changes
 }
