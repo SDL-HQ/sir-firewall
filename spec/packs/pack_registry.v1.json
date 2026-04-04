@@ -9,7 +9,10 @@
       "version": "1.0.0",
       "suite_path": "tests/domain_packs/generic_safety.csv",
       "hash_binds_to": "decoded_prompt_content",
-      "doc_path": "tests/domain_packs/generic_safety.md"
+      "doc_path": "tests/domain_packs/generic_safety.md",
+      "pack_class": "domain",
+      "visibility": "public",
+      "maturity": "canonical"
     },
     {
       "pack_id": "pii_protection",
@@ -19,7 +22,10 @@
       "version": "1.0.0",
       "suite_path": "tests/domain_packs/pii_protection.csv",
       "hash_binds_to": "decoded_prompt_content",
-      "doc_path": "tests/domain_packs/pii_protection.md"
+      "doc_path": "tests/domain_packs/pii_protection.md",
+      "pack_class": "domain",
+      "visibility": "public",
+      "maturity": "canonical"
     },
     {
       "pack_id": "financial_services",
@@ -29,7 +35,10 @@
       "version": "1.0.0",
       "suite_path": "tests/domain_packs/financial_services.csv",
       "hash_binds_to": "decoded_prompt_content",
-      "doc_path": "tests/domain_packs/financial_services.md"
+      "doc_path": "tests/domain_packs/financial_services.md",
+      "pack_class": "domain",
+      "visibility": "public",
+      "maturity": "canonical"
     },
     {
       "pack_id": "healthcare_compliance",
@@ -39,7 +48,10 @@
       "version": "1.0.0",
       "suite_path": "tests/domain_packs/healthcare_compliance.csv",
       "hash_binds_to": "decoded_prompt_content",
-      "doc_path": "tests/domain_packs/healthcare_compliance.md"
+      "doc_path": "tests/domain_packs/healthcare_compliance.md",
+      "pack_class": "domain",
+      "visibility": "public",
+      "maturity": "canonical"
     },
     {
       "pack_id": "legal_contracts",
@@ -49,7 +61,10 @@
       "version": "1.0.0",
       "suite_path": "tests/domain_packs/legal_contracts.csv",
       "hash_binds_to": "decoded_prompt_content",
-      "doc_path": "tests/domain_packs/legal_contracts.md"
+      "doc_path": "tests/domain_packs/legal_contracts.md",
+      "pack_class": "domain",
+      "visibility": "public",
+      "maturity": "canonical"
     },
     {
       "pack_id": "insurance_underwriting",
@@ -59,7 +74,10 @@
       "version": "1.0.0",
       "suite_path": "tests/domain_packs/insurance_underwriting.csv",
       "hash_binds_to": "decoded_prompt_content",
-      "doc_path": "tests/domain_packs/insurance_underwriting.md"
+      "doc_path": "tests/domain_packs/insurance_underwriting.md",
+      "pack_class": "domain",
+      "visibility": "public",
+      "maturity": "canonical"
     },
     {
       "pack_id": "educational_content",
@@ -69,7 +87,10 @@
       "version": "1.0.0",
       "suite_path": "tests/domain_packs/educational_content.csv",
       "hash_binds_to": "decoded_prompt_content",
-      "doc_path": "tests/domain_packs/educational_content.md"
+      "doc_path": "tests/domain_packs/educational_content.md",
+      "pack_class": "domain",
+      "visibility": "public",
+      "maturity": "canonical"
     },
     {
       "pack_id": "code_generation_safety",
@@ -79,7 +100,10 @@
       "version": "1.0.0",
       "suite_path": "tests/domain_packs/code_generation_safety.csv",
       "hash_binds_to": "decoded_prompt_content",
-      "doc_path": "tests/domain_packs/code_generation_safety.md"
+      "doc_path": "tests/domain_packs/code_generation_safety.md",
+      "pack_class": "domain",
+      "visibility": "public",
+      "maturity": "canonical"
     },
     {
       "pack_id": "mental_health_clinical",
@@ -89,7 +113,23 @@
       "version": "1.0.0",
       "suite_path": "tests/domain_packs/mental_health_clinical.csv",
       "hash_binds_to": "decoded_prompt_content",
-      "doc_path": "tests/domain_packs/mental_health_clinical.md"
+      "doc_path": "tests/domain_packs/mental_health_clinical.md",
+      "pack_class": "domain",
+      "visibility": "encoded",
+      "maturity": "canonical"
+    },
+    {
+      "pack_id": "account_recovery_fraud",
+      "schema": "csv_single_turn_v1",
+      "risk_class": "domain",
+      "status": "active",
+      "version": "1.0.0",
+      "suite_path": "tests/domain_packs/account_recovery_fraud.csv",
+      "hash_binds_to": "decoded_prompt_content",
+      "pack_class": "domain",
+      "visibility": "public",
+      "maturity": "canonical",
+      "doc_path": "tests/domain_packs/account_recovery_fraud.md"
     },
     {
       "pack_id": "canary_fail",
@@ -98,7 +138,10 @@
       "status": "draft",
       "version": "1.0.0",
       "suite_path": "tests/domain_packs/canary_fail.csv",
-      "hash_binds_to": "decoded_prompt_content"
+      "hash_binds_to": "decoded_prompt_content",
+      "pack_class": "domain",
+      "visibility": "public",
+      "maturity": "demo"
     },
     {
       "pack_id": "scenario_injection_chain",
@@ -107,7 +150,10 @@
       "status": "active",
       "version": "1.0.0",
       "suite_path": "tests/scenario_packs/scenario_injection_chain.json",
-      "hash_binds_to": "decoded_prompt_content"
+      "hash_binds_to": "decoded_prompt_content",
+      "pack_class": "scenario",
+      "visibility": "public",
+      "maturity": "canonical"
     },
     {
       "pack_id": "scenario_tool_injection",
@@ -116,7 +162,10 @@
       "status": "active",
       "version": "1.0.0",
       "suite_path": "tests/scenario_packs/scenario_tool_injection.json",
-      "hash_binds_to": "decoded_prompt_content"
+      "hash_binds_to": "decoded_prompt_content",
+      "pack_class": "scenario",
+      "visibility": "public",
+      "maturity": "canonical"
     }
   ]
 }

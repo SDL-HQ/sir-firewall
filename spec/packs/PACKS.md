@@ -1,38 +1,59 @@
-# Pack Registry and Pack Hygiene
+# Pack Scale and Hygiene
 
-This repo uses a deterministic pack registry at `spec/packs/pack_registry.v1.json`.
+This file is the canonical pack guidance for R5.
 
-## Naming and ID rules
+## What a pack is
 
-- `pack_id` MUST be unique in the registry.
-- Use lowercase snake_case IDs and keep them stable over time.
-- `suite_path` MUST be a repo-relative CSV path.
-- `schema` is currently fixed to `csv_single_turn_v1`.
+A pack is a versioned test suite plus metadata in `spec/packs/pack_registry.v1.json`.
 
-## When to use `prompt_b64`
+A pack entry exists to make selection, validation, and review deterministic.
 
-- Prefer `prompt` (plain UTF-8 text) when practical.
-- Use `prompt_b64` only when text transport/escaping issues require encoded payloads.
-- In a row where both columns exist, exactly one should be populated.
+## Scope boundary
 
-## Determinism rules
+- Domain packs are CSV suites under `tests/domain_packs/`.
+- Scenario packs use scenario JSON suites under `tests/scenario_packs/`.
+- The registry already contains both pack types. R5 does not add new scenario semantics.
 
-- No embeddings, scoring, or probabilistic ranking in pack selection.
-- Registry metadata is declarative and validated with allow-lists.
-- CI validates the registry and only the active suite configured via `SIR_SUITE_PATH`.
+## Required metadata
 
-## Validators
+Each registry entry must include:
 
-Run from repo root:
+- `pack_id` (stable lowercase snake_case)
+- `schema` (`csv_single_turn_v1` or `scenario_json_v1`)
+- `risk_class` (`baseline`, `domain`, or `encoded_high_risk`)
+- `status` (`active`, `draft`, or `deprecated`)
+- `version`
+- `suite_path`
+- `hash_binds_to` (`decoded_prompt_content`)
+- `pack_class` (`domain` or `scenario`)
+- `visibility` (`public` or `encoded`)
+- `maturity` (`canonical` or `demo`)
 
-```bash
-python tools/validate_pack_registry.py --file spec/packs/pack_registry.v1.json
-python tools/validate_domain_pack.py --file tests/domain_packs/generic_safety.csv
-```
+Optional:
 
-## Suite hash binding
+- `doc_path` when a pack has a companion markdown file.
 
-- Registry field `hash_binds_to` is `decoded_prompt_content`.
-- For plain prompts, hash binding is to the prompt text.
-- For `prompt_b64`, hash binding is to decoded bytes interpreted as UTF-8 prompt content.
-- This keeps bindings stable regardless of source encoding representation.
+## Minimum pack quality bar
+
+A pack must meet all of the following:
+
+- Purpose is explicit and narrow.
+- Rows are reviewable and non-duplicative.
+- `expected` labels are deterministic (`allow` or `block`).
+- `prompt` vs `prompt_b64` usage follows validator rules.
+- Registry entry passes metadata validation.
+
+## Add or update flow
+
+1. Add or modify pack suite file.
+2. Add or update pack metadata in `spec/packs/pack_registry.v1.json`.
+3. Add or update pack documentation under `tests/domain_packs/` when applicable.
+4. Run validators:
+   - `python tools/validate_pack_registry.py --file spec/packs/pack_registry.v1.json`
+   - `python tools/validate_domain_pack.py --glob 'tests/domain_packs/*.csv'`
+
+## Determinism constraints
+
+- No scoring, ranking, or probabilistic pack selection.
+- Hash binding remains `decoded_prompt_content`.
+- Metadata is declarative and allow-listed.

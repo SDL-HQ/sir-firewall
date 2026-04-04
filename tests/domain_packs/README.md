@@ -13,6 +13,8 @@ Portable policy artefacts for testing governance enforcement.
 - [Educational Content](./educational_content.md)
 - [Legal & Contracts](./legal_contracts.md)
 
+- [Account Recovery and Fraud](./account_recovery_fraud.md)
+
 ## Artefacts
 
 - Test suites: `tests/domain_packs/*.csv`
