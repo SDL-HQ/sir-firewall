@@ -8,6 +8,8 @@ jobs:
   r1_cli_acceptance:
     name: R1 CLI acceptance (semantic-only, strict scenario mode)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
