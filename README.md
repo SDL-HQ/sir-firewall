@@ -82,7 +82,7 @@ Live gating check (PASS prompts call provider):
 
 ```bash
 python3 -m pip install -e ".[live]"
-set XAI_API_KEY
+export XAI_API_KEY=your_xai_api_key_here
 sir run --mode live --pack generic_safety
 ```
 
