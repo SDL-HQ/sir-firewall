@@ -12,6 +12,9 @@ from typing import Any
 ALLOWED_SCHEMA = {"csv_single_turn_v1", "scenario_json_v1"}
 ALLOWED_RISK_CLASS = {"baseline", "encoded_high_risk", "domain"}
 ALLOWED_STATUS = {"active", "draft", "deprecated"}
+ALLOWED_PACK_CLASS = {"domain", "scenario"}
+ALLOWED_VISIBILITY = {"public", "encoded"}
+ALLOWED_MATURITY = {"canonical", "demo"}
 REQUIRED_PACK_FIELDS = {
     "pack_id",
     "schema",
@@ -20,6 +23,9 @@ REQUIRED_PACK_FIELDS = {
     "version",
     "suite_path",
     "hash_binds_to",
+    "pack_class",
+    "visibility",
+    "maturity",
 }
 
 
@@ -78,6 +84,14 @@ def validate_registry(path: Path) -> list[str]:
         if schema not in ALLOWED_SCHEMA:
             errors.append(f"{prefix}.schema must be one of {sorted(ALLOWED_SCHEMA)}")
 
+        pack_class = pack.get("pack_class")
+        if pack_class not in ALLOWED_PACK_CLASS:
+            errors.append(f"{prefix}.pack_class must be one of {sorted(ALLOWED_PACK_CLASS)}")
+        elif schema == "csv_single_turn_v1" and pack_class != "domain":
+            errors.append(f"{prefix}.pack_class must be 'domain' when schema is csv_single_turn_v1")
+        elif schema == "scenario_json_v1" and pack_class != "scenario":
+            errors.append(f"{prefix}.pack_class must be 'scenario' when schema is scenario_json_v1")
+
         risk_class = pack.get("risk_class")
         if risk_class not in ALLOWED_RISK_CLASS:
             errors.append(f"{prefix}.risk_class must be one of {sorted(ALLOWED_RISK_CLASS)}")
@@ -85,6 +99,18 @@ def validate_registry(path: Path) -> list[str]:
         status = pack.get("status")
         if status not in ALLOWED_STATUS:
             errors.append(f"{prefix}.status must be one of {sorted(ALLOWED_STATUS)}")
+
+        visibility = pack.get("visibility")
+        if visibility not in ALLOWED_VISIBILITY:
+            errors.append(f"{prefix}.visibility must be one of {sorted(ALLOWED_VISIBILITY)}")
+        elif risk_class == "encoded_high_risk" and visibility != "encoded":
+            errors.append(f"{prefix}.visibility must be 'encoded' when risk_class is encoded_high_risk")
+
+        maturity = pack.get("maturity")
+        if maturity not in ALLOWED_MATURITY:
+            errors.append(f"{prefix}.maturity must be one of {sorted(ALLOWED_MATURITY)}")
+        elif status == "draft" and maturity != "demo":
+            errors.append(f"{prefix}.maturity must be 'demo' when status is draft")
 
         suite_path = pack.get("suite_path")
         if not isinstance(suite_path, str) or not suite_path:

@@ -5,7 +5,6 @@ version = "0.1.0"
 dependencies = [
   "cryptography",
   "pydantic",
-  "ecdsa",
   "requests",
   "pytest",
   "pandas"
@@ -13,6 +12,9 @@ dependencies = [
 
 [project.optional-dependencies]
 live = ["openai", "litellm"]
+
+[project.scripts]
+sir = "sir_firewall.cli:main"
 
 [build-system]
 requires = ["setuptools>=45", "wheel"]
@@ -23,3 +25,6 @@ where = ["src"]
 
 [tool.setuptools.package-dir]
 "sir_firewall" = "src/sir_firewall"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

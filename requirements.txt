@@ -1,6 +1,5 @@
 cryptography
 pydantic
-ecdsa
 requests
 pytest
 pandas

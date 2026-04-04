@@ -17,6 +17,7 @@ import hashlib
 import json
 import os
 import shutil
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -25,6 +26,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 
 
 EVIDENCE_CONTRACT_VERSION = "v1"
+BENCHMARK_INDEX_VERSION = "benchmark_index.v1"
 
 
 def _read_json(path: Path) -> Dict[str, Any]:
@@ -71,6 +73,126 @@ def _index_entry_from_audit(run_id: str, audit: Dict[str, Any]) -> Dict[str, Any
         "itgl_final_hash": audit.get("itgl_final_hash"),
         "ci_run_url": audit.get("ci_run_url"),
         "path": f"runs/{run_id}/",
+    }
+
+
+def _is_passing_result(result: Any) -> bool:
+    if not isinstance(result, str):
+        return False
+    return result.strip().upper() in {"AUDIT PASSED"}
+
+
+def _validated_run_id(raw_run_id: Any) -> str:
+    run_id = str(raw_run_id or "")
+    if not run_id:
+        raise ValueError("run_id is empty")
+    if any(sep in run_id for sep in ("/", "\\")):
+        raise ValueError(f"run_id contains path separator: {run_id!r}")
+    if run_id in {".", ".."} or ".." in run_id:
+        raise ValueError(f"run_id contains traversal-like segment: {run_id!r}")
+    return run_id
+
+
+def _benchmark_entry_from_run(runs_dir: Path, run: Dict[str, Any]) -> Dict[str, Any]:
+    run_id = _validated_run_id(run.get("run_id"))
+    run_path = str(run.get("path") or f"runs/{run_id}/")
+    run_dir = runs_dir / run_id
+
+    expected_run_path = f"runs/{run_id}/"
+    if run_path != expected_run_path:
+        print(
+            f"WARN: unexpected run path for run_id={run_id!r}: {run_path!r} "
+            f"(expected {expected_run_path!r}); using run_id-derived paths",
+            file=sys.stderr,
+        )
+
+    try:
+        run_dir.resolve().relative_to(runs_dir.resolve())
+    except ValueError as exc:
+        raise ValueError(
+            f"resolved run directory escapes runs_dir for run_id={run_id!r}"
+        ) from exc
+
+    audit: Dict[str, Any] = {}
+    audit_parse_error: Optional[str] = None
+    audit_path = run_dir / "audit.json"
+    if audit_path.exists():
+        try:
+            audit = _read_json(audit_path)
+        except json.JSONDecodeError as exc:
+            audit = {}
+            audit_parse_error = f"invalid JSON in {audit_path}: {exc}"
+            print(f"WARN: {audit_parse_error}", file=sys.stderr)
+
+    def artifact_path(name: str) -> str:
+        return f"runs/{run_id}/{name}"
+
+    evidence = {
+        "audit": artifact_path("audit.json"),
+        "manifest": artifact_path("manifest.json"),
+        "archive_receipt": artifact_path("archive_receipt.json"),
+        "run_summary": artifact_path("proofs/run_summary.json"),
+        "itgl_ledger": artifact_path("proofs/itgl_ledger.jsonl"),
+        "itgl_final_hash": artifact_path("proofs/itgl_final_hash.txt"),
+        "attempt_log": artifact_path("proofs/latest-attempts.log"),
+    }
+
+    entry: Dict[str, Any] = {
+        "run_id": run_id,
+        "run_timestamp_utc": run.get("date") or audit.get("date") or audit.get("timestamp_utc"),
+        "result": run.get("result") or audit.get("result"),
+        "proof_class": run.get("proof_class") or audit.get("proof_class"),
+        "suite": {
+            "pack_id": run.get("pack_id") or audit.get("pack_id"),
+            "pack_version": run.get("pack_version") or audit.get("pack_version"),
+        },
+        # comparison contains observed values only (counts + hashes), never a derived score.
+        "comparison": {
+            "leaks": _first_not_none(run.get("leaks"), audit.get("successful_leaks"), audit.get("leaks"), audit.get("jailbreaks_leaked")),
+            "harmless_blocked": _first_not_none(run.get("harmless_blocked"), audit.get("harmless_blocked")),
+            "provider_call_attempts": audit.get("provider_call_attempts"),
+            "provider_call_successes": audit.get("provider_call_successes"),
+            "provider_call_failures": audit.get("provider_call_failures"),
+            "trust_fingerprint": run.get("trust_fingerprint") or run.get("safety_fingerprint") or audit.get("trust_fingerprint") or audit.get("safety_fingerprint"),
+            "itgl_final_hash": run.get("itgl_final_hash") or audit.get("itgl_final_hash"),
+        },
+        "ci_run_url": run.get("ci_run_url") or audit.get("ci_run_url"),
+        "evidence": evidence,
+    }
+    if audit_parse_error:
+        entry["evidence_error"] = audit_parse_error
+    return entry
+
+
+def _build_benchmark_index(runs_dir: Path, runs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    entries: List[Dict[str, Any]] = []
+    for run in runs:
+        try:
+            entry = _benchmark_entry_from_run(runs_dir=runs_dir, run=run)
+        except ValueError as exc:
+            print(f"WARN: skipping malformed run index entry: {exc}", file=sys.stderr)
+            continue
+        entries.append(entry)
+
+    latest_run = entries[0] if entries else None
+    latest_passing_run = next((entry for entry in entries if _is_passing_result(entry.get("result"))), None)
+
+    return {
+        "version": BENCHMARK_INDEX_VERSION,
+        "updated_at_utc": _utc_now_z(),
+        "latest_run": {
+            "run_id": latest_run.get("run_id"),
+            "result": latest_run.get("result"),
+        }
+        if latest_run
+        else None,
+        "latest_passing_run": {
+            "run_id": latest_passing_run.get("run_id"),
+            "result": latest_passing_run.get("result"),
+        }
+        if latest_passing_run
+        else None,
+        "entries": entries,
     }
 
 
@@ -311,11 +433,16 @@ def main() -> int:
     }
     _write_json(index_path, new_index)
 
+    benchmark_index = _build_benchmark_index(runs_dir=runs_dir, runs=runs)
+    benchmark_path = runs_dir / f"{BENCHMARK_INDEX_VERSION}.json"
+    _write_json(benchmark_path, benchmark_index)
+
     print(f"OK: Archived run {run_id} -> {run_dir}")
     print(f"OK: Wrote run id -> {run_id_path}")
     print(f"OK: Wrote manifest -> {run_dir / 'manifest.json'}")
     print(f"OK: Wrote archive receipt -> {run_dir / 'archive_receipt.json'}")
     print(f"OK: Updated index -> {index_path}")
+    print(f"OK: Updated benchmark index -> {benchmark_path}")
     return 0
 
 

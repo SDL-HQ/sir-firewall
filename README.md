@@ -10,6 +10,8 @@ Models provide capability. SIR makes governance enforceable and provable. It doe
 
 SIR is built for high-stakes AI: regulated systems and agents that touch real money, real data, or real-world decisions. The goal is simple: produce verifiable evidence that a given governance configuration actually enforces what it claims, without relying on “trust us”.
 
+Terminology note: in public/operator wording we prefer **governance gate**. Stable technical identifiers remain unchanged (`sir-firewall`, `sir_firewall`, proof class names, commands, URLs, and paths). See `docs/terminology.md`.
+
 ---
 
 ## Live proof (GitHub Pages)
@@ -56,24 +58,39 @@ python3 tools/validate_certificate_contract.py proofs/latest-audit.json
 
 ## Quickstart
 
-Audit-only (no model calls):
+Canonical install paths:
 
 ```bash
-pip install -e .
-python red_team_suite.py --mode audit --pack generic_safety
+# audit mode
+python3 -m pip install -e .
+
+# live mode
+python3 -m pip install -e ".[live]"
+
+# verify-only (published certificate, no local run)
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
+```
+
+Operator path (recommended):
+
+```bash
+python3 -m pip install -e .
+sir run --mode audit --pack generic_safety
 ```
 
 Live gating check (PASS prompts call provider):
 
 ```bash
-pip install -e ".[live]"
-set XAI_API_KEY
-python red_team_suite.py --mode live --pack generic_safety
+python3 -m pip install -e ".[live]"
+export XAI_API_KEY=your_xai_api_key_here
+sir run --mode live --pack generic_safety
 ```
 
 Windows note: if `pip install -e ".[live]"` fails due to long paths, run from a short path (e.g. `C:\sir\...`) or enable Windows long path support.
 
 `publish_run.py` produces signed archive receipts and requires `SDL_PRIVATE_KEY_PEM`; not required for basic evaluation.
+
+Low-level `python3 tools/...` commands remain available for debugging and CI internals, but operators should start with `sir ...`.
 
 ---
 
@@ -152,8 +169,10 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 
 ## Guides
 
+* Assurance kit (canonical evaluation and verification path): `docs/assurance-kit.md`
 * Engineer guide (local runs, signing, serving): `docs/engineer-guide.md`
 * Trial guide (auditors, insurers, evidence capture): `docs/trial-guide.md`
+* Key governance readiness (authority map and CRYPTO_ENFORCED checklist): `docs/key-governance-readiness.md`
 * Retention / Tier B export: `RETENTION.md`
 
 ---

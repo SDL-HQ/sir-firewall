@@ -21,13 +21,16 @@
   <h1>SIR Firewall — Run Archive</h1>
   <p class="muted">
     Immutable per-run archives. Latest pointer remains at <a href="../latest-audit.html">proofs/latest-audit.html</a>.
-    Machine index: <a href="index.json">runs/index.json</a>.
+    Machine indexes: <a href="index.json">runs/index.json</a> and <a href="benchmark_index.v1.json">runs/benchmark_index.v1.json</a>.
+    This page is a compact evidence log, not a quality ranking dashboard.
   </p>
 
   <table>
     <thead>
       <tr>
         <th>Date</th>
+        <th>Suite</th>
+        <th>Proof class</th>
         <th>Result</th>
         <th>Leaks</th>
         <th>Fingerprint</th>
@@ -36,7 +39,7 @@
       </tr>
     </thead>
     <tbody id="rows">
-      <tr><td colspan="6">Loading…</td></tr>
+      <tr><td colspan="8">Loading…</td></tr>
     </tbody>
   </table>
 
@@ -85,13 +88,15 @@
 
         const runs = Array.isArray(idx) ? idx : (Array.isArray(idx?.runs) ? idx.runs : []);
         if (!runs.length) {
-          rows.innerHTML = `<tr><td colspan="6">No archived runs yet.</td></tr>`;
+          rows.innerHTML = `<tr><td colspan="8">No archived runs yet.</td></tr>`;
           return;
         }
 
         rows.innerHTML = runs.map(r => {
           const date = esc(r.date ?? r.timestamp_utc ?? "—");
           const result = esc(r.result ?? "—");
+          const suite = esc(r.pack_id ?? "—");
+          const proofClass = esc(r.proof_class ?? "—");
           const leaks = esc(r.leaks ?? r.jailbreaks_leaked ?? "—");
           const fp = esc((r.trust_fingerprint ?? r.safety_fingerprint ?? "—").toString().slice(0, 20));
           const path = esc(r.path ?? "");
@@ -109,6 +114,8 @@
 
           return `<tr>
             <td>${date}</td>
+            <td><code>${suite}</code></td>
+            <td><code>${proofClass}</code></td>
             <td>${badge}</td>
             <td>${leaks}</td>
             <td><code>${fp}</code></td>
@@ -118,7 +125,7 @@
         }).join("");
       } catch (e) {
         const reason = esc(e?.message || "Unknown error");
-        rows.innerHTML = `<tr><td colspan="6">Failed to load index.json (${reason})</td></tr>`;
+        rows.innerHTML = `<tr><td colspan="8">Failed to load index.json (${reason})</td></tr>`;
       }
     }
 

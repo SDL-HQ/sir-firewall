@@ -1,126 +1,48 @@
 # SIR Trial Guide
 
-This guide is for auditors, insurers, regulators, and cautious organisations that want to verify evidence without changing production systems.
+This guide is for auditors, insurers, regulators, and cautious organisations that want a role-specific way to evaluate SIR evidence without changing production systems.
 
-## What you can verify today
+For the canonical run and verification workflow, use `docs/assurance-kit.md`.
+
+## What to review first
 
 Public proof surfaces:
+
 - Human certificate page (latest PASS): https://sdl-hq.github.io/sir-firewall/latest-audit.html
 - Latest run status (PASS / FAIL / INCONCLUSIVE): https://sdl-hq.github.io/sir-firewall/latest-run.json
 - Run archives (passes + failures): https://sdl-hq.github.io/sir-firewall/runs/index.html
 - Raw signed JSON certificate: https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json
 
-Published proof is signed by SDL. Local runs can be signed with local dev keys for testing, but they are not SDL-signed certificates.
+Semantics:
 
-Important semantics:
-- `latest-audit.*` is the latest PASS proof (last known good).
-- `latest-run.json` reflects the most recent run status, including FAIL or INCONCLUSIVE.
+- `latest-audit.*` is latest passing proof (last known good)
+- `latest-run.json` is most recent run result, including fail or inconclusive outcomes
 
-## Minimal offline verification
+## Trial workflow
 
-This verifies the latest published certificate locally.
+1. Follow the canonical path in `docs/assurance-kit.md`.
+2. Record verification outputs and artefact hashes in your internal review file.
+3. Keep pass/fail truth explicit by capturing both latest pass and latest run surfaces.
 
-### Step 1. Get the verifier (one time)
+## What to record for assurance evidence
 
-Mac/Linux:
+For governance or underwriting records, capture:
 
-```bash
-git clone https://github.com/SDL-HQ/sir-firewall.git && cd sir-firewall && \
-python3 -m venv .venv && source .venv/bin/activate && \
-python3 -m pip install -U pip && python3 -m pip install -e .
-```
+- signed certificate JSON used for verification
+- verification output lines (certificate and archive when applicable)
+- run identifier and run timestamp
+- links or paths to latest pass, latest run, and run archive surfaces
+- benchmark index excerpt showing `latest_run` and `latest_passing_run`
 
-Windows (PowerShell):
+## Questions this guide helps answer
 
-* Use PowerShell and activate the venv with: `.\.venv\Scripts\Activate.ps1` (or run in WSL).
+- Was the reviewed proof signature-valid?
+- Is there a clear chain from run artefacts to certificate and archive receipt?
+- Are latest pass and latest run interpreted honestly?
+- Is benchmark data being treated as evidence mapping rather than scoring?
 
-### Step 2. Verify the published certificate
+## Scope boundaries
 
-```bash
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
-```
+This guide does not redefine proof semantics or verification commands.
 
-Expected output:
-
-```text
-OK: Certificate signature valid and payload_hash matches.
-```
-
-**Note on the trailing `-`:** `-` means “read JSON from stdin” (the piped output). Some older pages/publications may show the command without `-`, but this repo standardises on the explicit stdin form.
-
-If you prefer to download the file instead of piping:
-
-```bash
-curl -s -o latest-audit.json https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json
-python3 tools/verify_certificate.py latest-audit.json
-python3 tools/validate_certificate_contract.py latest-audit.json
-```
-
-If you see an error about `cryptography` not being installed:
-
-```bash
-python3 -m pip install cryptography
-```
-
-## Optional: verify a specific run archive (chain-of-custody)
-
-If you want to verify a specific archived run folder offline:
-
-```bash
-python tools/verify_archive_receipt.py proofs/runs/<run_id>/
-```
-
-Expected output:
-
-```text
-OK: archive receipt verified for proofs/runs/<run_id>
-```
-
-This verifies the per-run manifest inventory and the signed `archive_receipt.json`.
-
-## What the certificate binds to
-
-When reviewing the certificate JSON, these are the fields that matter:
-
-* Suite hash
-  The SHA-256 fingerprint of the test suite used for the run.
-
-* Policy hash (and policy version when present)
-  The policy configuration that was enforced.
-
-* ITGL final hash
-  The final hash of the governance ledger for the run. This proves the run log chain matches the result.
-
-* Trust fingerprint (`trust_fingerprint`, with `safety_fingerprint` as legacy alias)
-  A stable identifier for the run configuration and outcome binding.
-
-* Evidence contract (versioned)
-  `spec/evidence_contract.v1.json` defines proof classes and required certificate semantics.
-
-Additional semantics:
-
-* `proof_class` labels the proof mode (`FIREWALL_ONLY_AUDIT`, `LIVE_GATING_CHECK`, `SCENARIO_AUDIT`).
-* `provider_call_attempts` counts attempted downstream calls (including retries/timeouts).
-* `provider_call_successes` is informational successful-call count.
-* `model_calls_made` is a legacy alias equal to `provider_call_attempts`.
-
-## What to record for evidence
-
-For an internal governance record or underwriting file, capture:
-
-* The raw signed certificate JSON (`latest-audit.json`)
-* The verification output line (`OK: ...`)
-* The human certificate URL, latest-run URL, and run archive URL
-* The date and run identifier shown in the certificate
-
-## Optional local trial (no production impact)
-
-If you want to run a local audit on your own machine (without touching production traffic), follow the Engineer Guide:
-
-* `docs/engineer-guide.md`
-
-This is typically used for:
-
-* internal evaluation
-* regression testing across policy versions
-* comparing different domain packs or suite variants
+Use `docs/assurance-kit.md` as the canonical source for those details.
