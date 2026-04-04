@@ -85,8 +85,19 @@ def _is_passing_result(result: Any) -> bool:
 def _benchmark_entry_from_run(runs_dir: Path, run: Dict[str, Any]) -> Dict[str, Any]:
     run_id = str(run.get("run_id") or "")
     run_path = str(run.get("path") or f"runs/{run_id}/")
-    rel_dir = run_path.removeprefix("runs/").strip("/")
-    run_dir = runs_dir / rel_dir
+    run_dir = runs_dir / run_id
+
+    expected_run_path = f"runs/{run_id}/"
+    if run_path != expected_run_path:
+        print(
+            f"WARN: ignoring unexpected run path for run_id={run_id!r}: {run_path!r} (expected {expected_run_path!r})",
+            file=sys.stderr,
+        )
+
+    try:
+        run_dir.resolve().relative_to(runs_dir.resolve())
+    except ValueError:
+        raise SystemExit(f"ERROR: resolved run directory escapes runs_dir for run_id={run_id!r}")
 
     audit: Dict[str, Any] = {}
     audit_parse_error: Optional[str] = None
