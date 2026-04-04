@@ -26,8 +26,8 @@
     "CHECKSUM_ENFORCED": true
   },
   "result": "AUDIT PASSED",
-  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/23971848644",
-  "commit_sha": "d9b04feefac4f099759749ff859acf593ac8a2a3",
+  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/23971862689",
+  "commit_sha": "187f35f007d02fcb916431202ef26750fe8bc009",
   "repository": "SDL-HQ/sir-firewall",
   "signing_key_id": "default",
   "policy_version": "2025-12-05-R3",
@@ -36,6 +36,6 @@
   "fingerprint_fields_version": "1",
   "trust_fingerprint": "sha256:ef03803fc756acf35931c2d21fc7a7e2fc3b54091294b3f08b5b78a439563f51",
   "safety_fingerprint": "sha256:ef03803fc756acf35931c2d21fc7a7e2fc3b54091294b3f08b5b78a439563f51",
-  "payload_hash": "sha256:c5fc21ffae8a380f73aa66f69702f1ee2e9696558870697eed847771e3ba7f08",
-  "signature": "tOFbsamFMNvaSBNmg125Rp2G0nsqhEUJ1rib7c+YVXMth8YxQoPZHyoWXCNRW+rWlSRu1JxawDqmBkWmnYMDuqWFFFo0kzlGSXq7w3dX9Xuiu7Alf+KNlS1rUkDWus7vvx8RM7jMN1XiHlDe8mH/ajbKrUmrKgsixcl1XKKxhh40e84SgZm0xoF9TD/2O5PBCQwhgVdMk8X4gm7MaZgAPYJm/iecVzpLy/9rv7b/vPs2y1+WLfrG56nTF92f1WuO8EnBo7N4Q3FLtPLOER6OJqieugZjUe/YitAmDc/Bp6NR2XNwfsIb1prFgSm95U2xsjDVxq4YDh5y3R/BUhXinukzhRtYb1Bq7seybBRpi5TdtsefNm0J+hi38+VgNw9ODS3SWxXDlv8tBLonwJjbKpBdUibzfgyOBq/Rux2caC25CL40sPxi2hZhNNps1U8ObxGYsc9+dzVYzbsiIPFqh1eFprKThkeSeEG0MU1cLmwYmyqb5oU4By0n6fzUphP1ORxP2pbin7CAQ9vr1xz90yiXosVVSw+ekhaTwGdvESeYoL9Zudi7zPg9o4fKjbU8ZoQn93kLgmEhPTXrfIBhVb24rk7UQ+aIxx3BSEWvG39rXv3tSknvoUr2+1Kgfhxe8/KiFwEe11ynnk7ktvM16dE8NXOafkM39wpnvQJYQ9M="
+  "payload_hash": "sha256:2e0ba15ec0be19c43a1747aba9247d531255bbafa324d36101fe45ac23542e19",
+  "signature": "lTLoXLQA0iePDTW6xzsUt33fsgzjAW1ixh+op/HLmU6EIRnpoNLnimHvKjWOyaljUZmtb472U2yCSvHhZqcZsgHzZqJ8ZxDtVC+3tnZUc+VQPPTBbrzDIgsnbz0oIYW2WzybSRi/aoA8NJrwff5PjGJ+6PYGEGBildLVl7pJtvMgPAiS9pme48I2U65ROAeDy65Hrces+cTlzSsSgPKrpAiJXqt9Y0GoLMR+aWGoQHYAz8yPmTExLfKnG4EY2NtI7vUTNPl2+edSv+Zemrcr/rUcR3LxYMVNiLP9Q8cbtVvGzNjY+CC4/HdIiTEZNwoXvB1g3EXrCSBdLqwYmh12D3o+eZfzLgxoGYmZyAKjoXFFfNRI/3C5x7Yf8xBaGhMQVQ8s30UAskqEjiukJeU8yO6e+0xw8DUyEx/KvPlS/JHFiTRKxsTdEF4uKLNsLiPoHN53/bbMNR+ZkVbzOql/Iq/HK/3+hIlHhDSplIGsfDSTB+PjyUKeVeb94jM5t1SXaKC/mGQk+xJhZtS8XzQZvFuRXF/0Ea+c+rYDploVFCePtxlowHZ52h6ODalCVdCFFKA/vI8t9pd05B5aLRDiqkufjdakI/Q51pQIfbLEmN95UEZnJ34PsulJek4f0K7Hxmzko5/k2c9blpSElzqR7xahb63nBAxbjcWdKMkBfoA="
 }
