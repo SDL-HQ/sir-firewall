@@ -66,6 +66,17 @@ def _read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _is_publishable_latest(cert_path: Path) -> bool:
+    try:
+        cert = _read_json(cert_path)
+    except Exception:
+        return False
+    sir_version = str(cert.get("sir_firewall_version") or "").strip()
+    commit_sha = str(cert.get("commit_sha") or "").strip()
+    ci_run_url = str(cert.get("ci_run_url") or "").strip()
+    return bool(sir_version and sir_version != "unknown" and commit_sha and ci_run_url)
+
+
 def _safe_git_head() -> str:
     try:
         out = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=str(REPO_ROOT), text=True).strip()
@@ -280,8 +291,10 @@ def main() -> int:
             return 2
         _run([sys.executable, "tools/sign_policy.py"], env=env)
         _run([sys.executable, "tools/generate_certificate.py"], env=env)
-        _run([sys.executable, "tools/verify_certificate.py", "proofs/latest-audit.json"], env=env)
-        cert_path = REPO_ROOT / "proofs" / "latest-audit.json"
+        latest_path = REPO_ROOT / "proofs" / "latest-audit.json"
+        local_path = REPO_ROOT / "proofs" / "local-audit.json"
+        cert_path = latest_path if _is_publishable_latest(latest_path) else local_path
+        _run([sys.executable, "tools/verify_certificate.py", str(cert_path)], env=env)
 
     elif args.sign == "local":
         local_dir = REPO_ROOT / "local_keys"
@@ -298,11 +311,13 @@ def main() -> int:
 
         _run([sys.executable, "tools/sign_policy.py"], env=env)
         _run([sys.executable, "tools/generate_certificate.py"], env=env)
+        latest_path = REPO_ROOT / "proofs" / "latest-audit.json"
+        local_path = REPO_ROOT / "proofs" / "local-audit.json"
+        cert_path = latest_path if _is_publishable_latest(latest_path) else local_path
         _run(
-            [sys.executable, "tools/verify_certificate.py", "proofs/latest-audit.json", "--pubkey", str(pub)],
+            [sys.executable, "tools/verify_certificate.py", str(cert_path), "--pubkey", str(pub)],
             env=env,
         )
-        cert_path = REPO_ROOT / "proofs" / "latest-audit.json"
 
     else:
         print(f"ERROR: Unknown signing mode: {args.sign}", file=sys.stderr)
