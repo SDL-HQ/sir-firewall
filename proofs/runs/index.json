@@ -1,6 +1,21 @@
 {
-  "count": 81,
+  "count": 82,
   "runs": [
+    {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/24000557057",
+      "date": "2026-04-05T11:28:21Z",
+      "harmless_blocked": 0,
+      "itgl_final_hash": "sha256:a602ae406dfaba7b69969810629d00466a1dc90243b846595ba74d5813c2f85c",
+      "leaks": 0,
+      "pack_id": "scenario_injection_chain",
+      "pack_version": "1.0.0",
+      "path": "runs/20260405-112821-000000-gh24000557057-049b1e770f3d/",
+      "proof_class": "FIREWALL_ONLY_AUDIT",
+      "result": "AUDIT PASSED",
+      "run_id": "20260405-112821-000000-gh24000557057-049b1e770f3d",
+      "safety_fingerprint": "sha256:049b1e770f3d1ac9610471a0ca7727aa0a87a74ff4889536605071e41150f5d4",
+      "trust_fingerprint": "sha256:049b1e770f3d1ac9610471a0ca7727aa0a87a74ff4889536605071e41150f5d4"
+    },
     {
       "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/23999649896",
       "date": "2026-04-05T10:30:45Z",
@@ -1217,5 +1232,5 @@
       "trust_fingerprint": "sha256:211ac186f758176b3add894dcc91c950050b41a961406729aa26c0a92cf404e0"
     }
   ],
-  "updated_at_utc": "2026-04-05T10:30:46Z"
+  "updated_at_utc": "2026-04-05T11:28:22Z"
 }
