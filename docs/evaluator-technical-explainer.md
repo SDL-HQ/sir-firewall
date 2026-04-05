@@ -28,7 +28,7 @@ SIR produces evidence artefacts, including:
 - run-level evidence (`proofs/run_summary.json`, `proofs/latest-attempts.log`)
 - integrity chain artefacts (`proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`)
 - signed certificate pointer for latest passing audit (`proofs/latest-audit.json`, `proofs/latest-audit.html`)
-- latest run status surface (`proofs/latest-run.json`) with PASS/FAIL/INCONCLUSIVE truth
+- latest run status surface (`docs/latest-run.json`, served as `/latest-run.json`) with PASS/FAIL/INCONCLUSIVE truth
 - per-run archive evidence (`proofs/runs/<run_id>/...`) with manifest, audit snapshot, and archive receipt
 - benchmark index mapping (`proofs/runs/benchmark_index.v1.json`) as evidence-linked comparison rows
 
