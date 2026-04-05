@@ -173,3 +173,26 @@ python3 tools/verify_itgl.py
 
 This explainer defines evaluator-facing semantics only.
 It does not introduce new proof classes, workflows, benchmark design, or product-surface expansion.
+
+### D11 clarification on structured evidence surfacing
+
+D11 reviewed whether benchmark evidence should expose extra structured metadata now.
+
+Current decision:
+
+- No new benchmark scoring or analytics layer.
+- No new independent truth surface.
+- Continue using benchmark rows as attributable evidence records only.
+
+Evaluator-readable checks that are in scope now (using existing fields):
+
+- For a fixed `row_identity`, inspect repeated PASS/FAIL/INCONCLUSIVE outcomes.
+- For comparable repeated rows, inspect whether `comparison.trust_fingerprint` remains stable or changes.
+- For comparable repeated rows, inspect whether `comparison.itgl_final_hash` remains stable or changes.
+
+Checks explicitly out of scope now:
+
+- inferred risk scoring from distributions
+- rule/category heatmaps
+- trend dashboards or coverage dashboards
+- threat-intelligence style interpretation from benchmark metadata
