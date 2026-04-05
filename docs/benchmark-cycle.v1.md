@@ -1,4 +1,4 @@
-# SIR Canonical Benchmark Cycle v1 (D4)
+# SIR Canonical Benchmark Cycle v1
 
 This document locks the **first benchmark cycle contract**.
 
