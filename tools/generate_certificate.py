@@ -192,6 +192,30 @@ def _git_commit_sha() -> str:
         return ""
 
 
+def _is_publishable_latest(cert: Dict[str, Any]) -> bool:
+    """Canonical latest-audit.* requires attributable provenance."""
+    sir_version = str(cert.get("sir_firewall_version") or "").strip()
+    commit_sha = str(cert.get("commit_sha") or "").strip()
+    ci_run_url = str(cert.get("ci_run_url") or "").strip()
+    return bool(sir_version and sir_version != "unknown" and commit_sha and ci_run_url)
+
+
+def _write_html_from_template(*, template_path: str, out_path: str, stamp: str, target_json_name: str) -> None:
+    """Render HTML from template and switch fetch target when needed."""
+    with open(template_path, "r", encoding="utf-8") as t:
+        html = t.read()
+
+    if target_json_name != "latest-audit.json":
+        html = html.replace("latest-audit.json", target_json_name)
+
+    if not html.endswith("\n"):
+        html += "\n"
+    html += stamp
+
+    with open(out_path, "w", encoding="utf-8") as out:
+        out.write(html)
+
+
 def _trust_fingerprint_v1(
     sir_version: str,
     policy_hash: str,
@@ -337,28 +361,34 @@ def main() -> None:
 
     with open(archival, "w", encoding="utf-8") as f:
         json.dump(cert, f, indent=2, ensure_ascii=False)
-    with open("proofs/latest-audit.json", "w", encoding="utf-8") as f:
-        json.dump(cert, f, indent=2, ensure_ascii=False)
 
     # HTML is a JS template that reads latest-audit.json at runtime.
     # Append a small build stamp so GitHub history stays visually aligned with JSON updates.
+    publishable_latest = _is_publishable_latest(cert)
+    json_out = "proofs/latest-audit.json" if publishable_latest else "proofs/local-audit.json"
+    html_out = "proofs/latest-audit.html" if publishable_latest else "proofs/local-audit.html"
+    target_json_name = "latest-audit.json" if publishable_latest else "local-audit.json"
+    with open(json_out, "w", encoding="utf-8") as f:
+        json.dump(cert, f, indent=2, ensure_ascii=False)
+
     try:
-        with open("proofs/template.html", "r", encoding="utf-8") as t:
-            html = t.read()
-
         stamp = f"<!-- SIR_BUILD: date={cert.get('date','')} payload_hash={cert.get('payload_hash','')} -->\n"
-        if not html.endswith("\n"):
-            html += "\n"
-        html += stamp
-
-        with open("proofs/latest-audit.html", "w", encoding="utf-8") as out:
-            out.write(html)
-        print("OK: HTML written from proofs/template.html (with build stamp)")
+        _write_html_from_template(
+            template_path="proofs/template.html",
+            out_path=html_out,
+            stamp=stamp,
+            target_json_name=target_json_name,
+        )
+        print(f"OK: HTML written from proofs/template.html (with build stamp) → {html_out}")
     except Exception as e:
         print(f"WARNING: HTML generation failed: {e}")
 
     print(f"OK: Certificate → {archival}")
-    print("OK: Latest proof → proofs/latest-audit.json + proofs/latest-audit.html")
+    if publishable_latest:
+        print("OK: Latest proof → proofs/latest-audit.json + proofs/latest-audit.html")
+    else:
+        print("OK: Local proof only → proofs/local-audit.json + proofs/local-audit.html")
+        print("INFO: Canonical latest-audit.* not updated (missing attributable provenance fields).")
 
 
 if __name__ == "__main__":
