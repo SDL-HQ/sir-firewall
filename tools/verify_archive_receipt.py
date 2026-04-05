@@ -81,6 +81,7 @@ def main() -> int:
         help="Fail when signing_key_id is present but key registry is missing/unreadable.",
     )
     args = ap.parse_args()
+    pubkey_explicit = "--pubkey" in sys.argv
 
     try:
         archive_dir = _resolve_archive_dir(Path(args.archive_path))
@@ -132,16 +133,24 @@ def main() -> int:
         if registry_path.exists():
             entry = find_registry_key(registry_path, signing_key_id)
             if entry is None:
-                print(
-                    f"ERROR: signing_key_id not found in key registry: {signing_key_id}",
-                    file=sys.stderr,
-                )
-                return 2
-            allowed, reason = revocation_allows_proof(entry, receipt.get("timestamp_utc"))
-            if not allowed:
-                print(f"ERROR: revoked-key verification failure: {reason}", file=sys.stderr)
-                return 2
-            public_key = serialization.load_pem_public_key(public_key_pem_from_entry(entry).encode("utf-8"))
+                if pubkey_explicit and not args.require_registry:
+                    print(
+                        "WARNING: signing_key_id not found in key registry; using explicit --pubkey for local/dev verification only (revocation checks not enforced).",
+                        file=sys.stderr,
+                    )
+                    public_key = serialization.load_pem_public_key(Path(args.pubkey).read_bytes())
+                else:
+                    print(
+                        f"ERROR: signing_key_id not found in key registry: {signing_key_id}",
+                        file=sys.stderr,
+                    )
+                    return 2
+            else:
+                allowed, reason = revocation_allows_proof(entry, receipt.get("timestamp_utc"))
+                if not allowed:
+                    print(f"ERROR: revoked-key verification failure: {reason}", file=sys.stderr)
+                    return 2
+                public_key = serialization.load_pem_public_key(public_key_pem_from_entry(entry).encode("utf-8"))
         else:
             if args.require_registry:
                 print(

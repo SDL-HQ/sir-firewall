@@ -166,6 +166,7 @@ sir verify cert proofs/latest-audit.json --key <pubkey.pem>
 ```
 
 Note: certificate generation is a separate step and is not automatic from `sir run`. Local/non-authoritative certificates may not validate against default trust anchors unless `--key` (or a matching key registry) is provided.
+Local generation aims to preserve attribution fields (for example `sir_firewall_version` and `commit_sha`) where possible, while leaving CI-only fields (for example `ci_run_url`) explicitly local/empty when CI context is absent.
 
 ### 5) Verify archived run receipt offline
 
@@ -176,6 +177,7 @@ sir verify archive proofs/runs/<run_id>/
 ```
 
 Note: archive publication is a separate step (for example via `tools/publish_run.py`) and requires signing key material.
+If a local/dev archive was signed with an ephemeral key and its `signing_key_id` does not resolve in the default key registry, pass an explicit matching public key (`--key` / `--pubkey`) for local signature verification. This verifies signature integrity but does not upgrade the proof to SDL/public-authoritative trust semantics.
 
 ### 6) Interpret benchmark index honestly
 

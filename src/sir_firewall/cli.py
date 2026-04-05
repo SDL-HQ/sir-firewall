@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -20,6 +22,21 @@ def _run_py(script_rel: str, args: list[str]) -> int:
 def _cmd_run(ns: argparse.Namespace) -> int:
     if ns.mode not in {"audit", "live", "scenario"}:
         raise SystemExit(f"ERROR: unsupported --mode {ns.mode}")
+
+    if ns.mode == "live":
+        if not os.getenv("XAI_API_KEY", "").strip():
+            print(
+                "ERROR: LIVE mode requires your own provider credentials (XAI_API_KEY). "
+                "Set XAI_API_KEY before running LIVE mode. SIR does not ship keys.",
+                file=sys.stderr,
+            )
+            return 2
+        if importlib.util.find_spec("litellm") is None:
+            print(
+                'ERROR: LIVE mode requires litellm installed. Run: python3 -m pip install -e ".[live]"',
+                file=sys.stderr,
+            )
+            return 2
 
     if ns.mode == "scenario":
         if ns.suite:
