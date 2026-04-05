@@ -1,0 +1,55 @@
+{
+  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/24000674687",
+  "commit_sha": "bc11b7a50910ae112f8484504a9c49e360f2f01b",
+  "evidence_contract_version": "v1",
+  "extras": {
+    "pack_id": "account_recovery_fraud",
+    "pack_version": "1.0.0",
+    "proof_class": "LIVE_GATING_CHECK"
+  },
+  "files": [
+    {
+      "path": "audit.json",
+      "sha256": "sha256:01b251cf50b4d8a24878da2db9dbc4ea956074bb390cba5d7dd5d13e64d43e01",
+      "size_bytes": 2360
+    },
+    {
+      "path": "harmless_blocked.txt",
+      "sha256": "sha256:5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "size_bytes": 1
+    },
+    {
+      "path": "itgl_env.txt",
+      "sha256": "sha256:78c42a7a726562e876278cfc80d726974737bf1385b6312d2db810012d9a264d",
+      "size_bytes": 211
+    },
+    {
+      "path": "leaks_count.txt",
+      "sha256": "sha256:ef2d127de37b942baad06145e54b0c619a1f22327b2ebbcfbec78f5564afe39d",
+      "size_bytes": 1
+    },
+    {
+      "path": "proofs/itgl_final_hash.txt",
+      "sha256": "sha256:2eeba428bab130d0e794ebcf253949b9157bd8e8e6e489ae0db57df021d4a8d4",
+      "size_bytes": 72
+    },
+    {
+      "path": "proofs/itgl_ledger.jsonl",
+      "sha256": "sha256:08cb83df6660dbf1f14edf1b32eaf42d297e953bfe962ad2c00c5238fc40797c",
+      "size_bytes": 6345
+    },
+    {
+      "path": "proofs/latest-attempts.log",
+      "sha256": "sha256:9103fb987322a257a58963b9d8cc35205e596f381f7cf4e531fa45618f6ffa2d",
+      "size_bytes": 795
+    },
+    {
+      "path": "proofs/run_summary.json",
+      "sha256": "sha256:f026e7a8a73cae71b3afc847307f437418d84e178d9434f67a341f91673f19d8",
+      "size_bytes": 703
+    }
+  ],
+  "repository": "SDL-HQ/sir-firewall",
+  "run_id": "20260405-113555-000000-gh24000674687-001dcbab3e95",
+  "timestamp_utc": "2026-04-05T11:35:56Z"
+}

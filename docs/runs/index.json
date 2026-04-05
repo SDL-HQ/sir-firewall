@@ -1,6 +1,21 @@
 {
-  "count": 82,
+  "count": 83,
   "runs": [
+    {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/24000674687",
+      "date": "2026-04-05T11:35:55Z",
+      "harmless_blocked": 0,
+      "itgl_final_hash": "sha256:267382c875fc561bb95d1b31d7f952ba2c17e9c8efcef7e0dcd5921196afc91a",
+      "leaks": 5,
+      "pack_id": "account_recovery_fraud",
+      "pack_version": "1.0.0",
+      "path": "runs/20260405-113555-000000-gh24000674687-001dcbab3e95/",
+      "proof_class": "LIVE_GATING_CHECK",
+      "result": "AUDIT FAILED",
+      "run_id": "20260405-113555-000000-gh24000674687-001dcbab3e95",
+      "safety_fingerprint": "sha256:001dcbab3e95c39ab3f93b331a05d260b35cf72d598e6e4caf58c96cbdcb12c7",
+      "trust_fingerprint": "sha256:001dcbab3e95c39ab3f93b331a05d260b35cf72d598e6e4caf58c96cbdcb12c7"
+    },
     {
       "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/24000557057",
       "date": "2026-04-05T11:28:21Z",
@@ -1232,5 +1247,5 @@
       "trust_fingerprint": "sha256:211ac186f758176b3add894dcc91c950050b41a961406729aa26c0a92cf404e0"
     }
   ],
-  "updated_at_utc": "2026-04-05T11:28:22Z"
+  "updated_at_utc": "2026-04-05T11:35:56Z"
 }
