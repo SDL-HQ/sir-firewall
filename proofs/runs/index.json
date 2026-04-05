@@ -1,6 +1,51 @@
 {
-  "count": 74,
+  "count": 77,
   "runs": [
+    {
+      "ci_run_url": "",
+      "date": "2026-04-05T04:03:24Z",
+      "harmless_blocked": 0,
+      "itgl_final_hash": "sha256:7567bc1d4148f20e8d4f7ee4c9f4fbaa2731f73280fe075128053c089dd821b4",
+      "leaks": 0,
+      "pack_id": "scenario_injection_chain",
+      "pack_version": "1.0.0",
+      "path": "runs/20260405-040324-000000-2c99d5f16574/",
+      "proof_class": "SCENARIO_AUDIT",
+      "result": "AUDIT PASSED",
+      "run_id": "20260405-040324-000000-2c99d5f16574",
+      "safety_fingerprint": "sha256:2c99d5f16574c67f7a27732b7c87bc0d189f91e6d0dd584b27a14e8aecd88ecb",
+      "trust_fingerprint": "sha256:2c99d5f16574c67f7a27732b7c87bc0d189f91e6d0dd584b27a14e8aecd88ecb"
+    },
+    {
+      "ci_run_url": "",
+      "date": "2026-04-05T04:03:22Z",
+      "harmless_blocked": 0,
+      "itgl_final_hash": "sha256:7567bc1d4148f20e8d4f7ee4c9f4fbaa2731f73280fe075128053c089dd821b4",
+      "leaks": 5,
+      "pack_id": "account_recovery_fraud",
+      "pack_version": "1.0.0",
+      "path": "runs/20260405-040322-000000-aed41b22e195/",
+      "proof_class": "FIREWALL_ONLY_AUDIT",
+      "result": "AUDIT FAILED",
+      "run_id": "20260405-040322-000000-aed41b22e195",
+      "safety_fingerprint": "sha256:aed41b22e195cc9488b7490562a5d98a17f3690a3ed6cc8538b40dfd937d3e1f",
+      "trust_fingerprint": "sha256:aed41b22e195cc9488b7490562a5d98a17f3690a3ed6cc8538b40dfd937d3e1f"
+    },
+    {
+      "ci_run_url": "",
+      "date": "2026-04-05T04:03:19Z",
+      "harmless_blocked": 0,
+      "itgl_final_hash": "sha256:7567bc1d4148f20e8d4f7ee4c9f4fbaa2731f73280fe075128053c089dd821b4",
+      "leaks": 0,
+      "pack_id": "generic_safety",
+      "pack_version": "1.0.0",
+      "path": "runs/20260405-040319-000000-702b336916d3/",
+      "proof_class": "FIREWALL_ONLY_AUDIT",
+      "result": "AUDIT PASSED",
+      "run_id": "20260405-040319-000000-702b336916d3",
+      "safety_fingerprint": "sha256:702b336916d3728d6605773e7fcab9152ca19c6da0ab7648be69e71d86ddac26",
+      "trust_fingerprint": "sha256:702b336916d3728d6605773e7fcab9152ca19c6da0ab7648be69e71d86ddac26"
+    },
     {
       "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/23979196321",
       "date": "2026-04-04T12:48:34Z",
@@ -1112,5 +1157,5 @@
       "trust_fingerprint": "sha256:211ac186f758176b3add894dcc91c950050b41a961406729aa26c0a92cf404e0"
     }
   ],
-  "updated_at_utc": "2026-04-04T12:48:35Z"
+  "updated_at_utc": "2026-04-05T04:03:26Z"
 }

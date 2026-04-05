@@ -7,83 +7,76 @@
   <meta name="description" content="Cryptographically verifiable pre-inference governance audit certificate for SIR Firewall." />
   <style>
     :root { --success: #56d364; --danger: #f85149; --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --muted: #8b949e; --link: #58a6ff; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 920px; margin: 40px auto; padding: 20px; background: var(--bg); color: var(--text); line-height: 1.6; }
-    h1 { color: var(--link); text-align: center; margin-bottom: 0.2em; }
-    .subtitle { text-align: center; color: var(--muted); font-size: 1.05em; margin-bottom: 28px; }
-    .badge { font-size: 120px; text-align: center; margin: 28px 0 10px; font-weight: 800; letter-spacing: -2px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 940px; margin: 40px auto; padding: 20px; background: var(--bg); color: var(--text); line-height: 1.6; }
+    h1 { margin: 0; color: var(--text); font-size: 1.65rem; }
+    h2 { margin: 0 0 12px; color: var(--text); font-size: 1.05rem; }
+    .subtitle { margin: 4px 0 24px; color: var(--muted); }
+    .box { background: var(--card); padding: 18px; border-radius: 10px; border: 1px solid var(--border); margin: 14px 0; }
+    .row { display: grid; grid-template-columns: 210px 1fr; gap: 10px; }
+    .k { color: var(--muted); }
+    .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
+    .wrap { word-break: break-word; }
+    .status { display: inline-block; border: 1px solid var(--border); border-radius: 8px; padding: 2px 10px; font-weight: 700; }
     .success { color: var(--success); }
     .danger { color: var(--danger); }
-    .box { background: var(--card); padding: 22px; border-radius: 12px; border: 1px solid var(--border); margin: 18px 0; }
+    .verify { background: #0d1117; padding: 10px 12px; border-radius: 6px; overflow-x: auto; display: inline-block; }
     a { color: var(--link); text-decoration: none; }
     a:hover { text-decoration: underline; }
-    .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
-    .verify { background: #0d1117; padding: 12px; border-radius: 8px; overflow-x: auto; display: inline-block; }
-    footer { margin-top: 70px; text-align: center; font-size: 0.9em; color: var(--muted); }
-    .row { display: grid; grid-template-columns: 190px 1fr; gap: 10px; }
-    .k { color: var(--muted); }
-    .wrap { word-break: break-word; }
-    .pill { display: inline-block; padding: 2px 8px; border: 1px solid var(--border); border-radius: 999px; font-size: 0.85em; color: var(--muted); margin-left: 8px; }
+    footer { margin-top: 44px; text-align: center; font-size: 0.9em; color: var(--muted); }
   </style>
 </head>
 <body>
-  <h1>SIR Firewall</h1>
-  <p class="subtitle">Pre-Inference Governance Audit Certificate</p>
-
-  <div class="badge success" id="score">—</div>
+  <h1>SIR Firewall — Technical Audit Certificate</h1>
+  <p class="subtitle">Pre-inference governance gate proof for <span class="mono">latest-audit</span>.</p>
 
   <div class="box">
-    <div class="row"><div class="k">SIR version</div><div id="sir-version" class="mono">—</div></div>
+    <h2>Certificate summary</h2>
+    <div class="row"><div class="k">Result</div><div><span id="result" class="status">—</span></div></div>
+    <div class="row"><div class="k">Proof class</div><div id="proof-class" class="mono">—</div></div>
     <div class="row"><div class="k">Suite</div><div id="suite">—</div></div>
-    <div class="row"><div class="k">Model</div><div id="model">—</div></div>
-    <div class="row"><div class="k">Provider</div><div id="provider">—</div></div>
+    <div class="row"><div class="k">Model / provider</div><div><span id="model">—</span> / <span id="provider">—</span></div></div>
     <div class="row"><div class="k">Audit timestamp (UTC)</div><div id="date" class="mono">—</div></div>
-    <div class="row"><div class="k">Prompts tested</div><div id="prompts">—</div></div>
-    <div class="row"><div class="k">Successful leaks</div><div id="leaks">—</div></div>
-    <div class="row"><div class="k">Harmless blocked</div><div id="harmless">—</div></div>
-    <div class="row"><div class="k">Result</div><div id="result">—</div></div>
+    <div class="row"><div class="k">SIR version</div><div id="sir-version" class="mono">—</div></div>
+    <div class="row"><div class="k">Gate check</div><div><span id="score" class="mono">—</span> leaks / <span id="prompts" class="mono">—</span> prompts</div></div>
+    <div class="row"><div class="k">Harmless blocked</div><div id="harmless" class="mono">—</div></div>
+    <div class="row"><div class="k">Successful leaks</div><div id="leaks" class="mono">—</div></div>
+  </div>
 
-    <div style="margin-top:16px;"></div>
-
+  <div class="box">
+    <h2>Evidence hashes and identifiers</h2>
     <div class="row"><div class="k">Commit SHA</div><div id="commit" class="mono wrap">—</div></div>
     <div class="row"><div class="k">Payload hash</div><div id="payload-hash" class="mono wrap">—</div></div>
     <div class="row"><div class="k">Policy hash</div><div id="policy-hash" class="mono wrap">—</div></div>
     <div class="row"><div class="k">Suite hash</div><div id="suite-hash" class="mono wrap">—</div></div>
     <div class="row"><div class="k">ITGL final hash</div><div id="itgl-final-hash" class="mono wrap">—</div></div>
+    <div class="row"><div class="k">Fingerprint</div><div id="safety-fingerprint" class="mono wrap">—</div></div>
   </div>
 
   <div class="box">
-    <strong>Live CI proof</strong><br>
-    <a href="#" id="ci-link">GitHub Actions run</a>
-    <span class="pill" id="ci-pill" style="display:none;">CI</span>
-  </div>
-
-  <div class="box" id="latest-run-box" style="display:none;">
-    <strong>Latest run status</strong><br>
-    <div class="row"><div class="k">Status</div><div id="latest-status" class="mono">—</div></div>
-    <div class="row"><div class="k">Timestamp (UTC)</div><div id="latest-ts" class="mono wrap">—</div></div>
-    <div class="row"><div class="k">Run ID</div><div id="latest-run" class="mono wrap">—</div></div>
-    <div class="row"><div class="k">SHA</div><div id="latest-sha" class="mono wrap">—</div></div>
-    <div style="margin-top:10px;"></div>
-    <a href="#" id="latest-run-link">View latest-run.json</a>
-    <div class="k" style="margin-top:6px;">Note: <span class="mono">latest-audit</span> is the latest PASS proof. <span class="mono">latest-run</span> reflects the most recent run, including FAIL or INCONCLUSIVE.</div>
+    <h2>Latest run context</h2>
+    <div id="latest-run-box" style="display:none;">
+      <div class="row"><div class="k">Status</div><div id="latest-status" class="mono">—</div></div>
+      <div class="row"><div class="k">Timestamp (UTC)</div><div id="latest-ts" class="mono wrap">—</div></div>
+      <div class="row"><div class="k">Run ID</div><div id="latest-run" class="mono wrap">—</div></div>
+      <div class="row"><div class="k">SHA</div><div id="latest-sha" class="mono wrap">—</div></div>
+      <div style="margin-top:8px;"><a href="#" id="latest-run-link">View latest-run.json</a></div>
+    </div>
+    <div class="k" style="margin-top:8px;">
+      <span class="mono">latest-audit</span> is the latest <strong>conclusive</strong> PASS proof published to Pages (any proof class, including <span class="mono">FIREWALL_ONLY_AUDIT</span> and <span class="mono">LIVE_GATING_CHECK</span>). <span class="mono">latest-run</span> reflects the most recent run, including FAIL or INCONCLUSIVE.
+    </div>
   </div>
 
   <div class="box">
-    <strong>Cryptographic verification</strong><br>
-    Verify the signed JSON with one command from a local checkout of this repo:<br><br>
-    <code class="verify mono" id="verify-cmd">curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python tools/verify_certificate.py -</code><br><br>
-    <a href="latest-audit.json" id="json-link">Download signed JSON</a>
+    <h2>Canonical verification path</h2>
+    <div class="k">Verify the signed JSON from a local checkout of this repo:</div>
+    <div style="margin:8px 0 10px;"><code class="verify mono" id="verify-cmd">curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python tools/verify_certificate.py -</code></div>
+    <div><a href="latest-audit.json" id="json-link">Download signed JSON</a></div>
   </div>
 
   <div class="box">
-    <strong>Trust fingerprint</strong><br>
-    <div class="mono wrap" id="safety-fingerprint">—</div>
-    <div class="k" style="margin-top:6px;">Deterministic hash over SIR version + policy hash + suite hash + model/provider + results.</div>
-  </div>
-
-  <div class="box">
-    <strong>Repo</strong><br>
-    <a href="#" id="repo-link">—</a>
+    <h2>Run provenance</h2>
+    <div class="row"><div class="k">CI proof</div><div><a href="#" id="ci-link">GitHub Actions run</a></div></div>
+    <div class="row"><div class="k">Repository</div><div><a href="#" id="repo-link">—</a></div></div>
   </div>
 
   <footer>
@@ -163,21 +156,21 @@
         setText("suite", data.suite_name ? data.suite_name : (data.suite_path || "—"));
         setText("model", data.model);
         setText("provider", data.provider);
-
         setText("date", formatUtcTimestamp(data.date));
 
         setText("prompts", prompts ? String(prompts) : "—");
         setText("leaks", String(leaks));
         setText("harmless", String(harmless));
+        setText("proof-class", data.proof_class);
 
         const ok = leaks === 0 && harmless === 0;
         const scoreEl = document.getElementById("score");
-        scoreEl.textContent = `${leaks} / ${prompts || "—"}`;
-        scoreEl.className = `badge ${ok ? "success" : "danger"}`;
+        scoreEl.textContent = `${leaks}`;
+        scoreEl.className = `mono ${ok ? "success" : "danger"}`;
 
         const resultEl = document.getElementById("result");
         resultEl.textContent = data.result || (ok ? "AUDIT PASSED" : "AUDIT FAILED");
-        resultEl.className = ok ? "success" : "danger";
+        resultEl.className = `status ${ok ? "success" : "danger"}`;
 
         setText("commit", data.commit_sha);
         setText("payload-hash", data.payload_hash);
@@ -187,8 +180,6 @@
 
         const runUrl = data.ci_run_url || "#";
         const link = document.getElementById("ci-link");
-        const pill = document.getElementById("ci-pill");
-
         link.href = runUrl;
 
         if (runUrl && runUrl !== "#") {
@@ -200,10 +191,8 @@
           } else {
             link.textContent = "GitHub Actions run";
           }
-          if (pill) pill.style.display = "inline-block";
         } else {
           link.textContent = "GitHub Actions run";
-          if (pill) pill.style.display = "none";
         }
 
         const verifyCmd = document.getElementById("verify-cmd");
@@ -219,12 +208,12 @@
         setText("safety-fingerprint", data.trust_fingerprint ?? data.safety_fingerprint);
       })
       .catch(() => {
-        document.getElementById("score").textContent = "—";
         const resultEl = document.getElementById("result");
         resultEl.textContent = "Failed to load audit data";
-        resultEl.className = "danger";
+        resultEl.className = "status danger";
+        document.getElementById("score").textContent = "—";
       });
   </script>
 </body>
 </html>
-<!-- SIR_BUILD: date=2026-04-04T12:48:34Z payload_hash=sha256:adcb3a16637844cd487a0601a9d395e7563a5a6bc37f6f97c47098da065ace3d -->
+<!-- SIR_BUILD: date=2026-04-05T04:03:24Z payload_hash=sha256:b0d3f38d213f94d8f8f21f2e359f610ec1927fc753c3518d4f548fe242c350c7 -->
