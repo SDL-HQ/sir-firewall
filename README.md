@@ -1,4 +1,6 @@
-# SIR v1.0.2: Signal Integrity Resolver
+# SIR: Signal Integrity Resolver
+
+Release-closeout line: **SIR 2.0** (documentation/evidence contract closeout). For bounded scope, D-round changes, and non-goals, see `docs/release-notes-2.0.md`.
 
 [![SIR Real Governance Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
