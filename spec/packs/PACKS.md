@@ -52,6 +52,7 @@ A pack must meet all of the following:
 4. Run validators:
    - `python tools/validate_pack_registry.py --file spec/packs/pack_registry.v1.json`
    - `python tools/validate_domain_pack.py --glob 'tests/domain_packs/*.csv'`
+   - `for f in tests/scenario_packs/*.json; do python tools/validate_scenario_pack.py --file "$f"; done`
 
 
 ## Controlled growth policy (D6)
