@@ -5,27 +5,26 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>SIR Firewall — Run Archive</title>
   <style>
-    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; max-width: 1000px; margin: 40px auto; padding: 0 16px; line-height: 1.5; }
-    h1 { margin: 0 0 8px; }
-    .muted { color: #666; margin: 0 0 24px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e6e6e6; vertical-align: top; }
-    th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #555; }
+    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; max-width: 980px; margin: 34px auto; padding: 0 16px; line-height: 1.4; color: #1f2328; }
+    h1 { margin: 0 0 6px; font-size: 1.45rem; }
+    .muted { color: #57606a; margin: 0 0 16px; font-size: 0.95rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.93rem; }
+    th, td { text-align: left; padding: 8px 7px; border-bottom: 1px solid #d8dee4; vertical-align: top; }
+    th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #57606a; }
     a { color: #0969da; text-decoration: none; }
     a:hover { text-decoration: underline; }
     code { font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,monospace; font-size: 12px; }
-    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid #ddd; }
+    .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; border: 1px solid #d0d7de; color: #57606a; }
   </style>
 </head>
 <body>
-  <h1>SIR Firewall — Run Archive</h1>
+  <h1>SIR Firewall — Evidence Archive</h1>
   <p class="muted">
-    Immutable per-run archives. Latest pointer remains at <a href="../latest-audit.html">proofs/latest-audit.html</a>.
+    Immutable per-run records for the governance gate. Latest pointer: <a href="../latest-audit.html">proofs/latest-audit.html</a>.
     Machine indexes: <a href="index.json">runs/index.json</a> and <a href="benchmark_index.v1.json">runs/benchmark_index.v1.json</a>.
-    This page is a compact evidence log, not a quality ranking dashboard.
   </p>
 
-  <table>
+  <table aria-label="Run archive evidence table">
     <thead>
       <tr>
         <th>Date</th>
@@ -34,7 +33,7 @@
         <th>Result</th>
         <th>Leaks</th>
         <th>Fingerprint</th>
-        <th>Run</th>
+        <th>Run ID</th>
         <th>CI</th>
       </tr>
     </thead>
@@ -55,20 +54,16 @@
 
       const u = ciUrl.toString();
       const tail = (u.split("/").pop() || "").trim();
-
-      // If it's a normal GitHub Actions run URL, tail should be digits.
       const isDigits = /^[0-9]+$/.test(tail);
 
       if (isDigits) {
         return { html: `<a href="${esc(u)}">#${esc(tail)}</a>` };
       }
 
-      // Common local/offline patterns
       if (tail.toUpperCase() === "LOCAL" || u.toUpperCase().includes("/RUNS/LOCAL")) {
         return { html: '<span class="pill">LOCAL</span>' };
       }
 
-      // Unknown but present (still link it)
       return { html: `<a href="${esc(u)}">CI</a>` };
     }
 
@@ -101,22 +96,17 @@
           const fp = esc((r.trust_fingerprint ?? r.safety_fingerprint ?? "—").toString().slice(0, 20));
           const path = esc(r.path ?? "");
           const runId = esc(r.run_id ?? "");
-
           const ci = ciLabelAndLink(r.ci_run_url ?? "").html;
 
-          // NOTE: index.html lives at runs/index.html.
-          // "path" is stored as "runs/<run_id>/", so "../${path}manifest.json" resolves correctly.
           const runLink = path
             ? `<a href="../${path}manifest.json"><code>${runId}</code></a>`
             : `<code>${runId}</code>`;
-
-          const badge = `<span class="pill">${result}</span>`;
 
           return `<tr>
             <td>${date}</td>
             <td><code>${suite}</code></td>
             <td><code>${proofClass}</code></td>
-            <td>${badge}</td>
+            <td><span class="pill">${result}</span></td>
             <td>${leaks}</td>
             <td><code>${fp}</code></td>
             <td>${runLink}</td>
