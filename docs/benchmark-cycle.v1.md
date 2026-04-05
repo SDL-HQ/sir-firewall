@@ -20,7 +20,7 @@ Why this set:
 - `scenario_injection_chain` ensures at least one scenario-pack row is present in the first cycle.
 - One live-gating slice is included to keep a single provider/model comparability surface without expanding to many live permutations.
 
-Out of scope for v1: broad pack sweeps, all scenario packs, model tournaments, scoring/ranking logic.
+Out of scope for v1: broad pack sweeps, all scenario packs (including `scenario_tool_injection`), model tournaments, scoring/ranking logic.
 
 Live sentinel interpretation guardrails (explicit):
 
