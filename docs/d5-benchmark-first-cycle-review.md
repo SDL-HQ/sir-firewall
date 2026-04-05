@@ -41,6 +41,21 @@ Required set from D4:
 - Local/dev archive receipt verification can fail by default when `signing_key_id` points at registry keys but the archive was signed with a local ephemeral key; verification succeeds when explicitly using `--pubkey <dev-pubkey>` and bypassing key-registry resolution. This is interpretation friction, not evidence corruption.
 - `sir_firewall_version` and `commit_sha` are blank/unknown in this local environment for new D5 rows, which weakens comparability precision even though row-level artefacts remain attributable.
 
+### Historical attribution classification for the April 5 local cluster
+
+- Decision: **retain/document as historical pre-fix local/out-of-band artefacts** (do not regenerate in-place).
+- Rationale:
+  - These files are already referenced as concrete historical run evidence for the first D5 execution pass.
+  - Regenerating would mutate historical payloads/signatures/fingerprints and blur what was actually produced at that time.
+  - They should remain inspectable as pre-fix local outputs, while newer local runs use improved attribution fallback.
+- Included artefacts in this retained cluster:
+  - `proofs/audit-certificate-2026-04-05T040320Z.json`
+  - `proofs/audit-certificate-2026-04-05T040322Z.json`
+  - `proofs/audit-certificate-2026-04-05T040325Z.json`
+  - `proofs/runs/20260405-040319-000000-702b336916d3/{audit.json,manifest.json,archive_receipt.json}`
+  - `proofs/runs/20260405-040322-000000-aed41b22e195/{audit.json,manifest.json,archive_receipt.json}`
+  - `proofs/runs/20260405-040324-000000-2c99d5f16574/{audit.json,manifest.json,archive_receipt.json}`
+
 ## Conclusion
 
 - D5 produced usable attributable evidence for the three runnable canonical rows.
