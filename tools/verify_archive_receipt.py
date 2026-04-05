@@ -69,7 +69,7 @@ def _resolve_archive_dir(path: Path) -> Path:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Verify a SIR run archive receipt.")
     ap.add_argument("archive_path", help="Path to run folder or exported bundle folder")
-    ap.add_argument("--pubkey", default=str(DEFAULT_PUBKEY_PATH), help="Path to PEM public key (default: spec/sdl.pub)")
+    ap.add_argument("--pubkey", default=None, help="Path to PEM public key (default: spec/sdl.pub)")
     ap.add_argument(
         "--key-registry",
         default=str(DEFAULT_KEY_REGISTRY),
@@ -81,7 +81,9 @@ def main() -> int:
         help="Fail when signing_key_id is present but key registry is missing/unreadable.",
     )
     args = ap.parse_args()
-    pubkey_explicit = "--pubkey" in sys.argv
+    pubkey_explicit = args.pubkey is not None
+    if args.pubkey is None:
+        args.pubkey = str(DEFAULT_PUBKEY_PATH)
 
     try:
         archive_dir = _resolve_archive_dir(Path(args.archive_path))
