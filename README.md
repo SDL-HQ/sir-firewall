@@ -1,6 +1,4 @@
-# SIR: Signal Integrity Resolver
-
-Release-closeout line: **SIR 2.0** (documentation/evidence contract closeout). For bounded scope, D-round changes, and non-goals, see `docs/release-notes-2.0.md`.
+# SIR: Signal Integrity Resolver Ver. 2.0
 
 [![SIR Real Governance Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
@@ -10,7 +8,7 @@ Plain language: SIR sits in front of an AI model (or agent) and inspects a promp
 
 Models provide capability. SIR makes governance enforceable and provable. It does not claim model alignment. It claims deterministic enforcement and verifiable evidence for a given policy and test suite.
 
-SIR is built for high-stakes AI: regulated systems and agents that touch real money, real data, or real-world decisions. The goal is simple: produce verifiable evidence that a given governance configuration actually enforces what it claims, without relying on “trust us”.
+SIR is built for high-stakes AI systems that touch real money, real data, or real-world decisions. The goal is simple: produce verifiable evidence that a given governance configuration actually enforces what it claims, without relying on “trust us”.
 
 Terminology note: in public/operator wording we prefer **governance gate**. Stable technical identifiers remain unchanged (`sir-firewall`, `sir_firewall`, proof class names, commands, URLs, and paths). See `docs/terminology.md`.
 
@@ -41,7 +39,7 @@ git clone https://github.com/SDL-HQ/sir-firewall.git && cd sir-firewall && \
 python3 -m venv .venv && source .venv/bin/activate && \
 python3 -m pip install -U pip && python3 -m pip install -e . && \
 curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
-```
+````
 
 Expected:
 
@@ -185,11 +183,12 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 ## Guides
 
 * Assurance kit (canonical evaluation and verification path): `docs/assurance-kit.md`
-* External technical review preparation (D9 reviewer path): `docs/external-technical-review-prep.md`
-* Evaluator technical explainer (D8 boundary/claims/residual risk): `docs/evaluator-technical-explainer.md`
+* External technical review preparation: `docs/external-technical-review-prep.md`
+* Evaluator technical explainer: `docs/evaluator-technical-explainer.md`
 * Engineer guide (local runs, signing, serving): `docs/engineer-guide.md`
 * Trial guide (auditors, insurers, evidence capture): `docs/trial-guide.md`
 * Key governance readiness (authority map and CRYPTO_ENFORCED checklist): `docs/key-governance-readiness.md`
+* Release notes (2.0 closeout): `docs/release-notes-2.0.md`
 * Retention / Tier B export: `RETENTION.md`
 
 ---
