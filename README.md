@@ -183,6 +183,7 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 ## Guides
 
 * Assurance kit (canonical evaluation and verification path): `docs/assurance-kit.md`
+* External technical review preparation (D9 reviewer path): `docs/external-technical-review-prep.md`
 * Evaluator technical explainer (D8 boundary/claims/residual risk): `docs/evaluator-technical-explainer.md`
 * Engineer guide (local runs, signing, serving): `docs/engineer-guide.md`
 * Trial guide (auditors, insurers, evidence capture): `docs/trial-guide.md`
