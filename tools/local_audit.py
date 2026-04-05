@@ -327,6 +327,11 @@ def main() -> int:
         print("ERROR: No cert path available for archiving.", file=sys.stderr)
         return 2
 
+    cert_rel = cert_path.relative_to(REPO_ROOT)
+    cert_html = cert_rel.with_suffix(".html")
+    cert_label = cert_rel.stem
+    print(f"\nAudit artifact selected: {cert_rel}")
+
     # 5) Archive run
     _run(
         [
@@ -356,10 +361,7 @@ def main() -> int:
     if args.serve:
         port = int(args.port)
         print("\nServe locally (avoids file:// fetch restrictions). Open:")
-        if args.sign == "none":
-            print(f"  http://localhost:{port}/proofs/local-audit.html")
-        else:
-            print(f"  http://localhost:{port}/proofs/latest-audit.html")
+        print(f"  http://localhost:{port}/{cert_html.as_posix()}   ({cert_label})")
         print(f"  http://localhost:{port}/proofs/runs/index.html\n")
         _run([sys.executable, "-m", "http.server", str(port)], env=env)
 
