@@ -48,6 +48,15 @@ python --version
 
 SIR runs packs by `pack_id` from `spec/packs/pack_registry.v1.json`.
 
+Current technical boundary for this guide:
+
+* text-first, request-level deterministic pre-inference gating
+* structured envelope handling around that request path
+* pack/scenario evaluation for that path
+* proof/archive artefact generation around gate behavior
+
+Out of scope here: native multimodal gating, deep stateful conversation governance, native tool/function-call governance, and post-inference behavior governance.
+
 Modes:
 
 * `--mode audit` (default): deterministic gate only, no model calls (`proof_class = FIREWALL_ONLY_AUDIT`)
@@ -161,6 +170,17 @@ Benchmark/index semantics:
 * It records per-run suite (`pack_id`, `pack_version`), `proof_class`, `result`, and evidence paths.
 * It includes both `latest_run` and `latest_passing_run` pointers so fail/pass truth stays explicit.
 * `comparison` is raw run metadata for side-by-side reading only (counts, hashes, and provider call totals), not a ranking model.
+
+## Failure handling notes for operators
+
+When a run is malformed, invalid, or inconclusive, treat it as non-passing and inspect run evidence directly:
+
+* `proofs/run_summary.json`
+* `proofs/latest-attempts.log`
+* `proofs/itgl_ledger.jsonl`
+* `proofs/runs/<run_id>/...` (if archived)
+
+If SIR is bypassed or not deployed in front of the real model request path, run artefacts do not establish governance for that bypassed traffic.
 
 ## Serve proof pages locally
 

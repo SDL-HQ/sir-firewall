@@ -7,6 +7,7 @@ Terminology follows `docs/terminology.md`: prefer **governance gate** in descrip
 It does not enable `CRYPTO_ENFORCED`.
 It does not change proof generation or verification behavior.
 It defines trust surfaces, authority boundaries, and readiness conditions for a future hardening step.
+It is not the canonical product-boundary definition document; use `docs/assurance-kit.md` for capability, non-claims, and residual-risk scope.
 
 ## Current state
 
