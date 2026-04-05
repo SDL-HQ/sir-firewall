@@ -163,8 +163,9 @@ Read `proofs/runs/benchmark_index.v1.json` as an evidence index:
 
 - use `latest_run` for most recent execution status
 - use `latest_passing_run` for most recent pass
+- treat each row as one attributable comparison record: SIR version, commit SHA, explicit evaluation target (`domain_pack` or `scenario_pack`), proof class, provider/model, result, leaks/harmless-blocked, and evidence links
 - use `entries[*].comparison` for raw observed metadata only
-- do not treat it as a score or ranking
+- do not treat it as a score or ranking, and do not infer an overall “best model”
 
 ## Compact reference table
 

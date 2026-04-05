@@ -167,9 +167,10 @@ python3 tools/verify_archive_receipt.py "$RUN_DIR" --pubkey /tmp/sir_dev_pub.pem
 Benchmark/index semantics:
 
 * `proofs/runs/benchmark_index.v1.json` is an evidence map, not a score.
-* It records per-run suite (`pack_id`, `pack_version`), `proof_class`, `result`, and evidence paths.
+* It records attributable per-run comparison rows: `sir_firewall_version`, `commit_sha`, explicit `evaluation_target` (`domain_pack` or `scenario_pack` + pack identifiers), `proof_class`, `provider`, `model`, `result`, `leaks`, `harmless_blocked`, and evidence links.
 * It includes both `latest_run` and `latest_passing_run` pointers so fail/pass truth stays explicit.
 * `comparison` is raw run metadata for side-by-side reading only (counts, hashes, and provider call totals), not a ranking model.
+* Rows are evidence-linked comparisons only. There is no ranking, no blended domain/scenario row meaning, and no “overall best model” logic.
 
 ## Failure handling notes for operators
 
