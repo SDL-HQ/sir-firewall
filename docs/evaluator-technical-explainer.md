@@ -1,4 +1,4 @@
-# SIR Evaluator Technical Explainer (D8)
+# SIR Evaluator Technical Explainer
 
 This document is a technical explainer for evaluators, auditors, governance/risk reviewers, and technical readers.
 
