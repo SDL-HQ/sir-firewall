@@ -98,7 +98,10 @@ Low-level `python3 tools/...` commands remain available for debugging and CI int
 
 SIR is:
 
-* A pre-inference governance gate that runs before an LLM sees the text
+* A deterministic pre-inference governance gate that runs before an LLM sees the text
+* Text-first and request-level in current capability
+* Structured-envelope aware around that request path
+* Pack/scenario evaluation against that request path
 * Deterministic and explainable (rules-only; no embeddings, no hidden scoring)
 * A proof-producing system (signed certificate + fingerprint + ITGL hash chain + per-run archives)
 
@@ -107,6 +110,16 @@ SIR is not:
 * A post-hoc moderation layer that reacts after the model already saw the input
 * A probabilistic trust score or black-box classifier
 * A general alignment or ethics solution
+
+Current boundary summary:
+
+* No native multimodal gating
+* No deep stateful conversational governance
+* No native tool/function-call governance
+* No internal model reasoning visibility
+* No post-inference model behavior governance
+
+For full scope boundary, failure modes, and residual-risk semantics, use `docs/assurance-kit.md` (canonical).
 
 ---
 

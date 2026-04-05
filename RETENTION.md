@@ -1,9 +1,22 @@
 # SIR Proof Retention & Audit Durability
 
-SIR produces **cryptographically verifiable audit proofs** (signed certificates + hash-bound run logs) and maintains a **truth-preserving per-run archive**. This document explains how those proofs are retained long-term in a way that is **auditor-friendly**, **repeatable**, and **durable**.
+SIR produces **cryptographically verifiable audit proofs** (signed certificates + hash-bound run logs) and maintains a **truth-preserving per-run archive**. This document separates what is true in-repo today from planned retention hardening options.
 
 This is intentionally written in plain language for auditors, regulators, and security teams.
 The machine-readable certificate contract is versioned at `spec/evidence_contract.v1.json`.
+
+## Current vs planned (explicit)
+
+Current in this repository today:
+
+- Proof artefacts are retained under `proofs/` in-repo, including per-run archive folders.
+- Public proof transparency is provided via GitHub Pages surfaces.
+- Offline verification is supported against retained signed JSON + public key material.
+
+Planned/optional hardening (not guaranteed by repo-only retention):
+
+- External WORM retention mirrors (for example S3 Object Lock).
+- Additional timestamp anchoring workflows.
 
 ---
 
@@ -65,7 +78,7 @@ This surface is excellent for:
 
 But it is not a regulator-grade retention guarantee by itself (platform policies and hosting constraints can change).
 
-### Trust Surface 2 — Offline verification (auditor-grade logic)
+### Trust Surface 2 — Offline verification
 The authoritative proof is the signed JSON certificate, which can be verified offline:
 
 - Verify signature and payload hash:
@@ -78,9 +91,9 @@ Offline verification is:
 
 ---
 
-## 3) Retention tiers
+## 3) Retention tiers (A current, B/C planned options)
 
-SIR supports a tiered retention model. You can use Tier A alone for open-source transparency, but auditors typically want Tier B for durability.
+SIR supports a tiered model. Tier A reflects current repository reality. Tier B and Tier C are implementation options for teams that need stronger external retention controls.
 
 ### Tier A — Public transparency (default today)
 Storage location:
@@ -97,7 +110,7 @@ What it does not guarantee:
 - formal retention policy enforcement
 - legal hold controls
 
-### Tier B — Auditor-grade immutable retention (recommended)
+### Tier B — External immutable retention (planned option)
 Mirror all per-run archives to a WORM-capable store with retention controls.
 
 Recommended implementation:
@@ -105,13 +118,13 @@ Recommended implementation:
 - Lifecycle transition to Glacier / Deep Archive for cost control
 - Optional cross-region replication for disaster recovery
 
-What Tier B provides in auditor language:
+If implemented, Tier B provides:
 - immutability enforced by policy (Compliance mode Object Lock)
 - defined retention periods (e.g., 7 years)
 - optional legal hold
 - durable, independent retention beyond GitHub
 
-### Tier C — Independent timestamp anchoring (optional)
+### Tier C — Independent timestamp anchoring (optional planned option)
 Periodically anchor a small set of hashes externally so an auditor can prove:
 - the archive existed at/after a specific time
 - the archive was not rewritten later

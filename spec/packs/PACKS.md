@@ -13,6 +13,7 @@ A pack entry exists to make selection, validation, and review deterministic.
 - Domain packs are CSV suites under `tests/domain_packs/`.
 - Scenario packs use scenario JSON suites under `tests/scenario_packs/`.
 - The registry already contains both pack types. This guidance does not introduce new scenario-pack semantics.
+- Pack evaluation binds to request-path inputs for deterministic pre-inference gate testing; this file does not define post-inference or full system-governance semantics.
 
 ## Required metadata
 

@@ -27,6 +27,15 @@ Given a policy and a test pack, it evaluates prompts before model inference and 
 
 Core outputs are evidence artefacts such as run summaries, ITGL ledger/hash, signed certificates, and signed run archive receipts.
 
+Current capability boundary (explicit):
+
+- text-first
+- request-level
+- deterministic pre-inference gating
+- structured envelope handling around that request path
+- pack/scenario evaluation against that path
+- proof and archive generation around gate behavior
+
 ## What SIR does not prove
 
 SIR does not prove model alignment, broad model safety, or organizational compliance by itself.
@@ -34,6 +43,37 @@ SIR does not prove model alignment, broad model safety, or organizational compli
 SIR does not produce a benchmark score or ranking.
 
 SIR provides deterministic enforcement evidence for a specific policy, pack, and run context. Claims outside that boundary require separate evidence.
+
+SIR currently does **not** provide:
+
+- native multimodal gating
+- deep stateful conversational governance across long-running sessions
+- native tool/function-call governance across external action graphs
+- full structured enterprise action-graph governance
+- internal model reasoning visibility
+- post-inference model behavior governance
+- full deployment-surface coverage
+
+## Failure modes and residual risk (canonical)
+
+Plain-language outcomes:
+
+- If SIR blocks: the request path is stopped before model inference for that evaluated request.
+- If inputs are malformed: treat the outcome as non-passing and use run artefacts to inspect the failure state.
+- If registry or policy load paths fail: SIR cannot truthfully evaluate policy conformance; treat the outcome as fail/inconclusive with evidence.
+- If a run is invalid or inconclusive: treat it as non-passing; use `latest-run.json` plus archived run artefacts to inspect failure state.
+- If SIR is bypassed: no governance claim applies to bypassed model-facing traffic.
+- If SIR is not actually in front of the model path: proof only attests to the exercised SIR path, not ungoverned alternate paths.
+
+Evidence durability under failure:
+
+- Failure/inconclusive runs are still represented in run-level evidence surfaces (`latest-run.json` and run archive entries).
+- Latest passing pointer (`latest-audit.*`) remains intentionally separate from latest run truth.
+
+Residual risk boundary:
+
+- Risk remains for any path, modality, tool/action chain, or post-inference behavior outside the exercised SIR request path.
+- SIR evidence proves deterministic gate behavior for the evaluated boundary; it does not prove global system safety.
 
 ## Evidence surfaces
 
