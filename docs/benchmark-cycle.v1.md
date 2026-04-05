@@ -88,3 +88,32 @@ For repeatable comparison rows:
 ## Change control
 
 Any expansion beyond this first set (additional packs, additional live permutations, ranking logic, dashboards) is post-D4 scope and requires a new contract revision.
+
+## D11 structured evidence surfacing decision (review-only)
+
+D11 reviewed deterministic gate-native metadata already present in run artefacts and benchmark rows.
+
+Decision for v1:
+
+- Keep benchmark index as an evidence map, not an analytics surface.
+- Do not add scorecards, rankings, or derived trend metrics.
+- Allow lightweight readability checks performed by evaluators from existing deterministic fields.
+
+What is already available and should be read more explicitly:
+
+- repeated outcome patterns for the same `row_identity` (PASS/FAIL/INCONCLUSIVE sequence)
+- certificate/integrity continuity via repeated `comparison.trust_fingerprint` and `comparison.itgl_final_hash`
+- target/proof-class attribution via `evaluation_target` + `proof_class`
+
+What is explicitly not surfaced in v1:
+
+- rule/category hit distribution rollups
+- proof-class distribution rollups as summary metrics
+- pack/scenario coverage-over-time rollups beyond cycle validity checks
+- any weighted scoring, ranking, composite index, or dashboard surface
+
+Rationale:
+
+- The allowed reads above are deterministic restatements of existing row metadata.
+- New aggregate metadata fields were not added in D11 because current evidence remains auditable without creating a second truth surface.
+- Additional machine-surface summarization can be revisited only if evaluator friction persists and the change remains non-derived, deterministic, and non-analytic.
