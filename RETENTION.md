@@ -1,365 +1,179 @@
 # SIR Proof Retention & Audit Durability
 
-SIR produces **cryptographically verifiable audit proofs** (signed certificates + hash-bound run logs) and maintains a **truth-preserving per-run archive**. This document separates what is true in-repo today from planned retention hardening options.
+This document defines SIR retention semantics in plain technical language.
 
-This is intentionally written in plain language for auditors, regulators, and security teams.
-The machine-readable certificate contract is versioned at `spec/evidence_contract.v1.json`.
+It separates:
 
-## Current vs planned (explicit)
+- what is retained and verifiable in this repository today
+- what is public/shared versus local/operator-local
+- what current durability does and does not guarantee
+- what hardening options are planned but not yet guaranteed by repo-only retention
 
-Current in this repository today:
-
-- Proof artefacts are retained under `proofs/` in-repo, including per-run archive folders.
-- Public proof transparency is provided via GitHub Pages surfaces.
-- Offline verification is supported against retained signed JSON + public key material.
-
-Planned/optional hardening (not guaranteed by repo-only retention):
-
-- External WORM retention mirrors (for example S3 Object Lock).
-- Additional timestamp anchoring workflows.
+The machine-readable certificate contract is `spec/evidence_contract.v1.json`.
 
 ---
 
-## 1) What SIR retains
+## 1) Current retention truth (repository reality today)
 
-Each audit run can produce:
+Current retained artefacts are in version control under `proofs/`, including:
 
-### A) Signed certificate (authoritative proof)
-- `proofs/latest-audit.json` — signed JSON certificate (latest passing pointer)
-- `proofs/latest-audit.html` — human view (loads JSON at runtime)
-
-The certificate binds to:
-- `payload_hash` (hash of the signed payload)
-- `signature` (issuer signature over the payload)
-- governance anchors (when present), including:
-  - `policy_hash` / `policy_version`
-  - `suite_hash`
-  - `itgl_final_hash`
-  - `trust_fingerprint` (`safety_fingerprint` legacy alias)
-  - `proof_class` + provider call counters (`provider_call_attempts`, `provider_call_successes`, legacy `model_calls_made`)
-
-### B) Run evidence (how the run unfolded)
-- `proofs/latest-attempts.log` — attempt-by-attempt log
-- `proofs/run_summary.json` — suite summary
-- `proofs/itgl_ledger.jsonl` + `proofs/itgl_final_hash.txt` — hash-chained ITGL run ledger
-
-### C) Truth-preserving archive (immutable per-run folder)
-Each run is archived into:
-- `proofs/runs/<run_id>/manifest.json` (inventory + metadata)
-- `proofs/runs/<run_id>/audit.json` (the certificate/snapshot used for that run)
-- plus copied evidence files (ITGL, attempts, summary, counters, etc.)
-
-There is also:
-- `proofs/runs/index.json` — machine index of all archived runs
-- `proofs/runs/index.html` — human viewer (loads index.json)
-
----
-
-## 2) Two trust surfaces (why there are two)
-
-SIR uses two trust surfaces on purpose:
-
-### Trust Surface 1 — Public transparency (GitHub Pages)
-GitHub Pages provides a human-readable view:
-
-- Latest passing audit:
-  - `/latest-audit.html`
-  - `/latest-audit.json`
-
-- Run archive:
-  - `/runs/index.html`
-  - `/runs/index.json`
-  - `/runs/<run_id>/manifest.json`
-
-This surface is excellent for:
-- public transparency
-- independent engineering review
-- quick sharing of proofs
-
-But it is not a regulator-grade retention guarantee by itself (platform policies and hosting constraints can change).
-
-### Trust Surface 2 — Offline verification
-The authoritative proof is the signed JSON certificate, which can be verified offline:
-
-- Verify signature and payload hash:
-  - `sir verify cert proofs/latest-audit.json`
-
-Offline verification is:
-- provider-independent
-- hosting-independent
-- durable so long as the signed JSON and the public key are retained
-
----
-
-## 3) Retention tiers (A current, B/C planned options)
-
-SIR supports a tiered model. Tier A reflects current repository reality. Tier B and Tier C are implementation options for teams that need stronger external retention controls.
-
-### Tier A — Public transparency (default today)
-Storage location:
-- GitHub repository (`proofs/`)
-- GitHub Pages (`docs/`)
-
-What it gives:
-- Public audit proof viewing
-- Simple reproducibility and verification
-- Strong community trust surface
-
-What it does not guarantee:
-- WORM immutability controls
-- formal retention policy enforcement
-- legal hold controls
-
-### Tier B — External immutable retention (planned option)
-Mirror all per-run archives to a WORM-capable store with retention controls.
-
-Recommended implementation:
-- **Amazon S3 with Object Lock (WORM) + Versioning**
-- Lifecycle transition to Glacier / Deep Archive for cost control
-- Optional cross-region replication for disaster recovery
-
-If implemented, Tier B provides:
-- immutability enforced by policy (Compliance mode Object Lock)
-- defined retention periods (e.g., 7 years)
-- optional legal hold
-- durable, independent retention beyond GitHub
-
-### Tier C — Independent timestamp anchoring (optional planned option)
-Periodically anchor a small set of hashes externally so an auditor can prove:
-- the archive existed at/after a specific time
-- the archive was not rewritten later
-
-Two audit-friendly options:
-- RFC3161 timestamping (traditional and widely understood)
-- Signed “weekly ledger snapshot” file (your own append-only file, signed, committed + mirrored)
-
-Tier C is optional. Tier B already satisfies most auditors if configured correctly.
-
----
-
-## 4) What auditors/regulators typically want (checklist)
-
-Auditors usually care less about “cool crypto” and more about control design.
-
-### A) Immutability controls
-- Is there a WORM retention mechanism?
-- Can someone rewrite or delete evidence?
-- Is retention duration defined and enforced?
-
-Tier A: partial (GitHub history helps, but not WORM)
-Tier B: yes (Object Lock Compliance mode)
-
-### B) Provenance and accountability
-- Who issued the certificate?
-- What public key verifies it?
-- Is key rotation documented?
-
-SIR provides:
-- issuer signature over certificate payload
-- public key stored in repo (`spec/sdl.pub`)
-- verification tool (`tools/verify_certificate.py`)
-
-### C) Repeatability
-- Can a third party reproduce the audit process?
-- Can they re-run the suite locally?
-
-SIR provides:
-- deterministic firewall-only audit path (`sir run --mode audit --pack <pack_id>`)
-- suite schema validation (`tools/validate_domain_pack.py`)
-- offline verification without model calls
-
-### D) Completeness
-- Are failures archived or discarded?
-- Is there evidence of negative outcomes?
-
-SIR policy:
-- per-run archive is truth-preserving (failures included)
-- latest pointer remains “latest passing audit”
-
-### E) Change control
-- Are policy versions and suite versions hashed and bound to proof?
-- Can drift occur silently?
-
-SIR binds:
-- `policy_hash` + `policy_version` (when available)
-- `suite_hash`
-- `itgl_final_hash`
-- `trust_fingerprint` (`safety_fingerprint` as legacy alias)
-
----
-
-## 5) Recommended retention implementation (Tier B)
-
-### Storage layout
-Mirror the archive folder structure directly:
-
-- `s3://<bucket>/sir/proofs/runs/<run_id>/...`
-- `s3://<bucket>/sir/proofs/runs/index.json`
-- optionally mirror:
-  - `proofs/latest-audit.json` (latest passing pointer)
+- latest passing certificate pointer:
+  - `proofs/latest-audit.json`
   - `proofs/latest-audit.html`
+- latest run status pointer:
+  - `proofs/latest-run.json`
+- run evidence files:
+  - `proofs/run_summary.json`
+  - `proofs/latest-attempts.log`
+  - `proofs/itgl_ledger.jsonl`
+  - `proofs/itgl_final_hash.txt`
+- per-run archive folders:
+  - `proofs/runs/<run_id>/manifest.json`
+  - `proofs/runs/<run_id>/audit.json`
+  - `proofs/runs/<run_id>/archive_receipt.json`
+  - copied run evidence for that run
+- archive indexes:
+  - `proofs/runs/index.json`
+  - `proofs/runs/index.html`
 
-### Bucket configuration (auditor-friendly defaults)
-- Enable **Versioning**
-- Enable **Object Lock**
-  - **Compliance mode**
-  - retention period: define (example: 7 years)
-- Enable **lifecycle rules**
-  - transition to Glacier / Deep Archive after N days
-- Enable access logging / CloudTrail events (if required)
+What can be verified now:
 
-### Operational policy
-- Every CI run uploads the run folder + manifest to S3
-- CI uploads updated `index.json`
-- Deletes are prohibited (Object Lock policy + IAM)
+- certificate signature + payload hash verification (`sir verify cert ...` / `tools/verify_certificate.py`)
+- archive receipt verification for a run bundle (`sir verify archive ...` / `tools/verify_archive_receipt.py`)
+- ITGL chain verification (`tools/verify_itgl.py`)
+- file/history presence in Git and published Pages surfaces
 
-This yields:
-- public transparency via GitHub Pages
-- durable immutability via S3 Object Lock
-
----
-
-## 6) Key management and verification durability
-
-### Authoritative signing key
-The “real” proofs are the certificates signed by SDL’s CI key.
-
-- Private signing key: held as a CI secret
-- Public key: stored in repo (`spec/sdl.pub`)
-
-### Local signing keys
-Local mode can generate a test keypair and sign locally.
-These proofs are explicitly **non-authoritative** and intended for:
-- developer testing
-- proof format validation
-- offline reproducibility checks
-
-### Key rotation (required for long-lived systems)
-When rotating the authoritative signing key:
-- keep old public keys in the repo (do not delete)
-- record validity date ranges
-- ensure the verifier can select the correct key for historical proofs
-
-Recommended future state:
-- `spec/pubkeys/` (multiple public keys)
-- `spec/pubkeys/key_registry.v1.json` (public key registry + metadata)
+This is the current retention truth. It is evidence-retaining and reviewable now, but it is not the same as external immutable retention controls.
 
 ---
 
-## 7) What “auditability” means for SIR (plain statement)
+## 2) Public/shared vs local/internal surfaces
 
-A proof is considered auditor-verifiable if:
-1) the signed JSON certificate is available
-2) the verifier confirms:
-   - signature valid
-   - payload_hash matches
-3) the certificate binds to governance anchors:
-   - suite hash
-   - policy hash/version (if used)
-   - ITGL final hash
-   - trust fingerprint (legacy alias: safety fingerprint)
-4) per-run archive exists and is retained under the declared retention controls
+### A) Public/shared truth surfaces (reviewable by third parties)
+
+Primary shared surfaces:
+
+- repository artefacts in `proofs/` (GitHub repository)
+- published Pages views that render those artefacts (`latest-audit.*`, `latest-run.json`, `runs/index.*`)
+
+Use these for shared review, reproducibility, and independent technical inspection.
+
+### B) Local/dev or operator-local artefacts
+
+Local runs and local signing workflows may produce artefacts that are useful for engineering verification but are not automatically SDL/public-authoritative.
+
+Examples:
+
+- locally generated certificates signed by non-authoritative keys
+- locally exported bundles before any external retention upload
+- local temporary run directories and test outputs
+
+Local artefacts can still be cryptographically checked, but trust source and authority are distinct from published SDL/public surfaces.
 
 ---
 
-## 8) Minimal verification procedure (offline)
+## 3) Durability boundaries (explicit)
 
-Canonical install paths:
+### What current repo + Pages retention does provide
 
-```bash
-# audit mode
-python3 -m pip install -e .
+- durable evidence snapshots as long as artefacts remain in Git history/repository
+- transparent public access to current published proof surfaces
+- offline cryptographic verification independent of hosting runtime
 
-# live mode
-python3 -m pip install -e ".[live]"
+### What current repo + Pages retention does not guarantee by itself
 
-# verify-only (published certificate, no local run)
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
-```
+- WORM/object-lock immutability controls
+- retention-period enforcement by storage policy (for example, mandated N-year lock)
+- legal-hold controls
+- independent third-party timestamp anchoring
+- long-window auditor-grade durability guarantees on their own
+
+In short: current retention supports technical review and cryptographic verification, but does not by itself claim external immutable archival guarantees.
+
+---
+
+## 4) Evidence that survives now
+
+Today, the following evidence survives in-repo when retained and committed:
+
+- signed certificate payloads and signatures (`latest-audit.json`, per-run `audit.json`)
+- hash-linked run evidence (`itgl_ledger.jsonl`, `itgl_final_hash.txt`)
+- run manifests and archive receipts (`manifest.json`, `archive_receipt.json`)
+- pass/fail/inconclusive run-state surfaces (`latest-run.json` + per-run archives)
+
+This is enough for current technical auditors/reviewers to validate run integrity and signature integrity.
+
+It is not, by itself, a claim that evidence cannot ever be removed or rewritten under all governance/legal threat models.
+
+---
+
+## 5) Planned hardening options (future, optional, not current default)
+
+The options below are **not current repo-default guarantees**. They are explicit future hardening paths.
+
+### Tier B (planned option): external immutable retention
+
+- mirror per-run archives to external storage with immutability controls
+- typical implementation: S3 + Versioning + Object Lock (Compliance mode)
+- define explicit retention windows (for example 7 years)
+- optional legal hold and cross-region replication
+
+### Tier C (planned option): independent timestamp anchoring
+
+- anchor selected hashes periodically to a timestamp authority or equivalent append-only mechanism
+- goal: prove evidence existed at/after a specific time and detect later rewriting attempts
+
+### Longer-lived archive/export path (planned/partial tooling)
+
+- exported run bundles can be produced and verified offline
+- these exports only become stronger durability controls when paired with external immutable storage policy
+
+Planned options must be treated as planned until deployed and operated with enforceable controls.
+
+---
+
+## 6) Reviewer/auditor usability: what can be checked now vs later hardening
+
+### Checkable now (current state)
+
+1. Verify latest published certificate signature and payload hash.
+2. Verify specific run archive receipt(s).
+3. Verify ITGL integrity chain.
+4. Confirm latest-pass vs latest-run semantics are separate.
+5. Confirm per-run archive includes both passing and non-passing runs.
+
+### Requires future hardening controls (not guaranteed by repo-only retention)
+
+- enforceable WORM immutability over declared retention windows
+- legal hold guarantees
+- independent timestamp/notarization guarantees over long windows
+- independent archival survivability outside GitHub/platform retention behavior
+
+---
+
+## 7) Minimal verification procedure (offline)
 
 From a clean checkout:
 
 ```bash
 sir verify cert proofs/latest-audit.json
-```
-
-Expected:
-
-```text
-OK: Certificate signature valid and payload_hash matches.
-```
-
-Windows note: use PowerShell; paths use backslashes. The verifier scripts are platform-neutral.
-
-Optional deep inspection:
-
-* open the JSON and review:
-
-  * `policy_hash`
-  * `suite_hash`
-  * `itgl_final_hash`
-  * `trust_fingerprint` (legacy alias: `safety_fingerprint`)
-* verify ITGL ledger separately if required:
-
-  * `python3 tools/verify_itgl.py`
-
-### Verify a run archive offline (chain-of-custody)
-
-From a clean checkout:
-
-```bash
 sir verify archive proofs/runs/<run_id>/
+python3 tools/verify_itgl.py
 ```
 
-Expected:
+Expected successful outputs include valid certificate signature/payload hash and valid archive receipt/ITGL verification.
 
-```text
-OK: archive receipt verified for proofs/runs/<run_id>
-```
-
-Notes:
-
-* This verifies chain-of-custody evidence (`manifest.json` + signed `archive_receipt.json`) for a single archived run.
-* Default verifier key is `spec/sdl.pub`; override with `--pubkey <path>` for local/dev signing keys.
-* Tier B export/verification workflow is available via `tools/export_run_archive.py` and `tools/verify_export_bundle.py`.
-
-### Verify an exported Tier B bundle offline
+For published certificate verification from upstream:
 
 ```bash
-python3 tools/export_run_archive.py --run-path proofs/runs/<run_id>/ --out /tmp/sir_bundle --format dir
-python3 tools/verify_export_bundle.py /tmp/sir_bundle
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
 ```
-
-Optional deterministic tar output:
-
-```bash
-python3 tools/export_run_archive.py --run-path proofs/runs/<run_id>/ --out /tmp/sir_bundle_tar --format tar
-python3 tools/verify_export_bundle.py /tmp/sir_bundle_tar
-```
-
-Notes:
-
-* The default workflow is fully offline and deterministic.
-* If `--out` already exists and is non-empty, pass `--force` to overwrite it.
-* `bundle_manifest.json` is a convenience descriptor (not a replacement for `archive_receipt.json`).
-* S3/Object Lock upload is a reference option via optional flags (`--s3-bucket`, `--s3-prefix`) and is not required for OSS users or CI.
 
 ---
 
-## 9) Current status
+## 8) Current status summary
 
-* Tier A is live (repo + Pages + run archive)
-* Tier B reference implementation is available as an optional offline-first export bundle workflow
-* Tier C is optional and may be added if required by stakeholders
+- Current default (Tier A): repository + Pages transparency with cryptographic verification.
+- Planned hardening (Tier B/Tier C): external immutable retention and timestamp anchoring are optional future controls, not current default guarantees.
 
----
-
-## Contact
-
-Structural Design Labs
-[https://www.structuraldesignlabs.com](https://www.structuraldesignlabs.com)
-[info@structuraldesignlabs.com](mailto:info@structuraldesignlabs.com)
-X: @SDL_HQ
-
-```
-```
+This statement is intentionally conservative and technically bounded.
