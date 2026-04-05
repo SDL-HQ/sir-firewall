@@ -203,12 +203,11 @@ def _is_publishable_latest(cert: Dict[str, Any]) -> bool:
 def _write_html_from_template(
     *, template_path: str, out_path: str, stamp: str, target_json_name: str, audit_label: str
 ) -> None:
-    """Render HTML from template and switch JSON target + visible audit label."""
+    """Render HTML from template with explicit placeholders for target + label."""
     with open(template_path, "r", encoding="utf-8") as t:
         html = t.read()
 
-    if target_json_name != "latest-audit.json":
-        html = html.replace("latest-audit.json", target_json_name)
+    html = html.replace("__AUDIT_JSON__", target_json_name)
     html = html.replace("__AUDIT_LABEL__", audit_label)
 
     if not html.endswith("\n"):
@@ -391,9 +390,11 @@ def main() -> None:
     print(f"OK: Certificate → {archival}")
     if publishable_latest:
         print("OK: Latest proof → proofs/latest-audit.json + proofs/latest-audit.html")
+        print("OUTPUT_AUDIT_JSON=proofs/latest-audit.json")
     else:
         print("OK: Local proof only → proofs/local-audit.json + proofs/local-audit.html")
         print("INFO: Canonical latest-audit.* not updated (missing attributable provenance fields).")
+        print("OUTPUT_AUDIT_JSON=proofs/local-audit.json")
 
 
 if __name__ == "__main__":

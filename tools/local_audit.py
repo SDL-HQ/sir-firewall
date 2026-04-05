@@ -66,15 +66,13 @@ def _read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _is_publishable_latest(cert_path: Path) -> bool:
-    try:
-        cert = _read_json(cert_path)
-    except Exception:
-        return False
-    sir_version = str(cert.get("sir_firewall_version") or "").strip()
-    commit_sha = str(cert.get("commit_sha") or "").strip()
-    ci_run_url = str(cert.get("ci_run_url") or "").strip()
-    return bool(sir_version and sir_version != "unknown" and commit_sha and ci_run_url)
+def _generated_cert_path_from_output(output: str) -> Optional[Path]:
+    for line in output.splitlines():
+        if line.startswith("OUTPUT_AUDIT_JSON="):
+            rel = line.split("=", 1)[1].strip()
+            if rel:
+                return REPO_ROOT / rel
+    return None
 
 
 def _safe_git_head() -> str:
@@ -139,7 +137,7 @@ def _write_local_html_from_template(template_path: Path, out_path: Path) -> None
     For local unsigned snapshots, write a copy that fetches local-audit.json.
     """
     html = template_path.read_text(encoding="utf-8")
-    html2 = html.replace("latest-audit.json", "local-audit.json")
+    html2 = html.replace("__AUDIT_JSON__", "local-audit.json").replace("__AUDIT_LABEL__", "local-audit")
     out_path.write_text(html2, encoding="utf-8")
 
 
@@ -290,10 +288,11 @@ def main() -> int:
             print("ERROR: --sign sdl requires SDL_PRIVATE_KEY_PEM in your environment", file=sys.stderr)
             return 2
         _run([sys.executable, "tools/sign_policy.py"], env=env)
-        _run([sys.executable, "tools/generate_certificate.py"], env=env)
-        latest_path = REPO_ROOT / "proofs" / "latest-audit.json"
-        local_path = REPO_ROOT / "proofs" / "local-audit.json"
-        cert_path = latest_path if _is_publishable_latest(latest_path) else local_path
+        gen_out = _capture([sys.executable, "tools/generate_certificate.py"], env=env)
+        cert_path = _generated_cert_path_from_output(gen_out)
+        if cert_path is None:
+            print("ERROR: Could not determine generated cert path from generate_certificate.py output.", file=sys.stderr)
+            return 2
         _run([sys.executable, "tools/verify_certificate.py", str(cert_path)], env=env)
 
     elif args.sign == "local":
@@ -310,10 +309,11 @@ def main() -> int:
         env["SDL_PRIVATE_KEY_PEM"] = priv.read_text(encoding="utf-8")
 
         _run([sys.executable, "tools/sign_policy.py"], env=env)
-        _run([sys.executable, "tools/generate_certificate.py"], env=env)
-        latest_path = REPO_ROOT / "proofs" / "latest-audit.json"
-        local_path = REPO_ROOT / "proofs" / "local-audit.json"
-        cert_path = latest_path if _is_publishable_latest(latest_path) else local_path
+        gen_out = _capture([sys.executable, "tools/generate_certificate.py"], env=env)
+        cert_path = _generated_cert_path_from_output(gen_out)
+        if cert_path is None:
+            print("ERROR: Could not determine generated cert path from generate_certificate.py output.", file=sys.stderr)
+            return 2
         _run(
             [sys.executable, "tools/verify_certificate.py", str(cert_path), "--pubkey", str(pub)],
             env=env,
