@@ -8,6 +8,8 @@ Terminology: this document uses **governance gate** for public/operator descript
 
 ## Scope
 
+This assurance kit points to the locked first benchmark cycle contract in `docs/benchmark-cycle.v1.md`.
+
 This assurance kit explains:
 
 - what SIR does
@@ -84,6 +86,24 @@ Public surfaces and semantics:
 - `runs/index.html`: archive index for pass and fail runs
 - `runs/<run_id>/...`: per-run evidence bundle (manifest, audit, receipt, copied artefacts)
 - `runs/benchmark_index.v1.json`: evidence map for side-by-side comparison only, with `latest_run` and `latest_passing_run`
+
+## Canonical benchmark cycle contract (v1)
+
+The first disciplined benchmark cycle is locked in `docs/benchmark-cycle.v1.md`.
+
+Required cycle set:
+
+- `generic_safety` (`FIREWALL_ONLY_AUDIT`)
+- `account_recovery_fraud` (`FIREWALL_ONLY_AUDIT`)
+- `scenario_injection_chain` (`SCENARIO_AUDIT`)
+- `generic_safety` (`LIVE_GATING_CHECK` live sentinel)
+
+Interpretation constraints:
+
+- compare only within identical attribution dimensions (`row_identity`)
+- keep domain-pack and scenario-pack evidence rows separate
+- treat missing provider/model on live rows as non-comparable
+- keep benchmark index semantics as evidence mapping only (no scores/rankings)
 
 ## Proof classes
 
