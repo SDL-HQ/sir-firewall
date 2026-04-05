@@ -137,7 +137,11 @@ def _write_local_html_from_template(template_path: Path, out_path: Path) -> None
     For local unsigned snapshots, write a copy that fetches local-audit.json.
     """
     html = template_path.read_text(encoding="utf-8")
-    html2 = html.replace("__AUDIT_JSON__", "local-audit.json").replace("__AUDIT_LABEL__", "local-audit")
+    html2 = (
+        html.replace("__AUDIT_JSON__", "local-audit.json")
+        .replace("__AUDIT_LABEL__", "local-audit")
+        .replace("__VERIFY_COMMAND__", "cat proofs/local-audit.json | python tools/verify_certificate.py -")
+    )
     out_path.write_text(html2, encoding="utf-8")
 
 

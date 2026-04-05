@@ -201,7 +201,13 @@ def _is_publishable_latest(cert: Dict[str, Any]) -> bool:
 
 
 def _write_html_from_template(
-    *, template_path: str, out_path: str, stamp: str, target_json_name: str, audit_label: str
+    *,
+    template_path: str,
+    out_path: str,
+    stamp: str,
+    target_json_name: str,
+    audit_label: str,
+    verify_command: str,
 ) -> None:
     """Render HTML from template with explicit placeholders for target + label."""
     with open(template_path, "r", encoding="utf-8") as t:
@@ -209,6 +215,7 @@ def _write_html_from_template(
 
     html = html.replace("__AUDIT_JSON__", target_json_name)
     html = html.replace("__AUDIT_LABEL__", audit_label)
+    html = html.replace("__VERIFY_COMMAND__", verify_command)
 
     if not html.endswith("\n"):
         html += "\n"
@@ -371,6 +378,12 @@ def main() -> None:
     html_out = "proofs/latest-audit.html" if publishable_latest else "proofs/local-audit.html"
     target_json_name = "latest-audit.json" if publishable_latest else "local-audit.json"
     audit_label = "latest-audit" if publishable_latest else "local-audit"
+    verify_command = (
+        "curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | "
+        "python tools/verify_certificate.py -"
+        if publishable_latest
+        else "cat proofs/local-audit.json | python tools/verify_certificate.py -"
+    )
     with open(json_out, "w", encoding="utf-8") as f:
         json.dump(cert, f, indent=2, ensure_ascii=False)
 
@@ -382,6 +395,7 @@ def main() -> None:
             stamp=stamp,
             target_json_name=target_json_name,
             audit_label=audit_label,
+            verify_command=verify_command,
         )
         print(f"OK: HTML written from proofs/template.html (with build stamp) → {html_out}")
     except Exception as e:

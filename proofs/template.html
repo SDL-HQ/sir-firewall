@@ -69,7 +69,7 @@
   <div class="box">
     <h2>Canonical verification path</h2>
     <div class="k">Verify the signed JSON from a local checkout of this repo:</div>
-    <div style="margin:8px 0 10px;"><code class="verify mono" id="verify-cmd">curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python tools/verify_certificate.py -</code></div>
+    <div style="margin:8px 0 10px;"><code class="verify mono" id="verify-cmd">__VERIFY_COMMAND__</code></div>
     <div><a href="__AUDIT_JSON__" id="json-link">Download signed JSON</a></div>
   </div>
 
@@ -150,7 +150,6 @@
 
         const repo = data.repository || "SDL-HQ/sir-firewall";
         const repoUrl = `https://github.com/${repo}`;
-        const rawJsonUrl = `https://raw.githubusercontent.com/${repo}/main/proofs/${data.ci_run_url ? "latest-audit.json" : "local-audit.json"}`;
 
         setText("sir-version", data.sir_firewall_version);
         setText("suite", data.suite_name ? data.suite_name : (data.suite_path || "—"));
@@ -194,9 +193,6 @@
         } else {
           link.textContent = "GitHub Actions run";
         }
-
-        const verifyCmd = document.getElementById("verify-cmd");
-        verifyCmd.textContent = `curl -s ${rawJsonUrl} | python tools/verify_certificate.py -`;
 
         const jsonLink = document.getElementById("json-link");
         jsonLink.href = "__AUDIT_JSON__";
