@@ -131,3 +131,44 @@ def test_scenario_mode_rejects_non_scenario_pack(monkeypatch, capsys):
     captured = capsys.readouterr()
     assert rc == 2
     assert "requires a scenario_json_v1 pack" in captured.err
+
+
+def test_live_mode_requires_xai_api_key(monkeypatch, capsys):
+    cli = _load_cli_module()
+    monkeypatch.delenv("XAI_API_KEY", raising=False)
+    ns = cli.argparse.Namespace(
+        mode="live",
+        pack=None,
+        suite=None,
+        scenario=None,
+        model=None,
+        template=None,
+        no_model_calls=False,
+    )
+
+    rc = cli._cmd_run(ns)
+
+    captured = capsys.readouterr()
+    assert rc == 2
+    assert "LIVE mode requires your own provider credentials (XAI_API_KEY)" in captured.err
+
+
+def test_live_mode_requires_litellm(monkeypatch, capsys):
+    cli = _load_cli_module()
+    monkeypatch.setenv("XAI_API_KEY", "test-key")
+    monkeypatch.setattr(cli.importlib.util, "find_spec", lambda _name: None)
+    ns = cli.argparse.Namespace(
+        mode="live",
+        pack=None,
+        suite=None,
+        scenario=None,
+        model=None,
+        template=None,
+        no_model_calls=False,
+    )
+
+    rc = cli._cmd_run(ns)
+
+    captured = capsys.readouterr()
+    assert rc == 2
+    assert "LIVE mode requires litellm installed" in captured.err

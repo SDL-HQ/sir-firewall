@@ -1,4 +1,6 @@
-# SIR v1.0.2: Signal Integrity Resolver
+# SIR: Signal Integrity Resolver
+
+Release-closeout line: **SIR 2.0** (documentation/evidence contract closeout). For bounded scope, D-round changes, and non-goals, see `docs/release-notes-2.0.md`.
 
 [![SIR Real Governance Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
@@ -98,7 +100,10 @@ Low-level `python3 tools/...` commands remain available for debugging and CI int
 
 SIR is:
 
-* A pre-inference governance gate that runs before an LLM sees the text
+* A deterministic pre-inference governance gate that runs before an LLM sees the text
+* Text-first and request-level in current capability
+* Structured-envelope aware around that request path
+* Pack/scenario evaluation against that request path
 * Deterministic and explainable (rules-only; no embeddings, no hidden scoring)
 * A proof-producing system (signed certificate + fingerprint + ITGL hash chain + per-run archives)
 
@@ -107,6 +112,16 @@ SIR is not:
 * A post-hoc moderation layer that reacts after the model already saw the input
 * A probabilistic trust score or black-box classifier
 * A general alignment or ethics solution
+
+Current boundary summary:
+
+* No native multimodal gating
+* No deep stateful conversational governance
+* No native tool/function-call governance
+* No internal model reasoning visibility
+* No post-inference model behavior governance
+
+For full scope boundary, failure modes, and residual-risk semantics, use `docs/assurance-kit.md` (canonical).
 
 ---
 
@@ -170,6 +185,8 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 ## Guides
 
 * Assurance kit (canonical evaluation and verification path): `docs/assurance-kit.md`
+* External technical review preparation (D9 reviewer path): `docs/external-technical-review-prep.md`
+* Evaluator technical explainer (D8 boundary/claims/residual risk): `docs/evaluator-technical-explainer.md`
 * Engineer guide (local runs, signing, serving): `docs/engineer-guide.md`
 * Trial guide (auditors, insurers, evidence capture): `docs/trial-guide.md`
 * Key governance readiness (authority map and CRYPTO_ENFORCED checklist): `docs/key-governance-readiness.md`
@@ -198,6 +215,3 @@ MIT Licensed © 2025 Structural Design Labs
 ## Contact
 
 [https://www.structuraldesignlabs.com](https://www.structuraldesignlabs.com) · [info@structuraldesignlabs.com](mailto:info@structuraldesignlabs.com) · @SDL_HQ
-
-```
-```

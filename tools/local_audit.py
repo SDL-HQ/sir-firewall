@@ -66,6 +66,15 @@ def _read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _generated_cert_path_from_output(output: str) -> Optional[Path]:
+    for line in output.splitlines():
+        if line.startswith("OUTPUT_AUDIT_JSON="):
+            rel = line.split("=", 1)[1].strip()
+            if rel:
+                return REPO_ROOT / rel
+    return None
+
+
 def _safe_git_head() -> str:
     try:
         out = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=str(REPO_ROOT), text=True).strip()
@@ -124,11 +133,15 @@ def _fingerprint_local_unsigned_v1(payload: dict[str, Any]) -> str:
 
 def _write_local_html_from_template(template_path: Path, out_path: Path) -> None:
     """
-    proofs/template.html fetches latest-audit.json.
-    For local unsigned snapshots, write a copy that fetches local-audit.json.
+    proofs/template.html uses placeholders for target JSON/labels.
+    For local unsigned snapshots, write a copy targeting local-audit.json.
     """
     html = template_path.read_text(encoding="utf-8")
-    html2 = html.replace("latest-audit.json", "local-audit.json")
+    html2 = (
+        html.replace("__AUDIT_JSON__", "local-audit.json")
+        .replace("__AUDIT_LABEL__", "local-audit")
+        .replace("__VERIFY_COMMAND__", "cat proofs/local-audit.json | python tools/verify_certificate.py -")
+    )
     out_path.write_text(html2, encoding="utf-8")
 
 
@@ -279,9 +292,12 @@ def main() -> int:
             print("ERROR: --sign sdl requires SDL_PRIVATE_KEY_PEM in your environment", file=sys.stderr)
             return 2
         _run([sys.executable, "tools/sign_policy.py"], env=env)
-        _run([sys.executable, "tools/generate_certificate.py"], env=env)
-        _run([sys.executable, "tools/verify_certificate.py", "proofs/latest-audit.json"], env=env)
-        cert_path = REPO_ROOT / "proofs" / "latest-audit.json"
+        gen_out = _capture([sys.executable, "tools/generate_certificate.py"], env=env)
+        cert_path = _generated_cert_path_from_output(gen_out)
+        if cert_path is None:
+            print("ERROR: Could not determine generated cert path from generate_certificate.py output.", file=sys.stderr)
+            return 2
+        _run([sys.executable, "tools/verify_certificate.py", str(cert_path)], env=env)
 
     elif args.sign == "local":
         local_dir = REPO_ROOT / "local_keys"
@@ -297,12 +313,15 @@ def main() -> int:
         env["SDL_PRIVATE_KEY_PEM"] = priv.read_text(encoding="utf-8")
 
         _run([sys.executable, "tools/sign_policy.py"], env=env)
-        _run([sys.executable, "tools/generate_certificate.py"], env=env)
+        gen_out = _capture([sys.executable, "tools/generate_certificate.py"], env=env)
+        cert_path = _generated_cert_path_from_output(gen_out)
+        if cert_path is None:
+            print("ERROR: Could not determine generated cert path from generate_certificate.py output.", file=sys.stderr)
+            return 2
         _run(
-            [sys.executable, "tools/verify_certificate.py", "proofs/latest-audit.json", "--pubkey", str(pub)],
+            [sys.executable, "tools/verify_certificate.py", str(cert_path), "--pubkey", str(pub)],
             env=env,
         )
-        cert_path = REPO_ROOT / "proofs" / "latest-audit.json"
 
     else:
         print(f"ERROR: Unknown signing mode: {args.sign}", file=sys.stderr)
@@ -311,6 +330,11 @@ def main() -> int:
     if cert_path is None or not cert_path.exists():
         print("ERROR: No cert path available for archiving.", file=sys.stderr)
         return 2
+
+    cert_rel = cert_path.relative_to(REPO_ROOT)
+    cert_html = cert_rel.with_suffix(".html")
+    cert_label = cert_rel.stem
+    print(f"\nAudit artifact selected: {cert_rel}")
 
     # 5) Archive run
     _run(
@@ -341,10 +365,7 @@ def main() -> int:
     if args.serve:
         port = int(args.port)
         print("\nServe locally (avoids file:// fetch restrictions). Open:")
-        if args.sign == "none":
-            print(f"  http://localhost:{port}/proofs/local-audit.html")
-        else:
-            print(f"  http://localhost:{port}/proofs/latest-audit.html")
+        print(f"  http://localhost:{port}/{cert_html.as_posix()}   ({cert_label})")
         print(f"  http://localhost:{port}/proofs/runs/index.html\n")
         _run([sys.executable, "-m", "http.server", str(port)], env=env)
 

@@ -18,6 +18,12 @@ Semantics:
 - `latest-audit.*` is latest passing proof (last known good)
 - `latest-run.json` is most recent run result, including fail or inconclusive outcomes
 
+Current product boundary in trial terms:
+
+- SIR governs a text-first, request-level, deterministic pre-inference path.
+- Evidence claims apply to the evaluated SIR path and artefacts for that run context.
+- Evidence does not by itself prove governance of multimodal, tool/action-graph, deep conversational state, or post-inference behavior surfaces.
+
 ## Trial workflow
 
 1. Follow the canonical path in `docs/assurance-kit.md`.
@@ -46,3 +52,5 @@ For governance or underwriting records, capture:
 This guide does not redefine proof semantics or verification commands.
 
 Use `docs/assurance-kit.md` as the canonical source for those details.
+
+For blunt failure-mode and residual-risk interpretation, use `docs/assurance-kit.md` directly.

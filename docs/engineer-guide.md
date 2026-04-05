@@ -4,6 +4,8 @@ This guide is for running SIR locally, generating artefacts, and serving proof p
 
 For the canonical evaluation and offline verification path, use `docs/assurance-kit.md`.
 
+For the first disciplined benchmark-cycle contract (what to run, required artefacts, and comparability rules), use `docs/benchmark-cycle.v1.md`.
+
 ## Runtime requirements
 
 - Python 3.11+
@@ -47,6 +49,15 @@ python --version
 ## Packs and modes (what you can run)
 
 SIR runs packs by `pack_id` from `spec/packs/pack_registry.v1.json`.
+
+Current technical boundary for this guide:
+
+* text-first, request-level deterministic pre-inference gating
+* structured envelope handling around that request path
+* pack/scenario evaluation for that path
+* proof/archive artefact generation around gate behavior
+
+Out of scope here: native multimodal gating, deep stateful conversation governance, native tool/function-call governance, and post-inference behavior governance.
 
 Modes:
 
@@ -99,6 +110,8 @@ Run live:
 ```bash
 sir run --mode live --pack generic_safety
 ```
+
+If credentials or live dependencies are missing, `sir` now fails fast with explicit blocker text (for example missing `XAI_API_KEY` or missing `litellm`) and does not simulate/fallback.
 
 The run summary records:
 
@@ -155,12 +168,45 @@ RUN_DIR="$(ls -dt proofs/runs/* | head -n 1)"
 python3 tools/verify_archive_receipt.py "$RUN_DIR" --pubkey /tmp/sir_dev_pub.pem
 ```
 
+If `archive_receipt.json` carries a `signing_key_id` that does not exist in the default SDL key registry, explicitly passing `--pubkey` now verifies the signature for local/dev use and prints a warning that registry/revocation checks were not enforced.
+
 Benchmark/index semantics:
 
 * `proofs/runs/benchmark_index.v1.json` is an evidence map, not a score.
-* It records per-run suite (`pack_id`, `pack_version`), `proof_class`, `result`, and evidence paths.
+* It records attributable per-run comparison rows: `sir_firewall_version`, `commit_sha`, explicit `evaluation_target` (`domain_pack` or `scenario_pack` + pack identifiers), `proof_class`, `provider`, `model`, `result`, `leaks`, `harmless_blocked`, and evidence links.
 * It includes both `latest_run` and `latest_passing_run` pointers so fail/pass truth stays explicit.
 * `comparison` is raw run metadata for side-by-side reading only (counts, hashes, and provider call totals), not a ranking model.
+* Rows are evidence-linked comparisons only. There is no ranking, no blended domain/scenario row meaning, and no “overall best model” logic.
+* Local certificates now attempt best-effort local attribution for `sir_firewall_version` and `commit_sha` (without fabricating CI context). `ci_run_url` remains empty outside CI.
+
+## Canonical benchmark cycle v1 (D4)
+
+Use `docs/benchmark-cycle.v1.md` for the locked first benchmark set and cycle validity criteria.
+
+Short form of the required set:
+
+* `generic_safety` as `FIREWALL_ONLY_AUDIT`
+* `account_recovery_fraud` as `FIREWALL_ONLY_AUDIT`
+* `scenario_injection_chain` as `SCENARIO_AUDIT`
+* `generic_safety` as `LIVE_GATING_CHECK` (single live sentinel slice)
+
+Comparability rules are evidence-first:
+
+* compare only like-for-like `proof_class`
+* keep `domain_pack` and `scenario_pack` rows separate
+* treat `row_identity` as the comparability key
+* do not infer ranking/score semantics from benchmark index metadata
+
+## Failure handling notes for operators
+
+When a run is malformed, invalid, or inconclusive, treat it as non-passing and inspect run evidence directly:
+
+* `proofs/run_summary.json`
+* `proofs/latest-attempts.log`
+* `proofs/itgl_ledger.jsonl`
+* `proofs/runs/<run_id>/...` (if archived)
+
+If SIR is bypassed or not deployed in front of the real model request path, run artefacts do not establish governance for that bypassed traffic.
 
 ## Serve proof pages locally
 

@@ -13,6 +13,7 @@ A pack entry exists to make selection, validation, and review deterministic.
 - Domain packs are CSV suites under `tests/domain_packs/`.
 - Scenario packs use scenario JSON suites under `tests/scenario_packs/`.
 - The registry already contains both pack types. This guidance does not introduce new scenario-pack semantics.
+- Pack evaluation binds to request-path inputs for deterministic pre-inference gate testing; this file does not define post-inference or full system-governance semantics.
 
 ## Required metadata
 
@@ -47,10 +48,26 @@ A pack must meet all of the following:
 
 1. Add or modify pack suite file.
 2. Add or update pack metadata in `spec/packs/pack_registry.v1.json`.
-3. Add or update pack documentation under `tests/domain_packs/` when applicable.
+3. Add or update pack documentation under `tests/domain_packs/` or `tests/scenario_packs/` when applicable.
 4. Run validators:
    - `python tools/validate_pack_registry.py --file spec/packs/pack_registry.v1.json`
    - `python tools/validate_domain_pack.py --glob 'tests/domain_packs/*.csv'`
+   - `for f in tests/scenario_packs/*.json; do python tools/validate_scenario_pack.py --file "$f"; done`
+
+
+## Controlled growth policy (D6)
+
+Pack/scenario growth should be small and justified. Additions should only be made when at least one of the following is true:
+
+- Real-world relevance for the current governance posture.
+- Clear evaluator usefulness for near-term benchmark interpretation.
+- Obvious gap in the current small benchmark set.
+
+Non-goals for growth in this phase:
+
+- Broad taxonomy expansion for its own sake.
+- Multimodal or tool-execution expansion.
+- Benchmark scoring/ranking redesign.
 
 ## Determinism constraints
 

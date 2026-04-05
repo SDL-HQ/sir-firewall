@@ -8,6 +8,8 @@ Terminology: this document uses **governance gate** for public/operator descript
 
 ## Scope
 
+This assurance kit points to the locked first benchmark cycle contract in `docs/benchmark-cycle.v1.md`.
+
 This assurance kit explains:
 
 - what SIR does
@@ -27,6 +29,15 @@ Given a policy and a test pack, it evaluates prompts before model inference and 
 
 Core outputs are evidence artefacts such as run summaries, ITGL ledger/hash, signed certificates, and signed run archive receipts.
 
+Current capability boundary (explicit):
+
+- text-first
+- request-level
+- deterministic pre-inference gating
+- structured envelope handling around that request path
+- pack/scenario evaluation against that path
+- proof and archive generation around gate behavior
+
 ## What SIR does not prove
 
 SIR does not prove model alignment, broad model safety, or organizational compliance by itself.
@@ -34,6 +45,37 @@ SIR does not prove model alignment, broad model safety, or organizational compli
 SIR does not produce a benchmark score or ranking.
 
 SIR provides deterministic enforcement evidence for a specific policy, pack, and run context. Claims outside that boundary require separate evidence.
+
+SIR currently does **not** provide:
+
+- native multimodal gating
+- deep stateful conversational governance across long-running sessions
+- native tool/function-call governance across external action graphs
+- full structured enterprise action-graph governance
+- internal model reasoning visibility
+- post-inference model behavior governance
+- full deployment-surface coverage
+
+## Failure modes and residual risk (canonical)
+
+Plain-language outcomes:
+
+- If SIR blocks: the request path is stopped before model inference for that evaluated request.
+- If inputs are malformed: treat the outcome as non-passing and use run artefacts to inspect the failure state.
+- If registry or policy load paths fail: SIR cannot truthfully evaluate policy conformance; treat the outcome as fail/inconclusive with evidence.
+- If a run is invalid or inconclusive: treat it as non-passing; use `latest-run.json` plus archived run artefacts to inspect failure state.
+- If SIR is bypassed: no governance claim applies to bypassed model-facing traffic.
+- If SIR is not actually in front of the model path: proof only attests to the exercised SIR path, not ungoverned alternate paths.
+
+Evidence durability under failure:
+
+- Failure/inconclusive runs are still represented in run-level evidence surfaces (`latest-run.json` and run archive entries).
+- Latest passing pointer (`latest-audit.*`) remains intentionally separate from latest run truth.
+
+Residual risk boundary:
+
+- Risk remains for any path, modality, tool/action chain, or post-inference behavior outside the exercised SIR request path.
+- SIR evidence proves deterministic gate behavior for the evaluated boundary; it does not prove global system safety.
 
 ## Evidence surfaces
 
@@ -44,6 +86,24 @@ Public surfaces and semantics:
 - `runs/index.html`: archive index for pass and fail runs
 - `runs/<run_id>/...`: per-run evidence bundle (manifest, audit, receipt, copied artefacts)
 - `runs/benchmark_index.v1.json`: evidence map for side-by-side comparison only, with `latest_run` and `latest_passing_run`
+
+## Canonical benchmark cycle contract (v1)
+
+The first disciplined benchmark cycle is locked in `docs/benchmark-cycle.v1.md`.
+
+Required cycle set:
+
+- `generic_safety` (`FIREWALL_ONLY_AUDIT`)
+- `account_recovery_fraud` (`FIREWALL_ONLY_AUDIT`)
+- `scenario_injection_chain` (`SCENARIO_AUDIT`)
+- `generic_safety` (`LIVE_GATING_CHECK` live sentinel)
+
+Interpretation constraints:
+
+- compare only within identical attribution dimensions (`row_identity`)
+- keep domain-pack and scenario-pack evidence rows separate
+- treat missing provider/model on live rows as non-comparable
+- keep benchmark index semantics as evidence mapping only (no scores/rankings)
 
 ## Proof classes
 
@@ -106,6 +166,7 @@ sir verify cert proofs/latest-audit.json --key <pubkey.pem>
 ```
 
 Note: certificate generation is a separate step and is not automatic from `sir run`. Local/non-authoritative certificates may not validate against default trust anchors unless `--key` (or a matching key registry) is provided.
+Local generation aims to preserve attribution fields (for example `sir_firewall_version` and `commit_sha`) where possible, while leaving CI-only fields (for example `ci_run_url`) explicitly local/empty when CI context is absent.
 
 ### 5) Verify archived run receipt offline
 
@@ -116,6 +177,7 @@ sir verify archive proofs/runs/<run_id>/
 ```
 
 Note: archive publication is a separate step (for example via `tools/publish_run.py`) and requires signing key material.
+If a local/dev archive was signed with an ephemeral key and its `signing_key_id` does not resolve in the default key registry, pass an explicit matching public key (`--key` / `--pubkey`) for local signature verification. This verifies signature integrity but does not upgrade the proof to SDL/public-authoritative trust semantics.
 
 ### 6) Interpret benchmark index honestly
 
@@ -123,8 +185,9 @@ Read `proofs/runs/benchmark_index.v1.json` as an evidence index:
 
 - use `latest_run` for most recent execution status
 - use `latest_passing_run` for most recent pass
+- treat each row as one attributable comparison record: SIR version, commit SHA, explicit evaluation target (`domain_pack` or `scenario_pack`), proof class, provider/model, result, leaks/harmless-blocked, and evidence links
 - use `entries[*].comparison` for raw observed metadata only
-- do not treat it as a score or ranking
+- do not treat it as a score or ranking, and do not infer an overall “best model”
 
 ## Compact reference table
 

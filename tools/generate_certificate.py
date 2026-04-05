@@ -28,11 +28,16 @@ import base64
 import hashlib
 import json
 import os
+import re
+import subprocess
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def _utc_now_iso() -> str:
@@ -154,15 +159,70 @@ def _suite_counts_and_hash(suite_path: str) -> Dict[str, str]:
 
 
 def _sir_firewall_version() -> str:
-    """Best-effort import of installed sir_firewall version."""
+    """Best-effort SIR version resolution for both CI and local editable repo use."""
     try:
         import sir_firewall  # type: ignore
 
         v = getattr(sir_firewall, "__version__", "")  # set in src/sir_firewall/__init__.py
         v = str(v).strip()
-        return v or "unknown"
+        if v:
+            return v
     except Exception:
-        return "unknown"
+        pass
+
+    # Local fallback: parse src version constant without requiring package install.
+    try:
+        init_py = REPO_ROOT / "src" / "sir_firewall" / "__init__.py"
+        with open(init_py, "r", encoding="utf-8") as f:
+            text = f.read()
+        m = re.search(r'__version__\s*=\s*"([^"]+)"', text)
+        if m and m.group(1).strip():
+            return m.group(1).strip()
+    except Exception:
+        pass
+
+    return "unknown"
+
+
+def _git_commit_sha() -> str:
+    """Best-effort local git SHA fallback when CI env var is absent."""
+    try:
+        return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, cwd=REPO_ROOT).strip()
+    except Exception:
+        return ""
+
+
+def _is_publishable_latest(cert: Dict[str, Any]) -> bool:
+    """Canonical latest-audit.* requires attributable provenance."""
+    sir_version = str(cert.get("sir_firewall_version") or "").strip()
+    commit_sha = str(cert.get("commit_sha") or "").strip()
+    ci_run_url = str(cert.get("ci_run_url") or "").strip()
+    return bool(sir_version and sir_version != "unknown" and commit_sha and ci_run_url)
+
+
+def _write_html_from_template(
+    *,
+    template_path: str,
+    out_path: str,
+    stamp: str,
+    target_json_name: str,
+    audit_label: str,
+    verify_command: str,
+) -> None:
+    """Render HTML from template with explicit placeholders for target + label."""
+    with open(template_path, "r", encoding="utf-8") as t:
+        html = t.read()
+
+    html = html.replace("__AUDIT_JSON__", target_json_name)
+    html = html.replace("__AUDIT_LABEL__", audit_label)
+    html = html.replace("__VERIFY_COMMAND__", verify_command)
+
+    if not html.endswith("\n"):
+        html += "\n"
+    html += stamp
+
+    with open(out_path, "w", encoding="utf-8") as out:
+        out.write(html)
 
 
 def _trust_fingerprint_v1(
@@ -277,7 +337,7 @@ def main() -> None:
         "flags": policy_flags,
         "result": result,
         "ci_run_url": ci_run_url,
-        "commit_sha": os.getenv("GITHUB_SHA", ""),
+        "commit_sha": (os.getenv("GITHUB_SHA", "").strip() or _git_commit_sha()),
         "repository": repo,
         "signing_key_id": signing_key_id,
     }
@@ -310,28 +370,45 @@ def main() -> None:
 
     with open(archival, "w", encoding="utf-8") as f:
         json.dump(cert, f, indent=2, ensure_ascii=False)
-    with open("proofs/latest-audit.json", "w", encoding="utf-8") as f:
+
+    # HTML is a JS template that reads either latest-audit.json or local-audit.json at runtime.
+    # Append a small build stamp so GitHub history stays visually aligned with JSON updates.
+    publishable_latest = _is_publishable_latest(cert)
+    json_out = "proofs/latest-audit.json" if publishable_latest else "proofs/local-audit.json"
+    html_out = "proofs/latest-audit.html" if publishable_latest else "proofs/local-audit.html"
+    target_json_name = "latest-audit.json" if publishable_latest else "local-audit.json"
+    audit_label = "latest-audit" if publishable_latest else "local-audit"
+    verify_command = (
+        "curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | "
+        "python tools/verify_certificate.py -"
+        if publishable_latest
+        else "cat proofs/local-audit.json | python tools/verify_certificate.py -"
+    )
+    with open(json_out, "w", encoding="utf-8") as f:
         json.dump(cert, f, indent=2, ensure_ascii=False)
 
-    # HTML is a JS template that reads latest-audit.json at runtime.
-    # Append a small build stamp so GitHub history stays visually aligned with JSON updates.
     try:
-        with open("proofs/template.html", "r", encoding="utf-8") as t:
-            html = t.read()
-
         stamp = f"<!-- SIR_BUILD: date={cert.get('date','')} payload_hash={cert.get('payload_hash','')} -->\n"
-        if not html.endswith("\n"):
-            html += "\n"
-        html += stamp
-
-        with open("proofs/latest-audit.html", "w", encoding="utf-8") as out:
-            out.write(html)
-        print("OK: HTML written from proofs/template.html (with build stamp)")
+        _write_html_from_template(
+            template_path="proofs/template.html",
+            out_path=html_out,
+            stamp=stamp,
+            target_json_name=target_json_name,
+            audit_label=audit_label,
+            verify_command=verify_command,
+        )
+        print(f"OK: HTML written from proofs/template.html (with build stamp) → {html_out}")
     except Exception as e:
         print(f"WARNING: HTML generation failed: {e}")
 
     print(f"OK: Certificate → {archival}")
-    print("OK: Latest proof → proofs/latest-audit.json + proofs/latest-audit.html")
+    if publishable_latest:
+        print("OK: Latest proof → proofs/latest-audit.json + proofs/latest-audit.html")
+        print("OUTPUT_AUDIT_JSON=proofs/latest-audit.json")
+    else:
+        print("OK: Local proof only → proofs/local-audit.json + proofs/local-audit.html")
+        print("INFO: Canonical latest-audit.* not updated (missing attributable provenance fields).")
+        print("OUTPUT_AUDIT_JSON=proofs/local-audit.json")
 
 
 if __name__ == "__main__":
