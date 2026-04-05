@@ -1,4 +1,4 @@
-# SIR External Technical Review Preparation (D9)
+# SIR External Technical Review Preparation
 
 This document prepares SIR for independent technical scrutiny.
 
