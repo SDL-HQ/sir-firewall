@@ -133,8 +133,8 @@ def _fingerprint_local_unsigned_v1(payload: dict[str, Any]) -> str:
 
 def _write_local_html_from_template(template_path: Path, out_path: Path) -> None:
     """
-    proofs/template.html fetches latest-audit.json.
-    For local unsigned snapshots, write a copy that fetches local-audit.json.
+    proofs/template.html uses placeholders for target JSON/labels.
+    For local unsigned snapshots, write a copy targeting local-audit.json.
     """
     html = template_path.read_text(encoding="utf-8")
     html2 = (
