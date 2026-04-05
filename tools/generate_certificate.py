@@ -31,10 +31,13 @@ import os
 import re
 import subprocess
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def _utc_now_iso() -> str:
@@ -169,8 +172,9 @@ def _sir_firewall_version() -> str:
 
     # Local fallback: parse src version constant without requiring package install.
     try:
-        init_py = os.path.join("src", "sir_firewall", "__init__.py")
-        text = open(init_py, "r", encoding="utf-8").read()
+        init_py = REPO_ROOT / "src" / "sir_firewall" / "__init__.py"
+        with open(init_py, "r", encoding="utf-8") as f:
+            text = f.read()
         m = re.search(r'__version__\s*=\s*"([^"]+)"', text)
         if m and m.group(1).strip():
             return m.group(1).strip()
@@ -183,7 +187,7 @@ def _sir_firewall_version() -> str:
 def _git_commit_sha() -> str:
     """Best-effort local git SHA fallback when CI env var is absent."""
     try:
-        return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+        return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, cwd=REPO_ROOT).strip()
     except Exception:
         return ""
 
