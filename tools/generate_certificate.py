@@ -28,6 +28,8 @@ import base64
 import hashlib
 import json
 import os
+import re
+import subprocess
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
@@ -154,15 +156,36 @@ def _suite_counts_and_hash(suite_path: str) -> Dict[str, str]:
 
 
 def _sir_firewall_version() -> str:
-    """Best-effort import of installed sir_firewall version."""
+    """Best-effort SIR version resolution for both CI and local editable repo use."""
     try:
         import sir_firewall  # type: ignore
 
         v = getattr(sir_firewall, "__version__", "")  # set in src/sir_firewall/__init__.py
         v = str(v).strip()
-        return v or "unknown"
+        if v:
+            return v
     except Exception:
-        return "unknown"
+        pass
+
+    # Local fallback: parse src version constant without requiring package install.
+    try:
+        init_py = os.path.join("src", "sir_firewall", "__init__.py")
+        text = open(init_py, "r", encoding="utf-8").read()
+        m = re.search(r'__version__\s*=\s*"([^"]+)"', text)
+        if m and m.group(1).strip():
+            return m.group(1).strip()
+    except Exception:
+        pass
+
+    return "unknown"
+
+
+def _git_commit_sha() -> str:
+    """Best-effort local git SHA fallback when CI env var is absent."""
+    try:
+        return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+    except Exception:
+        return ""
 
 
 def _trust_fingerprint_v1(
@@ -277,7 +300,7 @@ def main() -> None:
         "flags": policy_flags,
         "result": result,
         "ci_run_url": ci_run_url,
-        "commit_sha": os.getenv("GITHUB_SHA", ""),
+        "commit_sha": (os.getenv("GITHUB_SHA", "").strip() or _git_commit_sha()),
         "repository": repo,
         "signing_key_id": signing_key_id,
     }

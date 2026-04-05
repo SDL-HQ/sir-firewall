@@ -111,6 +111,8 @@ Run live:
 sir run --mode live --pack generic_safety
 ```
 
+If credentials or live dependencies are missing, `sir` now fails fast with explicit blocker text (for example missing `XAI_API_KEY` or missing `litellm`) and does not simulate/fallback.
+
 The run summary records:
 
 * `provider_call_attempts` (attempted downstream calls, including retries/timeouts)
@@ -166,6 +168,8 @@ RUN_DIR="$(ls -dt proofs/runs/* | head -n 1)"
 python3 tools/verify_archive_receipt.py "$RUN_DIR" --pubkey /tmp/sir_dev_pub.pem
 ```
 
+If `archive_receipt.json` carries a `signing_key_id` that does not exist in the default SDL key registry, explicitly passing `--pubkey` now verifies the signature for local/dev use and prints a warning that registry/revocation checks were not enforced.
+
 Benchmark/index semantics:
 
 * `proofs/runs/benchmark_index.v1.json` is an evidence map, not a score.
@@ -173,6 +177,7 @@ Benchmark/index semantics:
 * It includes both `latest_run` and `latest_passing_run` pointers so fail/pass truth stays explicit.
 * `comparison` is raw run metadata for side-by-side reading only (counts, hashes, and provider call totals), not a ranking model.
 * Rows are evidence-linked comparisons only. There is no ranking, no blended domain/scenario row meaning, and no “overall best model” logic.
+* Local certificates now attempt best-effort local attribution for `sir_firewall_version` and `commit_sha` (without fabricating CI context). `ci_run_url` remains empty outside CI.
 
 ## Canonical benchmark cycle v1 (D4)
 
