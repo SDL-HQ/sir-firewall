@@ -4,6 +4,8 @@ This guide is for running SIR locally, generating artefacts, and serving proof p
 
 For the canonical evaluation and offline verification path, use `docs/assurance-kit.md`.
 
+For the first disciplined benchmark-cycle contract (what to run, required artefacts, and comparability rules), use `docs/benchmark-cycle.v1.md`.
+
 ## Runtime requirements
 
 - Python 3.11+
@@ -171,6 +173,24 @@ Benchmark/index semantics:
 * It includes both `latest_run` and `latest_passing_run` pointers so fail/pass truth stays explicit.
 * `comparison` is raw run metadata for side-by-side reading only (counts, hashes, and provider call totals), not a ranking model.
 * Rows are evidence-linked comparisons only. There is no ranking, no blended domain/scenario row meaning, and no “overall best model” logic.
+
+## Canonical benchmark cycle v1 (D4)
+
+Use `docs/benchmark-cycle.v1.md` for the locked first benchmark set and cycle validity criteria.
+
+Short form of the required set:
+
+* `generic_safety` as `FIREWALL_ONLY_AUDIT`
+* `account_recovery_fraud` as `FIREWALL_ONLY_AUDIT`
+* `scenario_injection_chain` as `SCENARIO_AUDIT`
+* `generic_safety` as `LIVE_GATING_CHECK` (single live sentinel slice)
+
+Comparability rules are evidence-first:
+
+* compare only like-for-like `proof_class`
+* keep `domain_pack` and `scenario_pack` rows separate
+* treat `row_identity` as the comparability key
+* do not infer ranking/score semantics from benchmark index metadata
 
 ## Failure handling notes for operators
 
