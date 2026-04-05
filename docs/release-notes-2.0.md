@@ -62,12 +62,14 @@ This closeout line intentionally did not include:
 Current evidence posture is:
 
 - Signed certificate and contract-verifiable payloads are available (`proofs/latest-audit.json`, `spec/evidence_contract.v1.json`).
-- Latest-run truth is separately surfaced, including non-passing outcomes (`proofs/latest-run.json`).
+- Latest-run truth is separately surfaced, including non-passing outcomes (`docs/latest-run.json`, served as `/latest-run.json`).
 - Per-run archives are retained and verifiable with receipts and copied run artefacts (`proofs/runs/<run_id>/...`).
 - ITGL integrity artefacts are produced and verifiable (`proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`).
 - Benchmark index is an evidence map with attribution/comparability constraints (`proofs/runs/benchmark_index.v1.json`, `docs/benchmark-cycle.v1.md`).
 
 Important D5 reality: the first canonical benchmark cycle was truthfully partial in that execution because the required live sentinel row was blocked without provider credentials.
+
+Attribution note for local/out-of-band rows: blank `commit_sha` and `sir_firewall_version: "unknown"` can appear in local/dev-generated evidence rows; treat those rows as local/out-of-band for comparability, not as SDL/public canonical benchmark evidence.
 
 ## Closeout result
 

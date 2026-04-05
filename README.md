@@ -215,6 +215,3 @@ MIT Licensed © 2025 Structural Design Labs
 ## Contact
 
 [https://www.structuraldesignlabs.com](https://www.structuraldesignlabs.com) · [info@structuraldesignlabs.com](mailto:info@structuraldesignlabs.com) · @SDL_HQ
-
-```
-```

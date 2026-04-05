@@ -21,7 +21,7 @@ Current retained artefacts are in version control under `proofs/`, including:
   - `proofs/latest-audit.json`
   - `proofs/latest-audit.html`
 - latest run status pointer:
-  - `proofs/latest-run.json`
+  - `docs/latest-run.json` (served at `/latest-run.json` on Pages)
 - run evidence files:
   - `proofs/run_summary.json`
   - `proofs/latest-attempts.log`
