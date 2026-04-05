@@ -48,10 +48,25 @@ A pack must meet all of the following:
 
 1. Add or modify pack suite file.
 2. Add or update pack metadata in `spec/packs/pack_registry.v1.json`.
-3. Add or update pack documentation under `tests/domain_packs/` when applicable.
+3. Add or update pack documentation under `tests/domain_packs/` or `tests/scenario_packs/` when applicable.
 4. Run validators:
    - `python tools/validate_pack_registry.py --file spec/packs/pack_registry.v1.json`
    - `python tools/validate_domain_pack.py --glob 'tests/domain_packs/*.csv'`
+
+
+## Controlled growth policy (D6)
+
+Pack/scenario growth should be small and justified. Additions should only be made when at least one of the following is true:
+
+- Real-world relevance for the current governance posture.
+- Clear evaluator usefulness for near-term benchmark interpretation.
+- Obvious gap in the current small benchmark set.
+
+Non-goals for growth in this phase:
+
+- Broad taxonomy expansion for its own sake.
+- Multimodal or tool-execution expansion.
+- Benchmark scoring/ranking redesign.
 
 ## Determinism constraints
 
