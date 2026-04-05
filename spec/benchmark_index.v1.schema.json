@@ -66,18 +66,35 @@
         "required": [
           "run_id",
           "run_timestamp_utc",
+          "sir_firewall_version",
+          "commit_sha",
           "result",
           "proof_class",
-          "suite",
+          "evaluation_target",
+          "provider",
+          "model",
           "comparison",
           "ci_run_url",
-          "evidence"
+          "evidence",
+          "row_identity"
         ],
         "properties": {
           "run_id": {
             "type": "string"
           },
           "run_timestamp_utc": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sir_firewall_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "commit_sha": {
             "type": [
               "string",
               "null"
@@ -95,13 +112,22 @@
               "null"
             ]
           },
-          "suite": {
+          "evaluation_target": {
             "type": "object",
+            "description": "Explicit evaluated target for this row. A row refers to exactly one target kind.",
             "required": [
+              "target_kind",
               "pack_id",
               "pack_version"
             ],
             "properties": {
+              "target_kind": {
+                "type": "string",
+                "enum": [
+                  "domain_pack",
+                  "scenario_pack"
+                ]
+              },
               "pack_id": {
                 "type": [
                   "string",
@@ -113,9 +139,31 @@
                   "string",
                   "null"
                 ]
+              },
+              "scenario_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "additionalProperties": false
+          },
+          "provider": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "row_identity": {
+            "type": "string",
+            "description": "Deterministic identity key across attributable dimensions only (not a score and not a ranking)."
           },
           "comparison": {
             "type": "object",

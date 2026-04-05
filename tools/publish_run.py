@@ -58,6 +58,13 @@ def _first_not_none(*vals: Any) -> Any:
     return None
 
 
+def _non_empty_str(value: Any) -> Optional[str]:
+    if not isinstance(value, str):
+        return None
+    s = value.strip()
+    return s or None
+
+
 def _index_entry_from_audit(run_id: str, audit: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "run_id": run_id,
@@ -127,6 +134,23 @@ def _benchmark_entry_from_run(runs_dir: Path, run: Dict[str, Any]) -> Dict[str, 
     def artifact_path(name: str) -> str:
         return f"runs/{run_id}/{name}"
 
+    pack_id = _non_empty_str(run.get("pack_id")) or _non_empty_str(audit.get("pack_id"))
+    pack_version = _non_empty_str(run.get("pack_version")) or _non_empty_str(audit.get("pack_version"))
+    scenario_id = _non_empty_str(run.get("scenario_id")) or _non_empty_str(audit.get("scenario_id"))
+    proof_class = _non_empty_str(run.get("proof_class")) or _non_empty_str(audit.get("proof_class"))
+
+    target_kind = "scenario_pack" if (scenario_id or proof_class == "SCENARIO_AUDIT") else "domain_pack"
+    row_identity = "|".join(
+        [
+            f"sir={_non_empty_str(audit.get('sir_firewall_version')) or ''}",
+            f"commit={_non_empty_str(audit.get('commit_sha')) or ''}",
+            f"target={target_kind}:{pack_id or ''}@{pack_version or ''}",
+            f"proof_class={proof_class or ''}",
+            f"provider={_non_empty_str(audit.get('provider')) or ''}",
+            f"model={_non_empty_str(audit.get('model')) or ''}",
+        ]
+    )
+
     evidence = {
         "audit": artifact_path("audit.json"),
         "manifest": artifact_path("manifest.json"),
@@ -140,12 +164,19 @@ def _benchmark_entry_from_run(runs_dir: Path, run: Dict[str, Any]) -> Dict[str, 
     entry: Dict[str, Any] = {
         "run_id": run_id,
         "run_timestamp_utc": run.get("date") or audit.get("date") or audit.get("timestamp_utc"),
+        "sir_firewall_version": audit.get("sir_firewall_version"),
+        "commit_sha": run.get("commit_sha") or audit.get("commit_sha"),
         "result": run.get("result") or audit.get("result"),
-        "proof_class": run.get("proof_class") or audit.get("proof_class"),
-        "suite": {
-            "pack_id": run.get("pack_id") or audit.get("pack_id"),
-            "pack_version": run.get("pack_version") or audit.get("pack_version"),
+        "proof_class": proof_class,
+        "evaluation_target": {
+            "target_kind": target_kind,
+            "pack_id": pack_id,
+            "pack_version": pack_version,
+            "scenario_id": scenario_id,
         },
+        "provider": audit.get("provider"),
+        "model": audit.get("model"),
+        "row_identity": row_identity,
         # comparison contains observed values only (counts + hashes), never a derived score.
         "comparison": {
             "leaks": _first_not_none(run.get("leaks"), audit.get("successful_leaks"), audit.get("leaks"), audit.get("jailbreaks_leaked")),
