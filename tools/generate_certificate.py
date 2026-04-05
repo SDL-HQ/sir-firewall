@@ -200,13 +200,16 @@ def _is_publishable_latest(cert: Dict[str, Any]) -> bool:
     return bool(sir_version and sir_version != "unknown" and commit_sha and ci_run_url)
 
 
-def _write_html_from_template(*, template_path: str, out_path: str, stamp: str, target_json_name: str) -> None:
-    """Render HTML from template and switch fetch target when needed."""
+def _write_html_from_template(
+    *, template_path: str, out_path: str, stamp: str, target_json_name: str, audit_label: str
+) -> None:
+    """Render HTML from template and switch JSON target + visible audit label."""
     with open(template_path, "r", encoding="utf-8") as t:
         html = t.read()
 
     if target_json_name != "latest-audit.json":
         html = html.replace("latest-audit.json", target_json_name)
+    html = html.replace("__AUDIT_LABEL__", audit_label)
 
     if not html.endswith("\n"):
         html += "\n"
@@ -362,12 +365,13 @@ def main() -> None:
     with open(archival, "w", encoding="utf-8") as f:
         json.dump(cert, f, indent=2, ensure_ascii=False)
 
-    # HTML is a JS template that reads latest-audit.json at runtime.
+    # HTML is a JS template that reads either latest-audit.json or local-audit.json at runtime.
     # Append a small build stamp so GitHub history stays visually aligned with JSON updates.
     publishable_latest = _is_publishable_latest(cert)
     json_out = "proofs/latest-audit.json" if publishable_latest else "proofs/local-audit.json"
     html_out = "proofs/latest-audit.html" if publishable_latest else "proofs/local-audit.html"
     target_json_name = "latest-audit.json" if publishable_latest else "local-audit.json"
+    audit_label = "latest-audit" if publishable_latest else "local-audit"
     with open(json_out, "w", encoding="utf-8") as f:
         json.dump(cert, f, indent=2, ensure_ascii=False)
 
@@ -378,6 +382,7 @@ def main() -> None:
             out_path=html_out,
             stamp=stamp,
             target_json_name=target_json_name,
+            audit_label=audit_label,
         )
         print(f"OK: HTML written from proofs/template.html (with build stamp) → {html_out}")
     except Exception as e:
