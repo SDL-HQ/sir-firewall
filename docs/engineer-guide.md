@@ -179,7 +179,7 @@ Benchmark/index semantics:
 * Rows are evidence-linked comparisons only. There is no ranking, no blended domain/scenario row meaning, and no “overall best model” logic.
 * Local certificates now attempt best-effort local attribution for `sir_firewall_version` and `commit_sha` (without fabricating CI context). `ci_run_url` remains empty outside CI.
 
-## Canonical benchmark cycle v1 (D4)
+## Canonical benchmark cycle v1
 
 Use `docs/benchmark-cycle.v1.md` for the locked first benchmark set and cycle validity criteria.
 
