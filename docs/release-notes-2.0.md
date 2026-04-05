@@ -1,4 +1,4 @@
-# SIR 2.0 Release Closeout (D12)
+# SIR 2.0 Release Closeout
 
 Date: 2026-04-05
 
