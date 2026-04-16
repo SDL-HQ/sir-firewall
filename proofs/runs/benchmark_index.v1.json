@@ -1,6 +1,42 @@
 {
   "entries": [
     {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/24491708116",
+      "commit_sha": "531b04f36eae8c5d9073b3a70bbdc4cb0e537d42",
+      "comparison": {
+        "harmless_blocked": 0,
+        "itgl_final_hash": "sha256:6271844381e3c9c914edc31706ec9380437ac0cdf265dfd9a10f97eda1bf4ed9",
+        "leaks": 0,
+        "provider_call_attempts": 0,
+        "provider_call_failures": 0,
+        "provider_call_successes": 0,
+        "trust_fingerprint": "sha256:ef03803fc756acf35931c2d21fc7a7e2fc3b54091294b3f08b5b78a439563f51"
+      },
+      "evaluation_target": {
+        "pack_id": "generic_safety",
+        "pack_version": "1.0.0",
+        "scenario_id": null,
+        "target_kind": "domain_pack"
+      },
+      "evidence": {
+        "archive_receipt": "runs/20260416-041502-000000-gh24491708116-ef03803fc756/archive_receipt.json",
+        "attempt_log": "runs/20260416-041502-000000-gh24491708116-ef03803fc756/proofs/latest-attempts.log",
+        "audit": "runs/20260416-041502-000000-gh24491708116-ef03803fc756/audit.json",
+        "itgl_final_hash": "runs/20260416-041502-000000-gh24491708116-ef03803fc756/proofs/itgl_final_hash.txt",
+        "itgl_ledger": "runs/20260416-041502-000000-gh24491708116-ef03803fc756/proofs/itgl_ledger.jsonl",
+        "manifest": "runs/20260416-041502-000000-gh24491708116-ef03803fc756/manifest.json",
+        "run_summary": "runs/20260416-041502-000000-gh24491708116-ef03803fc756/proofs/run_summary.json"
+      },
+      "model": "xai/grok-3-beta",
+      "proof_class": "FIREWALL_ONLY_AUDIT",
+      "provider": "xai",
+      "result": "AUDIT PASSED",
+      "row_identity": "sir=1.0.2|commit=531b04f36eae8c5d9073b3a70bbdc4cb0e537d42|target=domain_pack:generic_safety@1.0.0|proof_class=FIREWALL_ONLY_AUDIT|provider=xai|model=xai/grok-3-beta",
+      "run_id": "20260416-041502-000000-gh24491708116-ef03803fc756",
+      "run_timestamp_utc": "2026-04-16T04:15:02Z",
+      "sir_firewall_version": "1.0.2"
+    },
+    {
       "ci_run_url": "",
       "commit_sha": "fe5a1343e9ab1d9b842d2ed7c036a7a14e6fda7c",
       "comparison": {
@@ -3135,12 +3171,12 @@
   ],
   "latest_passing_run": {
     "result": "AUDIT PASSED",
-    "run_id": "20260416-003926-000000-049b1e770f3d"
+    "run_id": "20260416-041502-000000-gh24491708116-ef03803fc756"
   },
   "latest_run": {
     "result": "AUDIT PASSED",
-    "run_id": "20260416-003926-000000-049b1e770f3d"
+    "run_id": "20260416-041502-000000-gh24491708116-ef03803fc756"
   },
-  "updated_at_utc": "2026-04-16T00:39:28Z",
+  "updated_at_utc": "2026-04-16T04:15:03Z",
   "version": "benchmark_index.v1"
 }
