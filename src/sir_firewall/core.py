@@ -530,8 +530,6 @@ def _sr_block(
     }
     if domain_pack is not None:
         result["domain_pack"] = domain_pack
-    if rule_hits:
-        result["rule_hits"] = list(rule_hits)
     return result
 
 
