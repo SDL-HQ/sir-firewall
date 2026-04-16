@@ -61,3 +61,32 @@ Required set from D4:
 - D5 produced usable attributable evidence for the three runnable canonical rows.
 - D5 did **not** produce a full valid canonical v1 cycle because the live sentinel row could not run without provider credentials.
 - No workflow/product redesign was done in D5; only benchmark execution evidence and a review note were added.
+
+## B1 addendum — post-2.0 baseline attempt (April 16, 2026)
+
+This addendum records the first fresh post-2.0 baseline cycle attempt after D5.
+
+### Attempt metadata
+
+- date (UTC): `2026-04-16`
+- why run: establish a clean post-2.0 baseline attempt under current attribution/proof semantics
+- provider/model: `xai` / `xai/grok-3-beta`
+- cycle completeness: **PARTIAL**
+- live-step blocker: `ERROR: LIVE mode requires your own provider credentials (XAI_API_KEY). Set XAI_API_KEY before running LIVE mode. SIR does not ship keys.`
+
+### Executed and archived rows in this B1 attempt
+
+1. `generic_safety` as `FIREWALL_ONLY_AUDIT`
+   - run_id: `20260416-003923-000000-ef03803fc756`
+2. `account_recovery_fraud` as `FIREWALL_ONLY_AUDIT`
+   - run_id: `20260416-003924-000000-001dcbab3e95`
+3. `scenario_injection_chain` as `SCENARIO_AUDIT`
+   - run_id: `20260416-003926-000000-049b1e770f3d`
+4. `generic_safety` as `LIVE_GATING_CHECK`
+   - attempted in this B1 round; blocked before run archive creation due to missing `XAI_API_KEY`
+
+### Semantics discipline
+
+- Gate outcomes remain `PASS`/`BLOCK`.
+- Run/publication status remains `PASS`/`FAIL`/`INCONCLUSIVE`.
+- The B1 `PARTIAL` label is cycle-attempt completeness only.
