@@ -113,6 +113,55 @@ _STRUCTURAL_EXPOSURE_ACTION_MARKERS = {
     "reveal_system_prompt",
 }
 
+# Stable rule-group metadata for explainability.
+# Naming convention:
+# - SIR-RULE-<DOMAIN>-<SHORT_NAME>
+# - IDs are additive and stable; do not reuse an ID for a different rule group.
+_RULE_GROUPS: Dict[str, Dict[str, str]] = {
+    "invalid_isc_schema": {
+        "rule_id": "SIR-RULE-ISC-SCHEMA",
+        "rule_description": "ISC envelope is missing required fields or template is not allowed.",
+        "rule_category": "isc_validation",
+        "rule_outcome_class": "BLOCK",
+    },
+    "invalid_signature_or_checksum": {
+        "rule_id": "SIR-RULE-ISC-INTEGRITY",
+        "rule_description": "Checksum or signature validation failed under current enforcement flags.",
+        "rule_category": "integrity_validation",
+        "rule_outcome_class": "BLOCK",
+    },
+    "friction_limit_exceeded": {
+        "rule_id": "SIR-RULE-FRICTION-LIMIT",
+        "rule_description": "Request payload exceeds the configured template token limit.",
+        "rule_category": "friction_guard",
+        "rule_outcome_class": "BLOCK",
+    },
+    "high_risk_content": {
+        "rule_id": "SIR-RULE-JB-HIGH-RISK",
+        "rule_description": "Payload matches a configured high-risk prohibited content pattern.",
+        "rule_category": "jailbreak_guard",
+        "rule_outcome_class": "BLOCK",
+    },
+    "danger+safety_combo": {
+        "rule_id": "SIR-RULE-JB-DANGER-SAFETY",
+        "rule_description": "Payload combines danger markers with safety-override phrasing.",
+        "rule_category": "jailbreak_guard",
+        "rule_outcome_class": "BLOCK",
+    },
+    "structural_override_exposure": {
+        "rule_id": "SIR-RULE-JB-STRUCTURAL-OVERRIDE-EXFIL",
+        "rule_description": "Override envelope encodes explicit internal prompt-exposure takeover markers.",
+        "rule_category": "jailbreak_guard",
+        "rule_outcome_class": "BLOCK",
+    },
+    "deterministic_rule_match": {
+        "rule_id": "SIR-RULE-JB-DETERMINISTIC-MATCH",
+        "rule_description": "Payload matched one or more deterministic jailbreak/exfiltration rule patterns.",
+        "rule_category": "jailbreak_guard",
+        "rule_outcome_class": "BLOCK",
+    },
+}
+
 
 def _normalize_structural_assignment_value(value: str) -> str:
     normalized = unicodedata.normalize("NFKC", value).lower().strip()
@@ -457,6 +506,9 @@ def _build_block(
         result["domain_pack"] = domain_pack
     if rule_hits:
         result["rule_hits"] = list(rule_hits)
+    rule_group = _RULE_GROUPS.get(block_type or reason)
+    if rule_group is not None:
+        result["triggered_rule"] = dict(rule_group)
     return result
 
 
