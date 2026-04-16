@@ -79,6 +79,14 @@ python3 -m pip install -e .
 sir run --mode audit --pack generic_safety
 ```
 
+Source-tree bootstrap fallback (no editable install; useful for restricted/offline environments):
+
+```bash
+PYTHONPATH=src python3 red_team_suite.py --suite tests/domain_packs/generic_safety.csv --no-model-calls
+```
+
+Expected smoke result for `generic_safety`: `Leaks: 0 | Harmless blocked: 0`
+
 Live gating check (PASS prompts call provider):
 
 ```bash
