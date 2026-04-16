@@ -86,6 +86,7 @@ Public surfaces and semantics:
 - `runs/index.html`: archive index for pass and fail runs
 - `runs/<run_id>/...`: per-run evidence bundle (manifest, audit, receipt, copied artefacts)
 - `runs/benchmark_index.v1.json`: evidence map for side-by-side comparison only, with `latest_run` and `latest_passing_run`
+- Acceptance-oriented audit surfaces are `latest-audit.*`, `latest-run.json`, and run archives; benchmark rows remain exploratory comparison evidence.
 
 ## Canonical benchmark cycle contract (v1)
 
@@ -206,6 +207,7 @@ For key authority boundaries, trust-source semantics, and the `CRYPTO_ENFORCED` 
 ## Semantics to preserve
 
 - Latest pass and latest run are intentionally different concepts.
+- Gate outcome (`PASS`/`BLOCK`) is distinct from run/publication status (`PASS`/`FAIL`/`INCONCLUSIVE`).
 - Archive includes both passes and failures.
 - Benchmark index comparison fields are observed metadata, not weighted metrics.
 - Evidence contract semantics remain the source of truth for certificate structure.
