@@ -784,14 +784,14 @@ def _check_jailbreak(
 # Public entrypoint
 # ---------------------------------------------------------------------------
 
-def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
+def validate_sir(input_dict: Dict[str, Any], enforcement_pack_id: str | None = None) -> Dict[str, Any]:
     _load_isc_policy()
 
     itgl_log: List[Dict[str, Any]] = []
     prev_hash: str = GENESIS_HASH
 
     try:
-        domain_cfg = load_domain_pack()
+        domain_cfg = load_domain_pack(pack_id=enforcement_pack_id)
         domain_pack_id = str(domain_cfg.get("pack_id", "generic_safety"))
     except Exception as exc:
         itgl_log, prev_hash = _append_itgl(
