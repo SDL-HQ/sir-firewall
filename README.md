@@ -4,7 +4,7 @@
 
 Deterministic pre-inference governance gate · rules-only · cryptographically signed proof
 
-Plain language: SIR sits in front of an AI model (or agent) and inspects a prompt before it reaches inference. It either lets the prompt through (PASS) or blocks it (BLOCKED) using deterministic, versioned rules.
+Plain language: SIR sits in front of an AI model (or agent) and inspects a prompt before it reaches inference. It either lets the prompt through (PASS) or blocks it (BLOCK) using deterministic, versioned rules.
 
 Models provide capability. SIR makes governance enforceable and provable. It does not claim model alignment. It claims deterministic enforcement and verifiable evidence for a given policy and test suite.
 
@@ -27,6 +27,7 @@ Important semantics:
 - `latest-audit.*` means latest PASSING audit (last known good proof).
 - `latest-run.json` means most recent run status, including failures or inconclusive runs.
 - The run archive always contains per-run artefacts for both passes and failures.
+- Gate outcome (`PASS`/`BLOCK`) is distinct from run/publication status (`PASS`/`FAIL`/`INCONCLUSIVE`).
 
 ---
 
