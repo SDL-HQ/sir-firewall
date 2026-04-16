@@ -72,6 +72,36 @@ Current pack/scenario mapping (active suites):
 | `scenario_injection_chain` | scenario | `benign_control`, `injection`, `exfiltration` |
 | `scenario_tool_injection` | scenario | `benign_control`, `injection` |
 
+## Rule-to-suite explainability mapping (indicative only)
+
+This section is an auditor/evaluator readability aid that links current stable rule IDs to suites that are expected to exercise those rule families.
+
+Boundary rules for this mapping:
+
+- This is indicative mapping only, not a completeness proof.
+- This is not a score, ranking, percentage, or certification claim.
+- Absence of a suite in a row does not mean the rule is unimportant or permanently untested.
+- Gate outcomes remain `PASS`/`BLOCK`; run/publication status remains `PASS`/`FAIL`/`INCONCLUSIVE`.
+- Canonical rule IDs and descriptions are defined in code (`src/sir_firewall/core.py`); this table is a documentation crosswalk.
+
+Rule-level explainability crosswalk (grounded in current active suites and benchmark v1 composition):
+
+| Rule ID | Rule category | Indicative suites/scenarios | Why this mapping exists (bounded rationale) |
+| --- | --- | --- | --- |
+| `SIR-RULE-ISC-SCHEMA` | `isc_validation` | `generic_safety`, `account_recovery_fraud`, `scenario_injection_chain` (benchmark v1); plus any other pack/scenario executed through the ISC request path | ISC schema validation is request-envelope validation that applies before pack-specific content interpretation. |
+| `SIR-RULE-ISC-INTEGRITY` | `integrity_validation` | `generic_safety`, `account_recovery_fraud`, `scenario_injection_chain` (benchmark v1); plus any other pack/scenario executed with integrity checks enabled | Integrity checks are request-envelope integrity controls and are not domain-pack specific. |
+| `SIR-RULE-FRICTION-LIMIT` | `friction_guard` | `generic_safety`, `account_recovery_fraud`, `scenario_injection_chain` (benchmark v1); plus any other pack/scenario where payload size can exceed configured limits | Token/friction limit checks are request-size controls independent of domain taxonomy labels. |
+| `SIR-RULE-JB-HIGH-RISK` | `jailbreak_guard` | `generic_safety`; `scenario_injection_chain`, `scenario_tool_injection` | Current active taxonomy includes `injection` and `exfiltration` stressors, and `generic_safety` is the broad baseline jailbreak/exfiltration mix. |
+| `SIR-RULE-JB-DANGER-SAFETY` | `jailbreak_guard` | `generic_safety`; `scenario_injection_chain`, `scenario_tool_injection` | Scenario and baseline safety suites include override-style adversarial phrasing patterns relevant to this rule family. |
+| `SIR-RULE-JB-STRUCTURAL-OVERRIDE-EXFIL` | `jailbreak_guard` | `scenario_injection_chain`, `scenario_tool_injection`; `generic_safety` | Structural override + exfiltration marker patterns align most directly with injection/exfiltration scenario suites and may also appear in baseline adversarial rows. |
+| `SIR-RULE-JB-DETERMINISTIC-MATCH` | `jailbreak_guard` | `generic_safety`; `account_recovery_fraud`; `scenario_injection_chain`, `scenario_tool_injection` | Deterministic jailbreak/exfiltration pattern matching is broad and can be exercised across baseline, domain-risk, and scenario adversarial prompts. |
+
+Interpretation guardrail:
+
+- Use this table to explain "which suites are relevant to which rule families" during review.
+- Do not use this table to claim all rule behaviors are exhausted by listed suites.
+- Do not derive any numeric coverage metric from this table.
+
 ## Minimum pack quality bar
 
 A pack must meet all of the following:
