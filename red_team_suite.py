@@ -439,7 +439,7 @@ def main() -> None:
                 prompt_encoded = bool((raw_row.get("prompt_b64") or "").strip()) and not bool((raw_row.get("prompt") or "").strip())
 
             isc = _build_isc_envelope(prompt, template_id)
-            verdict = validate_sir({"isc": isc})
+            verdict = validate_sir({"isc": isc}, enforcement_pack_id=(pack_id or None))
             status = str(verdict.get("status", "UNKNOWN"))
 
             expected_status = "PASS" if expected == "allow" else "BLOCKED"
