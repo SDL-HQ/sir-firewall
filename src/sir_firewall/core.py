@@ -316,16 +316,21 @@ def load_domain_pack(pack_id: str | None = None) -> Dict[str, Any]:
       2. SIR_ISC_PACK env var
       3. Fallback to 'generic_safety'
 
-    Fails closed:
-      - If the requested pack is missing but generic_safety exists, falls back.
-      - If neither exists, raises FileNotFoundError.
+    Missing-pack behavior:
+      - Explicit request (pack_id or non-empty SIR_ISC_PACK): raise FileNotFoundError.
+      - Implicit/default request: fallback to generic_safety if present.
     """
-    effective_pack = pack_id or os.getenv("SIR_ISC_PACK", "generic_safety")
+    arg_pack = (pack_id or "").strip()
+    env_pack = (os.getenv("SIR_ISC_PACK") or "").strip()
+    explicit_requested = bool(arg_pack) or bool(env_pack)
+    effective_pack = arg_pack or env_pack or "generic_safety"
 
     base_dir = Path(__file__).resolve().parent
     pack_path = base_dir / "policy" / "isc_packs" / f"{effective_pack}.json"
 
     if not pack_path.exists():
+        if explicit_requested:
+            raise FileNotFoundError(f"Domain ISC pack '{effective_pack}' not found at {pack_path}.")
         fallback = base_dir / "policy" / "isc_packs" / "generic_safety.json"
         if fallback.exists():
             with fallback.open("r", encoding="utf-8") as f:
