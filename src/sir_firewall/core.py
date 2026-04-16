@@ -5,6 +5,7 @@ import json
 import os
 import re
 import time
+import unicodedata
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -249,11 +250,69 @@ def load_domain_pack(pack_id: str | None = None) -> Dict[str, Any]:
 # Obfuscation normalisation
 # ---------------------------------------------------------------------------
 
+_HOMOGLYPH_ASCII_MAP = str.maketrans(
+    {
+        # Tight Cyrillic/Greek subset for high-confusion Latin letters only.
+        "а": "a",
+        "е": "e",
+        "і": "i",
+        "ο": "o",
+        "о": "o",
+        "р": "p",
+        "с": "c",
+        "х": "x",
+        "у": "y",
+    }
+)
+
+_LEET_CHAR_MAP = str.maketrans(
+    {
+        "0": "o",
+        "1": "i",
+        "3": "e",
+        "4": "a",
+        "5": "s",
+        "7": "t",
+        "@": "a",
+        "$": "s",
+        "!": "i",
+    }
+)
+
+_OBFUSCATION_CANONICAL_MARKERS: List[Tuple[str, str]] = [
+    ("ignore", "ignore"),
+    ("disregard", "disregard"),
+    ("bypass", "bypass"),
+    ("override", "override"),
+    ("obey", "obey"),
+    ("jailbreak", "jailbreak"),
+    ("uncensored", "uncensored"),
+    ("systemprompt", "system prompt"),
+    ("previousinstructions", "previous instructions"),
+]
+
+
+def _canonical_compact(text: str) -> str:
+    # Bounded deterministic pipeline for low-level obfuscation only:
+    # - NFKC compatibility fold (e.g. full-width forms)
+    # - tiny homoglyph map (no broad Unicode intelligence)
+    # - tiny leetspeak map
+    # - collapse punctuation/whitespace by compacting to [a-z0-9]
+    # - collapse long repeated runs to length 1
+    text = unicodedata.normalize("NFKC", text).lower()
+    text = text.translate(_HOMOGLYPH_ASCII_MAP)
+    text = text.translate(_LEET_CHAR_MAP)
+    compact = re.sub(r"[^a-z0-9]+", "", text)
+    return re.sub(r"(.)\1{2,}", r"\1", compact)
+
+
 def normalize_obfuscation(text: str) -> str:
+    # Intentionally bounded: this normalizer handles low-level formatting/encoding
+    # evasions and does not do semantic rewriting or intent inference.
     raw = re.sub(
         r"[\u200b-\u206f\u2800\u202a-\u202f\u3000\u3164\ufffc\s]+",
         " ",
-        text,
+        unicodedata.normalize("NFKC", text),
     ).strip()
     t = raw.lower()
 
@@ -286,6 +345,16 @@ def normalize_obfuscation(text: str) -> str:
         payload = rot_match.group(1)
         decoded = codecs.decode(payload, "rot13")
         t = t.replace(payload, decoded)
+
+    # Marker recovery for split punctuation / repeated-char / tight leet+homoglyph
+    # obfuscation. We only recover a fixed marker list and do not rewrite content.
+    compact = _canonical_compact(t)
+    recovered_markers: List[str] = []
+    for compact_marker, marker_phrase in _OBFUSCATION_CANONICAL_MARKERS:
+        if compact_marker in compact:
+            recovered_markers.append(marker_phrase)
+    if recovered_markers:
+        t = f"{t} {' '.join(sorted(set(recovered_markers)))}"
 
     return t.strip()
 
