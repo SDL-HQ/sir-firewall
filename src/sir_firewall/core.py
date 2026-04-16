@@ -106,6 +106,55 @@ _HIGH_RISK_KEYWORDS = [
     "vx nerve agent",
 ]
 
+_STRUCTURAL_EXPOSURE_ACTION_MARKERS = {
+    "expose_internal_prompt",
+    "reveal_internal_prompt",
+    "dump_system_prompt",
+    "reveal_system_prompt",
+}
+
+
+def _normalize_structural_assignment_value(value: str) -> str:
+    normalized = unicodedata.normalize("NFKC", value).lower().strip()
+    normalized = re.sub(r"[^a-z0-9]+", "_", normalized)
+    return normalized.strip("_")
+
+
+def _has_override_envelope_prompt_exposure(payload: str) -> bool:
+    """
+    Deterministic B5 structural rule (single family only):
+    block explicit override-envelope payloads that encode prompt-exposure takeover
+    with all required bounded markers.
+
+    Required markers inside one BEGIN_OVERRIDE...END_OVERRIDE block:
+    - at least one priority assignment
+    - at least one action assignment
+    - action value in fixed exposure marker set
+
+    Intentionally not detected:
+    - envelope-only payloads without required assignments
+    - generic action assignments not in exposure marker set
+    """
+    text = unicodedata.normalize("NFKC", payload).lower()
+
+    match = re.search(r"begin_override(?P<body>[\s\S]{0,2000}?)end_override", text)
+    if not match:
+        return False
+
+    body = match.group("body")
+    has_priority_assignment = re.search(r"\bpriority\s*=\s*[^\n\r]+", body) is not None
+    action_values = re.findall(r"\baction\s*=\s*([^\n\r]+)", body)
+    if not has_priority_assignment or not action_values:
+        return False
+
+    for raw_action in action_values:
+        normalized_action = _normalize_structural_assignment_value(raw_action)
+        if normalized_action in _STRUCTURAL_EXPOSURE_ACTION_MARKERS:
+            return True
+
+    return False
+
+
 
 # ---------------------------------------------------------------------------
 # ISC policy loader (baseline policy/isc_policy.json)
@@ -613,6 +662,7 @@ def _check_jailbreak(
     has_danger = any(w in normalized for w in _DANGER_WORDS)
     has_safety = any(p in normalized for p in _SAFETY_PHRASES)
     has_high_risk = any(k in normalized for k in _HIGH_RISK_KEYWORDS)
+    has_structural_override_exposure = _has_override_envelope_prompt_exposure(raw_payload)
 
     step_input = {"payload_len": len(normalized)}
     rule_hits = find_rule_hits(normalized)
@@ -621,6 +671,7 @@ def _check_jailbreak(
         "has_danger": has_danger,
         "has_safety": has_safety,
         "has_high_risk": has_high_risk,
+        "has_structural_override_exposure": has_structural_override_exposure,
         "rule_hits": rule_hits,
     }
 
@@ -645,6 +696,17 @@ def _check_jailbreak(
             prev_hash,
         )
         return False, log, prev_hash, "danger+safety_combo", rule_hits
+
+    if has_structural_override_exposure:
+        log, prev_hash = _append_itgl(
+            "jailbreak",
+            "fail",
+            step_input,
+            step_output,
+            log,
+            prev_hash,
+        )
+        return False, log, prev_hash, "structural_override_exposure", rule_hits
 
     if rule_hits:
         log, prev_hash = _append_itgl(
