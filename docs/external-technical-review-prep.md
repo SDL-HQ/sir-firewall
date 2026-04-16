@@ -29,6 +29,7 @@ A reviewer should assess the following technical areas.
 2. Proof and archive surfaces
    - latest-pass vs latest-run distinction
    - per-run archive completeness (pass and non-pass runs)
+   - append-only public evidence history posture of `proofs/runs/` (as bounded in `RETENTION.md`)
    - certificate and archive signature verification posture
 
 3. Benchmark contract and first benchmark cycle evidence

@@ -62,7 +62,7 @@ Plain-language outcomes:
 
 - If SIR blocks: the request path is stopped before model inference for that evaluated request.
 - If inputs are malformed: treat the outcome as non-passing and use run artefacts to inspect the failure state.
-- If registry or policy load paths fail: SIR cannot truthfully evaluate policy conformance; treat the outcome as fail/inconclusive with evidence.
+- If registry or policy load paths fail: SIR returns an explicit non-passing blocked systemic-reset outcome with run evidence.
 - If a run is invalid or inconclusive: treat it as non-passing; use `latest-run.json` plus archived run artefacts to inspect failure state.
 - If SIR is bypassed: no governance claim applies to bypassed model-facing traffic.
 - If SIR is not actually in front of the model path: proof only attests to the exercised SIR path, not ungoverned alternate paths.
@@ -86,6 +86,7 @@ Public surfaces and semantics:
 - `runs/index.html`: archive index for pass and fail runs
 - `runs/<run_id>/...`: per-run evidence bundle (manifest, audit, receipt, copied artefacts)
 - `runs/benchmark_index.v1.json`: evidence map for side-by-side comparison only, with `latest_run` and `latest_passing_run`
+- Acceptance-oriented audit surfaces are `latest-audit.*`, `latest-run.json`, and run archives; benchmark rows remain exploratory comparison evidence.
 
 ## Canonical benchmark cycle contract (v1)
 
@@ -206,6 +207,7 @@ For key authority boundaries, trust-source semantics, and the `CRYPTO_ENFORCED` 
 ## Semantics to preserve
 
 - Latest pass and latest run are intentionally different concepts.
+- Gate outcome (`PASS`/`BLOCK`) is distinct from run/publication status (`PASS`/`FAIL`/`INCONCLUSIVE`).
 - Archive includes both passes and failures.
 - Benchmark index comparison fields are observed metadata, not weighted metrics.
 - Evidence contract semantics remain the source of truth for certificate structure.

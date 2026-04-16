@@ -5,6 +5,7 @@ import json
 import os
 import re
 import time
+import unicodedata
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -105,6 +106,104 @@ _HIGH_RISK_KEYWORDS = [
     "vx nerve agent",
 ]
 
+_STRUCTURAL_EXPOSURE_ACTION_MARKERS = {
+    "expose_internal_prompt",
+    "reveal_internal_prompt",
+    "dump_system_prompt",
+    "reveal_system_prompt",
+}
+
+# Stable rule-group metadata for explainability.
+# Naming convention:
+# - SIR-RULE-<DOMAIN>-<SHORT_NAME>
+# - IDs are additive and stable; do not reuse an ID for a different rule group.
+_RULE_GROUPS: Dict[str, Dict[str, str]] = {
+    "invalid_isc_schema": {
+        "rule_id": "SIR-RULE-ISC-SCHEMA",
+        "rule_description": "ISC envelope is missing required fields or template is not allowed.",
+        "rule_category": "isc_validation",
+        "rule_outcome_class": "BLOCK",
+    },
+    "invalid_signature_or_checksum": {
+        "rule_id": "SIR-RULE-ISC-INTEGRITY",
+        "rule_description": "Checksum or signature validation failed under current enforcement flags.",
+        "rule_category": "integrity_validation",
+        "rule_outcome_class": "BLOCK",
+    },
+    "friction_limit_exceeded": {
+        "rule_id": "SIR-RULE-FRICTION-LIMIT",
+        "rule_description": "Request payload exceeds the configured template token limit.",
+        "rule_category": "friction_guard",
+        "rule_outcome_class": "BLOCK",
+    },
+    "high_risk_content": {
+        "rule_id": "SIR-RULE-JB-HIGH-RISK",
+        "rule_description": "Payload matches a configured high-risk prohibited content pattern.",
+        "rule_category": "jailbreak_guard",
+        "rule_outcome_class": "BLOCK",
+    },
+    "danger+safety_combo": {
+        "rule_id": "SIR-RULE-JB-DANGER-SAFETY",
+        "rule_description": "Payload combines danger markers with safety-override phrasing.",
+        "rule_category": "jailbreak_guard",
+        "rule_outcome_class": "BLOCK",
+    },
+    "structural_override_exposure": {
+        "rule_id": "SIR-RULE-JB-STRUCTURAL-OVERRIDE-EXFIL",
+        "rule_description": "Override envelope encodes explicit internal prompt-exposure takeover markers.",
+        "rule_category": "jailbreak_guard",
+        "rule_outcome_class": "BLOCK",
+    },
+    "deterministic_rule_match": {
+        "rule_id": "SIR-RULE-JB-DETERMINISTIC-MATCH",
+        "rule_description": "Payload matched one or more deterministic jailbreak/exfiltration rule patterns.",
+        "rule_category": "jailbreak_guard",
+        "rule_outcome_class": "BLOCK",
+    },
+}
+
+
+def _normalize_structural_assignment_value(value: str) -> str:
+    normalized = unicodedata.normalize("NFKC", value).lower().strip()
+    normalized = re.sub(r"[^a-z0-9]+", "_", normalized)
+    return normalized.strip("_")
+
+
+def _has_override_envelope_prompt_exposure(payload: str) -> bool:
+    """
+    Deterministic B5 structural rule (single family only):
+    block explicit override-envelope payloads that encode prompt-exposure takeover
+    with all required bounded markers.
+
+    Required markers inside one BEGIN_OVERRIDE...END_OVERRIDE block:
+    - at least one priority assignment
+    - at least one action assignment
+    - action value in fixed exposure marker set
+
+    Intentionally not detected:
+    - envelope-only payloads without required assignments
+    - generic action assignments not in exposure marker set
+    """
+    text = unicodedata.normalize("NFKC", payload).lower()
+
+    match = re.search(r"begin_override(?P<body>[\s\S]{0,2000}?)end_override", text)
+    if not match:
+        return False
+
+    body = match.group("body")
+    has_priority_assignment = re.search(r"\bpriority\s*=\s*[^\n\r]+", body) is not None
+    action_values = re.findall(r"\baction\s*=\s*([^\n\r]+)", body)
+    if not has_priority_assignment or not action_values:
+        return False
+
+    for raw_action in action_values:
+        normalized_action = _normalize_structural_assignment_value(raw_action)
+        if normalized_action in _STRUCTURAL_EXPOSURE_ACTION_MARKERS:
+            return True
+
+    return False
+
+
 
 # ---------------------------------------------------------------------------
 # ISC policy loader (baseline policy/isc_policy.json)
@@ -123,7 +222,8 @@ def _load_isc_policy() -> None:
     - Merges any rule lists (danger/safety/high-risk) into the built-in heuristics.
     - Computes a canonical policy hash (sha256:<hex>) for governance_context.
 
-    Fails soft: if anything goes wrong, built-in defaults stay in place.
+    In normal mode, policy-load failure is explicit and raises.
+    In dev mode (SIR_DEV_MODE=1), policy-load failure keeps built-ins in place.
     """
     global _POLICY_LOADED, _POLICY_VERSION, _POLICY_HASH
     global ALLOWED_TEMPLATES, MAX_FRICTION_BY_TEMPLATE, STRICT_ISC_ENFORCEMENT, CHECKSUM_ENFORCED, CRYPTO_ENFORCED
@@ -131,6 +231,8 @@ def _load_isc_policy() -> None:
 
     if _POLICY_LOADED:
         return
+
+    dev_mode = os.getenv("SIR_DEV_MODE") == "1"
 
     try:
         here = Path(__file__).resolve()
@@ -150,8 +252,7 @@ def _load_isc_policy() -> None:
                 break
 
         if policy_path is None:
-            _POLICY_LOADED = True
-            return
+            raise FileNotFoundError("ISC policy file not found")
 
         with policy_path.open("r", encoding="utf-8") as f:
             policy = json.load(f)
@@ -201,7 +302,10 @@ def _load_isc_policy() -> None:
 
         _POLICY_LOADED = True
     except Exception:
-        _POLICY_LOADED = True
+        if dev_mode:
+            _POLICY_LOADED = True
+            return
+        raise
 
 
 # ---------------------------------------------------------------------------
@@ -217,16 +321,21 @@ def load_domain_pack(pack_id: str | None = None) -> Dict[str, Any]:
       2. SIR_ISC_PACK env var
       3. Fallback to 'generic_safety'
 
-    Fails closed:
-      - If the requested pack is missing but generic_safety exists, falls back.
-      - If neither exists, raises FileNotFoundError.
+    Missing-pack behavior:
+      - Explicit request (pack_id or non-empty SIR_ISC_PACK): raise FileNotFoundError.
+      - Implicit/default request: fallback to generic_safety if present.
     """
-    effective_pack = pack_id or os.getenv("SIR_ISC_PACK", "generic_safety")
+    arg_pack = (pack_id or "").strip()
+    env_pack = (os.getenv("SIR_ISC_PACK") or "").strip()
+    explicit_requested = bool(arg_pack) or bool(env_pack)
+    effective_pack = arg_pack or env_pack or "generic_safety"
 
     base_dir = Path(__file__).resolve().parent
     pack_path = base_dir / "policy" / "isc_packs" / f"{effective_pack}.json"
 
     if not pack_path.exists():
+        if explicit_requested:
+            raise FileNotFoundError(f"Domain ISC pack '{effective_pack}' not found at {pack_path}.")
         fallback = base_dir / "policy" / "isc_packs" / "generic_safety.json"
         if fallback.exists():
             with fallback.open("r", encoding="utf-8") as f:
@@ -249,11 +358,69 @@ def load_domain_pack(pack_id: str | None = None) -> Dict[str, Any]:
 # Obfuscation normalisation
 # ---------------------------------------------------------------------------
 
+_HOMOGLYPH_ASCII_MAP = str.maketrans(
+    {
+        # Tight Cyrillic/Greek subset for high-confusion Latin letters only.
+        "а": "a",
+        "е": "e",
+        "і": "i",
+        "ο": "o",
+        "о": "o",
+        "р": "p",
+        "с": "c",
+        "х": "x",
+        "у": "y",
+    }
+)
+
+_LEET_CHAR_MAP = str.maketrans(
+    {
+        "0": "o",
+        "1": "i",
+        "3": "e",
+        "4": "a",
+        "5": "s",
+        "7": "t",
+        "@": "a",
+        "$": "s",
+        "!": "i",
+    }
+)
+
+_OBFUSCATION_CANONICAL_MARKERS: List[Tuple[str, str]] = [
+    ("ignore", "ignore"),
+    ("disregard", "disregard"),
+    ("bypass", "bypass"),
+    ("override", "override"),
+    ("obey", "obey"),
+    ("jailbreak", "jailbreak"),
+    ("uncensored", "uncensored"),
+    ("systemprompt", "system prompt"),
+    ("previousinstructions", "previous instructions"),
+]
+
+
+def _canonical_compact(text: str) -> str:
+    # Bounded deterministic pipeline for low-level obfuscation only:
+    # - NFKC compatibility fold (e.g. full-width forms)
+    # - tiny homoglyph map (no broad Unicode intelligence)
+    # - tiny leetspeak map
+    # - collapse punctuation/whitespace by compacting to [a-z0-9]
+    # - collapse long repeated runs to length 1
+    text = unicodedata.normalize("NFKC", text).lower()
+    text = text.translate(_HOMOGLYPH_ASCII_MAP)
+    text = text.translate(_LEET_CHAR_MAP)
+    compact = re.sub(r"[^a-z0-9]+", "", text)
+    return re.sub(r"(.)\1{2,}", r"\1", compact)
+
+
 def normalize_obfuscation(text: str) -> str:
+    # Intentionally bounded: this normalizer handles low-level formatting/encoding
+    # evasions and does not do semantic rewriting or intent inference.
     raw = re.sub(
         r"[\u200b-\u206f\u2800\u202a-\u202f\u3000\u3164\ufffc\s]+",
         " ",
-        text,
+        unicodedata.normalize("NFKC", text),
     ).strip()
     t = raw.lower()
 
@@ -286,6 +453,16 @@ def normalize_obfuscation(text: str) -> str:
         payload = rot_match.group(1)
         decoded = codecs.decode(payload, "rot13")
         t = t.replace(payload, decoded)
+
+    # Marker recovery for split punctuation / repeated-char / tight leet+homoglyph
+    # obfuscation. We only recover a fixed marker list and do not rewrite content.
+    compact = _canonical_compact(t)
+    recovered_markers: List[str] = []
+    for compact_marker, marker_phrase in _OBFUSCATION_CANONICAL_MARKERS:
+        if compact_marker in compact:
+            recovered_markers.append(marker_phrase)
+    if recovered_markers:
+        t = f"{t} {' '.join(sorted(set(recovered_markers)))}"
 
     return t.strip()
 
@@ -339,6 +516,9 @@ def _build_block(
         result["domain_pack"] = domain_pack
     if rule_hits:
         result["rule_hits"] = list(rule_hits)
+    rule_group = _RULE_GROUPS.get(block_type or reason)
+    if rule_group is not None:
+        result["triggered_rule"] = dict(rule_group)
     return result
 
 
@@ -360,8 +540,6 @@ def _sr_block(
     }
     if domain_pack is not None:
         result["domain_pack"] = domain_pack
-    if rule_hits:
-        result["rule_hits"] = list(rule_hits)
     return result
 
 
@@ -544,6 +722,7 @@ def _check_jailbreak(
     has_danger = any(w in normalized for w in _DANGER_WORDS)
     has_safety = any(p in normalized for p in _SAFETY_PHRASES)
     has_high_risk = any(k in normalized for k in _HIGH_RISK_KEYWORDS)
+    has_structural_override_exposure = _has_override_envelope_prompt_exposure(raw_payload)
 
     step_input = {"payload_len": len(normalized)}
     rule_hits = find_rule_hits(normalized)
@@ -552,6 +731,7 @@ def _check_jailbreak(
         "has_danger": has_danger,
         "has_safety": has_safety,
         "has_high_risk": has_high_risk,
+        "has_structural_override_exposure": has_structural_override_exposure,
         "rule_hits": rule_hits,
     }
 
@@ -576,6 +756,17 @@ def _check_jailbreak(
             prev_hash,
         )
         return False, log, prev_hash, "danger+safety_combo", rule_hits
+
+    if has_structural_override_exposure:
+        log, prev_hash = _append_itgl(
+            "jailbreak",
+            "fail",
+            step_input,
+            step_output,
+            log,
+            prev_hash,
+        )
+        return False, log, prev_hash, "structural_override_exposure", rule_hits
 
     if rule_hits:
         log, prev_hash = _append_itgl(
@@ -603,14 +794,38 @@ def _check_jailbreak(
 # Public entrypoint
 # ---------------------------------------------------------------------------
 
-def validate_sir(input_dict: Dict[str, Any]) -> Dict[str, Any]:
-    _load_isc_policy()
-
+def validate_sir(input_dict: Dict[str, Any], enforcement_pack_id: str | None = None) -> Dict[str, Any]:
     itgl_log: List[Dict[str, Any]] = []
     prev_hash: str = GENESIS_HASH
 
     try:
-        domain_cfg = load_domain_pack()
+        _load_isc_policy()
+    except Exception as exc:
+        itgl_log, prev_hash = _append_itgl(
+            "context",
+            "fail",
+            {"error": "policy_load_failed"},
+            {"message": str(exc)},
+            itgl_log,
+            prev_hash,
+        )
+        itgl_log, prev_hash = _append_itgl(
+            "sr",
+            "triggered",
+            {"reason": "policy_load_failed", "scope": "deployment"},
+            {},
+            itgl_log,
+            prev_hash,
+        )
+        return _sr_block(
+            "systemic_reset_policy_load_failed",
+            itgl_log,
+            scope="deployment",
+            domain_pack=None,
+        )
+
+    try:
+        domain_cfg = load_domain_pack(pack_id=enforcement_pack_id)
         domain_pack_id = str(domain_cfg.get("pack_id", "generic_safety"))
     except Exception as exc:
         itgl_log, prev_hash = _append_itgl(

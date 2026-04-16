@@ -45,6 +45,16 @@ What can be verified now:
 
 This is the current retention truth. It is evidence-retaining and reviewable now, but it is not the same as external immutable retention controls.
 
+### Transparency-log posture (current, bounded)
+
+For external reviewers, treat `proofs/runs/` as SIR's current **append-only public evidence history posture**:
+
+- each published run is stored under `proofs/runs/<run_id>/` with run-scoped evidence + receipt files
+- `proofs/runs/index.json` and `proofs/runs/index.html` provide a navigable run history view
+- integrity checks are grounded in per-run signatures/receipts and ITGL verification, not in a claim of storage-level immutability
+
+This posture means the archive is designed to accumulate attributable run evidence over time for public technical review. It does **not** claim WORM/object-lock immutability from GitHub/Git alone.
+
 ---
 
 ## 2) Public/shared vs local/internal surfaces

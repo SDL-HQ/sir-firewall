@@ -118,9 +118,19 @@ Use these interpretation rules:
 - treat `latest-audit.*` as latest passing proof (last known good)
 - treat `latest-run.json` as most recent run outcome (including FAIL/INCONCLUSIVE)
 - treat run archive as the per-run evidence record for both passes and failures
+- treat gate outcomes (`PASS`/`BLOCK`) as separate from run/publication status (`PASS`/`FAIL`/`INCONCLUSIVE`)
+- treat latest-audit/latest-run/archive surfaces as strict acceptance-oriented audit truth; treat benchmark rows as exploratory comparison evidence
 - treat benchmark index rows as attributable evidence-linked comparison rows only
 - do not reinterpret benchmark index as score/ranking output
 - maintain proof-class separation when comparing rows
+
+Coverage taxonomy note (v1):
+
+- Pack/scenario taxonomy labels are coverage readability labels only.
+- Taxonomy mapping is maintained at pack/scenario level in `spec/packs/PACKS.md`.
+- Taxonomy labels do not modify gate outcomes (`PASS`/`BLOCK`).
+- Taxonomy labels do not modify run/publication status (`PASS`/`FAIL`/`INCONCLUSIVE`).
+- Taxonomy mapping is not a row-level completeness claim and is not an analytics surface.
 
 ## Offline verification (canonical evaluator path)
 

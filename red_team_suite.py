@@ -31,6 +31,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Tuple, Optional, Any
 
 from sir_firewall import validate_sir
+from sir_firewall.core import load_domain_pack
 
 
 DEFAULT_SUITE = os.getenv("SIR_SUITE_PATH", "tests/domain_packs/generic_safety.csv")
@@ -257,11 +258,10 @@ def _scenario_hash(scenario_id: str, turns: List[Dict[str, str]]) -> str:
     return "sha256:" + hashlib.sha256(blob).hexdigest()
 
 
-def _policy_flags(policy_path: str = "policy/isc_policy.json") -> Dict[str, bool]:
+def _policy_flags(pack_id: str = "") -> Dict[str, bool]:
     defaults = {"CRYPTO_ENFORCED": False, "CHECKSUM_ENFORCED": True}
     try:
-        with open(policy_path, "r", encoding="utf-8") as f:
-            policy = json.load(f)
+        policy = load_domain_pack(pack_id=pack_id or None)
         flags = policy.get("flags") if isinstance(policy, dict) else None
         if not isinstance(flags, dict):
             return defaults
@@ -439,7 +439,7 @@ def main() -> None:
                 prompt_encoded = bool((raw_row.get("prompt_b64") or "").strip()) and not bool((raw_row.get("prompt") or "").strip())
 
             isc = _build_isc_envelope(prompt, template_id)
-            verdict = validate_sir({"isc": isc})
+            verdict = validate_sir({"isc": isc}, enforcement_pack_id=(pack_id or None))
             status = str(verdict.get("status", "UNKNOWN"))
 
             expected_status = "PASS" if expected == "allow" else "BLOCKED"
@@ -548,7 +548,7 @@ def main() -> None:
         "provider_call_successes": provider_call_successes,
         "provider_call_failures": provider_call_failures,
         "model_calls_made": provider_call_attempts,
-        "flags": _policy_flags(),
+        "flags": _policy_flags(pack_id=pack_id),
     }
     if scenario_mode:
         summary["scenario_id"] = scenario_id
