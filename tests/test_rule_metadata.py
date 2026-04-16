@@ -1,3 +1,5 @@
+import pytest
+
 from sir_firewall import core
 
 
@@ -62,3 +64,8 @@ def test_systemic_reset_block_when_domain_pack_load_fails(monkeypatch):
     assert out["reason"] == "systemic_reset_domain_pack_load_failed"
     assert out["sr"]["sr_triggered"] is True
     assert out["sr"]["sr_scope"] == "deployment"
+
+
+def test_load_domain_pack_explicit_missing_pack_raises():
+    with pytest.raises(FileNotFoundError):
+        core.load_domain_pack("pack_that_does_not_exist")
