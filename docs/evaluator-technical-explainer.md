@@ -122,6 +122,14 @@ Use these interpretation rules:
 - do not reinterpret benchmark index as score/ranking output
 - maintain proof-class separation when comparing rows
 
+Coverage taxonomy note (v1):
+
+- Pack/scenario taxonomy labels are coverage readability labels only.
+- Taxonomy mapping is maintained at pack/scenario level in `spec/packs/PACKS.md`.
+- Taxonomy labels do not modify gate outcomes (`PASS`/`BLOCK`).
+- Taxonomy labels do not modify run/publication status (`PASS`/`FAIL`/`INCONCLUSIVE`).
+- Taxonomy mapping is not a row-level completeness claim and is not an analytics surface.
+
 ## Offline verification (canonical evaluator path)
 
 ### 1) Verify published certificate offline
