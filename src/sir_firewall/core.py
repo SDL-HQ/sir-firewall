@@ -222,7 +222,8 @@ def _load_isc_policy() -> None:
     - Merges any rule lists (danger/safety/high-risk) into the built-in heuristics.
     - Computes a canonical policy hash (sha256:<hex>) for governance_context.
 
-    Fails soft: if anything goes wrong, built-in defaults stay in place.
+    In normal mode, policy-load failure is explicit and raises.
+    In dev mode (SIR_DEV_MODE=1), policy-load failure keeps built-ins in place.
     """
     global _POLICY_LOADED, _POLICY_VERSION, _POLICY_HASH
     global ALLOWED_TEMPLATES, MAX_FRICTION_BY_TEMPLATE, STRICT_ISC_ENFORCEMENT, CHECKSUM_ENFORCED, CRYPTO_ENFORCED
@@ -230,6 +231,8 @@ def _load_isc_policy() -> None:
 
     if _POLICY_LOADED:
         return
+
+    dev_mode = os.getenv("SIR_DEV_MODE") == "1"
 
     try:
         here = Path(__file__).resolve()
@@ -249,8 +252,7 @@ def _load_isc_policy() -> None:
                 break
 
         if policy_path is None:
-            _POLICY_LOADED = True
-            return
+            raise FileNotFoundError("ISC policy file not found")
 
         with policy_path.open("r", encoding="utf-8") as f:
             policy = json.load(f)
@@ -300,7 +302,10 @@ def _load_isc_policy() -> None:
 
         _POLICY_LOADED = True
     except Exception:
-        _POLICY_LOADED = True
+        if dev_mode:
+            _POLICY_LOADED = True
+            return
+        raise
 
 
 # ---------------------------------------------------------------------------
@@ -790,10 +795,34 @@ def _check_jailbreak(
 # ---------------------------------------------------------------------------
 
 def validate_sir(input_dict: Dict[str, Any], enforcement_pack_id: str | None = None) -> Dict[str, Any]:
-    _load_isc_policy()
-
     itgl_log: List[Dict[str, Any]] = []
     prev_hash: str = GENESIS_HASH
+
+    try:
+        _load_isc_policy()
+    except Exception as exc:
+        itgl_log, prev_hash = _append_itgl(
+            "context",
+            "fail",
+            {"error": "policy_load_failed"},
+            {"message": str(exc)},
+            itgl_log,
+            prev_hash,
+        )
+        itgl_log, prev_hash = _append_itgl(
+            "sr",
+            "triggered",
+            {"reason": "policy_load_failed", "scope": "deployment"},
+            {},
+            itgl_log,
+            prev_hash,
+        )
+        return _sr_block(
+            "systemic_reset_policy_load_failed",
+            itgl_log,
+            scope="deployment",
+            domain_pack=None,
+        )
 
     try:
         domain_cfg = load_domain_pack(pack_id=enforcement_pack_id)

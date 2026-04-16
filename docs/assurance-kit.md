@@ -62,7 +62,7 @@ Plain-language outcomes:
 
 - If SIR blocks: the request path is stopped before model inference for that evaluated request.
 - If inputs are malformed: treat the outcome as non-passing and use run artefacts to inspect the failure state.
-- If registry or policy load paths fail: SIR cannot truthfully evaluate policy conformance; treat the outcome as fail/inconclusive with evidence.
+- If registry or policy load paths fail: SIR returns an explicit non-passing blocked systemic-reset outcome with run evidence.
 - If a run is invalid or inconclusive: treat it as non-passing; use `latest-run.json` plus archived run artefacts to inspect failure state.
 - If SIR is bypassed: no governance claim applies to bypassed model-facing traffic.
 - If SIR is not actually in front of the model path: proof only attests to the exercised SIR path, not ungoverned alternate paths.
