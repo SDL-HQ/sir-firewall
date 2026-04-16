@@ -34,6 +34,44 @@ Optional:
 
 - `doc_path` when a pack has a companion markdown file.
 
+## Coverage taxonomy v1 (canonical)
+
+Coverage taxonomy is a readability label for what a pack/scenario primarily exercises.
+
+Boundary rules:
+
+- Taxonomy labels are pack/scenario-level labels only.
+- Labels do not change gate enforcement semantics.
+- Labels do not change run/publication status semantics.
+- Labels are not scores, rankings, or analytics.
+- Use only categories that are currently used by active packs/scenarios.
+- Do not claim row-level completeness from this mapping.
+
+Current categories in active use:
+
+- `benign_control`
+- `direct_bypass`
+- `obfuscation`
+- `exfiltration`
+- `injection`
+
+Current pack/scenario mapping (active suites):
+
+| Pack/Scenario | Pack class | Taxonomy category |
+| --- | --- | --- |
+| `generic_safety` | domain | `benign_control`, `direct_bypass`, `obfuscation`, `exfiltration`, `injection` |
+| `account_recovery_fraud` | domain | `benign_control`, `direct_bypass` |
+| `mental_health_clinical` | domain | `benign_control`, `direct_bypass` |
+| `healthcare_compliance` | domain | `benign_control` |
+| `financial_services` | domain | `benign_control` |
+| `pii_protection` | domain | `benign_control` |
+| `code_generation_safety` | domain | `benign_control` |
+| `educational_content` | domain | `benign_control` |
+| `legal_contracts` | domain | `benign_control` |
+| `insurance_underwriting` | domain | `benign_control` |
+| `scenario_injection_chain` | scenario | `benign_control`, `injection`, `exfiltration` |
+| `scenario_tool_injection` | scenario | `benign_control`, `injection` |
+
 ## Minimum pack quality bar
 
 A pack must meet all of the following:

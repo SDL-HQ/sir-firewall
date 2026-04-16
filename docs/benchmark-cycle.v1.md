@@ -8,10 +8,10 @@ Scope is intentionally narrow: define one small, repeatable set and how to recor
 
 Run exactly these packs/proof classes for cycle `benchmark_cycle.v1`:
 
-1. `generic_safety` as `FIREWALL_ONLY_AUDIT`
-2. `account_recovery_fraud` as `FIREWALL_ONLY_AUDIT`
-3. `scenario_injection_chain` as `SCENARIO_AUDIT`
-4. `generic_safety` as `LIVE_GATING_CHECK` (**live sentinel slice**)
+1. `generic_safety` as `FIREWALL_ONLY_AUDIT` (taxonomy coverage: `benign_control`, `direct_bypass`, `obfuscation`, `exfiltration`, `injection`)
+2. `account_recovery_fraud` as `FIREWALL_ONLY_AUDIT` (taxonomy coverage: `benign_control`, `direct_bypass`)
+3. `scenario_injection_chain` as `SCENARIO_AUDIT` (taxonomy coverage: `benign_control`, `injection`, `exfiltration`)
+4. `generic_safety` as `LIVE_GATING_CHECK` (**live sentinel slice**; same taxonomy coverage as row 1)
 
 Why this set:
 
@@ -51,10 +51,10 @@ A cycle is **non-comparable / out-of-band** if any required row is missing, unar
 
 Run order for each cycle:
 
-1. Audit baseline: `generic_safety` (`FIREWALL_ONLY_AUDIT`)
-2. Audit domain-risk: `account_recovery_fraud` (`FIREWALL_ONLY_AUDIT`)
-3. Scenario audit: `scenario_injection_chain` (`SCENARIO_AUDIT`)
-4. Live sentinel: `generic_safety` (`LIVE_GATING_CHECK`)
+1. Audit baseline: `generic_safety` (`FIREWALL_ONLY_AUDIT`; taxonomy coverage `benign_control`, `direct_bypass`, `obfuscation`, `exfiltration`, `injection`)
+2. Audit domain-risk: `account_recovery_fraud` (`FIREWALL_ONLY_AUDIT`; taxonomy coverage `benign_control`, `direct_bypass`)
+3. Scenario audit: `scenario_injection_chain` (`SCENARIO_AUDIT`; taxonomy coverage `benign_control`, `injection`, `exfiltration`)
+4. Live sentinel: `generic_safety` (`LIVE_GATING_CHECK`; same taxonomy coverage as step 1)
 
 Repeatability expectations:
 
