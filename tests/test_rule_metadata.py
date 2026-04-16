@@ -51,6 +51,22 @@ def test_triggered_rule_metadata_for_friction_limit_exceeded(monkeypatch):
     assert out["triggered_rule"]["rule_id"] == "SIR-RULE-FRICTION-LIMIT"
 
 
+
+
+def test_systemic_reset_block_when_policy_load_fails(monkeypatch):
+    monkeypatch.setattr(
+        core,
+        "_load_isc_policy",
+        lambda: (_ for _ in ()).throw(RuntimeError("policy boom")),
+    )
+
+    out = core.validate_sir({"isc": _isc("safe request")})
+
+    assert out["status"] == "BLOCKED"
+    assert out["reason"] == "systemic_reset_policy_load_failed"
+    assert out["sr"]["sr_triggered"] is True
+    assert out["sr"]["sr_scope"] == "deployment"
+
 def test_systemic_reset_block_when_domain_pack_load_fails(monkeypatch):
     monkeypatch.setattr(
         core,
