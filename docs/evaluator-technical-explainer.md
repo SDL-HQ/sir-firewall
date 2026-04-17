@@ -140,7 +140,8 @@ Coverage taxonomy note (v1):
 curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
 ```
 
-Expected successful verification output includes signature validity and payload-hash match.
+Expected successful verification output confirms payload-hash match and signature validity against resolved public key material.
+This verification proves payload integrity + signature validity only; it does not prove policy correctness, model safety, deployment completeness, or broader trust guarantees.
 
 ### 2) Validate certificate contract (optional strictness check)
 
