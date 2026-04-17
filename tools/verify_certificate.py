@@ -145,10 +145,23 @@ def _load_pubkey_with_registry(
 
 
 def _parse_args() -> argparse.Namespace:
-    ap = argparse.ArgumentParser(description="Verify a SIR audit certificate JSON.")
+    ap = argparse.ArgumentParser(
+        description=(
+            "Verify certificate payload integrity and signature validity for an existing SIR certificate JSON."
+        ),
+        epilog=(
+            "Examples:\n"
+            "  python3 tools/verify_certificate.py proofs/latest-audit.json\n"
+            "  cat proofs/latest-audit.json | python3 tools/verify_certificate.py -\n\n"
+            "Key resolution:\n"
+            "  If signing_key_id is present and key registry is readable, that key is used.\n"
+            "  Otherwise verifier falls back to --pubkey unless --require-registry is set."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     ap.add_argument(
         "cert",
-        help='Path to certificate JSON, or "-" to read from stdin.',
+        help='Certificate JSON path, or "-" to read certificate JSON from stdin.',
     )
     ap.add_argument(
         "--pubkey",
@@ -163,7 +176,7 @@ def _parse_args() -> argparse.Namespace:
     ap.add_argument(
         "--require-registry",
         action="store_true",
-        help="Fail when signing_key_id is present but key registry is missing/unreadable.",
+        help="Fail when signing_key_id is present but key registry is missing/unreadable (disables --pubkey fallback).",
     )
     ap.add_argument("--quiet", action="store_true", help="Only exit code, no success message.")
     return ap.parse_args()

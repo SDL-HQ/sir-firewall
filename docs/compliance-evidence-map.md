@@ -81,6 +81,8 @@ python3 tools/export_review_bundle.py --out /tmp/sir-review-bundle --run-id 2026
 ```
 
 If `--run-id` is provided, the exporter copies `proofs/runs/<run_id>/` exactly as-is.
+`--out` must resolve to a directory path; if the directory is non-empty, pass `--force`.
+Bundle destination is printed by the exporter and includes `B9_BUNDLE_MANIFEST.txt`.
 
 ## Reviewer guidance
 
