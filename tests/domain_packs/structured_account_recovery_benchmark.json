@@ -1,0 +1,257 @@
+{
+  "pack_id": "structured_account_recovery_benchmark",
+  "pack_version": "0.1.0",
+  "schema": "structured_benchmark_fixture_v1",
+  "mode": "exploratory",
+  "request_surface": "account_recovery_challenge_request_v1",
+  "notes": "Exploratory structured benchmark fixture; not an acceptance/public audit surface.",
+  "cases": [
+    {
+      "id": "valid-control-password-reset-chat",
+      "description": "Valid control: baseline password reset request via chat.",
+      "input": {
+        "structured_request": {
+          "schema_version": "v1",
+          "request_class": "account_recovery_challenge",
+          "action": "password_reset",
+          "channel": "chat",
+          "request_text": "I lost access to my account and need a password reset.",
+          "declared_auth_state": "unknown",
+          "case_ref": "case-1001"
+        }
+      },
+      "expected": {
+        "status": "PASS",
+        "reason": "clean"
+      }
+    },
+    {
+      "id": "valid-control-mfa-reset-support-ticket",
+      "description": "Valid control: bounded high-stakes account lockout with MFA reset in support ticket channel.",
+      "input": {
+        "structured_request": {
+          "schema_version": "v1",
+          "request_class": "account_recovery_challenge",
+          "action": "mfa_reset",
+          "channel": "support_ticket",
+          "request_text": "I was SIM-swapped and locked out of my account. Please start MFA reset review.",
+          "declared_auth_state": "verified",
+          "case_ref": "ACCT.RECOV-442"
+        }
+      },
+      "expected": {
+        "status": "PASS",
+        "reason": "clean"
+      }
+    },
+    {
+      "id": "malformed-shape-not-object",
+      "description": "Malformed shape: structured_request is a list instead of an object.",
+      "input": {
+        "structured_request": [
+          "schema_version",
+          "v1"
+        ]
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_not_object"
+      }
+    },
+    {
+      "id": "missing-required-field-action",
+      "description": "Missing required field: action omitted.",
+      "input": {
+        "structured_request": {
+          "schema_version": "v1",
+          "request_class": "account_recovery_challenge",
+          "channel": "chat",
+          "request_text": "Reset my password."
+        }
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_missing_required_field"
+      }
+    },
+    {
+      "id": "unknown-key-present",
+      "description": "Unknown key should fail closed.",
+      "input": {
+        "structured_request": {
+          "schema_version": "v1",
+          "request_class": "account_recovery_challenge",
+          "action": "password_reset",
+          "channel": "chat",
+          "request_text": "Reset my password.",
+          "priority": "urgent"
+        }
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_unknown_field"
+      }
+    },
+    {
+      "id": "enum-mismatch-action",
+      "description": "Enum mismatch: action not in accepted set.",
+      "input": {
+        "structured_request": {
+          "schema_version": "v1",
+          "request_class": "account_recovery_challenge",
+          "action": "wire_transfer",
+          "channel": "chat",
+          "request_text": "Please transfer my funds immediately."
+        }
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_action_enum_mismatch"
+      }
+    },
+    {
+      "id": "const-mismatch-schema-version",
+      "description": "Const mismatch: schema_version must remain v1.",
+      "input": {
+        "structured_request": {
+          "schema_version": "v2",
+          "request_class": "account_recovery_challenge",
+          "action": "password_reset",
+          "channel": "chat",
+          "request_text": "Reset my password."
+        }
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_schema_version_mismatch"
+      }
+    },
+    {
+      "id": "nested-object-stuffing",
+      "description": "Nested object stuffing in channel should fail closed.",
+      "input": {
+        "structured_request": {
+          "schema_version": "v1",
+          "request_class": "account_recovery_challenge",
+          "action": "password_reset",
+          "channel": {
+            "kind": "chat"
+          },
+          "request_text": "Reset my password."
+        }
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_nested_value"
+      }
+    },
+    {
+      "id": "array-stuffing",
+      "description": "Array stuffing in action should fail closed.",
+      "input": {
+        "structured_request": {
+          "schema_version": "v1",
+          "request_class": "account_recovery_challenge",
+          "action": [
+            "password_reset"
+          ],
+          "channel": "chat",
+          "request_text": "Reset my password."
+        }
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_nested_value"
+      }
+    },
+    {
+      "id": "oversize-request-text",
+      "description": "Oversize request_text should fail bounds check.",
+      "input": {
+        "structured_request": {
+          "schema_version": "v1",
+          "request_class": "account_recovery_challenge",
+          "action": "password_reset",
+          "channel": "chat",
+          "request_text": "REPEAT_4100_CHARS"
+        }
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_request_text_length_out_of_bounds"
+      }
+    },
+    {
+      "id": "invalid-case-ref",
+      "description": "Validation-only case_ref pattern mismatch.",
+      "input": {
+        "structured_request": {
+          "schema_version": "v1",
+          "request_class": "account_recovery_challenge",
+          "action": "email_change",
+          "channel": "email",
+          "request_text": "Please help restore access to my email login.",
+          "declared_auth_state": "unverified",
+          "case_ref": "bad value with spaces"
+        }
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_case_ref_pattern_mismatch"
+      }
+    },
+    {
+      "id": "mixed-mode-misuse",
+      "description": "Mixed ingress modes should fail closed when both isc and structured_request are present.",
+      "input": {
+        "isc": {
+          "version": "1.0",
+          "template_id": "EU-AI-Act-ISC-v1",
+          "payload": "safe",
+          "checksum": "9df20f6efb5f179315b092496401f5ff27a9de850413f0f835f6b8d2fd9fd1a6",
+          "signature": ""
+        },
+        "structured_request": {
+          "schema_version": "v1",
+          "request_class": "account_recovery_challenge",
+          "action": "password_reset",
+          "channel": "chat",
+          "request_text": "Reset my password."
+        }
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_mixed_mode_not_allowed"
+      }
+    },
+    {
+      "id": "high-stakes-bounded-email-change",
+      "description": "Realistic bounded high-stakes example in accepted request class.",
+      "input": {
+        "structured_request": {
+          "schema_version": "v1",
+          "request_class": "account_recovery_challenge",
+          "action": "email_change",
+          "channel": "support_ticket",
+          "request_text": "My account email was changed after a phishing incident. I need to recover access and restore my original email.",
+          "declared_auth_state": "unknown",
+          "case_ref": "INC-2026-0442"
+        }
+      },
+      "expected": {
+        "status": "PASS",
+        "reason": "clean"
+      }
+    }
+  ]
+}
