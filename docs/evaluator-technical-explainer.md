@@ -4,6 +4,26 @@ This document is a technical explainer for evaluators, auditors, governance/risk
 
 It defines what current SIR does, what evidence it produces, what claims are in scope, what claims are out of scope, and how to verify SIR evidence offline.
 
+## Evaluator path (start here)
+
+Use this document as the **single primary evaluator entry point**.
+
+Read and verify in this order:
+
+1. **Scope and boundary** in this document (`What SIR is`, `What SIR does not prove`, `Current gate capability boundary`).
+2. **Truth surfaces and interpretation rules** in this document (`What SIR produces`, `Benchmark and proof interpretation semantics`).
+3. **Offline verification steps** in this document (`Offline verification` section below).
+4. **Supporting context only if needed**:
+   - `docs/assurance-kit.md` for operator-oriented walkthrough language.
+   - `docs/compliance-evidence-map.md` for packaging/inventory convenience.
+   - `docs/engineer-guide.md` for local engineering operations.
+
+Source-of-truth posture for evaluator decisions:
+
+- Treat evidence artifacts and their verification outputs as source of truth.
+- Treat explanatory docs (including this explainer) as interpretation context over those existing evidence surfaces.
+- Do not treat any explanatory doc as a new proof artifact or independent truth endpoint.
+
 ## Product definition
 
 SIR is a deterministic pre-inference governance gate that produces independently verifiable evidence about model-facing request paths.
@@ -21,7 +41,7 @@ Current SIR is:
 
 Operationally, SIR evaluates a request path before model inference and produces run evidence and proof artefacts tied to that evaluated path.
 
-## What SIR produces
+## What SIR produces (truth surfaces vs context)
 
 SIR produces evidence artefacts, including:
 
@@ -33,6 +53,7 @@ SIR produces evidence artefacts, including:
 - benchmark index mapping (`proofs/runs/benchmark_index.v1.json`) as evidence-linked comparison rows
 
 Public Pages and published GitHub artefacts are the authoritative public truth surfaces for shared evidence review.
+Explanatory documentation describes how to read those surfaces; it does not replace them.
 
 ## What SIR proves
 
@@ -132,7 +153,9 @@ Coverage taxonomy note (v1):
 - Taxonomy labels do not modify run/publication status (`PASS`/`FAIL`/`INCONCLUSIVE`).
 - Taxonomy mapping is not a row-level completeness claim and is not an analytics surface.
 
-## Offline verification (canonical evaluator path)
+## Offline verification (linear evaluator flow)
+
+Run these in order.
 
 ### 1) Verify published certificate offline
 
@@ -179,6 +202,12 @@ python3 tools/verify_itgl.py
 
 - Public Pages and published GitHub artefacts are the authoritative shared truth surfaces for public evaluation.
 - Local/dev verification remains useful for reproducibility and technical validation but is distinct from SDL/public-authoritative trust semantics.
+
+## Supporting-context docs (consult only if needed)
+
+- `docs/assurance-kit.md`: compact operator/evaluator walkthrough aligned to the same evidence semantics.
+- `docs/compliance-evidence-map.md`: artifact inventory and packaging helper mapping.
+- `docs/engineer-guide.md`: local run/publish/serve mechanics for engineering workflows.
 
 ## Scope discipline for D8
 

@@ -4,6 +4,8 @@ This document defines a narrow technical/compliance review convenience path.
 
 It maps existing SIR artifacts to reviewer checks and defines a local packaging helper that copies those same artifacts into one folder.
 
+Evaluator entry point: start with `docs/evaluator-technical-explainer.md` for primary review and verification order, then use this map as supporting inventory context.
+
 This package is a **review package** only. It is not a new proof artifact or assurance layer.
 
 ## Scope and non-claims

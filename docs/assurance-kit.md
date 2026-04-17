@@ -1,6 +1,6 @@
 # SIR Assurance Kit
 
-This document is the canonical evaluation and verification path for SIR.
+For evaluator review order, start with `docs/evaluator-technical-explainer.md` (primary evaluator entry point). This document is a compact supporting walkthrough.
 
 It is for operators, auditors, buyers, and reviewers who need a compact, evidence-first way to understand what SIR does and verify outputs without repo archaeology.
 
