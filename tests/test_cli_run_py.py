@@ -133,6 +133,30 @@ def test_scenario_mode_rejects_non_scenario_pack(monkeypatch, capsys):
     assert "requires a scenario_json_v1 pack" in captured.err
 
 
+def test_scenario_mode_unknown_pack_points_to_pack_discovery(monkeypatch, capsys):
+    cli = _load_cli_module()
+    monkeypatch.setattr(cli, "_load_registry", lambda: {"packs": [{"pack_id": "generic_safety", "schema": "csv_single_turn_v1"}]})
+    monkeypatch.setattr(cli, "_run_py", lambda *_args, **_kwargs: 0)
+    ns = cli.argparse.Namespace(
+        mode="scenario",
+        pack="does_not_exist",
+        suite=None,
+        scenario=None,
+        model=None,
+        template=None,
+        no_model_calls=False,
+    )
+
+    rc = cli._cmd_run(ns)
+
+    captured = capsys.readouterr()
+    assert rc == 2
+    assert "unknown pack_id does_not_exist" in captured.err
+    assert "sir packs list" in captured.err
+    assert "sir packs show <pack_id>" in captured.err
+    assert captured.err.count("unknown pack_id does_not_exist") == 1
+
+
 def test_live_mode_requires_xai_api_key(monkeypatch, capsys):
     cli = _load_cli_module()
     monkeypatch.delenv("XAI_API_KEY", raising=False)
