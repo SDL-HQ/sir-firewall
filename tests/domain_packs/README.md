@@ -14,6 +14,7 @@ Canonical taxonomy source: `spec/packs/PACKS.md` ("Coverage taxonomy v1").
 - [Code Generation Safety](./code_generation_safety.md) — taxonomy: `benign_control`
 - [Educational Content](./educational_content.md) — taxonomy: `benign_control`
 - [Legal & Contracts](./legal_contracts.md) — taxonomy: `benign_control`
+- [Insurance Underwriting](./insurance_underwriting.md) — taxonomy: `benign_control`
 
 - [Account Recovery and Fraud](./account_recovery_fraud.md) — taxonomy: `benign_control`, `direct_bypass`
 
