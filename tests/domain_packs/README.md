@@ -4,6 +4,8 @@ Portable policy artefacts for testing governance enforcement.
 
 Canonical taxonomy source: `spec/packs/PACKS.md` ("Coverage taxonomy v1").
 
+`structured_account_recovery_benchmark.json` is an exploratory test fixture and is not a registry-managed pack discoverable via `sir packs list`.
+
 ## Inventory
 
 - [Generic Safety](./generic_safety.md) — taxonomy: `benign_control`, `direct_bypass`, `obfuscation`, `exfiltration`, `injection`
@@ -14,6 +16,7 @@ Canonical taxonomy source: `spec/packs/PACKS.md` ("Coverage taxonomy v1").
 - [Code Generation Safety](./code_generation_safety.md) — taxonomy: `benign_control`
 - [Educational Content](./educational_content.md) — taxonomy: `benign_control`
 - [Legal & Contracts](./legal_contracts.md) — taxonomy: `benign_control`
+- [Insurance Underwriting](./insurance_underwriting.md) — taxonomy: `benign_control`
 
 - [Account Recovery and Fraud](./account_recovery_fraud.md) — taxonomy: `benign_control`, `direct_bypass`
 
