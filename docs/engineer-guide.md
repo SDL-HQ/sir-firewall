@@ -242,6 +242,8 @@ Low-level fallback (stdin). The trailing `-` means “read JSON from stdin”:
 curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
 ```
 
+Verification scope: this command proves payload integrity + signature validity against resolved public key material only (registry key when `signing_key_id` resolves, or explicit `--pubkey`). It does not prove policy correctness, model safety, or broader trust guarantees.
+
 SDL public key:
 
 * `spec/sdl.pub`

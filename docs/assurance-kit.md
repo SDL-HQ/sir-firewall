@@ -168,6 +168,7 @@ sir verify cert proofs/latest-audit.json --key <pubkey.pem>
 
 Note: certificate generation is a separate step and is not automatic from `sir run`. Local/non-authoritative certificates may not validate against default trust anchors unless `--key` (or a matching key registry) is provided.
 Local generation aims to preserve attribution fields (for example `sir_firewall_version` and `commit_sha`) where possible, while leaving CI-only fields (for example `ci_run_url`) explicitly local/empty when CI context is absent.
+Certificate verification proves payload integrity + signature validity against resolved public key material only. It does not prove policy correctness, model safety, or broader trust guarantees.
 
 ### 5) Verify archived run receipt offline
 
