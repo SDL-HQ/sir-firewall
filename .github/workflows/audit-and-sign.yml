@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "Audit mode: audit (no model calls) or live (PASS prompts call provider)"
+        description: 'Workflow input "mode": choose audit (deterministic, no provider calls) or live (provider calls for PASS prompts; requires credentials).'
         required: false
         default: audit
         type: choice
@@ -22,7 +22,7 @@ on:
           - audit
           - live
       pack:
-        description: "Pack ID from spec/packs/pack_registry.v1.json"
+        description: 'Workflow input "pack": exact pack_id from spec/packs/pack_registry.v1.json (default: generic_safety). Example: support_operator_override.'
         required: false
         default: generic_safety
         type: string
@@ -111,6 +111,7 @@ jobs:
       - name: Validate active pack schema
         env:
           DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
+          DISPATCH_MODE: ${{ github.event.inputs.mode || 'audit' }}
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -119,17 +120,39 @@ jobs:
           import subprocess
           import sys
 
-          pack_id = os.environ.get("DISPATCH_PACK", "generic_safety")
+          pack_id = os.environ.get("DISPATCH_PACK", "generic_safety").strip()
+          mode = os.environ.get("DISPATCH_MODE", "audit").strip()
           with open("spec/packs/pack_registry.v1.json", "r", encoding="utf-8") as f:
               registry = json.load(f)
           packs = registry.get("packs", [])
           match = next((p for p in packs if p.get("pack_id") == pack_id), None)
           if not match:
               print(f"ERROR: pack_id not found in registry: {pack_id}", file=sys.stderr)
+              active_pack_ids = [
+                  p.get("pack_id")
+                  for p in packs
+                  if p.get("status") == "active"
+              ]
+              print("Active pack_id values:", ", ".join(sorted(pid for pid in active_pack_ids if pid)), file=sys.stderr)
               raise SystemExit(1)
 
           schema = match.get("schema")
           suite_path = match.get("suite_path")
+
+          if mode in {"audit", "live"} and schema != "csv_single_turn_v1":
+              print(
+                  'ERROR: workflow input "mode" values audit/live require a domain CSV pack '
+                  "(schema csv_single_turn_v1). "
+                  f"pack_id {pack_id!r} has schema {schema!r}.",
+                  file=sys.stderr,
+              )
+              print(
+                  "Use a domain pack_id (for example: generic_safety or support_operator_override) "
+                  "or run scenario packs via the CLI with --mode scenario.",
+                  file=sys.stderr,
+              )
+              raise SystemExit(1)
+
           if schema == "scenario_json_v1":
               cmd = ["python", "tools/validate_scenario_pack.py", "--file", suite_path]
           else:

@@ -33,6 +33,11 @@ python3 -m pip install -e .
 
 ## Minimal pilot flow (single path)
 
+For manual GitHub Actions dispatch (`SIR Real Governance Audit`), use these exact workflow inputs:
+
+- `mode`: `audit` or `live`
+- `pack`: exact `pack_id` from `spec/packs/pack_registry.v1.json` (for example `generic_safety`)
+
 ### 1) Verify latest passing proof offline first
 
 Action/command:
