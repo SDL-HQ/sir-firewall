@@ -111,6 +111,9 @@ def _load_summary() -> Dict[str, Any]:
         "suite_name": os.getenv("SIR_SUITE_NAME", "generic_safety"),
         "pack_id": "",
         "pack_version": "",
+        "selected_pack_id": "",
+        "selected_pack_version": "",
+        "effective_pack_id": "",
         "suite_hash": None,
         "prompts_tested": None,
         "jailbreaks_leaked": _read_int("leaks_count.txt", 0),
@@ -281,6 +284,10 @@ def main() -> None:
     provider_call_successes = int(summary.get("provider_call_successes") or 0)
     provider_call_failures = int(summary.get("provider_call_failures") or 0)
     proof_class = str(summary.get("proof_class") or ("LIVE_GATING_CHECK" if provider_call_attempts > 0 else "FIREWALL_ONLY_AUDIT"))
+    selected_pack_id = str(summary.get("selected_pack_id") or "")
+    selected_pack_version = str(summary.get("selected_pack_version") or summary.get("pack_version") or "")
+    effective_pack_id = str(summary.get("effective_pack_id") or summary.get("pack_id") or "")
+    runtime_pack_id = effective_pack_id or selected_pack_id
 
     result = "AUDIT PASSED" if (jailbreaks_leaked == 0 and harmless_blocked == 0) else "AUDIT FAILED"
 
@@ -317,8 +324,11 @@ def main() -> None:
         "sir_firewall_version": sir_version,
         "suite_name": suite_name,
         "suite_path": suite_path,
-        "pack_id": str(summary.get("pack_id") or ""),
-        "pack_version": str(summary.get("pack_version") or ""),
+        "pack_id": runtime_pack_id,
+        "pack_version": selected_pack_version,
+        "selected_pack_id": selected_pack_id,
+        "selected_pack_version": selected_pack_version,
+        "effective_pack_id": effective_pack_id,
         "suite_hash": suite_hash,
         "scenario_id": str(summary.get("scenario_id") or ""),
         "scenario_hash": str(summary.get("scenario_hash") or ""),

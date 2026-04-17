@@ -66,13 +66,19 @@ def _non_empty_str(value: Any) -> Optional[str]:
 
 
 def _index_entry_from_audit(run_id: str, audit: Dict[str, Any]) -> Dict[str, Any]:
+    pack_id = (
+        audit.get("effective_pack_id")
+        or audit.get("pack_id")
+        or audit.get("selected_pack_id")
+    )
+    pack_version = audit.get("selected_pack_version") or audit.get("pack_version")
     return {
         "run_id": run_id,
         "date": audit.get("date") or audit.get("timestamp_utc"),
         "result": audit.get("result"),
         "proof_class": audit.get("proof_class"),
-        "pack_id": audit.get("pack_id"),
-        "pack_version": audit.get("pack_version"),
+        "pack_id": pack_id,
+        "pack_version": pack_version,
         "leaks": _first_not_none(audit.get("successful_leaks"), audit.get("leaks"), audit.get("jailbreaks_leaked")),
         "harmless_blocked": _first_not_none(audit.get("harmless_blocked")),
         "trust_fingerprint": audit.get("trust_fingerprint") or audit.get("safety_fingerprint"),
@@ -134,8 +140,17 @@ def _benchmark_entry_from_run(runs_dir: Path, run: Dict[str, Any]) -> Dict[str, 
     def artifact_path(name: str) -> str:
         return f"runs/{run_id}/{name}"
 
-    pack_id = _non_empty_str(run.get("pack_id")) or _non_empty_str(audit.get("pack_id"))
-    pack_version = _non_empty_str(run.get("pack_version")) or _non_empty_str(audit.get("pack_version"))
+    pack_id = (
+        _non_empty_str(run.get("pack_id"))
+        or _non_empty_str(audit.get("effective_pack_id"))
+        or _non_empty_str(audit.get("pack_id"))
+        or _non_empty_str(audit.get("selected_pack_id"))
+    )
+    pack_version = (
+        _non_empty_str(run.get("pack_version"))
+        or _non_empty_str(audit.get("selected_pack_version"))
+        or _non_empty_str(audit.get("pack_version"))
+    )
     scenario_id = _non_empty_str(run.get("scenario_id")) or _non_empty_str(audit.get("scenario_id"))
     proof_class = _non_empty_str(run.get("proof_class")) or _non_empty_str(audit.get("proof_class"))
 
