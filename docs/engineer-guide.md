@@ -80,6 +80,11 @@ Outputs (local run artefacts):
 * `leaks_count.txt`
 * `harmless_blocked.txt`
 
+`proofs/run_summary.json` records pack provenance with explicit separation:
+* `selected_pack_id` / `selected_pack_version`: input selection intent
+* `effective_pack_id`: runtime enforcement pack observed from gate execution
+* `pack_id`: runtime pack alias used by downstream cert/archive metadata
+
 Verify ITGL:
 
 ```bash

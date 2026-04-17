@@ -126,3 +126,32 @@ def test_benchmark_index_skips_malformed_run_ids(tmp_path, capsys):
     assert "WARN: skipping malformed run index entry" in captured.err
     assert [entry["run_id"] for entry in index["entries"]] == ["run-good"]
     assert index["latest_run"]["run_id"] == "run-good"
+
+
+def test_benchmark_entry_prefers_effective_pack_id_from_audit(tmp_path):
+    publish_run = _load_publish_run_module()
+
+    runs_dir = tmp_path / "runs"
+    run_dir = runs_dir / "run-effective-pack"
+    run_dir.mkdir(parents=True)
+    (run_dir / "audit.json").write_text(
+        json.dumps(
+            {
+                "result": "AUDIT PASSED",
+                "proof_class": "FIREWALL_ONLY_AUDIT",
+                "pack_id": "selected_pack_placeholder",
+                "selected_pack_id": "selected_pack_placeholder",
+                "effective_pack_id": "generic_safety",
+                "selected_pack_version": "1.2.3",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    entry = publish_run._benchmark_entry_from_run(
+        runs_dir=runs_dir,
+        run={"run_id": "run-effective-pack", "path": "runs/run-effective-pack/"},
+    )
+
+    assert entry["evaluation_target"]["pack_id"] == "generic_safety"
+    assert entry["evaluation_target"]["pack_version"] == "1.2.3"
