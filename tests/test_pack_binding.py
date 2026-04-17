@@ -83,4 +83,42 @@ def test_run_summary_flags_use_effective_pack_context(tmp_path, monkeypatch):
     rts.main()
 
     summary = json.loads((tmp_path / "proofs" / "run_summary.json").read_text(encoding="utf-8"))
+    assert summary["selected_pack_id"] == "pci_payments"
+    assert summary["effective_pack_id"] == "pci_payments"
+    assert summary["pack_id"] == "pci_payments"
+    assert summary["selected_pack_version"] == "1.0.0"
     assert summary["flags"] == {"CRYPTO_ENFORCED": True, "CHECKSUM_ENFORCED": False}
+
+
+def test_run_summary_separates_selected_and_effective_pack_when_selection_is_implicit(tmp_path, monkeypatch):
+    rts = _load_red_team_suite_module()
+
+    suite_path = tmp_path / "suite.csv"
+    suite_path.write_text("id,prompt,expected,note,category\nrow-1,hello,allow,,\n", encoding="utf-8")
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        rts,
+        "_resolve_suite_and_pack",
+        lambda **_kwargs: (str(suite_path), "", "", "", "csv_single_turn_v1"),
+    )
+    monkeypatch.setattr(
+        argparse.ArgumentParser,
+        "parse_args",
+        lambda _self: argparse.Namespace(
+            mode="audit",
+            pack=None,
+            suite=str(suite_path),
+            scenario=None,
+            model="xai/grok-3-beta",
+            template="EU-AI-Act-ISC-v1",
+            no_model_calls=False,
+        ),
+    )
+
+    rts.main()
+
+    summary = json.loads((tmp_path / "proofs" / "run_summary.json").read_text(encoding="utf-8"))
+    assert summary["selected_pack_id"] == ""
+    assert summary["effective_pack_id"] == "generic_safety"
+    assert summary["pack_id"] == "generic_safety"

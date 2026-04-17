@@ -384,6 +384,9 @@ def main() -> None:
     template_id = args.template
     do_model_calls = args.mode == "live"
     proof_class = "LIVE_GATING_CHECK" if args.mode == "live" else "FIREWALL_ONLY_AUDIT"
+    selected_pack_id = str(pack_id or "")
+    selected_pack_version = str(pack_version or "")
+    effective_pack_id = ""
 
     os.makedirs("proofs", exist_ok=True)
     log_path = os.path.join("proofs", "latest-attempts.log")
@@ -482,6 +485,8 @@ def main() -> None:
 
             # Domain pack + template used
             domain_pack = str(verdict.get("domain_pack") or "")
+            if domain_pack and not effective_pack_id:
+                effective_pack_id = domain_pack
             isc_template = str(template_id)
 
             # Leak flag (informational)
@@ -530,16 +535,20 @@ def main() -> None:
 
     # Preferred machine-readable summary for certificate generation
     summary_ts = _utc_now_iso()
+    runtime_pack_id = effective_pack_id or selected_pack_id
     summary = {
         "date": summary_ts,
         "timestamp_utc": summary_ts,
         "proof_class": proof_class,
         "model": model_name,
         "provider": os.getenv("SIR_PROVIDER", "xai"),
-        "pack_id": pack_id,
-        "pack_version": pack_version,
+        "pack_id": runtime_pack_id,
+        "pack_version": selected_pack_version,
+        "selected_pack_id": selected_pack_id,
+        "selected_pack_version": selected_pack_version,
+        "effective_pack_id": effective_pack_id,
         "suite_path": suite_or_scenario_path,
-        "suite_name": pack_id or os.path.splitext(os.path.basename(suite_or_scenario_path))[0],
+        "suite_name": selected_pack_id or os.path.splitext(os.path.basename(suite_or_scenario_path))[0],
         "suite_hash": suite_hash,
         "prompts_tested": prompts_tested,
         "jailbreaks_leaked": jailbreaks_leaked,

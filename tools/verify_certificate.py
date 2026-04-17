@@ -3,8 +3,8 @@
 SIR Firewall — Certificate Verifier
 
 Verifies:
-- payload_hash matches reconstructed payload
-- RSA signature matches payload using provided public key
+- payload_hash matches the reconstructed signed payload bytes
+- RSA signature matches those payload bytes using resolved public key material
 
 Inputs:
 - cert path (positional arg), OR
@@ -87,18 +87,18 @@ def _load_cert(cert_arg: str) -> tuple[Dict[str, Any], str]:
     return _load_cert_from_file(p), str(p)
 
 
-def _load_pubkey(pubkey_path: str) -> Any:
+def _load_pubkey(pubkey_path: str) -> tuple[Any, str]:
     p = Path(pubkey_path)
     try:
         data = p.read_bytes()
-        return serialization.load_pem_public_key(data)
+        return serialization.load_pem_public_key(data), f"--pubkey {p}"
     except Exception as e:
         raise SystemExit(f"ERROR: failed to load public key: {p} ({e})") from e
 
 
 def _load_pubkey_with_registry(
     cert: Dict[str, Any], pubkey_path: str, key_registry_path: str, require_registry: bool = False
-) -> Any:
+) -> tuple[Any, str]:
     signing_key_id = cert.get("signing_key_id")
     registry_path = Path(key_registry_path)
 
@@ -124,7 +124,10 @@ def _load_pubkey_with_registry(
             if not allowed:
                 raise SystemExit(f"ERROR: revoked-key verification failure: {reason}")
             pem = public_key_pem_from_entry(entry)
-            return serialization.load_pem_public_key(pem.encode("utf-8"))
+            return (
+                serialization.load_pem_public_key(pem.encode("utf-8")),
+                f"key registry {registry_path} entry signing_key_id={signing_key_id}",
+            )
         except SystemExit:
             raise
         except Exception as e:
@@ -142,10 +145,23 @@ def _load_pubkey_with_registry(
 
 
 def _parse_args() -> argparse.Namespace:
-    ap = argparse.ArgumentParser(description="Verify a SIR audit certificate JSON.")
+    ap = argparse.ArgumentParser(
+        description=(
+            "Verify certificate payload integrity and signature validity for an existing SIR certificate JSON."
+        ),
+        epilog=(
+            "Examples:\n"
+            "  python3 tools/verify_certificate.py proofs/latest-audit.json\n"
+            "  cat proofs/latest-audit.json | python3 tools/verify_certificate.py -\n\n"
+            "Key resolution:\n"
+            "  If signing_key_id is present and key registry is readable, that key is used.\n"
+            "  Otherwise verifier falls back to --pubkey unless --require-registry is set."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     ap.add_argument(
         "cert",
-        help='Path to certificate JSON, or "-" to read from stdin.',
+        help='Certificate JSON path, or "-" to read certificate JSON from stdin.',
     )
     ap.add_argument(
         "--pubkey",
@@ -160,7 +176,7 @@ def _parse_args() -> argparse.Namespace:
     ap.add_argument(
         "--require-registry",
         action="store_true",
-        help="Fail when signing_key_id is present but key registry is missing/unreadable.",
+        help="Fail when signing_key_id is present but key registry is missing/unreadable (disables --pubkey fallback).",
     )
     ap.add_argument("--quiet", action="store_true", help="Only exit code, no success message.")
     return ap.parse_args()
@@ -175,7 +191,9 @@ def main() -> int:
     args = _parse_args()
 
     cert, _source = _load_cert(args.cert)
-    public_key = _load_pubkey_with_registry(cert, args.pubkey, args.key_registry, require_registry=args.require_registry)
+    public_key, key_source = _load_pubkey_with_registry(
+        cert, args.pubkey, args.key_registry, require_registry=args.require_registry
+    )
 
     if "signature" not in cert or "payload_hash" not in cert:
         print("ERROR: missing required fields: signature and/or payload_hash", file=sys.stderr)
@@ -206,7 +224,11 @@ def main() -> int:
         return 6
 
     if not args.quiet:
-        print("OK: Certificate signature valid and payload_hash matches.")
+        print(
+            "OK: payload_hash matches reconstructed signed payload and signature verifies "
+            f"against {key_source}; this proves payload integrity + signature validity only "
+            "(not policy correctness, model safety, or broader trust guarantees)."
+        )
     return 0
 
 

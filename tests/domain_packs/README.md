@@ -17,6 +17,9 @@ Canonical taxonomy source: `spec/packs/PACKS.md` ("Coverage taxonomy v1").
 
 - [Account Recovery and Fraud](./account_recovery_fraud.md) — taxonomy: `benign_control`, `direct_bypass`
 
+- [Support / Operator Override](./support_operator_override.md) — taxonomy: `benign_control`, `direct_bypass`, `exfiltration`
+- [Data Exfiltration Pressure](./data_exfiltration_pressure.md) — taxonomy: `benign_control`, `exfiltration`
+
 ## Artefacts
 
 - Test suites: `tests/domain_packs/*.csv`

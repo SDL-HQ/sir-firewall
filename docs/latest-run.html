@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Governance Gate — Latest Run Status</title>
+  <style>
+    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; max-width: 860px; margin: 34px auto; padding: 0 16px; line-height: 1.45; color: #1f2328; }
+    h1 { margin: 0 0 8px; font-size: 1.45rem; }
+    .muted { color: #57606a; margin: 0 0 16px; }
+    .box { border: 1px solid #d0d7de; border-radius: 8px; padding: 14px; margin: 12px 0; }
+    .row { display: grid; grid-template-columns: 220px 1fr; gap: 8px; margin: 4px 0; }
+    .k { color: #57606a; }
+    code { font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,monospace; font-size: 12px; }
+    .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; border: 1px solid #d0d7de; }
+    a { color: #0969da; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>Governance Gate — Latest Run Status</h1>
+  <p class="muted">Most recent run/publication status for this repository.</p>
+
+  <div class="box">
+    <div><strong>Semantic distinction</strong></div>
+    <ul>
+      <li><strong>Gate outcome</strong>: PASS / BLOCK</li>
+      <li><strong>Run/publication status</strong>: PASS / FAIL / INCONCLUSIVE</li>
+    </ul>
+  </div>
+
+  <div class="box">
+    <div class="row"><div class="k">Status</div><div><span id="status" class="pill">—</span></div></div>
+    <div class="row"><div class="k">Timestamp (UTC)</div><div id="ts"><code>—</code></div></div>
+    <div class="row"><div class="k">Run ID</div><div id="run"><code>—</code></div></div>
+    <div class="row"><div class="k">Commit SHA</div><div id="sha"><code>—</code></div></div>
+    <div class="row"><div class="k">Leaks</div><div id="leaks"><code>—</code></div></div>
+    <div class="row"><div class="k">Harmless blocked</div><div id="harmless"><code>—</code></div></div>
+    <div class="row"><div class="k">CI run</div><div><a id="ci" href="#">—</a></div></div>
+  </div>
+
+  <p class="muted">JSON source: <a href="latest-run.json"><code>docs/latest-run.json</code></a>. Latest conclusive PASS proof: <a href="latest-audit.html"><code>docs/latest-audit.html</code></a>.</p>
+
+  <script>
+    function setText(id, val) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const out = (val === undefined || val === null || String(val).trim() === "") ? "—" : String(val);
+      if (el.tagName === "A") {
+        el.textContent = out;
+      } else {
+        el.innerHTML = `<code>${out}</code>`;
+      }
+    }
+
+    fetch("latest-run.json", { cache: "no-store" })
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(data => {
+        document.getElementById("status").textContent = data.status || "—";
+        setText("ts", data.timestamp_utc);
+        setText("run", data.run_id);
+        setText("sha", data.sha);
+        setText("leaks", data.leaks);
+        setText("harmless", data.harmless_blocked);
+
+        const ci = document.getElementById("ci");
+        const url = data.ci_run_url || "#";
+        ci.href = url;
+        ci.textContent = url === "#" ? "—" : url;
+      })
+      .catch(err => {
+        document.getElementById("status").textContent = "INCONCLUSIVE";
+        setText("ts", `latest-run.json read error (${err.message || err})`);
+      });
+  </script>
+</body>
+</html>

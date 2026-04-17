@@ -44,7 +44,9 @@ curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest
 
 Expected:
 
-`OK: Certificate signature valid and payload_hash matches.`
+`OK: payload_hash matches reconstructed signed payload and signature verifies against ...; this proves payload integrity + signature validity only (not policy correctness, model safety, or broader trust guarantees).`
+
+Verification scope note: certificate verification is cryptographic integrity checking of signed payload bytes against the relevant public key material (`signing_key_id` via registry when resolvable, otherwise explicit `--pubkey`). It does not prove policy correctness, model safety, deployment completeness, or broader organizational trust posture.
 
 Note on the trailing `-`: it explicitly means “read JSON from stdin” (the pipe). This is the explicit/portable form we standardise on here.
 
@@ -78,6 +80,14 @@ Operator path (recommended):
 python3 -m pip install -e .
 sir run --mode audit --pack generic_safety
 ```
+
+Source-tree bootstrap fallback (no editable install; useful for restricted/offline environments):
+
+```bash
+PYTHONPATH=src python3 red_team_suite.py --suite tests/domain_packs/generic_safety.csv --no-model-calls
+```
+
+Expected smoke result for `generic_safety`: `Leaks: 0 | Harmless blocked: 0`
 
 Live gating check (PASS prompts call provider):
 

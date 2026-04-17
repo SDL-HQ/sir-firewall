@@ -19,6 +19,24 @@ USE_SEMANTIC_CHECK = False
 # ---------------------------------------------------------------------------
 
 REQUIRED_ISC_FIELDS = ["version", "template_id", "payload", "checksum", "signature"]
+STRUCTURED_REQUEST_FIELD = "structured_request"
+STRUCTURED_REASON = "structured_validation_failed"
+STRUCTURED_TEMPLATE_ID = "EU-AI-Act-ISC-v1"
+
+_STRUCTURED_REQUIRED_FIELDS = {
+    "schema_version",
+    "request_class",
+    "action",
+    "channel",
+    "request_text",
+}
+_STRUCTURED_OPTIONAL_FIELDS = {"declared_auth_state", "case_ref"}
+_STRUCTURED_ALLOWED_FIELDS = _STRUCTURED_REQUIRED_FIELDS | _STRUCTURED_OPTIONAL_FIELDS
+
+_STRUCTURED_ACTION_ENUM = {"password_reset", "mfa_reset", "email_change", "phone_change"}
+_STRUCTURED_CHANNEL_ENUM = {"chat", "email", "support_ticket"}
+_STRUCTURED_DECLARED_AUTH_STATE_ENUM = {"verified", "unverified", "unknown"}
+_STRUCTURED_CASE_REF_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,64}$")
 
 ALLOWED_TEMPLATES = {
     "HIPAA-ISC-v1",
@@ -158,6 +176,12 @@ _RULE_GROUPS: Dict[str, Dict[str, str]] = {
         "rule_id": "SIR-RULE-JB-DETERMINISTIC-MATCH",
         "rule_description": "Payload matched one or more deterministic jailbreak/exfiltration rule patterns.",
         "rule_category": "jailbreak_guard",
+        "rule_outcome_class": "BLOCK",
+    },
+    STRUCTURED_REASON: {
+        "rule_id": "SIR-RULE-STRUCTURED-VALIDATION",
+        "rule_description": "Structured request input failed deterministic schema validation checks.",
+        "rule_category": "structured_validation",
         "rule_outcome_class": "BLOCK",
     },
 }
@@ -790,6 +814,114 @@ def _check_jailbreak(
     return True, log, prev_hash, None, []
 
 
+def _reject_structured_validation(
+    code: str,
+    detail: str,
+    itgl_log: List[Dict[str, Any]],
+    prev_hash: str,
+    domain_pack: str | None = None,
+) -> Dict[str, Any]:
+    itgl_log, _ = _append_itgl(
+        "structured_validation",
+        "fail",
+        {"code": code},
+        {"detail": detail},
+        itgl_log,
+        prev_hash,
+    )
+    return _build_block(
+        STRUCTURED_REASON,
+        itgl_log,
+        block_type=code,
+        domain_pack=domain_pack,
+    )
+
+
+def _load_structured_request_object(raw: Any) -> Tuple[Dict[str, Any] | None, str | None]:
+    if isinstance(raw, dict):
+        return raw, None
+    if isinstance(raw, str):
+        try:
+            pairs = json.loads(raw, object_pairs_hook=list)
+        except json.JSONDecodeError:
+            return None, "structured_invalid_json"
+        if not isinstance(pairs, list):
+            return None, "structured_not_object"
+        obj: Dict[str, Any] = {}
+        for key, value in pairs:
+            if key in obj:
+                return None, "structured_duplicate_keys"
+            obj[key] = value
+        return obj, None
+    return None, "structured_not_object"
+
+
+def _validate_structured_request(raw: Any) -> Tuple[Dict[str, Any] | None, str | None]:
+    obj, error_code = _load_structured_request_object(raw)
+    if error_code is not None:
+        return None, error_code
+    if obj is None:
+        return None, "structured_not_object"
+
+    unknown_fields = sorted(set(obj.keys()) - _STRUCTURED_ALLOWED_FIELDS)
+    if unknown_fields:
+        return None, "structured_unknown_field"
+
+    missing_fields = sorted(_STRUCTURED_REQUIRED_FIELDS - set(obj.keys()))
+    if missing_fields:
+        return None, "structured_missing_required_field"
+
+    for field_name, field_value in obj.items():
+        if isinstance(field_value, (dict, list)):
+            return None, "structured_nested_value"
+        if not isinstance(field_value, str):
+            return None, "structured_type_mismatch"
+
+    if obj["schema_version"] != "v1":
+        return None, "structured_schema_version_mismatch"
+    if obj["request_class"] != "account_recovery_challenge":
+        return None, "structured_request_class_mismatch"
+    if obj["action"] not in _STRUCTURED_ACTION_ENUM:
+        return None, "structured_action_enum_mismatch"
+    if obj["channel"] not in _STRUCTURED_CHANNEL_ENUM:
+        return None, "structured_channel_enum_mismatch"
+    if not (1 <= len(obj["request_text"]) <= 4000):
+        return None, "structured_request_text_length_out_of_bounds"
+
+    declared_auth_state = obj.get("declared_auth_state")
+    if declared_auth_state is not None and declared_auth_state not in _STRUCTURED_DECLARED_AUTH_STATE_ENUM:
+        return None, "structured_declared_auth_state_enum_mismatch"
+
+    case_ref = obj.get("case_ref")
+    if case_ref is not None and not _STRUCTURED_CASE_REF_PATTERN.match(case_ref):
+        return None, "structured_case_ref_pattern_mismatch"
+
+    normalized = {
+        "schema_version": obj["schema_version"],
+        "request_class": obj["request_class"],
+        "action": obj["action"],
+        "channel": obj["channel"],
+        "request_text": obj["request_text"],
+    }
+    if declared_auth_state is not None:
+        normalized["declared_auth_state"] = declared_auth_state
+    if case_ref is not None:
+        normalized["case_ref"] = case_ref
+
+    return normalized, None
+
+
+def _structured_to_isc_payload(structured_request: Dict[str, Any]) -> Dict[str, Any]:
+    payload = str(structured_request["request_text"])
+    return {
+        "version": "1.0",
+        "template_id": STRUCTURED_TEMPLATE_ID,
+        "payload": payload,
+        "checksum": _compute_checksum(payload),
+        "signature": "",
+    }
+
+
 # ---------------------------------------------------------------------------
 # Public entrypoint
 # ---------------------------------------------------------------------------
@@ -797,6 +929,28 @@ def _check_jailbreak(
 def validate_sir(input_dict: Dict[str, Any], enforcement_pack_id: str | None = None) -> Dict[str, Any]:
     itgl_log: List[Dict[str, Any]] = []
     prev_hash: str = GENESIS_HASH
+    structured_mode = STRUCTURED_REQUEST_FIELD in input_dict
+
+    if structured_mode and "isc" in input_dict:
+        return _reject_structured_validation(
+            "structured_mixed_mode_not_allowed",
+            "both_structured_and_isc_present",
+            itgl_log,
+            prev_hash,
+            domain_pack=None,
+        )
+
+    structured_request: Dict[str, Any] | None = None
+    if structured_mode:
+        structured_request, error_code = _validate_structured_request(input_dict.get(STRUCTURED_REQUEST_FIELD))
+        if error_code is not None:
+            return _reject_structured_validation(
+                error_code,
+                "request_rejected_before_inference",
+                itgl_log,
+                prev_hash,
+                domain_pack=None,
+            )
 
     try:
         _load_isc_policy()
@@ -874,7 +1028,7 @@ def validate_sir(input_dict: Dict[str, Any], enforcement_pack_id: str | None = N
         prev_hash,
     )
 
-    isc = input_dict.get("isc")
+    isc = _structured_to_isc_payload(structured_request) if structured_request is not None else input_dict.get("isc")
     if not isinstance(isc, dict) or "payload" not in isc:
         return {
             "status": "BLOCKED",
@@ -944,6 +1098,8 @@ def validate_sir(input_dict: Dict[str, Any], enforcement_pack_id: str | None = N
         "isc_template": isc_template,
         "itgl_final_hash": f"sha256:{final_hash}",
     }
+    if structured_request is not None:
+        governance_context["structured_mode"] = "account_recovery_challenge_request_v1"
 
     if _POLICY_VERSION:
         governance_context.setdefault("policy_version", _POLICY_VERSION)

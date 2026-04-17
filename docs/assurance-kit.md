@@ -1,6 +1,8 @@
 # SIR Assurance Kit
 
-This document is the canonical evaluation and verification path for SIR.
+For evaluator review order, start with `docs/evaluator-technical-explainer.md` (primary evaluator entry point). This document is a compact supporting walkthrough.
+
+For the linear S4.3 pilot procedure (one minimal path), use `docs/minimal-pilot-runbook.md`.
 
 It is for operators, auditors, buyers, and reviewers who need a compact, evidence-first way to understand what SIR does and verify outputs without repo archaeology.
 
@@ -168,6 +170,7 @@ sir verify cert proofs/latest-audit.json --key <pubkey.pem>
 
 Note: certificate generation is a separate step and is not automatic from `sir run`. Local/non-authoritative certificates may not validate against default trust anchors unless `--key` (or a matching key registry) is provided.
 Local generation aims to preserve attribution fields (for example `sir_firewall_version` and `commit_sha`) where possible, while leaving CI-only fields (for example `ci_run_url`) explicitly local/empty when CI context is absent.
+Certificate verification proves payload integrity + signature validity against resolved public key material only. It does not prove policy correctness, model safety, or broader trust guarantees.
 
 ### 5) Verify archived run receipt offline
 
