@@ -2,6 +2,8 @@
 
 For evaluator review order, start with `docs/evaluator-technical-explainer.md` (primary evaluator entry point). This document is a compact supporting walkthrough.
 
+For the linear S4.3 pilot procedure (one minimal path), use `docs/minimal-pilot-runbook.md`.
+
 It is for operators, auditors, buyers, and reviewers who need a compact, evidence-first way to understand what SIR does and verify outputs without repo archaeology.
 
 Terminology: this document uses **governance gate** for public/operator description. Canonical technical identifiers (for example `sir-firewall`, `sir_firewall`, proof class names, commands, URLs, and paths) remain unchanged. See `docs/terminology.md`.

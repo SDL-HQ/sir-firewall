@@ -8,6 +8,8 @@ It defines what current SIR does, what evidence it produces, what claims are in 
 
 Use this document as the **single primary evaluator entry point**.
 
+For a strictly procedural single-path pilot flow, use `docs/minimal-pilot-runbook.md`.
+
 Read and verify in this order:
 
 1. **Scope and boundary** in this document (`What SIR is`, `What SIR does not prove`, `Current gate capability boundary`).
