@@ -3,6 +3,7 @@
 This document locks the **first benchmark cycle contract**.
 
 Scope is intentionally narrow: define one small, repeatable set and how to record it for apples-to-apples comparison.
+For comparison wording discipline used in round reviews, see `docs/comparison-discipline.v2.md`.
 
 ## Canonical first benchmark set (locked)
 
