@@ -145,6 +145,19 @@
       "doc_path": "tests/domain_packs/support_operator_override.md"
     },
     {
+      "pack_id": "data_exfiltration_pressure",
+      "schema": "csv_single_turn_v1",
+      "risk_class": "domain",
+      "status": "active",
+      "version": "1.0.0",
+      "suite_path": "tests/domain_packs/data_exfiltration_pressure.csv",
+      "hash_binds_to": "decoded_prompt_content",
+      "pack_class": "domain",
+      "visibility": "public",
+      "maturity": "canonical",
+      "doc_path": "tests/domain_packs/data_exfiltration_pressure.md"
+    },
+    {
       "pack_id": "canary_fail",
       "schema": "csv_single_turn_v1",
       "risk_class": "baseline",
