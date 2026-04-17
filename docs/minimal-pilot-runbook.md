@@ -131,6 +131,23 @@ What to look for:
 - Archive receipt signature/integrity verification succeeds.
 - Manifest-linked archive evidence is readable for that run.
 
+### 6) (Optional) Export local review bundle for handoff
+
+Action/command:
+
+```bash
+python3 tools/export_review_bundle.py --out /tmp/sir-review-bundle
+```
+
+Artifact to inspect:
+
+- `/tmp/sir-review-bundle/B9_BUNDLE_MANIFEST.txt`
+
+What to look for:
+
+- Export completes with explicit destination path.
+- Output directory is a directory path and either empty or `--force` is used.
+
 ## Tiny troubleshooting note
 
 If `sir` is not found, reinstall editable package in the current environment:

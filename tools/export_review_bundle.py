@@ -69,21 +69,37 @@ def main() -> int:
         description=(
             "Copy explicit SIR evidence files into a local review bundle. "
             "No discovery, aggregation, scoring, or derived evidence generation is performed."
-        )
+        ),
+        epilog=(
+            "Example: python3 tools/export_review_bundle.py --out /tmp/sir-review-bundle\n"
+            "Optional run copy: --run-id <run_id> copies proofs/runs/<run_id>/ as-is."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    ap.add_argument("--out", required=True, help="Output directory for the local review bundle")
+    ap.add_argument(
+        "--out",
+        required=True,
+        help="Output directory for the local review bundle (must be a directory path).",
+    )
     ap.add_argument(
         "--run-id",
         help="Optional explicit run id to include from proofs/runs/<run_id>/",
     )
-    ap.add_argument("--force", action="store_true", help="Overwrite non-empty output directory")
+    ap.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing output directory when non-empty.",
+    )
     args = ap.parse_args()
 
     repo_root = Path(__file__).resolve().parent.parent
     out_dir = Path(args.out).resolve()
 
+    if out_dir.exists() and not out_dir.is_dir():
+        raise SystemExit(f"ERROR: --out must be a directory path, but a non-directory already exists: {out_dir}")
+
     if out_dir.exists() and any(out_dir.iterdir()) and not args.force:
-        raise SystemExit("ERROR: output directory is non-empty; use --force to overwrite")
+        raise SystemExit(f"ERROR: output directory is non-empty: {out_dir} (use --force to overwrite)")
 
     if out_dir.exists() and args.force:
         shutil.rmtree(out_dir)
@@ -93,7 +109,14 @@ def main() -> int:
         _copy_file(repo_root, out_dir, rel)
 
     if args.run_id:
-        _copy_tree(repo_root, out_dir, f"proofs/runs/{args.run_id}")
+        run_rel = f"proofs/runs/{args.run_id}"
+        run_dir = repo_root / run_rel
+        if not run_dir.exists() or not run_dir.is_dir():
+            raise SystemExit(
+                f"ERROR: requested --run-id directory not found: {run_rel} "
+                "(omit --run-id to export only baseline review artifacts)"
+            )
+        _copy_tree(repo_root, out_dir, run_rel)
 
     _write_manifest(out_dir, EXPLICIT_FILES, args.run_id)
 
