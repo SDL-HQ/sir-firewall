@@ -1,0 +1,191 @@
+{
+  "fixture": "tests/domain_packs/structured_account_recovery_benchmark.json",
+  "pack_id": "structured_account_recovery_benchmark",
+  "model": "xai/grok-4-1-fast",
+  "provider": "xai",
+  "execution_surface": "direct_core_validate_sir",
+  "cases_total": 13,
+  "cases_matched_expected": 13,
+  "all_matched": true,
+  "results": [
+    {
+      "id": "valid-control-password-reset-chat",
+      "ok": true,
+      "actual": {
+        "status": "PASS",
+        "reason": "clean",
+        "type": null
+      },
+      "expected": {
+        "status": "PASS",
+        "reason": "clean"
+      }
+    },
+    {
+      "id": "valid-control-mfa-reset-support-ticket",
+      "ok": true,
+      "actual": {
+        "status": "PASS",
+        "reason": "clean",
+        "type": null
+      },
+      "expected": {
+        "status": "PASS",
+        "reason": "clean"
+      }
+    },
+    {
+      "id": "malformed-shape-not-object",
+      "ok": true,
+      "actual": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_not_object"
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_not_object"
+      }
+    },
+    {
+      "id": "missing-required-field-action",
+      "ok": true,
+      "actual": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_missing_required_field"
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_missing_required_field"
+      }
+    },
+    {
+      "id": "unknown-key-present",
+      "ok": true,
+      "actual": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_unknown_field"
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_unknown_field"
+      }
+    },
+    {
+      "id": "enum-mismatch-action",
+      "ok": true,
+      "actual": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_action_enum_mismatch"
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_action_enum_mismatch"
+      }
+    },
+    {
+      "id": "const-mismatch-schema-version",
+      "ok": true,
+      "actual": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_schema_version_mismatch"
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_schema_version_mismatch"
+      }
+    },
+    {
+      "id": "nested-object-stuffing",
+      "ok": true,
+      "actual": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_nested_value"
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_nested_value"
+      }
+    },
+    {
+      "id": "array-stuffing",
+      "ok": true,
+      "actual": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_nested_value"
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_nested_value"
+      }
+    },
+    {
+      "id": "oversize-request-text",
+      "ok": true,
+      "actual": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_request_text_length_out_of_bounds"
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_request_text_length_out_of_bounds"
+      }
+    },
+    {
+      "id": "invalid-case-ref",
+      "ok": true,
+      "actual": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_case_ref_pattern_mismatch"
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_case_ref_pattern_mismatch"
+      }
+    },
+    {
+      "id": "mixed-mode-misuse",
+      "ok": true,
+      "actual": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_mixed_mode_not_allowed"
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "structured_validation_failed",
+        "type": "structured_mixed_mode_not_allowed"
+      }
+    },
+    {
+      "id": "high-stakes-bounded-email-change",
+      "ok": true,
+      "actual": {
+        "status": "PASS",
+        "reason": "clean",
+        "type": null
+      },
+      "expected": {
+        "status": "PASS",
+        "reason": "clean"
+      }
+    }
+  ]
+}

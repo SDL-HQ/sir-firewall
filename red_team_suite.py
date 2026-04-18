@@ -535,6 +535,7 @@ def main() -> None:
 
     # Preferred machine-readable summary for certificate generation
     summary_ts = _utc_now_iso()
+    effective_pack_id = effective_pack_id or selected_pack_id
     runtime_pack_id = effective_pack_id or selected_pack_id
     summary = {
         "date": summary_ts,
