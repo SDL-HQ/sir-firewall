@@ -27,31 +27,28 @@ This clarification does not admit a new registry pack, does not expand operator 
 Run exactly these packs/proof classes for cycle `benchmark_cycle.v1`:
 
 1. `generic_safety` as `FIREWALL_ONLY_AUDIT` (taxonomy coverage: `benign_control`, `direct_bypass`, `obfuscation`, `exfiltration`, `injection`)
-2. `account_recovery_fraud` as `FIREWALL_ONLY_AUDIT` (taxonomy coverage: `benign_control`, `direct_bypass`)
-3. `scenario_injection_chain` as `SCENARIO_AUDIT` (taxonomy coverage: `benign_control`, `injection`, `exfiltration`)
-4. `generic_safety` as `LIVE_GATING_CHECK` (**live sentinel slice**; same taxonomy coverage as row 1)
+2. `support_operator_override` as `FIREWALL_ONLY_AUDIT` (taxonomy coverage: `benign_control`, `direct_bypass`, `exfiltration`)
+3. `data_exfiltration_pressure` as `FIREWALL_ONLY_AUDIT` (taxonomy coverage: `benign_control`, `exfiltration`)
+
+Current core benchmark pack sizes:
+
+- `generic_safety` = 150
+- `support_operator_override` = 50
+- `data_exfiltration_pressure` = 50
 
 Why this set:
 
-- `generic_safety` is baseline continuity anchor.
-- `account_recovery_fraud` adds one concrete domain-risk pack from active canonical packs.
-- `scenario_injection_chain` ensures at least one scenario-pack row is present in the first cycle.
-- One live-gating slice is included to keep a single provider/model comparability surface without expanding to many live permutations.
+- `generic_safety` is the broad baseline continuity anchor.
+- `support_operator_override` adds explicit operator-override pressure on the same operator-executable surface.
+- `data_exfiltration_pressure` adds explicit exfiltration-pressure coverage on the same operator-executable surface.
 
-Out of scope for v1: broad pack sweeps, all scenario packs (including `scenario_tool_injection`), model tournaments, scoring/ranking logic.
-
-Live sentinel interpretation guardrails (explicit):
-
-- The `LIVE_GATING_CHECK` row is a narrow sentinel slice only.
-- It is not interchangeable with `FIREWALL_ONLY_AUDIT` rows.
-- It is never blended into any aggregate/combined score with audit/scenario rows.
-- Proof classes remain separate interpretation classes.
+Out of scope for v1: broad pack sweeps, scenario-pack expansion in this operator line, model tournaments, scoring/ranking logic.
 
 ## Valid benchmark cycle criteria
 
 A benchmark cycle counts as **valid canonical cycle v1** only when all of the following are true:
 
-- All 4 required runs above are executed and archived.
+- All 3 required runs above are executed and archived.
 - Every run has a published archive directory with:
   - `manifest.json`
   - `audit.json`
@@ -70,9 +67,8 @@ A cycle is **non-comparable / out-of-band** if any required row is missing, unar
 Run order for each cycle:
 
 1. Audit baseline: `generic_safety` (`FIREWALL_ONLY_AUDIT`; taxonomy coverage `benign_control`, `direct_bypass`, `obfuscation`, `exfiltration`, `injection`)
-2. Audit domain-risk: `account_recovery_fraud` (`FIREWALL_ONLY_AUDIT`; taxonomy coverage `benign_control`, `direct_bypass`)
-3. Scenario audit: `scenario_injection_chain` (`SCENARIO_AUDIT`; taxonomy coverage `benign_control`, `injection`, `exfiltration`)
-4. Live sentinel: `generic_safety` (`LIVE_GATING_CHECK`; same taxonomy coverage as step 1)
+2. Audit operator-override pressure: `support_operator_override` (`FIREWALL_ONLY_AUDIT`; taxonomy coverage `benign_control`, `direct_bypass`, `exfiltration`)
+3. Audit exfiltration-pressure slice: `data_exfiltration_pressure` (`FIREWALL_ONLY_AUDIT`; taxonomy coverage `benign_control`, `exfiltration`)
 
 Repeatability expectations:
 
@@ -87,8 +83,7 @@ For repeatable comparison rows:
 
 - Record provider/model exactly as emitted in `audit.json` and copied to benchmark index.
 - Keep original case and separators; no alias normalization in v1.
-- Missing provider/model is allowed only for audit/scenario rows where no model call path exists.
-- For live rows, missing provider or model marks the row non-comparable.
+- Missing provider/model is allowed only for audit rows where no model call path exists.
 
 ## Naming and output conventions
 
@@ -101,11 +96,11 @@ For repeatable comparison rows:
 
 - `comparison` values are observed run metadata only (not scores, no ranking).
 - `latest_run` and `latest_passing_run` pointers remain informational and do not replace row-level evidence checks.
-- Live sentinel trend can be read only against prior live sentinel rows with matching provider/model attribution semantics.
+- Trend read-through is allowed only against prior rows with matching `row_identity` attribution semantics.
 
-## B1 baseline cycle attempt record (2026-04-16)
+## B1 baseline cycle attempt record (2026-04-16, historical note)
 
-This section records the B1 post-2.0 baseline cycle attempt using current attribution/proof semantics.
+This section records the B1 post-2.0 baseline attempt as historical context only.
 
 - date (UTC): `2026-04-16`
 - why run: establish the first clean post-2.0 baseline attempt after documented weak-attribution local artefacts in the earlier 2026-04-05 local cluster
@@ -118,12 +113,8 @@ Rows executed and archived in this B1 attempt:
 
 1. `generic_safety` + `FIREWALL_ONLY_AUDIT`
    - run_id: `20260416-003923-000000-ef03803fc756`
-2. `account_recovery_fraud` + `FIREWALL_ONLY_AUDIT`
-   - run_id: `20260416-003924-000000-001dcbab3e95`
-3. `scenario_injection_chain` + `SCENARIO_AUDIT`
-   - run_id: `20260416-003926-000000-049b1e770f3d`
-4. `generic_safety` + `LIVE_GATING_CHECK`
-   - attempted in B1 and blocked by missing `XAI_API_KEY`; no live run archive produced
+
+This B1 record predates the current operator-executable three-pack line defined above and is not a completeness record for the current line.
 
 Semantics note:
 
