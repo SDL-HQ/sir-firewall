@@ -3,123 +3,341 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Governance Gate — Run Archive</title>
+  <title>Governance Gate — Benchmark Review</title>
   <style>
-    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; max-width: 980px; margin: 34px auto; padding: 0 16px; line-height: 1.4; color: #1f2328; }
-    h1 { margin: 0 0 6px; font-size: 1.45rem; }
-    .muted { color: #57606a; margin: 0 0 16px; font-size: 0.95rem; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.93rem; }
-    th, td { text-align: left; padding: 8px 7px; border-bottom: 1px solid #d8dee4; vertical-align: top; }
+    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; max-width: 1120px; margin: 28px auto; padding: 0 16px; line-height: 1.4; color: #1f2328; }
+    h1 { margin: 0 0 6px; font-size: 1.5rem; }
+    h2 { margin: 18px 0 8px; font-size: 1.1rem; }
+    .muted { color: #57606a; margin: 0 0 12px; font-size: 0.95rem; }
+    .grid { display: grid; grid-template-columns: repeat(5, minmax(140px, 1fr)); gap: 8px; }
+    .card { border: 1px solid #d0d7de; border-radius: 8px; padding: 10px; background: #fff; }
+    .k { color: #57606a; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    .v { font-size: 20px; font-weight: 600; margin-top: 3px; }
+    .filters { border: 1px solid #d0d7de; border-radius: 8px; padding: 10px; background: #f6f8fa; }
+    .filters-grid { display: grid; grid-template-columns: repeat(6, minmax(120px, 1fr)); gap: 8px; }
+    label { display: block; font-size: 12px; color: #57606a; margin-bottom: 2px; }
+    select, button { width: 100%; padding: 6px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 13px; background: #fff; }
+    button { cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #d8dee4; vertical-align: top; }
     th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #57606a; }
+    code { font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,monospace; font-size: 12px; }
     a { color: #0969da; text-decoration: none; }
     a:hover { text-decoration: underline; }
-    code { font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,monospace; font-size: 12px; }
     .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; border: 1px solid #d0d7de; color: #57606a; }
+    details { margin-top: 16px; border: 1px solid #d0d7de; border-radius: 8px; padding: 8px 10px; }
+    summary { cursor: pointer; font-weight: 600; }
+    .small { font-size: 12px; color: #57606a; }
+    @media (max-width: 980px) {
+      .filters-grid, .grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+    }
   </style>
 </head>
 <body>
-  <h1>Governance Gate — Run Archive</h1>
+  <h1>Governance Gate — Benchmark Review</h1>
   <p class="muted">
-    Immutable per-run records for the governance gate. Latest pointer: <a href="../latest-audit.html">proofs/latest-audit.html</a>.
-    Machine indexes: <a href="index.json">runs/index.json</a> and <a href="benchmark_index.v1.json">runs/benchmark_index.v1.json</a>.
+    Single review surface derived from per-run archives and benchmark index. Default scope is post-2.0 baseline onward (from 2026-04-16 UTC).<br/>
+    Machine indexes: <a href="index.json"><code>runs/index.json</code></a> and <a href="benchmark_index.v1.json"><code>runs/benchmark_index.v1.json</code></a>.
   </p>
 
-  <table aria-label="Run archive evidence table">
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Suite</th>
-        <th>Proof class</th>
-        <th>Result</th>
-        <th>Leaks</th>
-        <th>Fingerprint</th>
-        <th>Run ID</th>
-        <th>CI</th>
-      </tr>
-    </thead>
-    <tbody id="rows">
-      <tr><td colspan="8">Loading…</td></tr>
-    </tbody>
-  </table>
+  <section class="filters" aria-label="Benchmark filters">
+    <div class="filters-grid">
+      <div>
+        <label for="f-model">Model</label>
+        <select id="f-model"><option value="">All</option></select>
+      </div>
+      <div>
+        <label for="f-pack">Pack</label>
+        <select id="f-pack"><option value="">All</option></select>
+      </div>
+      <div>
+        <label for="f-proof">Proof class</label>
+        <select id="f-proof"><option value="">All</option></select>
+      </div>
+      <div>
+        <label for="f-kind">Target kind</label>
+        <select id="f-kind"><option value="">All</option></select>
+      </div>
+      <div>
+        <label for="f-status">Result</label>
+        <select id="f-status">
+          <option value="">All</option>
+          <option value="AUDIT PASSED">AUDIT PASSED</option>
+          <option value="NON_PASS">Non-pass (FAIL/INCONCLUSIVE/other)</option>
+        </select>
+      </div>
+      <div>
+        <label for="f-scope">Scope</label>
+        <select id="f-scope">
+          <option value="post2">Post-2.0 only (default)</option>
+          <option value="all">Include legacy</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:8px; max-width: 180px;">
+      <button id="reset">Reset filters</button>
+    </div>
+  </section>
+
+  <section aria-label="Overview counters">
+    <h2>Overview</h2>
+    <div class="grid" id="counters">
+      <div class="card"><div class="k">Runs in view</div><div class="v" id="c-runs">—</div></div>
+      <div class="card"><div class="k">Non-pass</div><div class="v" id="c-nonpass">—</div></div>
+      <div class="card"><div class="k">Models</div><div class="v" id="c-models">—</div></div>
+      <div class="card"><div class="k">Packs</div><div class="v" id="c-packs">—</div></div>
+      <div class="card"><div class="k">Proof classes</div><div class="v" id="c-proofs">—</div></div>
+    </div>
+  </section>
+
+  <section aria-label="Recent runs">
+    <h2>Recent runs</h2>
+    <p class="small">Primary reading path: filter, scan counters, review recent rows, then drill into archived per-run evidence.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Pack</th>
+          <th>Proof class</th>
+          <th>Model</th>
+          <th>Result</th>
+          <th>Leaks</th>
+          <th>Run ID</th>
+          <th>Evidence</th>
+          <th>CI</th>
+        </tr>
+      </thead>
+      <tbody id="recent-rows">
+        <tr><td colspan="9">Loading…</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <details>
+    <summary>Secondary grouped/pattern view (by row_identity)</summary>
+    <p class="small">Use this only after recent-run review. Grouped output is derived from the same rows; no extra semantics.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>row_identity</th>
+          <th>Runs</th>
+          <th>Latest</th>
+          <th>Sequence (new → old)</th>
+          <th>Latest run</th>
+        </tr>
+      </thead>
+      <tbody id="pattern-rows">
+        <tr><td colspan="5">Loading…</td></tr>
+      </tbody>
+    </table>
+  </details>
 
   <script>
-    const rows = document.getElementById("rows");
+    const POST2_CUTOFF_UTC = "2026-04-16T00:00:00Z";
+    const FILTER_IDS = ["f-model", "f-pack", "f-proof", "f-kind", "f-status", "f-scope"];
+
+    let allEntries = [];
 
     function esc(s) {
       return (s ?? "").toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
-    function ciLabelAndLink(ciUrl) {
-      if (!ciUrl) return { html: '<span class="pill">OFFLINE</span>' };
-
-      const u = ciUrl.toString();
-      const tail = (u.split("/").pop() || "").trim();
-      const isDigits = /^[0-9]+$/.test(tail);
-
-      if (isDigits) {
-        return { html: `<a href="${esc(u)}">#${esc(tail)}</a>` };
-      }
-
-      if (tail.toUpperCase() === "LOCAL" || u.toUpperCase().includes("/RUNS/LOCAL")) {
-        return { html: '<span class="pill">LOCAL</span>' };
-      }
-
-      return { html: `<a href="${esc(u)}">CI</a>` };
+    function isPost2(ts) {
+      if (!ts) return false;
+      const t = Date.parse(ts);
+      const c = Date.parse(POST2_CUTOFF_UTC);
+      return Number.isFinite(t) && t >= c;
     }
 
-    async function loadRuns() {
+    function isPass(result) {
+      return (result || "").toUpperCase() === "AUDIT PASSED";
+    }
+
+    function optionize(id, values) {
+      const el = document.getElementById(id);
+      const current = el.value;
+      const base = ['<option value="">All</option>'];
+      [...values].sort().forEach(v => {
+        if (!v) return;
+        base.push(`<option value="${esc(v)}">${esc(v)}</option>`);
+      });
+      el.innerHTML = base.join("");
+      if ([...el.options].some(o => o.value === current)) el.value = current;
+    }
+
+    function firstEvidenceLink(entry) {
+      const ev = entry?.evidence || {};
+      const first = ev.audit || ev.manifest || ev.archive_receipt;
+      return first ? `<a href="../${esc(first)}">archived</a>` : "—";
+    }
+
+    function fullEvidenceLinks(entry) {
+      const ev = entry?.evidence || {};
+      const items = [
+        ["audit", ev.audit],
+        ["manifest", ev.manifest],
+        ["receipt", ev.archive_receipt],
+        ["summary", ev.run_summary],
+        ["ledger", ev.itgl_ledger],
+        ["hash", ev.itgl_final_hash],
+        ["attempts", ev.attempt_log],
+      ];
+      const links = items
+        .filter(([, p]) => !!p)
+        .map(([k, p]) => `<a href="../${esc(p)}">${k}</a>`);
+      return links.length ? links.join(" · ") : "—";
+    }
+
+    function readFilters() {
+      return {
+        model: document.getElementById("f-model").value,
+        pack: document.getElementById("f-pack").value,
+        proof: document.getElementById("f-proof").value,
+        kind: document.getElementById("f-kind").value,
+        status: document.getElementById("f-status").value,
+        scope: document.getElementById("f-scope").value,
+      };
+    }
+
+    function filteredEntries() {
+      const f = readFilters();
+      return allEntries.filter(e => {
+        if (f.scope === "post2" && !isPost2(e.run_timestamp_utc)) return false;
+        if (f.model && (e.model || "") !== f.model) return false;
+        if (f.pack && ((e.evaluation_target?.pack_id) || "") !== f.pack) return false;
+        if (f.proof && (e.proof_class || "") !== f.proof) return false;
+        if (f.kind && ((e.evaluation_target?.target_kind) || "") !== f.kind) return false;
+        if (f.status === "AUDIT PASSED" && !isPass(e.result)) return false;
+        if (f.status === "NON_PASS" && isPass(e.result)) return false;
+        return true;
+      });
+    }
+
+    function renderCounters(rows) {
+      const models = new Set();
+      const packs = new Set();
+      const proofs = new Set();
+      let nonPass = 0;
+      rows.forEach(r => {
+        if (r.model) models.add(r.model);
+        if (r.evaluation_target?.pack_id) packs.add(r.evaluation_target.pack_id);
+        if (r.proof_class) proofs.add(r.proof_class);
+        if (!isPass(r.result)) nonPass += 1;
+      });
+      document.getElementById("c-runs").textContent = String(rows.length);
+      document.getElementById("c-nonpass").textContent = String(nonPass);
+      document.getElementById("c-models").textContent = String(models.size);
+      document.getElementById("c-packs").textContent = String(packs.size);
+      document.getElementById("c-proofs").textContent = String(proofs.size);
+    }
+
+    function renderRecent(rows) {
+      const target = document.getElementById("recent-rows");
+      if (!rows.length) {
+        target.innerHTML = '<tr><td colspan="9">No runs match current filters.</td></tr>';
+        return;
+      }
+      target.innerHTML = rows.map(r => {
+        const run = esc(r.run_id || "");
+        const pack = esc(r.evaluation_target?.pack_id || "—");
+        const proof = esc(r.proof_class || "—");
+        const model = esc(r.model || "—");
+        const result = esc(r.result || "—");
+        const ts = esc(r.run_timestamp_utc || "—");
+        const leaks = esc(r.comparison?.leaks ?? "—");
+        const ciUrl = esc(r.ci_run_url || "");
+        const ci = ciUrl ? `<a href="${ciUrl}">CI</a>` : "—";
+        const runLink = `<a href="../runs/${run}/manifest.json"><code>${run}</code></a>`;
+        return `<tr>
+          <td><code>${ts}</code></td>
+          <td><code>${pack}</code></td>
+          <td><code>${proof}</code></td>
+          <td><code>${model}</code></td>
+          <td><span class="pill">${result}</span></td>
+          <td>${leaks}</td>
+          <td>${runLink}</td>
+          <td>${fullEvidenceLinks(r)}</td>
+          <td>${ci}</td>
+        </tr>`;
+      }).join("");
+    }
+
+    function renderPatterns(rows) {
+      const target = document.getElementById("pattern-rows");
+      if (!rows.length) {
+        target.innerHTML = '<tr><td colspan="5">No grouped rows for current filters.</td></tr>';
+        return;
+      }
+      const groups = new Map();
+      rows.forEach(r => {
+        const key = r.row_identity || "unknown";
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(r);
+      });
+
+      const sorted = [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
+      target.innerHTML = sorted.map(([key, group]) => {
+        const latest = group[0] || {};
+        const seq = group.slice(0, 6).map(g => isPass(g.result) ? "PASS" : "NON_PASS").join(" → ");
+        const runId = esc(latest.run_id || "");
+        const runLink = `<a href="../runs/${runId}/manifest.json"><code>${runId}</code></a>`;
+        return `<tr>
+          <td><code>${esc(key)}</code></td>
+          <td>${group.length}</td>
+          <td><span class="pill">${esc(latest.result || "—")}</span></td>
+          <td><code>${esc(seq)}</code></td>
+          <td>${runLink} · ${firstEvidenceLink(latest)}</td>
+        </tr>`;
+      }).join("");
+    }
+
+    function apply() {
+      const rows = filteredEntries();
+      renderCounters(rows);
+      renderRecent(rows);
+      renderPatterns(rows);
+    }
+
+    function bind() {
+      FILTER_IDS.forEach(id => {
+        document.getElementById(id).addEventListener("change", apply);
+      });
+      document.getElementById("reset").addEventListener("click", () => {
+        document.getElementById("f-model").value = "";
+        document.getElementById("f-pack").value = "";
+        document.getElementById("f-proof").value = "";
+        document.getElementById("f-kind").value = "";
+        document.getElementById("f-status").value = "";
+        document.getElementById("f-scope").value = "post2";
+        apply();
+      });
+    }
+
+    async function load() {
+      const targetRecent = document.getElementById("recent-rows");
       try {
-        const response = await fetch("./index.json", { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status} ${response.statusText || ""}`.trim());
-        }
+        const response = await fetch("./benchmark_index.v1.json", { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+        const entries = Array.isArray(payload?.entries) ? payload.entries : [];
+        allEntries = entries;
 
-        let idx;
-        try {
-          idx = await response.json();
-        } catch (e) {
-          throw new Error(`HTTP ${response.status}: JSON parse error (${e?.message || "invalid JSON"})`);
-        }
+        optionize("f-model", new Set(entries.map(e => e.model).filter(Boolean)));
+        optionize("f-pack", new Set(entries.map(e => e?.evaluation_target?.pack_id).filter(Boolean)));
+        optionize("f-proof", new Set(entries.map(e => e.proof_class).filter(Boolean)));
+        optionize("f-kind", new Set(entries.map(e => e?.evaluation_target?.target_kind).filter(Boolean)));
 
-        const runs = Array.isArray(idx) ? idx : (Array.isArray(idx?.runs) ? idx.runs : []);
-        if (!runs.length) {
-          rows.innerHTML = `<tr><td colspan="8">No archived runs yet.</td></tr>`;
-          return;
-        }
-
-        rows.innerHTML = runs.map(r => {
-          const date = esc(r.date ?? r.timestamp_utc ?? "—");
-          const result = esc(r.result ?? "—");
-          const suite = esc(r.pack_id ?? "—");
-          const proofClass = esc(r.proof_class ?? "—");
-          const leaks = esc(r.leaks ?? r.jailbreaks_leaked ?? "—");
-          const fp = esc((r.trust_fingerprint ?? r.safety_fingerprint ?? "—").toString().slice(0, 20));
-          const path = esc(r.path ?? "");
-          const runId = esc(r.run_id ?? "");
-          const ci = ciLabelAndLink(r.ci_run_url ?? "").html;
-
-          const runLink = path
-            ? `<a href="../${path}manifest.json"><code>${runId}</code></a>`
-            : `<code>${runId}</code>`;
-
-          return `<tr>
-            <td>${date}</td>
-            <td><code>${suite}</code></td>
-            <td><code>${proofClass}</code></td>
-            <td><span class="pill">${result}</span></td>
-            <td>${leaks}</td>
-            <td><code>${fp}</code></td>
-            <td>${runLink}</td>
-            <td>${ci}</td>
-          </tr>`;
-        }).join("");
+        document.getElementById("f-scope").value = "post2";
+        bind();
+        apply();
       } catch (e) {
-        const reason = esc(e?.message || "Unknown error");
-        rows.innerHTML = `<tr><td colspan="8">Failed to load index.json (${reason})</td></tr>`;
+        const reason = esc(e?.message || "unknown error");
+        targetRecent.innerHTML = `<tr><td colspan="9">Failed to load benchmark index (${reason}).</td></tr>`;
+        document.getElementById("pattern-rows").innerHTML = `<tr><td colspan="5">Failed to load benchmark index (${reason}).</td></tr>`;
       }
     }
 
-    loadRuns();
+    load();
   </script>
 </body>
 </html>
