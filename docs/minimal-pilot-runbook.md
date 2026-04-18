@@ -37,6 +37,7 @@ For manual GitHub Actions dispatch (`SIR Real Governance Audit`), use these exac
 
 - `mode`: `audit` or `live`
 - `pack`: exact `pack_id` from `spec/packs/pack_registry.v1.json` (for example `generic_safety`)
+- `model`: explicit provider/model target string (for example `xai/grok-4-1-fast`)
 
 ### 1) Verify latest passing proof offline first
 
