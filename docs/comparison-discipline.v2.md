@@ -17,8 +17,14 @@ Every comparative note must keep these surfaces separate:
 2. **Exploratory benchmark/scenario surface**
    - Primary question: what distinct pressure is now measurable?
    - Records observed behavior and false-positive pressure without implying product failure or success grades.
+   - Benchmark remains a comparison method layered over row evidence (not a proof class).
 
 Do not collapse these into one blended conclusion.
+
+Additionally:
+
+- `latest-audit.*` and `latest-run.*` are single-run truth surfaces.
+- They are not benchmark pair claims and must not be used as pair validity/completeness evidence by themselves.
 
 ## 2) Status semantics (locked)
 

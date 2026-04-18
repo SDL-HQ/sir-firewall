@@ -28,6 +28,7 @@ Important semantics:
 - `latest-run.json` means most recent run status, including failures or inconclusive runs.
 - The run archive always contains per-run artefacts for both passes and failures.
 - Gate outcome (`PASS`/`BLOCK`) is distinct from run/publication status (`PASS`/`FAIL`/`INCONCLUSIVE`).
+- `latest-audit.*` and `latest-run.*` are single-run truth surfaces, not paired benchmark claims.
 
 ---
 
