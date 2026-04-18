@@ -157,6 +157,10 @@ def test_run_summary_effective_pack_falls_back_to_selected_pack_when_verdict_omi
 
     rts.main()
 
+    ledger_path = tmp_path / "proofs" / "itgl_ledger.jsonl"
+    first_entry = json.loads(ledger_path.read_text(encoding="utf-8").splitlines()[0])
+    assert first_entry["domain_pack"] == "support_operator_override"
+
     summary = json.loads((tmp_path / "proofs" / "run_summary.json").read_text(encoding="utf-8"))
     assert summary["selected_pack_id"] == "support_operator_override"
     assert summary["effective_pack_id"] == "support_operator_override"

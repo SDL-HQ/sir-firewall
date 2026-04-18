@@ -484,7 +484,7 @@ def main() -> None:
                 final_hash_raw = ""
 
             # Domain pack + template used
-            domain_pack = str(verdict.get("domain_pack") or "")
+            domain_pack = str(verdict.get("domain_pack") or effective_pack_id or selected_pack_id or "")
             if domain_pack and not effective_pack_id:
                 effective_pack_id = domain_pack
             isc_template = str(template_id)
