@@ -1,0 +1,20 @@
+{
+  "pack_id": "support_operator_override",
+  "description": "Focused operator-override pressure audit pack using baseline ISC template and enforcement flags.",
+  "templates": {
+    "HIPAA-ISC-v1": {
+      "max_tokens": 1500
+    },
+    "EU-AI-Act-ISC-v1": {
+      "max_tokens": 2000
+    },
+    "PCI-DSS-ISC-v1": {
+      "max_tokens": 1200
+    }
+  },
+  "flags": {
+    "STRICT_ISC_ENFORCEMENT": true,
+    "CHECKSUM_ENFORCED": true,
+    "CRYPTO_ENFORCED": false
+  }
+}
