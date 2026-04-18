@@ -40,6 +40,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      CANONICAL_PUBLICATION_CONTEXT: ${{ github.ref == 'refs/heads/main' }}
 
     steps:
       - name: Checkout repository
@@ -257,7 +259,7 @@ jobs:
           python tools/verify_certificate.py proofs/latest-audit.json
 
       - name: Archive this run (P6 truth-preserving per-run archive)
-        if: always()
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
         env:
           SDL_PRIVATE_KEY_PEM: ${{ secrets.SDL_PRIVATE_KEY_PEM }}
         run: |
@@ -273,21 +275,21 @@ jobs:
             --copy harmless_blocked.txt
 
       - name: Prepare docs/ for GitHub Pages
-        if: always()
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
         run: |
           set -euo pipefail
           mkdir -p docs
           touch docs/.nojekyll
 
       - name: Publish run archive to docs/runs (PASS or FAIL)
-        if: always()
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
         run: |
           set -euo pipefail
           rm -rf docs/runs || true
           cp -R proofs/runs docs/runs
 
       - name: Validate published run archive index JSON
-        if: always()
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
         run: |
           set -euo pipefail
           test -f proofs/runs/index.json
@@ -296,7 +298,7 @@ jobs:
           python -m json.tool docs/runs/index.json >/dev/null
 
       - name: Publish latest run marker to docs/ (always)
-        if: always()
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
         env:
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -352,7 +354,7 @@ jobs:
           echo "LATEST_CI_RUN_URL=${ci_run_url}" >> "$GITHUB_ENV"
 
       - name: Publish latest PASS proof to docs/ (PASS only)
-        if: always() && env.AUDIT_PASS == 'true' && env.INCONCLUSIVE != 'true'
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && env.AUDIT_PASS == 'true' && env.INCONCLUSIVE != 'true'
         run: |
           set -euo pipefail
           test -f proofs/latest-audit.html
@@ -375,7 +377,7 @@ jobs:
             itgl_env.txt
 
       - name: Commit proof files back to repo (archive always; latest PASS + sidecars only)
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
         run: |
           set -euo pipefail
 
