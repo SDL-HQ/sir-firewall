@@ -76,6 +76,8 @@ They are **not automatically pair-comparable** and must be marked `historical_un
 
 They are not benchmark pair claims and must not be interpreted as pair completeness or pair validity signals.
 
+`docs/runs/index.html` paired rows are a benchmark interpretation view over archived run evidence; pair rows do not replace per-run archive artifacts as source-of-truth.
+
 ## R1 E3a binding clarification (operator-executable vs exploratory)
 
 For the R1 E3 current-line execution path, keep operator-executable benchmark runs and exploratory structured validation explicitly separate.

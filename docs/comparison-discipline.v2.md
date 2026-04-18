@@ -25,6 +25,7 @@ Additionally:
 
 - `latest-audit.*` and `latest-run.*` are single-run truth surfaces.
 - They are not benchmark pair claims and must not be used as pair validity/completeness evidence by themselves.
+- Paired benchmark view is an interpretation aid; comparative claims must still anchor to raw per-run archive evidence.
 
 ## 2) Status semantics (locked)
 
