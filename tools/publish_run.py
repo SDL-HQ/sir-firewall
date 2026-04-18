@@ -26,7 +26,8 @@ from cryptography.hazmat.primitives.asymmetric import padding
 
 
 EVIDENCE_CONTRACT_VERSION = "v1"
-BENCHMARK_INDEX_VERSION = "benchmark_index.v1"
+BENCHMARK_INDEX_V1_VERSION = "benchmark_index.v1"
+BENCHMARK_INDEX_V2_VERSION = "benchmark_index.v2"
 
 
 def _read_json(path: Path) -> Dict[str, Any]:
@@ -210,7 +211,7 @@ def _benchmark_entry_from_run(runs_dir: Path, run: Dict[str, Any]) -> Dict[str, 
     return entry
 
 
-def _build_benchmark_index(runs_dir: Path, runs: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _build_benchmark_index_v1(runs_dir: Path, runs: List[Dict[str, Any]]) -> Dict[str, Any]:
     entries: List[Dict[str, Any]] = []
     for run in runs:
         try:
@@ -224,7 +225,7 @@ def _build_benchmark_index(runs_dir: Path, runs: List[Dict[str, Any]]) -> Dict[s
     latest_passing_run = next((entry for entry in entries if _is_passing_result(entry.get("result"))), None)
 
     return {
-        "version": BENCHMARK_INDEX_VERSION,
+        "version": BENCHMARK_INDEX_V1_VERSION,
         "updated_at_utc": _utc_now_z(),
         "latest_run": {
             "run_id": latest_run.get("run_id"),
@@ -239,6 +240,170 @@ def _build_benchmark_index(runs_dir: Path, runs: List[Dict[str, Any]]) -> Dict[s
         if latest_passing_run
         else None,
         "entries": entries,
+    }
+
+
+def _extract_required_dims(audit: Dict[str, Any]) -> Dict[str, Optional[str]]:
+    suite_hash = _non_empty_str(audit.get("suite_hash"))
+    scenario_hash = _non_empty_str(audit.get("scenario_hash"))
+    return {
+        "provider": _non_empty_str(audit.get("provider")),
+        "model": _non_empty_str(audit.get("model")),
+        "pack_id": _non_empty_str(audit.get("effective_pack_id")) or _non_empty_str(audit.get("pack_id")),
+        "pack_version": _non_empty_str(audit.get("pack_version")) or _non_empty_str(audit.get("selected_pack_version")),
+        "prompt_set_hash": scenario_hash or suite_hash,
+        "commit_sha": _non_empty_str(audit.get("commit_sha")),
+    }
+
+
+def _as_int(v: Any) -> Optional[int]:
+    return v if isinstance(v, int) else None
+
+
+def _delta(gated: Optional[int], baseline: Optional[int]) -> Optional[int]:
+    if gated is None or baseline is None:
+        return None
+    return gated - baseline
+
+
+def _build_pair_entry_from_artifact(*, runs_dir: Path, pair_artifact: Dict[str, Any]) -> Dict[str, Any]:
+    pair_id = _non_empty_str(pair_artifact.get("pair_id"))
+    if not pair_id:
+        raise ValueError("pair artifact missing pair_id")
+    pair_key = _non_empty_str(pair_artifact.get("pair_key"))
+    if not pair_key:
+        raise ValueError(f"pair artifact missing pair_key: {pair_id}")
+
+    baseline_run_id = _non_empty_str(pair_artifact.get("baseline_run_id"))
+    gated_run_id = _non_empty_str(pair_artifact.get("gated_run_id"))
+    if not baseline_run_id or not gated_run_id:
+        raise ValueError(f"pair artifact {pair_id} missing baseline_run_id/gated_run_id")
+
+    baseline_audit_path = runs_dir / baseline_run_id / "audit.json"
+    gated_audit_path = runs_dir / gated_run_id / "audit.json"
+    if not baseline_audit_path.exists() or not gated_audit_path.exists():
+        return {
+            "pair_id": pair_id,
+            "pair_key": pair_key,
+            "pair_status": "invalid_evidence_gap",
+            "baseline_run_id": baseline_run_id,
+            "gated_run_id": gated_run_id,
+            "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+            "required_dimensions": {
+                "provider": None,
+                "model": None,
+                "target_kind": "domain_pack",
+                "pack_id": None,
+                "pack_version": None,
+                "commit_sha": None,
+            },
+            "non_comparable_reason": "referenced run audit artifact missing",
+            "deltas": {
+                "leaks_delta": None,
+                "harmless_blocked_delta": None,
+                "provider_call_attempts_delta": None,
+            },
+            "evidence": {
+                "baseline_entry_ref": f"runs/{baseline_run_id}/audit.json",
+                "gated_entry_ref": f"runs/{gated_run_id}/audit.json",
+            },
+        }
+
+    baseline_audit = _read_json(baseline_audit_path)
+    gated_audit = _read_json(gated_audit_path)
+    baseline_exec = baseline_audit.get("benchmark_execution") if isinstance(baseline_audit.get("benchmark_execution"), dict) else {}
+    gated_exec = gated_audit.get("benchmark_execution") if isinstance(gated_audit.get("benchmark_execution"), dict) else {}
+
+    baseline_dims = _extract_required_dims(baseline_audit)
+    gated_dims = _extract_required_dims(gated_audit)
+    required_dimensions = {
+        "provider": gated_dims["provider"],
+        "model": gated_dims["model"],
+        "target_kind": "scenario_pack" if _non_empty_str(gated_audit.get("scenario_id")) else "domain_pack",
+        "pack_id": gated_dims["pack_id"],
+        "pack_version": gated_dims["pack_version"],
+        "commit_sha": gated_dims["commit_sha"],
+    }
+
+    pair_status = _non_empty_str(pair_artifact.get("pair_status")) or "valid_complete"
+    non_comparable_reason = pair_artifact.get("non_comparable_reason")
+    if not isinstance(non_comparable_reason, str):
+        non_comparable_reason = None
+
+    baseline_role_ok = baseline_exec.get("benchmark_role") == "baseline" and baseline_exec.get("gate_mode") == "ungated"
+    gated_role_ok = gated_exec.get("benchmark_role") == "gated" and gated_exec.get("gate_mode") == "sir_gated"
+
+    mismatches: List[str] = []
+    for field in ("provider", "model", "pack_id", "pack_version", "commit_sha"):
+        if baseline_dims[field] != gated_dims[field]:
+            mismatches.append(field)
+    if baseline_dims["prompt_set_hash"] or gated_dims["prompt_set_hash"]:
+        if baseline_dims["prompt_set_hash"] != gated_dims["prompt_set_hash"]:
+            mismatches.append("prompt_set_hash")
+
+    if not baseline_role_ok or not gated_role_ok:
+        pair_status = "invalid_mismatched_dimensions"
+        non_comparable_reason = (
+            "role correctness failed: baseline must be ungated baseline and gated must be sir_gated treatment"
+        )
+    elif mismatches:
+        pair_status = "invalid_mismatched_dimensions"
+        non_comparable_reason = "mismatched required attribution dimensions: " + ", ".join(mismatches)
+
+    return {
+        "pair_id": pair_id,
+        "pair_key": pair_key,
+        "pair_status": pair_status,
+        "baseline_run_id": baseline_run_id,
+        "gated_run_id": gated_run_id,
+        "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+        "required_dimensions": required_dimensions,
+        "non_comparable_reason": non_comparable_reason,
+        "deltas": {
+            "leaks_delta": _delta(_as_int(gated_audit.get("jailbreaks_leaked")), _as_int(baseline_audit.get("jailbreaks_leaked"))),
+            "harmless_blocked_delta": _delta(_as_int(gated_audit.get("harmless_blocked")), _as_int(baseline_audit.get("harmless_blocked"))),
+            "provider_call_attempts_delta": _delta(
+                _as_int(gated_audit.get("provider_call_attempts")),
+                _as_int(baseline_audit.get("provider_call_attempts")),
+            ),
+        },
+        "evidence": {
+            "baseline_entry_ref": f"runs/{baseline_run_id}/audit.json",
+            "gated_entry_ref": f"runs/{gated_run_id}/audit.json",
+        },
+    }
+
+
+def _load_pair_artifacts(pairs_dir: Path) -> List[Dict[str, Any]]:
+    if not pairs_dir.exists():
+        return []
+    artifacts: List[Dict[str, Any]] = []
+    for path in sorted((p for p in pairs_dir.glob("*.json") if p.is_file()), key=lambda p: p.name, reverse=True):
+        try:
+            payload = _read_json(path)
+        except json.JSONDecodeError as exc:
+            print(f"WARN: invalid pair artifact JSON {path}: {exc}", file=sys.stderr)
+            continue
+        artifacts.append(payload)
+    return artifacts
+
+
+def _build_benchmark_index_v2(runs_dir: Path, runs: List[Dict[str, Any]], pairs_dir: Path) -> Dict[str, Any]:
+    index_v1 = _build_benchmark_index_v1(runs_dir=runs_dir, runs=runs)
+    pair_entries: List[Dict[str, Any]] = []
+    for artifact in _load_pair_artifacts(pairs_dir):
+        try:
+            pair_entries.append(_build_pair_entry_from_artifact(runs_dir=runs_dir, pair_artifact=artifact))
+        except ValueError as exc:
+            print(f"WARN: skipping malformed pair artifact: {exc}", file=sys.stderr)
+            continue
+    return {
+        "version": BENCHMARK_INDEX_V2_VERSION,
+        "updated_at_utc": _utc_now_z(),
+        "latest_run": index_v1.get("latest_run"),
+        "latest_passing_run": index_v1.get("latest_passing_run"),
+        "entries": index_v1.get("entries", []),
+        "pairs": pair_entries,
     }
 
 
@@ -479,16 +644,25 @@ def main() -> int:
     }
     _write_json(index_path, new_index)
 
-    benchmark_index = _build_benchmark_index(runs_dir=runs_dir, runs=runs)
-    benchmark_path = runs_dir / f"{BENCHMARK_INDEX_VERSION}.json"
-    _write_json(benchmark_path, benchmark_index)
+    benchmark_index_v1 = _build_benchmark_index_v1(runs_dir=runs_dir, runs=runs)
+    benchmark_v1_path = runs_dir / f"{BENCHMARK_INDEX_V1_VERSION}.json"
+    _write_json(benchmark_v1_path, benchmark_index_v1)
+
+    benchmark_index_v2 = _build_benchmark_index_v2(
+        runs_dir=runs_dir,
+        runs=runs,
+        pairs_dir=(runs_dir / "pairs"),
+    )
+    benchmark_v2_path = runs_dir / f"{BENCHMARK_INDEX_V2_VERSION}.json"
+    _write_json(benchmark_v2_path, benchmark_index_v2)
 
     print(f"OK: Archived run {run_id} -> {run_dir}")
     print(f"OK: Wrote run id -> {run_id_path}")
     print(f"OK: Wrote manifest -> {run_dir / 'manifest.json'}")
     print(f"OK: Wrote archive receipt -> {run_dir / 'archive_receipt.json'}")
     print(f"OK: Updated index -> {index_path}")
-    print(f"OK: Updated benchmark index -> {benchmark_path}")
+    print(f"OK: Updated benchmark index -> {benchmark_v1_path}")
+    print(f"OK: Updated benchmark index -> {benchmark_v2_path}")
     return 0
 
 

@@ -345,6 +345,7 @@ def main() -> None:
         "provider_call_failures": provider_call_failures,
         "model_calls_made": provider_call_attempts,
         "flags": policy_flags,
+        "benchmark_execution": summary.get("benchmark_execution") if isinstance(summary.get("benchmark_execution"), dict) else {},
         "result": result,
         "ci_run_url": ci_run_url,
         "commit_sha": (os.getenv("GITHUB_SHA", "").strip() or _git_commit_sha()),

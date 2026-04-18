@@ -127,6 +127,28 @@ def _cmd_verify_archive(ns: argparse.Namespace) -> int:
     return _run_py("tools/verify_archive_receipt.py", args)
 
 
+def _cmd_benchmark_run(ns: argparse.Namespace) -> int:
+    if ns.mode == "scenario":
+        print("ERROR: benchmark run currently supports --mode audit|live only.", file=sys.stderr)
+        return 2
+    args: list[str] = ["--mode", ns.mode]
+    if ns.pack:
+        args.extend(["--pack", ns.pack])
+    if ns.suite:
+        args.extend(["--suite", ns.suite])
+    if ns.scenario:
+        args.extend(["--scenario", ns.scenario])
+    if ns.model:
+        args.extend(["--model", ns.model])
+    if ns.template:
+        args.extend(["--template", ns.template])
+    if ns.no_model_calls:
+        args.append("--no-model-calls")
+    if ns.pair_key:
+        args.extend(["--pair-key", ns.pair_key])
+    return _run_py("tools/run_paired_benchmark.py", args)
+
+
 def _load_registry() -> dict:
     try:
         return json.loads(PACK_REGISTRY.read_text(encoding="utf-8"))
@@ -234,6 +256,26 @@ def build_parser() -> argparse.ArgumentParser:
     pshow = packs_sub.add_parser("show", help="Show full registry record for one pack_id.")
     pshow.add_argument("pack_id", help="Exact pack_id to inspect (find values with `sir packs list`).")
     pshow.set_defaults(fn=_cmd_packs_show)
+
+    benchmark = sub.add_parser(
+        "benchmark",
+        help="Paired benchmark helpers.",
+        description="Execute paired benchmark runs using existing single-run audit/cert/archive paths.",
+    )
+    benchmark_sub = benchmark.add_subparsers(dest="benchmark_cmd", required=True)
+    b_run = benchmark_sub.add_parser(
+        "run",
+        help="Run an ungated baseline + gated run pair and write a pair artifact.",
+    )
+    b_run.add_argument("--mode", choices=["audit", "live"], default="audit")
+    b_run.add_argument("--pack", default=None)
+    b_run.add_argument("--suite", default=None)
+    b_run.add_argument("--scenario", default=None)
+    b_run.add_argument("--model", default=None)
+    b_run.add_argument("--template", default=None)
+    b_run.add_argument("--no-model-calls", action="store_true")
+    b_run.add_argument("--pair-key", default=None)
+    b_run.set_defaults(fn=_cmd_benchmark_run)
 
     return p
 

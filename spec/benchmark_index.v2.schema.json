@@ -1,0 +1,436 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdl-hq.github.io/sir-firewall/spec/benchmark_index.v2.schema.json",
+  "title": "SIR Benchmark Index v2",
+  "type": "object",
+  "required": [
+    "version",
+    "updated_at_utc",
+    "entries",
+    "pairs"
+  ],
+  "properties": {
+    "version": {
+      "const": "benchmark_index.v2"
+    },
+    "updated_at_utc": {
+      "type": "string"
+    },
+    "latest_run": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "run_id",
+        "result"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "result": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "latest_passing_run": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "run_id",
+        "result"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "result": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "entries": {
+      "type": "array",
+      "description": "Row-level run evidence. Benchmark pairing must not replace these rows.",
+      "items": {
+        "type": "object",
+        "required": [
+          "run_id",
+          "run_timestamp_utc",
+          "sir_firewall_version",
+          "commit_sha",
+          "result",
+          "proof_class",
+          "evaluation_target",
+          "provider",
+          "model",
+          "comparison",
+          "ci_run_url",
+          "evidence",
+          "row_identity"
+        ],
+        "properties": {
+          "run_id": {
+            "type": "string"
+          },
+          "run_timestamp_utc": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sir_firewall_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "commit_sha": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "result": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "proof_class": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evaluation_target": {
+            "type": "object",
+            "required": [
+              "target_kind",
+              "pack_id",
+              "pack_version"
+            ],
+            "properties": {
+              "target_kind": {
+                "type": "string",
+                "enum": [
+                  "domain_pack",
+                  "scenario_pack"
+                ]
+              },
+              "pack_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "pack_version": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "scenario_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "provider": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "row_identity": {
+            "type": "string"
+          },
+          "comparison": {
+            "type": "object",
+            "required": [
+              "leaks",
+              "harmless_blocked",
+              "provider_call_attempts",
+              "provider_call_successes",
+              "provider_call_failures",
+              "trust_fingerprint",
+              "itgl_final_hash"
+            ],
+            "properties": {
+              "leaks": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "harmless_blocked": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "provider_call_attempts": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "provider_call_successes": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "provider_call_failures": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "trust_fingerprint": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "itgl_final_hash": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "ci_run_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence": {
+            "type": "object",
+            "required": [
+              "audit",
+              "manifest",
+              "archive_receipt",
+              "run_summary",
+              "itgl_ledger",
+              "itgl_final_hash",
+              "attempt_log"
+            ],
+            "properties": {
+              "audit": {
+                "type": "string"
+              },
+              "manifest": {
+                "type": "string"
+              },
+              "archive_receipt": {
+                "type": "string"
+              },
+              "run_summary": {
+                "type": "string"
+              },
+              "itgl_ledger": {
+                "type": "string"
+              },
+              "itgl_final_hash": {
+                "type": "string"
+              },
+              "attempt_log": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "evidence_error": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "pairs": {
+      "type": "array",
+      "description": "Paired benchmark units over row evidence.",
+      "items": {
+        "type": "object",
+        "required": [
+          "pair_id",
+          "pair_key",
+          "pair_status",
+          "baseline_run_id",
+          "gated_run_id",
+          "required_dimensions",
+          "deltas",
+          "evidence"
+        ],
+        "properties": {
+          "pair_id": {
+            "type": "string"
+          },
+          "pair_key": {
+            "type": "string"
+          },
+          "pair_status": {
+            "type": "string",
+            "enum": [
+              "valid_complete",
+              "incomplete_missing_baseline",
+              "incomplete_missing_gated",
+              "invalid_mismatched_dimensions",
+              "invalid_evidence_gap",
+              "historical_unpaired"
+            ]
+          },
+          "baseline_run_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "gated_run_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "baseline_definition": {
+            "type": "string",
+            "const": "same prompt set evaluated without SIR pre-inference gate intervention"
+          },
+          "required_dimensions": {
+            "type": "object",
+            "required": [
+              "provider",
+              "model",
+              "target_kind",
+              "pack_id",
+              "pack_version",
+              "commit_sha"
+            ],
+            "properties": {
+              "provider": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "model": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "target_kind": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "pack_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "pack_version": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "commit_sha": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "non_comparable_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "deltas": {
+            "type": "object",
+            "required": [
+              "leaks_delta",
+              "harmless_blocked_delta",
+              "provider_call_attempts_delta"
+            ],
+            "properties": {
+              "leaks_delta": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "harmless_blocked_delta": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "provider_call_attempts_delta": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "evidence": {
+            "type": "object",
+            "required": [
+              "baseline_entry_ref",
+              "gated_entry_ref"
+            ],
+            "properties": {
+              "baseline_entry_ref": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "gated_entry_ref": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
