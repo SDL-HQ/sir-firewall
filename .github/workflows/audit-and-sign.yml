@@ -567,6 +567,7 @@ jobs:
           DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
           DISPATCH_MODEL: ${{ github.event.inputs.model || 'xai/grok-4-1-fast' }}
           BENCHMARK_MODE: ${{ github.event.inputs.mode || 'audit' }}
+          SDL_PRIVATE_KEY_PEM: ${{ secrets.SDL_PRIVATE_KEY_PEM }}
           LITELLM_API_KEY: ${{ secrets.LITELLM_API_KEY }}
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
         run: |
