@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       operation:
-        description: 'Workflow input "operation": choose run (single-run audit/live path) or benchmark (paired benchmark path).'
+        description: 'run = single run; benchmark = paired ungated vs gated.'
         required: false
         default: run
         type: choice
@@ -22,15 +22,7 @@ on:
           - run
           - benchmark
       mode:
-        description: 'Workflow input "mode": single-run operation mode; choose audit (deterministic, no provider calls) or live (provider calls for PASS prompts; requires credentials).'
-        required: false
-        default: audit
-        type: choice
-        options:
-          - audit
-          - live
-      benchmark_mode:
-        description: 'Workflow input "benchmark_mode": benchmark operation mode; choose audit (deterministic paired benchmark) or live (provider-call paired benchmark; requires credentials).'
+        description: 'audit = deterministic/no provider calls; live = provider-call path.'
         required: false
         default: audit
         type: choice
@@ -38,12 +30,12 @@ on:
           - audit
           - live
       pack:
-        description: 'Workflow input "pack": exact pack_id from spec/packs/pack_registry.v1.json (default: generic_safety). Example: support_operator_override.'
+        description: 'Exact pack id from spec/packs/pack_registry.v1.json.'
         required: false
         default: generic_safety
         type: string
       model:
-        description: 'Workflow input "model": explicit provider/model target string for run attribution and live calls (default: xai/grok-4-1-fast).'
+        description: 'Exact model id.'
         required: false
         default: xai/grok-4-1-fast
         type: string
@@ -505,14 +497,14 @@ jobs:
 
       - name: Clean install SIR Firewall (NO CACHE)
         env:
-          BENCHMARK_MODE: ${{ github.event.inputs.benchmark_mode || 'audit' }}
+          BENCHMARK_MODE: ${{ github.event.inputs.mode || 'audit' }}
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
           pip uninstall -y sir-firewall sir_firewall || true
 
           mode="${BENCHMARK_MODE:-audit}"
-          echo "Install benchmark_mode: $mode"
+          echo "Install mode: $mode"
 
           if [ "$mode" = "live" ]; then
             pip install --no-cache-dir --force-reinstall -e ".[live]"
@@ -528,7 +520,7 @@ jobs:
       - name: Validate selected benchmark pack schema
         env:
           DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
-          DISPATCH_MODE: ${{ github.event.inputs.benchmark_mode || 'audit' }}
+          DISPATCH_MODE: ${{ github.event.inputs.mode || 'audit' }}
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -558,7 +550,7 @@ jobs:
 
           if mode in {"audit", "live"} and schema != "csv_single_turn_v1":
               print(
-                  'ERROR: benchmark workflow input "benchmark_mode" values audit/live require a domain CSV pack '
+                  'ERROR: benchmark workflow input "mode" values audit/live require a domain CSV pack '
                   "(schema csv_single_turn_v1). "
                   f"pack_id {pack_id!r} has schema {schema!r}.",
                   file=sys.stderr,
@@ -574,7 +566,7 @@ jobs:
         env:
           DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
           DISPATCH_MODEL: ${{ github.event.inputs.model || 'xai/grok-4-1-fast' }}
-          BENCHMARK_MODE: ${{ github.event.inputs.benchmark_mode || 'audit' }}
+          BENCHMARK_MODE: ${{ github.event.inputs.mode || 'audit' }}
           LITELLM_API_KEY: ${{ secrets.LITELLM_API_KEY }}
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
         run: |
