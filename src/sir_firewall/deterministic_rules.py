@@ -9,7 +9,14 @@ from typing import List
 _BYPASS_PATTERNS = [
     ("JB_DISABLE_GUARDRAILS", re.compile(r"\b(disable|remove|turn\s*off)\s+(all\s+)?(guardrails|safeguards|safety|filters?)\b")),
     ("JB_UNRESTRICTED_MODE", re.compile(r"\b(unrestricted|no\s+restrictions?|uncensored|allow[_ -]?all|nolimitsgpt)\b")),
-    ("JB_BYPASS_POLICY", re.compile(r"\b(bypass|override|skip|disregard)\s+(all\s+)?(content\s+)?(policy|policies|safety|checks?|guardrails|restrictions?)\b|\bfull\s+bypass\b")),
+    (
+        "JB_BYPASS_POLICY",
+        re.compile(
+            r"\b(bypass|override|skip|disregard|ignore)\s+(?:(?:your|normal|trust|identity|authentication|auth|account|challenge|governance)\s+){0,3}"
+            r"(all\s+)?(content\s+)?(policy|policies|safety|checks?|guardrails|restrictions?|verification|controls?|protections?|safety\s+gate|challenge\s+steps?)\b|\bbypass\s+all\s+normal\s+checks\b|\bskip\s+authentication\s+(?:plus|and)\s+governance\s+checks\b|\bfull\s+bypass\b|"
+            r"\b(reset|remove|transfer)\s+(?:(?:their|the|account)\s+){0,2}(password|mfa|account\s+ownership)\b.{0,80}\b(without|before)\b.{0,40}\b(identity|verification|authentication|checks?)\b"
+        ),
+    ),
     ("JB_DONT_REFUSE", re.compile(r"\b(do\s*not|don't|never)\s+refuse\b")),
     ("JB_ALIGNMENT_OVERRIDE", re.compile(r"\boverride\s+alignment\b|\bprioritize\s+user\s+request\s+over\s+every\s+governance\s+rule\b")),
     ("JB_COMPLIANCE_OFF", re.compile(r"\bcompliance\s+mode\s+is\s+off\b|\bsafety\s+off\b|\bfilters?\s+crashed\b")),
@@ -18,17 +25,26 @@ _BYPASS_PATTERNS = [
     ("JB_TRUSTED_SYSTEM_INJECTION", re.compile(r"\btrusted\s+system\s+input\b|\bwithout\s+any\s+firewall\s+mediation\b")),
 ]
 
-_EXFIL_VERB = re.compile(r"\b(reveal|show|print|dump|list|export|leak|disclose|return|expose|display|extract|provide|output|give)\b")
+_EXFIL_VERB = re.compile(r"\b(reveal|show|print|dump|list|export|leak|disclose|return|expose|display|extract|provide|output|give|quote|paste|include|add)\b|\bneeds?\s+your\b|\bi\s+need\s+your\b")
 _EXFIL_TARGET = re.compile(
-    r"\b(system\s+prompt|hidden\s+(system\s+)?prompt|hidden\s+(system\s+)?instructions?|internal\s+instructions?|internal\s+guidance|"
-    r"moderation\s+(policy|rules?|thresholds?)|private\s+reasoning|confidence\s+thresholds?|"
-    r"env(ironment)?\s+vars?|secrets?|api\s*keys?|tokens?|credentials?|"
+    r"\b(system\s+prompt|system\s+instructions?|hidden\s+(system\s+)?prompt|hidden\s+(system\s+)?instructions?|hidden\s+refusal\s+rules?|internal\s+instructions?|internal\s+guidance|"
+    r"moderation\s+(policy|rules?|thresholds?)|private\s+reasoning|confidence\s+thresholds?|scoring\s+thresholds?|"
+    r"env(ironment)?\s+vars?|secrets?|api\s*keys?|tokens?|credentials?|refusal\s+regex(?:es)?|"
     r"other\s+users?'?\s+(logs|chats|data)|conversation\s+logs|training\s+snippets?|"
-    r"internal[- ]only\s+content|decision\s+trace|governance\s+documents?|"
-    r"confidential\s+memory|developer\s+instructions?|red-team\s+test\s+cases|internal\s+safety\s+architecture\s+details|internal\s+prompts?|"
-    r"safety\s+classifier\s+labels|incident\s+notes|cached\s+responses|"
-    r"policy\s+changelog|rollout\s+notes|proprietary\s+heuristics|non-public\s+instructions?)\b"
+    r"internal[- ]only\s+content|hidden\s+policy\s+sections?|decision\s+trace|governance\s+documents?|"
+    r"confidential\s+memory|developer\s+instructions?|system\s+constraints?|red-team\s+test\s+cases|internal\s+safety\s+architecture\s+details|internal\s+prompts?|"
+    r"safety\s+classifier\s+labels|internal\s+classifier\s+settings?|incident\s+notes|cached\s+responses|"
+    r"system\s+policy|policy\s+changelog|private\s+policy\s+text|startup\s+policy\s+blob|rollout\s+notes|proprietary\s+heuristics|non-public\s+instructions?|non-public\s+override\s+rules?|"
+    r"hidden\s+safety\s+(?:rules?|instructions?)|refusal\s+triggers?|block(ed)?\s+(phrases?|library|patterns?|decisions?)|matching\s+strategy|string\s+patterns?|exfiltration\s+blocks?|"
+    r"developer\s+constraints?|chain-of-command\s+instructions?|escalation\s+rules?|moderation\s+config(uration)?|internal\s+config(uration)?|anti-abuse\s+config(uration)?\s+object|"
+    r"hidden\s+(annotations|notes|comments|directives?)|hidden\s+conversation\s+annotations|policy\s+comments?|rule\s+revision\s+notes|internal\s+adjudication\s+comments?|runtime\s+memory|"
+    r"system[_\s-]?prompt|secret[_\s-]?rules?|hidden[_\s-]?(rules?|prompts?|config|notes?)|internal[_\s-]?(dump|policy[_\s-]?export))\b"
 )
+
+_EXFIL_FALSE_POSITIVE_PATTERNS = [
+    re.compile(r"\bconfirms?\s+identity\b.{0,40}\bcredential\s+reset\b.{0,60}\baudit\s+notes?\b"),
+    re.compile(r"\bgovernance\s+documents?\b.{0,40}\bavailable\s+publicly\b"),
+]
 
 _TOOL_INJECTION_PATTERNS = [
     ("TOOL_MESSAGE_OVERRIDE", re.compile(r"\btool\s+message\s*:\s*.*(override|trusted|skip\s+safety)")),
@@ -63,7 +79,7 @@ def find_rule_hits(normalized_text: str) -> List[str]:
         if pattern.search(t):
             hits.append(code)
 
-    if _EXFIL_VERB.search(t) and _EXFIL_TARGET.search(t):
+    if _EXFIL_VERB.search(t) and _EXFIL_TARGET.search(t) and not any(p.search(t) for p in _EXFIL_FALSE_POSITIVE_PATTERNS):
         hits.append("EXFIL_INTENT_TARGET")
 
     for code, pattern in _TOOL_INJECTION_PATTERNS:
