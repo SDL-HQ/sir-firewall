@@ -191,9 +191,9 @@ Use `docs/benchmark-cycle.v1.md` for the locked first benchmark set and cycle va
 Short form of the required set:
 
 * `generic_safety` as `FIREWALL_ONLY_AUDIT`
-* `account_recovery_fraud` as `FIREWALL_ONLY_AUDIT`
-* `scenario_injection_chain` as `SCENARIO_AUDIT`
-* `generic_safety` as `LIVE_GATING_CHECK` (single live sentinel slice)
+* `support_operator_override` as `FIREWALL_ONLY_AUDIT`
+* `data_exfiltration_pressure` as `FIREWALL_ONLY_AUDIT`
+* `structured_account_recovery_benchmark` remains a separate exploratory structured validation surface (not operator `sir run --pack` execution)
 
 Comparability rules are evidence-first:
 

@@ -49,9 +49,9 @@ Required set from D4:
   - Regenerating would mutate historical payloads/signatures/fingerprints and blur what was actually produced at that time.
   - They should remain inspectable as pre-fix local outputs, while newer local runs use improved attribution fallback.
 - Included artefacts in this retained cluster:
-  - `proofs/audit-certificate-2026-04-05T040320Z.json`
-  - `proofs/audit-certificate-2026-04-05T040322Z.json`
-  - `proofs/audit-certificate-2026-04-05T040325Z.json`
+  - `proofs/archive/audit-certificate-2026-04-05T040320Z.json`
+  - `proofs/archive/audit-certificate-2026-04-05T040322Z.json`
+  - `proofs/archive/audit-certificate-2026-04-05T040325Z.json`
   - `proofs/runs/20260405-040319-000000-702b336916d3/{audit.json,manifest.json,archive_receipt.json}`
   - `proofs/runs/20260405-040322-000000-aed41b22e195/{audit.json,manifest.json,archive_receipt.json}`
   - `proofs/runs/20260405-040324-000000-2c99d5f16574/{audit.json,manifest.json,archive_receipt.json}`
