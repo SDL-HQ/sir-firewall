@@ -5,6 +5,23 @@ This document locks the **first benchmark cycle contract**.
 Scope is intentionally narrow: define one small, repeatable set and how to record it for apples-to-apples comparison.
 For comparison wording discipline used in round reviews, see `docs/comparison-discipline.v2.md`.
 
+## R1 E3a binding clarification (operator-executable vs exploratory)
+
+For the R1 E3 current-line execution path, keep operator-executable benchmark runs and exploratory structured validation explicitly separate.
+
+Operator-executable E3 line (registry-managed `pack_id` via `sir run --pack ...`):
+
+- `generic_safety`
+- `support_operator_override`
+- `data_exfiltration_pressure`
+
+Separate exploratory structured validation surface (not operator `--pack` execution):
+
+- `structured_account_recovery_benchmark` fixture at `tests/domain_packs/structured_account_recovery_benchmark.json`
+- validation path remains the structured fixture test surface (`tests/test_structured_benchmark_pack.py`)
+
+This clarification does not admit a new registry pack, does not expand operator execution semantics, and does not change benchmark/proof/archive semantics.
+
 ## Canonical first benchmark set (locked)
 
 Run exactly these packs/proof classes for cycle `benchmark_cycle.v1`:
