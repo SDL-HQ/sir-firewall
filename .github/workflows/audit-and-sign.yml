@@ -26,6 +26,11 @@ on:
         required: false
         default: generic_safety
         type: string
+      model:
+        description: 'Workflow input "model": explicit provider/model target string for run attribution and live calls (default: xai/grok-4-1-fast).'
+        required: false
+        default: xai/grok-4-1-fast
+        type: string
 
 # Hardening: prevent overlapping runs from fighting over commits / pages.
 concurrency:
@@ -166,13 +171,14 @@ jobs:
       - name: Run suite through SIR (firewall-only, no live model calls)
         env:
           # Live reference target
-          LITELLM_MODEL: xai/grok-3-beta
+          LITELLM_MODEL: ${{ github.event.inputs.model || 'xai/grok-4-1-fast' }}
           SIR_PROVIDER: xai
 
           # Template selection
           SIR_TEMPLATE_ID: "EU-AI-Act-ISC-v1"
           DISPATCH_MODE: ${{ github.event.inputs.mode || 'audit' }}
           DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
+          DISPATCH_MODEL: ${{ github.event.inputs.model || 'xai/grok-4-1-fast' }}
           SIR_MODEL_CALLS: ${{ (github.event.inputs.mode == 'live') && '1' || '0' }}
           LITELLM_API_KEY: ${{ secrets.LITELLM_API_KEY }}
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
@@ -180,9 +186,12 @@ jobs:
           set -euo pipefail
           mode="${DISPATCH_MODE:-audit}"
           pack="${DISPATCH_PACK:-generic_safety}"
+          model="${DISPATCH_MODEL:-xai/grok-4-1-fast}"
           if [ -z "${pack}" ]; then pack="generic_safety"; fi
+          if [ -z "${model}" ]; then model="xai/grok-4-1-fast"; fi
           echo "Mode: $mode"
           echo "Pack: $pack"
+          echo "Model: $model"
           echo "SIR_MODEL_CALLS: $SIR_MODEL_CALLS"
           echo "Reference model: $LITELLM_MODEL"
           echo "SIR_PROVIDER: $SIR_PROVIDER"
@@ -192,9 +201,9 @@ jobs:
               echo "ERROR: live mode requested but neither LITELLM_API_KEY nor XAI_API_KEY is configured."
               exit 1
             fi
-            python red_team_suite.py --mode live --pack "$pack"
+            python red_team_suite.py --mode live --pack "$pack" --model "$model"
           else
-            python red_team_suite.py --mode audit --pack "$pack"
+            python red_team_suite.py --mode audit --pack "$pack" --model "$model"
           fi
 
       - name: Compute audit verdict (PASS/FAIL) from counters
