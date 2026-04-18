@@ -35,7 +35,9 @@ python3 -m pip install -e .
 
 For manual GitHub Actions dispatch (`SIR Real Governance Audit`), use these exact workflow inputs:
 
-- `mode`: `audit` or `live`
+- `operation`: `run` (single-run audit/live) or `benchmark` (paired benchmark)
+- `mode`: `audit` or `live` (used when `operation=run`)
+- `benchmark_mode`: `audit` or `live` (used when `operation=benchmark`)
 - `pack`: exact `pack_id` from `spec/packs/pack_registry.v1.json` (for example `generic_safety`)
 - `model`: explicit provider/model target string (for example `xai/grok-4-1-fast`)
 

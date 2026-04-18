@@ -13,8 +13,24 @@ on:
 
   workflow_dispatch:
     inputs:
+      operation:
+        description: 'Workflow input "operation": choose run (single-run audit/live path) or benchmark (paired benchmark path).'
+        required: false
+        default: run
+        type: choice
+        options:
+          - run
+          - benchmark
       mode:
-        description: 'Workflow input "mode": choose audit (deterministic, no provider calls) or live (provider calls for PASS prompts; requires credentials).'
+        description: 'Workflow input "mode": single-run operation mode; choose audit (deterministic, no provider calls) or live (provider calls for PASS prompts; requires credentials).'
+        required: false
+        default: audit
+        type: choice
+        options:
+          - audit
+          - live
+      benchmark_mode:
+        description: 'Workflow input "benchmark_mode": benchmark operation mode; choose audit (deterministic paired benchmark) or live (provider-call paired benchmark; requires credentials).'
         required: false
         default: audit
         type: choice
@@ -42,6 +58,7 @@ env:
 
 jobs:
   audit-and-sign:
+    if: ${{ github.event_name != 'workflow_dispatch' || (github.event.inputs.operation || 'run') != 'benchmark' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -465,3 +482,191 @@ jobs:
           fi
 
           echo "Audit PASSED — CI green."
+
+  benchmark-dispatch:
+    if: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.operation || 'run') == 'benchmark' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      CANONICAL_PUBLICATION_CONTEXT: ${{ github.ref == 'refs/heads/main' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          token: ${{ github.ref == 'refs/heads/main' && secrets.SIR_AUDIT_PUSH_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Clean install SIR Firewall (NO CACHE)
+        env:
+          BENCHMARK_MODE: ${{ github.event.inputs.benchmark_mode || 'audit' }}
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip uninstall -y sir-firewall sir_firewall || true
+
+          mode="${BENCHMARK_MODE:-audit}"
+          echo "Install benchmark_mode: $mode"
+
+          if [ "$mode" = "live" ]; then
+            pip install --no-cache-dir --force-reinstall -e ".[live]"
+          else
+            pip install --no-cache-dir --force-reinstall -e .
+          fi
+
+      - name: Validate pack registry (v1)
+        run: |
+          set -euo pipefail
+          python tools/validate_pack_registry.py --file spec/packs/pack_registry.v1.json
+
+      - name: Validate selected benchmark pack schema
+        env:
+          DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
+          DISPATCH_MODE: ${{ github.event.inputs.benchmark_mode || 'audit' }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+
+          pack_id = os.environ.get("DISPATCH_PACK", "generic_safety").strip()
+          mode = os.environ.get("DISPATCH_MODE", "audit").strip()
+          with open("spec/packs/pack_registry.v1.json", "r", encoding="utf-8") as f:
+              registry = json.load(f)
+          packs = registry.get("packs", [])
+          match = next((p for p in packs if p.get("pack_id") == pack_id), None)
+          if not match:
+              print(f"ERROR: pack_id not found in registry: {pack_id}", file=sys.stderr)
+              active_pack_ids = [
+                  p.get("pack_id")
+                  for p in packs
+                  if p.get("status") == "active"
+              ]
+              print("Active pack_id values:", ", ".join(sorted(pid for pid in active_pack_ids if pid)), file=sys.stderr)
+              raise SystemExit(1)
+
+          schema = match.get("schema")
+          suite_path = match.get("suite_path")
+
+          if mode in {"audit", "live"} and schema != "csv_single_turn_v1":
+              print(
+                  'ERROR: benchmark workflow input "benchmark_mode" values audit/live require a domain CSV pack '
+                  "(schema csv_single_turn_v1). "
+                  f"pack_id {pack_id!r} has schema {schema!r}.",
+                  file=sys.stderr,
+              )
+              raise SystemExit(1)
+
+          cmd = ["python", "tools/validate_domain_pack.py", "--file", suite_path]
+          print("Running:", " ".join(cmd))
+          raise SystemExit(subprocess.call(cmd))
+          PY
+
+      - name: Run paired benchmark through SIR
+        env:
+          DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
+          DISPATCH_MODEL: ${{ github.event.inputs.model || 'xai/grok-4-1-fast' }}
+          BENCHMARK_MODE: ${{ github.event.inputs.benchmark_mode || 'audit' }}
+          LITELLM_API_KEY: ${{ secrets.LITELLM_API_KEY }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          mode="${BENCHMARK_MODE:-audit}"
+          pack="${DISPATCH_PACK:-generic_safety}"
+          model="${DISPATCH_MODEL:-xai/grok-4-1-fast}"
+          if [ -z "${pack}" ]; then pack="generic_safety"; fi
+          if [ -z "${model}" ]; then model="xai/grok-4-1-fast"; fi
+
+          echo "Operation: benchmark"
+          echo "Benchmark mode: $mode"
+          echo "Pack: $pack"
+          echo "Model: $model"
+
+          if [ "$mode" = "live" ]; then
+            if [ -z "${LITELLM_API_KEY:-}" ] && [ -z "${XAI_API_KEY:-}" ]; then
+              echo "ERROR: benchmark live mode requested but neither LITELLM_API_KEY nor XAI_API_KEY is configured."
+              exit 1
+            fi
+          fi
+
+          sir benchmark run --mode "$mode" --pack "$pack" --model "$model"
+
+      - name: Prepare docs/ for GitHub Pages
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p docs
+          touch docs/.nojekyll
+
+      - name: Publish run archive to docs/runs
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        run: |
+          set -euo pipefail
+          rm -rf docs/runs || true
+          cp -R proofs/runs docs/runs
+
+      - name: Validate published run archive index JSON
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        run: |
+          set -euo pipefail
+          test -f proofs/runs/index.json
+          test -f docs/runs/index.json
+          python -m json.tool proofs/runs/index.json >/dev/null
+          python -m json.tool docs/runs/index.json >/dev/null
+
+      - name: Upload benchmark artifact (always)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: SIR-Benchmark-Proof
+          if-no-files-found: ignore
+          path: |
+            proofs/runs/index.json
+            proofs/runs/benchmark_index.v1.json
+            proofs/runs/benchmark_index.v2.json
+            proofs/runs/pairs/*.json
+            proofs/run_id.txt
+            proofs/runs/*-gh${{ github.run_id }}*/
+
+      - name: Commit benchmark files back to repo (archive + benchmark index/pairs)
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        run: |
+          set -euo pipefail
+          git config user.name "SIR Audit Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          for attempt in 1 2 3; do
+            echo "Git sync attempt $attempt/3..."
+            git fetch origin main
+
+            if ! git pull --rebase --autostash origin main; then
+              echo "Rebase failed on attempt $attempt. Retrying..."
+              git rebase --abort || true
+              sleep 2
+              continue
+            fi
+
+            git add proofs/runs/ docs/runs/
+            git commit -m "SIR Benchmark: paired benchmark dispatch $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "Nothing to commit"
+
+            if git push; then
+              echo "Push succeeded."
+              break
+            else
+              echo "Push failed on attempt $attempt. Retrying..."
+              sleep 2
+            fi
+
+            if [ "$attempt" -eq 3 ]; then
+              echo "ERROR: failed to push benchmark updates after 3 attempts"
+              exit 1
+            fi
+          done
