@@ -37,33 +37,8 @@
   <h1>Governance Gate — Benchmark Review</h1>
   <p class="muted">
     Single review surface derived from per-run archives and benchmark index. Default scope is post-2.0 baseline onward (from 2026-04-16 UTC).<br/>
-    Machine indexes: <a href="index.json"><code>runs/index.json</code></a>, <a href="benchmark_index.v1.json"><code>runs/benchmark_index.v1.json</code></a>, and <a href="benchmark_index.v2.json"><code>runs/benchmark_index.v2.json</code></a>.
-    Pair rows are derived comparison projections; per-run archive artifacts remain source-of-truth evidence.<br/>
-    `latest-audit.*` (latest passing proof) and `latest-run.json` (most recent run status) are separate single-run surfaces outside this page.
+    Machine indexes: <a href="index.json"><code>runs/index.json</code></a> and <a href="benchmark_index.v1.json"><code>runs/benchmark_index.v1.json</code></a>.
   </p>
-
-  <section aria-label="Paired benchmark interpretation">
-    <h2>Paired benchmark view (primary interpretation path)</h2>
-    <p class="small">
-      Deterministic projection over archived run evidence. Pair rows do not replace raw run/archive truth; use evidence links to inspect baseline and gated artifacts directly.
-    </p>
-    <table>
-      <thead>
-        <tr>
-          <th>pair_id</th>
-          <th>pair_status</th>
-          <th>required dimensions</th>
-          <th>delta (gated - baseline)</th>
-          <th>non_comparable_reason</th>
-          <th>baseline evidence</th>
-          <th>gated evidence</th>
-        </tr>
-      </thead>
-      <tbody id="pair-rows">
-        <tr><td colspan="7">Loading paired benchmark view…</td></tr>
-      </tbody>
-    </table>
-  </section>
 
   <section class="filters" aria-label="Benchmark filters">
     <div class="filters-grid">
@@ -162,9 +137,6 @@
     const FILTER_IDS = ["f-model", "f-pack", "f-proof", "f-kind", "f-status", "f-scope"];
 
     let allEntries = [];
-    let allPairs = [];
-    let pairIndexLoadError = null;
-    let entryByRunId = new Map();
 
     function esc(s) {
       return (s ?? "").toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -214,56 +186,6 @@
         .filter(([, p]) => !!p)
         .map(([k, p]) => `<a href="../${esc(p)}">${k}</a>`);
       return links.length ? links.join(" · ") : "—";
-    }
-
-    function dimsSummary(pair) {
-      const d = pair?.required_dimensions || {};
-      const parts = [
-        `provider=${d.provider || "—"}`,
-        `model=${d.model || "—"}`,
-        `target=${d.target_kind || "—"}`,
-        `pack=${d.pack_id || "—"}@${d.pack_version || "—"}`,
-        `commit=${d.commit_sha || "—"}`,
-      ];
-      return `<code>${esc(parts.join(" | "))}</code>`;
-    }
-
-    function deltaBlock(pair) {
-      const d = pair?.deltas || {};
-      const fmt = (v) => Number.isInteger(v) ? (v > 0 ? `+${v}` : `${v}`) : "—";
-      return `<code>leaks: ${fmt(d.leaks_delta)} | harmless_blocked: ${fmt(d.harmless_blocked_delta)} | provider_call_attempts: ${fmt(d.provider_call_attempts_delta)}</code>`;
-    }
-
-    function evidenceCell(runId, directAuditRef) {
-      const run = runId ? entryByRunId.get(runId) : null;
-      const runLink = runId ? `<a href="../runs/${esc(runId)}/manifest.json"><code>${esc(runId)}</code></a>` : "—";
-      const refs = run ? fullEvidenceLinks(run) : (directAuditRef ? `<a href="../${esc(directAuditRef)}">audit</a>` : "—");
-      return `${runLink}<br/><span class="small">${refs}</span>`;
-    }
-
-    function renderPairs() {
-      const target = document.getElementById("pair-rows");
-      if (pairIndexLoadError) {
-        target.innerHTML = `<tr><td colspan="7">Paired benchmark view unavailable: benchmark_index.v2.json could not be loaded (${esc(pairIndexLoadError)}). Row-first sections below remain available.</td></tr>`;
-        return;
-      }
-      if (!Array.isArray(allPairs) || !allPairs.length) {
-        target.innerHTML = '<tr><td colspan="7">Paired benchmark view unavailable: benchmark_index.v2.json has no pairs[] entries. Row-first sections below remain available.</td></tr>';
-        return;
-      }
-      target.innerHTML = allPairs.map(p => {
-        const status = esc(p.pair_status || "—");
-        const reason = esc(p.non_comparable_reason || "—");
-        return `<tr>
-          <td><code>${esc(p.pair_id || "—")}</code></td>
-          <td><span class="pill">${status}</span></td>
-          <td>${dimsSummary(p)}</td>
-          <td>${deltaBlock(p)}</td>
-          <td><code>${reason}</code></td>
-          <td>${evidenceCell(p.baseline_run_id, p?.evidence?.baseline_entry_ref)}</td>
-          <td>${evidenceCell(p.gated_run_id, p?.evidence?.gated_entry_ref)}</td>
-        </tr>`;
-      }).join("");
     }
 
     function readFilters() {
@@ -371,7 +293,6 @@
 
     function apply() {
       const rows = filteredEntries();
-      renderPairs();
       renderCounters(rows);
       renderRecent(rows);
       renderPatterns(rows);
@@ -395,29 +316,11 @@
     async function load() {
       const targetRecent = document.getElementById("recent-rows");
       try {
-        const [responseV1, responseV2] = await Promise.allSettled([
-          fetch("./benchmark_index.v1.json", { cache: "no-store" }),
-          fetch("./benchmark_index.v2.json", { cache: "no-store" }),
-        ]);
-
-        if (responseV1.status !== "fulfilled") throw new Error("benchmark_index.v1.json request failed");
-        if (!responseV1.value.ok) throw new Error(`benchmark_index.v1.json HTTP ${responseV1.value.status}`);
-        const payloadV1 = await responseV1.value.json();
-        const entries = Array.isArray(payloadV1?.entries) ? payloadV1.entries : [];
+        const response = await fetch("./benchmark_index.v1.json", { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+        const entries = Array.isArray(payload?.entries) ? payload.entries : [];
         allEntries = entries;
-        entryByRunId = new Map(entries.map(e => [e.run_id, e]));
-
-        if (responseV2.status === "fulfilled" && responseV2.value.ok) {
-          const payloadV2 = await responseV2.value.json();
-          allPairs = Array.isArray(payloadV2?.pairs) ? payloadV2.pairs : [];
-          pairIndexLoadError = null;
-        } else if (responseV2.status === "fulfilled") {
-          pairIndexLoadError = `HTTP ${responseV2.value.status}`;
-          allPairs = [];
-        } else {
-          pairIndexLoadError = "request failed";
-          allPairs = [];
-        }
 
         optionize("f-model", new Set(entries.map(e => e.model).filter(Boolean)));
         optionize("f-pack", new Set(entries.map(e => e?.evaluation_target?.pack_id).filter(Boolean)));
@@ -431,7 +334,6 @@
         const reason = esc(e?.message || "unknown error");
         targetRecent.innerHTML = `<tr><td colspan="9">Failed to load benchmark index (${reason}).</td></tr>`;
         document.getElementById("pattern-rows").innerHTML = `<tr><td colspan="5">Failed to load benchmark index (${reason}).</td></tr>`;
-        document.getElementById("pair-rows").innerHTML = `<tr><td colspan="7">Paired benchmark view unavailable: ${reason}.</td></tr>`;
       }
     }
 
