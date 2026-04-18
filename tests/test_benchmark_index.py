@@ -66,7 +66,7 @@ def test_benchmark_index_keeps_latest_run_and_latest_passing_run(tmp_path):
         {"run_id": "run-inconclusive", "path": "runs/run-inconclusive/", "result": "INCONCLUSIVE"},
         {"run_id": "run-pass", "path": "runs/run-pass/", "result": "AUDIT PASSED"},
     ]
-    index = publish_run._build_benchmark_index(runs_dir=runs_dir, runs=runs)
+    index = publish_run._build_benchmark_index_v1(runs_dir=runs_dir, runs=runs)
 
     assert index["version"] == "benchmark_index.v1"
     assert index["latest_run"]["run_id"] == "run-fail"
@@ -113,7 +113,7 @@ def test_benchmark_index_skips_malformed_run_ids(tmp_path, capsys):
     good_run.mkdir(parents=True)
     (good_run / "audit.json").write_text(json.dumps({"result": "AUDIT PASSED"}), encoding="utf-8")
 
-    index = publish_run._build_benchmark_index(
+    index = publish_run._build_benchmark_index_v1(
         runs_dir=runs_dir,
         runs=[
             {"run_id": "", "path": "runs//", "result": "AUDIT FAILED"},
@@ -155,3 +155,78 @@ def test_benchmark_entry_prefers_effective_pack_id_from_audit(tmp_path):
 
     assert entry["evaluation_target"]["pack_id"] == "generic_safety"
     assert entry["evaluation_target"]["pack_version"] == "1.2.3"
+
+
+def test_benchmark_index_v2_loads_pair_artifact_and_computes_deltas(tmp_path):
+    publish_run = _load_publish_run_module()
+
+    runs_dir = tmp_path / "runs"
+    baseline_run = runs_dir / "run-baseline"
+    gated_run = runs_dir / "run-gated"
+    pairs_dir = runs_dir / "pairs"
+    baseline_run.mkdir(parents=True)
+    gated_run.mkdir(parents=True)
+    pairs_dir.mkdir(parents=True)
+
+    (baseline_run / "audit.json").write_text(
+        json.dumps(
+            {
+                "model": "xai/grok-3-beta",
+                "provider": "xai",
+                "effective_pack_id": "generic_safety",
+                "pack_version": "1.0.0",
+                "suite_hash": "sha256:abc",
+                "commit_sha": "deadbeef",
+                "jailbreaks_leaked": 10,
+                "harmless_blocked": 1,
+                "provider_call_attempts": 0,
+                "benchmark_execution": {"benchmark_role": "baseline", "gate_mode": "ungated"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (gated_run / "audit.json").write_text(
+        json.dumps(
+            {
+                "model": "xai/grok-3-beta",
+                "provider": "xai",
+                "effective_pack_id": "generic_safety",
+                "pack_version": "1.0.0",
+                "suite_hash": "sha256:abc",
+                "commit_sha": "deadbeef",
+                "jailbreaks_leaked": 0,
+                "harmless_blocked": 2,
+                "provider_call_attempts": 0,
+                "benchmark_execution": {"benchmark_role": "gated", "gate_mode": "sir_gated"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (pairs_dir / "pair-1.json").write_text(
+        json.dumps(
+            {
+                "pair_id": "pair-1",
+                "pair_key": "k1",
+                "pair_status": "valid_complete",
+                "baseline_run_id": "run-baseline",
+                "gated_run_id": "run-gated",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    index_v2 = publish_run._build_benchmark_index_v2(
+        runs_dir=runs_dir,
+        runs=[
+            {"run_id": "run-gated", "path": "runs/run-gated/", "result": "AUDIT PASSED"},
+            {"run_id": "run-baseline", "path": "runs/run-baseline/", "result": "AUDIT FAILED"},
+        ],
+        pairs_dir=pairs_dir,
+    )
+
+    assert index_v2["version"] == "benchmark_index.v2"
+    assert len(index_v2["pairs"]) == 1
+    pair = index_v2["pairs"][0]
+    assert pair["pair_status"] == "valid_complete"
+    assert pair["deltas"]["leaks_delta"] == -10
+    assert pair["deltas"]["harmless_blocked_delta"] == 1

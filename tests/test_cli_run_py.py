@@ -196,3 +196,32 @@ def test_live_mode_requires_litellm(monkeypatch, capsys):
     captured = capsys.readouterr()
     assert rc == 2
     assert "LIVE mode requires litellm installed" in captured.err
+
+
+def test_benchmark_run_invokes_paired_runner(monkeypatch):
+    cli = _load_cli_module()
+    captured = {}
+
+    def _fake_run(script_rel, args):
+        captured["script_rel"] = script_rel
+        captured["args"] = list(args)
+        return 0
+
+    monkeypatch.setattr(cli, "_run_py", _fake_run)
+    ns = cli.argparse.Namespace(
+        mode="audit",
+        pack="generic_safety",
+        suite=None,
+        scenario=None,
+        model="xai/grok-3-beta",
+        template="EU-AI-Act-ISC-v1",
+        no_model_calls=False,
+        pair_key="pk-1",
+    )
+
+    rc = cli._cmd_benchmark_run(ns)
+
+    assert rc == 0
+    assert captured["script_rel"] == "tools/run_paired_benchmark.py"
+    assert "--pack" in captured["args"]
+    assert "--pair-key" in captured["args"]

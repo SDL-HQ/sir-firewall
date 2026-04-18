@@ -258,6 +258,19 @@ def _scenario_hash(scenario_id: str, turns: List[Dict[str, str]]) -> str:
     return "sha256:" + hashlib.sha256(blob).hexdigest()
 
 
+def _ungated_prompt_final_hash(*, prompt: str, template_id: str, pack_id: str, scenario_id: str, turn_id: str) -> str:
+    payload = {
+        "mode": "ungated_baseline",
+        "prompt_hash": _prompt_hash(prompt),
+        "template_id": template_id or "",
+        "pack_id": pack_id or "",
+        "scenario_id": scenario_id or "",
+        "turn_id": turn_id or "",
+    }
+    raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=False, sort_keys=True).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
 def _policy_flags(pack_id: str = "") -> Dict[str, bool]:
     defaults = {"CRYPTO_ENFORCED": False, "CHECKSUM_ENFORCED": True}
     try:
@@ -359,6 +372,11 @@ def main() -> None:
     ap.add_argument("--model", default=DEFAULT_MODEL, help="LiteLLM model name")
     ap.add_argument("--template", default=DEFAULT_TEMPLATE_ID, help="ISC template_id to use")
     ap.add_argument("--no-model-calls", action="store_true", help="Skip model calls even for PASS prompts")
+    ap.add_argument(
+        "--ungated-baseline",
+        action="store_true",
+        help="Execute the prompt set without SIR pre-inference gate intervention (paired benchmark baseline).",
+    )
     args = ap.parse_args()
 
     if args.mode == "live" and args.no_model_calls:
@@ -442,7 +460,13 @@ def main() -> None:
                 prompt_encoded = bool((raw_row.get("prompt_b64") or "").strip()) and not bool((raw_row.get("prompt") or "").strip())
 
             isc = _build_isc_envelope(prompt, template_id)
-            verdict = validate_sir({"isc": isc}, enforcement_pack_id=(pack_id or None))
+            if args.ungated_baseline:
+                verdict = {
+                    "status": "PASS",
+                    "domain_pack": effective_pack_id or selected_pack_id or "",
+                }
+            else:
+                verdict = validate_sir({"isc": isc}, enforcement_pack_id=(pack_id or None))
             status = str(verdict.get("status", "UNKNOWN"))
 
             expected_status = "PASS" if expected == "allow" else "BLOCKED"
@@ -478,6 +502,14 @@ def main() -> None:
 
             # Build per-prompt ledger entry
             final_hash_raw = _final_hash_from_verdict(verdict)
+            if args.ungated_baseline and not final_hash_raw:
+                final_hash_raw = _ungated_prompt_final_hash(
+                    prompt=prompt,
+                    template_id=template_id,
+                    pack_id=(pack_id or ""),
+                    scenario_id=scenario_id,
+                    turn_id=rid or "",
+                )
             if not final_hash_raw:
                 # Fail closed on ledger integrity: write a marker but keep file consistent.
                 # verify_itgl.py will fail if this is empty — which is correct.
@@ -559,6 +591,10 @@ def main() -> None:
         "provider_call_failures": provider_call_failures,
         "model_calls_made": provider_call_attempts,
         "flags": _policy_flags(pack_id=pack_id),
+        "benchmark_execution": {
+            "benchmark_role": "baseline" if args.ungated_baseline else "gated",
+            "gate_mode": "ungated" if args.ungated_baseline else "sir_gated",
+        },
     }
     if scenario_mode:
         summary["scenario_id"] = scenario_id

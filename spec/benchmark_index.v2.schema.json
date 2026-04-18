@@ -279,7 +279,7 @@
         "required": [
           "pair_id",
           "pair_key",
-          "status",
+          "pair_status",
           "baseline_run_id",
           "gated_run_id",
           "required_dimensions",
@@ -293,7 +293,7 @@
           "pair_key": {
             "type": "string"
           },
-          "status": {
+          "pair_status": {
             "type": "string",
             "enum": [
               "valid_complete",
