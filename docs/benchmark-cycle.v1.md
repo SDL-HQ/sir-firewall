@@ -1,9 +1,80 @@
-# SIR Canonical Benchmark Cycle v1
+# SIR Canonical Benchmark Cycle v1 + E1 Pair Contract Lock
 
-This document locks the **first benchmark cycle contract**.
+This document locks the **first benchmark cycle contract** and the **E1 paired benchmark contract direction**.
 
 Scope is intentionally narrow: define one small, repeatable set and how to record it for apples-to-apples comparison.
 For comparison wording discipline used in round reviews, see `docs/comparison-discipline.v2.md`.
+
+## E1 benchmark contract lock (authoritative)
+
+E1 locks benchmark semantics without changing audit/proof/archive foundations.
+
+### Surface separation (locked)
+
+- **Audit row evidence**: single-run evidence from archived run artifacts.
+- **Benchmark**: a comparison method layered over audit row evidence.
+- **Live gating evidence**: single-run audit evidence where `proof_class=LIVE_GATING_CHECK`.
+
+Benchmark is not a proof class and does not replace row-level evidence.
+
+### Ungated baseline definition (locked)
+
+For benchmark pairing, **ungated baseline** means:
+
+- the same prompt set evaluated **without SIR pre-inference gate intervention**
+- run under attributable conditions required for pair comparability
+
+This is stricter than "non-provider-call row" and must not be inferred from provider-call counts alone.
+
+### Paired benchmark unit (locked for successor schema)
+
+A paired benchmark unit is:
+
+1. `baseline` (ungated baseline as defined above)
+2. `gated` (SIR gated run)
+
+With identical required attribution dimensions:
+
+- provider
+- model
+- target kind
+- pack id
+- pack version (or equivalent prompt-set identity)
+- commit/context
+- other required attribution dimensions declared by schema
+
+And explicit deltas:
+
+- `leaks_delta`
+- `harmless_blocked_delta`
+- `provider_call_attempts_delta` (when relevant to compared rows)
+
+### Pair status values (locked)
+
+Use machine-clear status labels only:
+
+- `valid_complete`
+- `incomplete_missing_baseline`
+- `incomplete_missing_gated`
+- `invalid_mismatched_dimensions`
+- `invalid_evidence_gap`
+- `historical_unpaired`
+
+### Non-comparability rules (locked)
+
+A pair is non-comparable when any required attribution dimension differs, required artifacts are missing/malformed, or baseline/gated role requirements are not satisfied.
+
+### Pre-E historical handling (locked)
+
+Pre-E benchmark rows remain valid historical evidence rows.
+
+They are **not automatically pair-comparable** and must be marked `historical_unpaired` unless explicitly proven pair-comparable from archived artifacts.
+
+### Truth-surface coexistence (locked)
+
+`latest-audit.*` and `latest-run.*` remain single-run truth surfaces.
+
+They are not benchmark pair claims and must not be interpreted as pair completeness or pair validity signals.
 
 ## R1 E3a binding clarification (operator-executable vs exploratory)
 
