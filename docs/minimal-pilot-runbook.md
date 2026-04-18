@@ -3,6 +3,7 @@
 This runbook defines one minimal, repeatable pilot/evaluation path.
 
 Use it when a reviewer/operator needs a linear procedure without extra interpretation layers.
+This is the canonical operator/reviewer method for this repository.
 
 ## Scope and truth posture
 
@@ -20,6 +21,8 @@ Semantics to keep explicit during review:
 - Gate outcome is `PASS` / `BLOCK`.
 - Run/publication status is `PASS` / `FAIL` / `INCONCLUSIVE`.
 - `latest-audit.*` (latest passing proof) and `latest-run.json` (most recent run status) are intentionally different surfaces.
+- Pair view (`docs/runs/index.html` paired table) is a deterministic comparison projection over archived run evidence.
+- Raw run/archive evidence (`proofs/runs/<run_id>/...`) remains the source-of-truth for per-run claims.
 
 ## Prerequisites
 
@@ -39,6 +42,11 @@ For manual GitHub Actions dispatch (`SIR Real Governance Audit`), use these exac
 - `mode`: `audit` = deterministic/no provider calls, `live` = provider-call path
 - `pack`: exact `pack_id` from `spec/packs/pack_registry.v1.json` (for example `generic_safety`)
 - `model`: exact model id (for example `xai/grok-4-1-fast`)
+
+For local CLI operation, use:
+
+- audit run: `sir run --mode audit --pack <pack_id>`
+- benchmark pair run: `sir benchmark run --mode audit|live --pack <pack_id> [--pair-key <key>]`
 
 ### 1) Verify latest passing proof offline first
 
@@ -149,6 +157,14 @@ What to look for:
 
 - Export completes with explicit destination path.
 - Output directory is a directory path and either empty or `--force` is used.
+
+## Operator/reviewer quick checklist
+
+- Run an audit with `sir run --mode audit --pack <pack_id>` (single-run evidence path).
+- Run a benchmark pair with `sir benchmark run ...` only when you need ungated-vs-gated deltas.
+- Verify cryptographic integrity on `proofs/latest-audit.json` (`sir verify cert ...` or `tools/verify_certificate.py`).
+- Read `docs/latest-run.json` as most-recent run/publication status, not as latest-pass proof.
+- Read pair rows in `docs/runs/index.html` as interpretation aid; confirm claims from raw run archives.
 
 ## Tiny troubleshooting note
 
