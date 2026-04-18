@@ -4,7 +4,7 @@
 CI-side signer. Produces:
 - proofs/latest-audit.json
 - proofs/latest-audit.html (from proofs/template.html)
-- proofs/audit-certificate-<timestamp>.json (archival)
+- proofs/archive/audit-certificate-<timestamp>.json (archival)
 
 Inputs (preferred):
 - proofs/run_summary.json written by red_team_suite.py
@@ -375,8 +375,9 @@ def main() -> None:
     cert["signature"] = base64.b64encode(signature).decode("ascii")
 
     os.makedirs("proofs", exist_ok=True)
+    os.makedirs("proofs/archive", exist_ok=True)
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%SZ")
-    archival = f"proofs/audit-certificate-{ts}.json"
+    archival = f"proofs/archive/audit-certificate-{ts}.json"
 
     with open(archival, "w", encoding="utf-8") as f:
         json.dump(cert, f, indent=2, ensure_ascii=False)
