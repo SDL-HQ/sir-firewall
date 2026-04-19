@@ -397,6 +397,7 @@
       <div class="section-label">Secondary evidence surface</div>
       <h2>Recent runs (row evidence)</h2>
       <p class="small">Raw row-level evidence remains authoritative and one click away.</p>
+      <p class="small">For benchmark interpretation, use paired view first. Row table is raw evidence.</p>
       <table>
         <thead>
           <tr>
@@ -444,6 +445,7 @@
     let allEntries = [];
     let pairedRows = [];
     const entriesByRunId = new Map();
+    const rowContextByRunId = new Map();
 
     function esc(s) {
       return (s ?? "").toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -495,6 +497,32 @@
       const full = esc(runId || "");
       const display = esc(truncateRunId(runId));
       return `<a href="../runs/${full}/manifest.json" title="${full}"><code>${display}</code></a>`;
+    }
+
+    function buildRowContextMap(pairs) {
+      rowContextByRunId.clear();
+      (pairs || []).forEach(p => {
+        if (p?.baseline_run_id) {
+          rowContextByRunId.set(p.baseline_run_id, {
+            benchmark_role: "baseline",
+            gate_mode: "ungated",
+          });
+        }
+        if (p?.gated_run_id) {
+          rowContextByRunId.set(p.gated_run_id, {
+            benchmark_role: "gated",
+            gate_mode: "sir_gated",
+          });
+        }
+      });
+    }
+
+    function rowContextLabel(entry) {
+      const runId = entry?.run_id || "";
+      const context = rowContextByRunId.get(runId);
+      if (context?.benchmark_role === "baseline") return "benchmark context: baseline (ungated reference)";
+      if (context?.benchmark_role === "gated") return "benchmark context: gated (SIR)";
+      return "benchmark context: unpaired row evidence";
     }
 
     function evidenceLinks(entry) {
@@ -657,6 +685,7 @@
       target.innerHTML = rows.map(r => {
         const pack = esc(r.evaluation_target?.pack_id || "—");
         const proof = esc(r.proof_class || "—");
+        const context = esc(rowContextLabel(r));
         const model = esc(r.model || "—");
         const ts = esc(r.run_timestamp_utc || "—");
         const leaks = esc(r.comparison?.leaks ?? "—");
@@ -665,7 +694,7 @@
         return `<tr>
           <td><code>${ts}</code></td>
           <td><code>${pack}</code></td>
-          <td><code>${proof}</code></td>
+          <td><code>${proof}</code><div class="small">${context}</div></td>
           <td><code>${model}</code></td>
           <td>${resultPill(r.result)}</td>
           <td>${leaks}</td>
@@ -747,6 +776,7 @@
         entries.forEach(e => entriesByRunId.set(e.run_id, e));
 
         pairedRows = Array.isArray(v2Payload?.pairs) ? v2Payload.pairs : [];
+        buildRowContextMap(pairedRows);
         const baselineDefinition = pairedRows.find(p => p && p.baseline_definition)?.baseline_definition
           || "same prompt set evaluated without SIR pre-inference gate intervention";
         document.getElementById("pair-baseline-definition").textContent = `Baseline definition: ${baselineDefinition}`;
