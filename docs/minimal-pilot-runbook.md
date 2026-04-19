@@ -41,12 +41,13 @@ For manual GitHub Actions dispatch (`SIR Real Governance Audit`), use these exac
 - `operation`: `run` = single run, `benchmark` = paired ungated vs gated
 - `mode`: `audit` = deterministic/no provider calls, `live` = provider-call path
 - `pack`: exact `pack_id` from `spec/packs/pack_registry.v1.json` (for example `generic_safety`)
-- `model`: exact model id (for example `xai/grok-4-1-fast`)
+- `provider`: provider id (`xai` or `openai`)
+- `model`: exact model id for selected provider (for example `grok-4-1-fast`)
 
 For local CLI operation, use:
 
 - audit run: `sir run --mode audit --pack <pack_id>`
-- benchmark pair run: `sir benchmark run --mode audit|live --pack <pack_id> [--pair-key <key>]`
+- benchmark pair run: `sir benchmark run --mode audit|live --pack <pack_id> --provider <provider> --model <model> [--pair-key <key>]`
 
 ### 1) Verify latest passing proof offline first
 

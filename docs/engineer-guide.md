@@ -104,25 +104,30 @@ Install live extras:
 python3 -m pip install -e ".[live]"
 ```
 
-Set provider credentials (example: xAI):
+Set provider credentials:
 
 ```bash
+# xAI
 export XAI_API_KEY="paste_key_here"
+# OpenAI
+export OPENAI_API_KEY="paste_key_here"
 ```
 
 Run live:
 
 ```bash
-sir run --mode live --pack generic_safety
+sir run --mode live --pack generic_safety --provider xai --model grok-4-1-fast
 ```
 
-If credentials or live dependencies are missing, `sir` now fails fast with explicit blocker text (for example missing `XAI_API_KEY` or missing `litellm`) and does not simulate/fallback.
+If credentials or live dependencies are missing, `sir` fails fast with explicit blocker text (for example missing provider-specific credential env vars such as `XAI_API_KEY` or `OPENAI_API_KEY`, or missing `litellm`) and does not simulate/fallback.
 
 The run summary records:
 
 * `provider_call_attempts` (attempted downstream calls, including retries/timeouts)
 * `provider_call_successes` / `provider_call_failures`
 * `proof_class = LIVE_GATING_CHECK`
+
+Supported provider/model selection and defaults are documented in `docs/model-selection.md`.
 
 ## Generate a locally signed certificate (dev/test key)
 

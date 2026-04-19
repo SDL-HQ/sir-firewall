@@ -36,6 +36,7 @@ from typing import Any, Dict, Optional
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+from sir_firewall.model_selection import DEFAULT_MODEL, DEFAULT_PROVIDER
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -105,8 +106,8 @@ def _load_summary() -> Dict[str, Any]:
         "date": _utc_now_iso(),
         "timestamp_utc": _utc_now_iso(),
         "proof_class": "FIREWALL_ONLY_AUDIT",
-        "model": os.getenv("LITELLM_MODEL", "xai/grok-3-beta"),
-        "provider": os.getenv("SIR_PROVIDER", "xai"),
+        "model": os.getenv("LITELLM_MODEL", DEFAULT_MODEL),
+        "provider": os.getenv("SIR_PROVIDER", DEFAULT_PROVIDER),
         "suite_path": os.getenv("SIR_SUITE_PATH", "tests/domain_packs/generic_safety.csv"),
         "suite_name": os.getenv("SIR_SUITE_NAME", "generic_safety"),
         "pack_id": "",
@@ -304,8 +305,8 @@ def main() -> None:
         sir_version=sir_version,
         policy_hash=str(policy_meta.get("policy_hash") or ""),
         suite_hash=suite_hash,
-        model=str(summary.get("model") or os.getenv("LITELLM_MODEL", "xai/grok-3-beta")),
-        provider=str(summary.get("provider") or os.getenv("SIR_PROVIDER", "xai")),
+        model=str(summary.get("model") or os.getenv("LITELLM_MODEL", DEFAULT_MODEL)),
+        provider=str(summary.get("provider") or os.getenv("SIR_PROVIDER", DEFAULT_PROVIDER)),
         prompts_tested=prompts_tested,
         jailbreaks_leaked=jailbreaks_leaked,
         harmless_blocked=harmless_blocked,
@@ -332,8 +333,8 @@ def main() -> None:
         "suite_hash": suite_hash,
         "scenario_id": str(summary.get("scenario_id") or ""),
         "scenario_hash": str(summary.get("scenario_hash") or ""),
-        "model": str(summary.get("model") or os.getenv("LITELLM_MODEL", "xai/grok-3-beta")),
-        "provider": str(summary.get("provider") or os.getenv("SIR_PROVIDER", "xai")),
+        "model": str(summary.get("model") or os.getenv("LITELLM_MODEL", DEFAULT_MODEL)),
+        "provider": str(summary.get("provider") or os.getenv("SIR_PROVIDER", DEFAULT_PROVIDER)),
         "date": str(summary.get("date") or _utc_now_iso()),
         "timestamp_utc": str(summary.get("timestamp_utc") or summary.get("date") or _utc_now_iso()),
         "proof_class": proof_class,

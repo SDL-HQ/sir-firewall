@@ -37,7 +37,12 @@ on:
       model:
         description: 'Exact model id.'
         required: false
-        default: xai/grok-4-1-fast
+        default: grok-4-1-fast
+        type: string
+      provider:
+        description: 'Provider id for model execution.'
+        required: false
+        default: xai
         type: string
 
 # Hardening: prevent overlapping runs from fighting over commits / pages.
@@ -180,25 +185,29 @@ jobs:
       - name: Run suite through SIR (firewall-only, no live model calls)
         env:
           # Live reference target
-          LITELLM_MODEL: ${{ github.event.inputs.model || 'xai/grok-4-1-fast' }}
-          SIR_PROVIDER: xai
+          LITELLM_MODEL: ${{ github.event.inputs.model || 'grok-4-1-fast' }}
+          SIR_PROVIDER: ${{ github.event.inputs.provider || 'xai' }}
 
           # Template selection
           SIR_TEMPLATE_ID: "EU-AI-Act-ISC-v1"
           DISPATCH_MODE: ${{ github.event.inputs.mode || 'audit' }}
           DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
-          DISPATCH_MODEL: ${{ github.event.inputs.model || 'xai/grok-4-1-fast' }}
+          DISPATCH_PROVIDER: ${{ github.event.inputs.provider || 'xai' }}
+          DISPATCH_MODEL: ${{ github.event.inputs.model || 'grok-4-1-fast' }}
           SIR_MODEL_CALLS: ${{ (github.event.inputs.mode == 'live') && '1' || '0' }}
-          LITELLM_API_KEY: ${{ secrets.LITELLM_API_KEY }}
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           set -euo pipefail
           mode="${DISPATCH_MODE:-audit}"
+          provider="${DISPATCH_PROVIDER:-xai}"
           pack="${DISPATCH_PACK:-generic_safety}"
-          model="${DISPATCH_MODEL:-xai/grok-4-1-fast}"
+          model="${DISPATCH_MODEL:-grok-4-1-fast}"
           if [ -z "${pack}" ]; then pack="generic_safety"; fi
-          if [ -z "${model}" ]; then model="xai/grok-4-1-fast"; fi
+          if [ -z "${provider}" ]; then provider="xai"; fi
+          if [ -z "${model}" ]; then model="grok-4-1-fast"; fi
           echo "Mode: $mode"
+          echo "Provider: $provider"
           echo "Pack: $pack"
           echo "Model: $model"
           echo "SIR_MODEL_CALLS: $SIR_MODEL_CALLS"
@@ -206,13 +215,17 @@ jobs:
           echo "SIR_PROVIDER: $SIR_PROVIDER"
           echo "SIR_TEMPLATE_ID: $SIR_TEMPLATE_ID"
           if [ "$mode" = "live" ]; then
-            if [ -z "${LITELLM_API_KEY:-}" ] && [ -z "${XAI_API_KEY:-}" ]; then
-              echo "ERROR: live mode requested but neither LITELLM_API_KEY nor XAI_API_KEY is configured."
+            if [ "$provider" = "xai" ] && [ -z "${XAI_API_KEY:-}" ]; then
+              echo "ERROR: live mode requested for provider=xai but XAI_API_KEY is not configured."
               exit 1
             fi
-            python red_team_suite.py --mode live --pack "$pack" --model "$model"
+            if [ "$provider" = "openai" ] && [ -z "${OPENAI_API_KEY:-}" ]; then
+              echo "ERROR: live mode requested for provider=openai but OPENAI_API_KEY is not configured."
+              exit 1
+            fi
+            python red_team_suite.py --mode live --pack "$pack" --provider "$provider" --model "$model"
           else
-            python red_team_suite.py --mode audit --pack "$pack" --model "$model"
+            python red_team_suite.py --mode audit --pack "$pack" --provider "$provider" --model "$model"
           fi
 
       - name: Compute audit verdict (PASS/FAIL) from counters
@@ -565,32 +578,40 @@ jobs:
       - name: Run paired benchmark through SIR
         env:
           DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
-          DISPATCH_MODEL: ${{ github.event.inputs.model || 'xai/grok-4-1-fast' }}
+          DISPATCH_PROVIDER: ${{ github.event.inputs.provider || 'xai' }}
+          DISPATCH_MODEL: ${{ github.event.inputs.model || 'grok-4-1-fast' }}
           BENCHMARK_MODE: ${{ github.event.inputs.mode || 'audit' }}
           SDL_PRIVATE_KEY_PEM: ${{ secrets.SDL_PRIVATE_KEY_PEM }}
-          LITELLM_API_KEY: ${{ secrets.LITELLM_API_KEY }}
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           set -euo pipefail
           mode="${BENCHMARK_MODE:-audit}"
+          provider="${DISPATCH_PROVIDER:-xai}"
           pack="${DISPATCH_PACK:-generic_safety}"
-          model="${DISPATCH_MODEL:-xai/grok-4-1-fast}"
+          model="${DISPATCH_MODEL:-grok-4-1-fast}"
           if [ -z "${pack}" ]; then pack="generic_safety"; fi
-          if [ -z "${model}" ]; then model="xai/grok-4-1-fast"; fi
+          if [ -z "${provider}" ]; then provider="xai"; fi
+          if [ -z "${model}" ]; then model="grok-4-1-fast"; fi
 
           echo "Operation: benchmark"
           echo "Benchmark mode: $mode"
+          echo "Provider: $provider"
           echo "Pack: $pack"
           echo "Model: $model"
 
           if [ "$mode" = "live" ]; then
-            if [ -z "${LITELLM_API_KEY:-}" ] && [ -z "${XAI_API_KEY:-}" ]; then
-              echo "ERROR: benchmark live mode requested but neither LITELLM_API_KEY nor XAI_API_KEY is configured."
+            if [ "$provider" = "xai" ] && [ -z "${XAI_API_KEY:-}" ]; then
+              echo "ERROR: benchmark live mode requested for provider=xai but XAI_API_KEY is not configured."
+              exit 1
+            fi
+            if [ "$provider" = "openai" ] && [ -z "${OPENAI_API_KEY:-}" ]; then
+              echo "ERROR: benchmark live mode requested for provider=openai but OPENAI_API_KEY is not configured."
               exit 1
             fi
           fi
 
-          sir benchmark run --mode "$mode" --pack "$pack" --model "$model"
+          sir benchmark run --mode "$mode" --pack "$pack" --provider "$provider" --model "$model"
 
       - name: Prepare docs/ for GitHub Pages
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
