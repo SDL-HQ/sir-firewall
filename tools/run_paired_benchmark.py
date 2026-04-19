@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import hashlib
+import importlib.util
 import json
 import os
 import subprocess
@@ -45,6 +46,35 @@ def _read_json(path: Path) -> Dict[str, Any]:
 def _write_json(path: Path, data: Dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _refresh_benchmark_index_v2() -> None:
+    runs_dir = ROOT / "proofs" / "runs"
+    benchmark_v1_path = runs_dir / "benchmark_index.v1.json"
+    benchmark_v2_path = runs_dir / "benchmark_index.v2.json"
+    docs_benchmark_v2_path = ROOT / "docs" / "runs" / "benchmark_index.v2.json"
+
+    if not benchmark_v1_path.exists():
+        raise SystemExit(f"ERROR: missing benchmark index v1 required for v2 refresh: {benchmark_v1_path}")
+
+    spec = importlib.util.spec_from_file_location("publish_run_module", ROOT / "tools" / "publish_run.py")
+    if spec is None or spec.loader is None:
+        raise SystemExit("ERROR: unable to load tools/publish_run.py for v2 refresh")
+    publish_run_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(publish_run_module)
+
+    v1_payload = _read_json(benchmark_v1_path)
+    runs = v1_payload.get("entries")
+    if not isinstance(runs, list):
+        raise SystemExit("ERROR: benchmark_index.v1.json has invalid entries payload")
+
+    benchmark_index_v2 = publish_run_module._build_benchmark_index_v2(
+        runs_dir=runs_dir,
+        runs=runs,
+        pairs_dir=(runs_dir / "pairs"),
+    )
+    _write_json(benchmark_v2_path, benchmark_index_v2)
+    _write_json(docs_benchmark_v2_path, benchmark_index_v2)
 
 
 def _extract_run_dims(audit: Dict[str, Any]) -> Dict[str, Optional[str]]:
@@ -268,8 +298,10 @@ def main() -> int:
 
     out_path = ROOT / "proofs" / "runs" / "pairs" / f"{pair_id}.json"
     _write_json(out_path, pair_artifact)
+    _refresh_benchmark_index_v2()
 
     print(f"OK: Pair artifact -> {out_path}")
+    print("OK: Refreshed benchmark_index.v2.json in proofs/runs and docs/runs")
     print(f"PAIR_ID={pair_id}")
     print(f"BASELINE_RUN_ID={baseline_run_id}")
     print(f"GATED_RUN_ID={gated_run_id}")
