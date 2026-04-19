@@ -5,444 +5,138 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Governance Gate — Benchmark Review</title>
   <style>
-    :root {
-      --bg: #f6f8fb;
-      --card: #ffffff;
-      --text: #1f2328;
-      --muted: #59636e;
-      --line: #d0d7de;
-      --line-soft: #e6ebf1;
-      --pass-bg: #dafbe1;
-      --pass-fg: #116329;
-      --non-bg: #ffebe9;
-      --non-fg: #cf222e;
-      --brand-bg: #f3f6f9;
-      --link: #0969da;
-    }
-
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      line-height: 1.45;
-    }
-
-    main {
-      max-width: 1120px;
-      margin: 24px auto 40px;
-      padding: 0 16px;
-    }
-
-    h1, h2, h3 { margin: 0; line-height: 1.25; }
-    h1 { font-size: 1.55rem; margin-bottom: 6px; }
-    h2 { font-size: 1.1rem; margin-bottom: 10px; }
-    h3 { font-size: 0.95rem; }
-
-    p { margin: 0; }
-    .small { font-size: 12px; color: var(--muted); }
-    .muted { color: var(--muted); }
-
-    a { color: var(--link); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-
-    code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace;
-      font-size: 12px;
-    }
-
-    .panel {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: var(--card);
-      padding: 14px;
-      margin-top: 14px;
-    }
-
-    .ownership-strip {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      padding: 12px 14px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: var(--brand-bg);
-      margin-bottom: 12px;
-    }
-
-    .brand-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 0;
-    }
-
-    .brand-left img {
-      width: 34px;
-      height: 34px;
-      object-fit: contain;
-      flex: 0 0 auto;
-    }
-
-    .brand-name { font-weight: 600; font-size: 0.95rem; }
-
-    .brand-links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      font-size: 12px;
-      justify-content: flex-end;
-    }
-
-    .headline {
-      margin-bottom: 10px;
-    }
-
-    .machine-indexes {
-      margin-top: 8px;
-      padding: 9px 10px;
-      border: 1px solid var(--line-soft);
-      border-radius: 8px;
-      background: #fff;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .section-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--muted);
-      margin-bottom: 4px;
-      font-weight: 600;
-    }
-
-    .filters-grid {
-      display: grid;
-      grid-template-columns: repeat(6, minmax(120px, 1fr));
-      gap: 8px;
-    }
-
-    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
-    select, button {
-      width: 100%;
-      padding: 7px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      font-size: 13px;
-      background: #fff;
-      color: var(--text);
-    }
-
-    button { cursor: pointer; }
-
-    .counter-grid {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(140px, 1fr));
-      gap: 8px;
-    }
-
-    .counter-card {
-      border: 1px solid var(--line-soft);
-      border-radius: 10px;
-      padding: 10px;
-      background: #fff;
-    }
-
-    .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; max-width: 1120px; margin: 28px auto; padding: 0 16px; line-height: 1.4; color: #1f2328; }
+    h1 { margin: 0 0 6px; font-size: 1.5rem; }
+    h2 { margin: 18px 0 8px; font-size: 1.1rem; }
+    .muted { color: #57606a; margin: 0 0 12px; font-size: 0.95rem; }
+    .grid { display: grid; grid-template-columns: repeat(5, minmax(140px, 1fr)); gap: 8px; }
+    .card { border: 1px solid #d0d7de; border-radius: 8px; padding: 10px; background: #fff; }
+    .k { color: #57606a; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
     .v { font-size: 20px; font-weight: 600; margin-top: 3px; }
-
-    .pair-list {
-      display: grid;
-      gap: 10px;
-    }
-
-    .pair-card {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 10px;
-      background: #fff;
-    }
-
-    .pair-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      align-items: baseline;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
-
-    .pair-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .pair-columns {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(240px, 1fr));
-      gap: 8px;
-    }
-
-    .run-col {
-      border: 1px solid var(--line-soft);
-      border-radius: 8px;
-      padding: 9px;
-      background: #fcfdff;
-    }
-
-    .run-role {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      color: var(--muted);
-      margin-bottom: 4px;
-      font-weight: 600;
-    }
-
-    .run-id-line { margin: 4px 0; }
-
-    .pill {
-      display: inline-block;
-      padding: 1px 8px;
-      border-radius: 999px;
-      font-size: 11px;
-      border: 1px solid var(--line);
-      color: var(--muted);
-      background: #fff;
-    }
-
-    .pill.pass {
-      border-color: #a2d6ac;
-      color: var(--pass-fg);
-      background: var(--pass-bg);
-    }
-
-    .pill.non-pass {
-      border-color: #f3b7bd;
-      color: var(--non-fg);
-      background: var(--non-bg);
-    }
-
-    .pair-deltas {
-      margin-top: 8px;
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .delta-chip {
-      border: 1px solid var(--line-soft);
-      border-radius: 999px;
-      padding: 2px 8px;
-      background: #fff;
-    }
-
-    table { width: 100%; border-collapse: collapse; font-size: 0.91rem; }
+    .filters { border: 1px solid #d0d7de; border-radius: 8px; padding: 10px; background: #f6f8fa; }
+    .filters-grid { display: grid; grid-template-columns: repeat(6, minmax(120px, 1fr)); gap: 8px; }
+    label { display: block; font-size: 12px; color: #57606a; margin-bottom: 2px; }
+    select, button { width: 100%; padding: 6px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 13px; background: #fff; }
+    button { cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
     th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #d8dee4; vertical-align: top; }
-    th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
-
-    .secondary {
-      background: #fbfcfe;
-      border-color: var(--line-soft);
-    }
-
-    .evidence-primary {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      font-size: 12px;
-    }
-
-    .evidence-more summary {
-      cursor: pointer;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 500;
-      list-style: none;
-    }
-    .evidence-more summary::-webkit-details-marker { display: none; }
-
-    .evidence-list {
-      margin-top: 4px;
-      font-size: 12px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-    }
-
-    .sr { position: absolute; left: -10000px; }
-
-    details.secondary-block {
-      margin-top: 14px;
-      border: 1px solid var(--line-soft);
-      border-radius: 10px;
-      padding: 8px 10px;
-      background: #fbfcfe;
-    }
-
+    th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #57606a; }
+    code { font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,monospace; font-size: 12px; }
+    a { color: #0969da; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; border: 1px solid #d0d7de; color: #57606a; }
+    details { margin-top: 16px; border: 1px solid #d0d7de; border-radius: 8px; padding: 8px 10px; }
     summary { cursor: pointer; font-weight: 600; }
-
+    .small { font-size: 12px; color: #57606a; }
     @media (max-width: 980px) {
-      .filters-grid, .counter-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
-      .pair-columns { grid-template-columns: 1fr; }
-      .ownership-strip { flex-direction: column; align-items: flex-start; }
-      .brand-links { justify-content: flex-start; }
+      .filters-grid, .grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
     }
   </style>
 </head>
 <body>
-  <main>
-    <header>
-      <div class="ownership-strip" aria-label="Ownership and contact">
-        <div class="brand-left">
-          <img src="../assets/StructuralDesignLabs_Logo.svg" alt="Structural Design Labs logo" />
-          <div>
-            <p class="brand-name">Structural Design Labs</p>
-            <p class="small">Ownership and publication surface</p>
-          </div>
-        </div>
-        <nav class="brand-links" aria-label="Structural Design Labs contact">
-          <a href="https://structuraldesignlabs.com" target="_blank" rel="noopener noreferrer">structuraldesignlabs.com</a>
-          <a href="mailto:info@structuraldesignlabs.com">info@structuraldesignlabs.com</a>
-          <a href="https://x.com/SDL_HQ" target="_blank" rel="noopener noreferrer">@SDL_HQ</a>
-        </nav>
-      </div>
+  <h1>Governance Gate — Benchmark Review</h1>
+  <p class="muted">
+    Single review surface derived from per-run archives and benchmark index. Default scope is post-2.0 baseline onward (from 2026-04-16 UTC).<br/>
+    Machine indexes: <a href="index.json"><code>runs/index.json</code></a> and <a href="benchmark_index.v1.json"><code>runs/benchmark_index.v1.json</code></a>.
+  </p>
 
-      <div class="panel headline">
-        <h1>Governance Gate — Benchmark Review</h1>
-        <p class="muted">
-          Pair-first benchmark surface derived from per-run archives and machine indexes. Default scope is post-2.0 baseline onward (from 2026-04-16 UTC).
-        </p>
-        <div class="machine-indexes">
-          Machine indexes:
-          <a href="index.json"><code>runs/index.json</code></a> ·
-          <a href="benchmark_index.v1.json"><code>runs/benchmark_index.v1.json</code></a> (row evidence) ·
-          <a href="benchmark_index.v2.json"><code>runs/benchmark_index.v2.json</code></a> (paired benchmark view)
-        </div>
+  <section class="filters" aria-label="Benchmark filters">
+    <div class="filters-grid">
+      <div>
+        <label for="f-model">Model</label>
+        <select id="f-model"><option value="">All</option></select>
       </div>
-    </header>
-
-    <section class="panel" aria-label="Benchmark filters">
-      <div class="section-label">Filters</div>
-      <div class="filters-grid">
-        <div>
-          <label for="f-model">Model</label>
-          <select id="f-model"><option value="">All</option></select>
-        </div>
-        <div>
-          <label for="f-pack">Pack</label>
-          <select id="f-pack"><option value="">All</option></select>
-        </div>
-        <div>
-          <label for="f-proof">Proof class</label>
-          <select id="f-proof"><option value="">All</option></select>
-        </div>
-        <div>
-          <label for="f-kind">Target kind</label>
-          <select id="f-kind"><option value="">All</option></select>
-        </div>
-        <div>
-          <label for="f-status">Result</label>
-          <select id="f-status">
-            <option value="">All</option>
-            <option value="AUDIT PASSED">AUDIT PASSED</option>
-            <option value="NON_PASS">Non-pass (FAIL/INCONCLUSIVE/other)</option>
-          </select>
-        </div>
-        <div>
-          <label for="f-scope">Scope</label>
-          <select id="f-scope">
-            <option value="post2">Post-2.0 only (default)</option>
-            <option value="all">Include legacy</option>
-          </select>
-        </div>
+      <div>
+        <label for="f-pack">Pack</label>
+        <select id="f-pack"><option value="">All</option></select>
       </div>
-      <div style="margin-top:8px; max-width: 180px;">
-        <button id="reset">Reset filters</button>
+      <div>
+        <label for="f-proof">Proof class</label>
+        <select id="f-proof"><option value="">All</option></select>
       </div>
-    </section>
-
-    <section class="panel" aria-label="Overview counters">
-      <div class="section-label">Overview</div>
-      <h2>Rows in current filter view</h2>
-      <div class="counter-grid" id="counters">
-        <div class="counter-card"><div class="k">Runs in view</div><div class="v" id="c-runs">—</div></div>
-        <div class="counter-card"><div class="k">Non-pass</div><div class="v" id="c-nonpass">—</div></div>
-        <div class="counter-card"><div class="k">Models</div><div class="v" id="c-models">—</div></div>
-        <div class="counter-card"><div class="k">Packs</div><div class="v" id="c-packs">—</div></div>
-        <div class="counter-card"><div class="k">Proof classes</div><div class="v" id="c-proofs">—</div></div>
+      <div>
+        <label for="f-kind">Target kind</label>
+        <select id="f-kind"><option value="">All</option></select>
       </div>
-    </section>
-
-    <section class="panel" aria-label="Paired benchmark interpretation">
-      <div class="section-label">Primary reading path</div>
-      <h2>Paired benchmark interpretation</h2>
-      <p class="small" style="margin-bottom:10px;">Compare each paired benchmark entry directly: Baseline (Ungated) vs Gated (SIR). This section is derived from <code>runs/benchmark_index.v2.json</code>.</p>
-      <div class="pair-list" id="pair-rows">
-        <div class="pair-card">Loading…</div>
+      <div>
+        <label for="f-status">Result</label>
+        <select id="f-status">
+          <option value="">All</option>
+          <option value="AUDIT PASSED">AUDIT PASSED</option>
+          <option value="NON_PASS">Non-pass (FAIL/INCONCLUSIVE/other)</option>
+        </select>
       </div>
-    </section>
+      <div>
+        <label for="f-scope">Scope</label>
+        <select id="f-scope">
+          <option value="post2">Post-2.0 only (default)</option>
+          <option value="all">Include legacy</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:8px; max-width: 180px;">
+      <button id="reset">Reset filters</button>
+    </div>
+  </section>
 
-    <section class="panel secondary" aria-label="Recent row evidence">
-      <div class="section-label">Secondary evidence surface</div>
-      <h2>Recent runs (row evidence)</h2>
-      <p class="small">Raw row-level evidence remains authoritative and one click away.</p>
-      <table>
-        <thead>
-          <tr>
-            <th>Timestamp</th>
-            <th>Pack</th>
-            <th>Proof class</th>
-            <th>Model</th>
-            <th>Result</th>
-            <th>Leaks</th>
-            <th>Run ID</th>
-            <th>Evidence</th>
-            <th>CI</th>
-          </tr>
-        </thead>
-        <tbody id="recent-rows">
-          <tr><td colspan="9">Loading…</td></tr>
-        </tbody>
-      </table>
-    </section>
+  <section aria-label="Overview counters">
+    <h2>Overview</h2>
+    <div class="grid" id="counters">
+      <div class="card"><div class="k">Runs in view</div><div class="v" id="c-runs">—</div></div>
+      <div class="card"><div class="k">Non-pass</div><div class="v" id="c-nonpass">—</div></div>
+      <div class="card"><div class="k">Models</div><div class="v" id="c-models">—</div></div>
+      <div class="card"><div class="k">Packs</div><div class="v" id="c-packs">—</div></div>
+      <div class="card"><div class="k">Proof classes</div><div class="v" id="c-proofs">—</div></div>
+    </div>
+  </section>
 
-    <details class="secondary-block">
-      <summary>Secondary grouped/pattern view (by row_identity)</summary>
-      <p class="small" style="margin:6px 0 8px;">Grouped output is derived from the same row entries; no added semantics.</p>
-      <table>
-        <thead>
-          <tr>
-            <th>row_identity</th>
-            <th>Runs</th>
-            <th>Latest</th>
-            <th>Sequence (new → old)</th>
-            <th>Latest run</th>
-          </tr>
-        </thead>
-        <tbody id="pattern-rows">
-          <tr><td colspan="5">Loading…</td></tr>
-        </tbody>
-      </table>
-    </details>
-  </main>
+  <section aria-label="Recent runs">
+    <h2>Recent runs</h2>
+    <p class="small">Primary reading path: filter, scan counters, review recent rows, then drill into archived per-run evidence.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Pack</th>
+          <th>Proof class</th>
+          <th>Model</th>
+          <th>Result</th>
+          <th>Leaks</th>
+          <th>Run ID</th>
+          <th>Evidence</th>
+          <th>CI</th>
+        </tr>
+      </thead>
+      <tbody id="recent-rows">
+        <tr><td colspan="9">Loading…</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <details>
+    <summary>Secondary grouped/pattern view (by row_identity)</summary>
+    <p class="small">Use this only after recent-run review. Grouped output is derived from the same rows; no extra semantics.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>row_identity</th>
+          <th>Runs</th>
+          <th>Latest</th>
+          <th>Sequence (new → old)</th>
+          <th>Latest run</th>
+        </tr>
+      </thead>
+      <tbody id="pattern-rows">
+        <tr><td colspan="5">Loading…</td></tr>
+      </tbody>
+    </table>
+  </details>
 
   <script>
     const POST2_CUTOFF_UTC = "2026-04-16T00:00:00Z";
     const FILTER_IDS = ["f-model", "f-pack", "f-proof", "f-kind", "f-status", "f-scope"];
 
     let allEntries = [];
-    let pairedRows = [];
-    const entriesByRunId = new Map();
 
     function esc(s) {
       return (s ?? "").toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -459,12 +153,6 @@
       return (result || "").toUpperCase() === "AUDIT PASSED";
     }
 
-    function resultPill(result) {
-      const text = esc(result || "—");
-      const cls = isPass(result) ? "pass" : "non-pass";
-      return `<span class="pill ${cls}">${text}</span>`;
-    }
-
     function optionize(id, values) {
       const el = document.getElementById(id);
       const current = el.value;
@@ -477,24 +165,15 @@
       if ([...el.options].some(o => o.value === current)) el.value = current;
     }
 
-    function truncateRunId(runId) {
-      const value = (runId || "").toString();
-      if (!value) return "—";
-      if (value.length <= 26) return value;
-      return `${value.slice(0, 12)}…${value.slice(-10)}`;
-    }
-
-    function runLink(runId) {
-      const full = esc(runId || "");
-      const display = esc(truncateRunId(runId));
-      return `<a href="../runs/${full}/manifest.json" title="${full}"><code>${display}</code></a>`;
-    }
-
-    function evidenceLinks(entry) {
+    function firstEvidenceLink(entry) {
       const ev = entry?.evidence || {};
-      const primary = ev.audit || ev.manifest || ev.archive_receipt || ev.run_summary || null;
-      const primaryLabel = ev.audit ? "audit" : ev.manifest ? "manifest" : ev.archive_receipt ? "receipt" : ev.run_summary ? "summary" : "evidence";
-      const allItems = [
+      const first = ev.audit || ev.manifest || ev.archive_receipt;
+      return first ? `<a href="../${esc(first)}">archived</a>` : "—";
+    }
+
+    function fullEvidenceLinks(entry) {
+      const ev = entry?.evidence || {};
+      const items = [
         ["audit", ev.audit],
         ["manifest", ev.manifest],
         ["receipt", ev.archive_receipt],
@@ -502,26 +181,11 @@
         ["ledger", ev.itgl_ledger],
         ["hash", ev.itgl_final_hash],
         ["attempts", ev.attempt_log],
-      ].filter(([, p]) => !!p);
-
-      if (!allItems.length) return "—";
-
-      const moreItems = allItems.filter(([, p]) => p !== primary);
-      const primaryHtml = `<span class="evidence-primary"><a href="../${esc(primary)}">${esc(primaryLabel)}</a>`
-        + (moreItems.length ? `<details class="evidence-more"><summary>more</summary><div class="evidence-list">${moreItems.map(([k, p]) => `<a href="../${esc(p)}">${esc(k)}</a>`).join(" · ")}</div></details>` : "")
-        + "</span>";
-      return primaryHtml;
-    }
-
-    function rowMatchesFilters(e, f) {
-      if (f.scope === "post2" && !isPost2(e.run_timestamp_utc)) return false;
-      if (f.model && (e.model || "") !== f.model) return false;
-      if (f.pack && ((e.evaluation_target?.pack_id) || "") !== f.pack) return false;
-      if (f.proof && (e.proof_class || "") !== f.proof) return false;
-      if (f.kind && ((e.evaluation_target?.target_kind) || "") !== f.kind) return false;
-      if (f.status === "AUDIT PASSED" && !isPass(e.result)) return false;
-      if (f.status === "NON_PASS" && isPass(e.result)) return false;
-      return true;
+      ];
+      const links = items
+        .filter(([, p]) => !!p)
+        .map(([k, p]) => `<a href="../${esc(p)}">${k}</a>`);
+      return links.length ? links.join(" · ") : "—";
     }
 
     function readFilters() {
@@ -537,22 +201,14 @@
 
     function filteredEntries() {
       const f = readFilters();
-      return allEntries.filter(e => rowMatchesFilters(e, f));
-    }
-
-    function filteredPairs() {
-      const f = readFilters();
-      return pairedRows.filter(p => {
-        const base = entriesByRunId.get(p.baseline_run_id) || null;
-        const gated = entriesByRunId.get(p.gated_run_id) || null;
-        if (!base || !gated) return false;
-        if (f.scope === "post2" && (!isPost2(base.run_timestamp_utc) || !isPost2(gated.run_timestamp_utc))) return false;
-        if (f.model && (gated.model || base.model || "") !== f.model) return false;
-        if (f.pack && ((gated.evaluation_target?.pack_id) || (base.evaluation_target?.pack_id) || "") !== f.pack) return false;
-        if (f.proof && ((gated.proof_class) || (base.proof_class) || "") !== f.proof) return false;
-        if (f.kind && ((gated.evaluation_target?.target_kind) || (base.evaluation_target?.target_kind) || "") !== f.kind) return false;
-        if (f.status === "AUDIT PASSED" && !isPass(gated.result)) return false;
-        if (f.status === "NON_PASS" && isPass(gated.result)) return false;
+      return allEntries.filter(e => {
+        if (f.scope === "post2" && !isPost2(e.run_timestamp_utc)) return false;
+        if (f.model && (e.model || "") !== f.model) return false;
+        if (f.pack && ((e.evaluation_target?.pack_id) || "") !== f.pack) return false;
+        if (f.proof && (e.proof_class || "") !== f.proof) return false;
+        if (f.kind && ((e.evaluation_target?.target_kind) || "") !== f.kind) return false;
+        if (f.status === "AUDIT PASSED" && !isPass(e.result)) return false;
+        if (f.status === "NON_PASS" && isPass(e.result)) return false;
         return true;
       });
     }
@@ -575,65 +231,6 @@
       document.getElementById("c-proofs").textContent = String(proofs.size);
     }
 
-    function renderPairs(rows) {
-      const target = document.getElementById("pair-rows");
-      if (!rows.length) {
-        target.innerHTML = '<div class="pair-card">No paired benchmark rows match current filters.</div>';
-        return;
-      }
-
-      target.innerHTML = rows.map(p => {
-        const base = entriesByRunId.get(p.baseline_run_id) || {};
-        const gated = entriesByRunId.get(p.gated_run_id) || {};
-
-        const pairState = esc(p.pair_status || "unknown");
-        const model = esc(gated.model || base.model || p.required_dimensions?.model || "—");
-        const pack = esc(gated.evaluation_target?.pack_id || base.evaluation_target?.pack_id || p.required_dimensions?.pack_id || "—");
-        const reason = p.non_comparable_reason ? `<span class="small">non-comparable: ${esc(p.non_comparable_reason)}</span>` : "";
-
-        const deltas = [];
-        if (p?.deltas && typeof p.deltas === "object") {
-          if (Number.isFinite(p.deltas.leaks_delta)) deltas.push(`<span class="delta-chip">Δ leaks: ${esc(String(p.deltas.leaks_delta))}</span>`);
-          if (Number.isFinite(p.deltas.provider_call_attempts_delta)) deltas.push(`<span class="delta-chip">Δ provider calls: ${esc(String(p.deltas.provider_call_attempts_delta))}</span>`);
-          if (Number.isFinite(p.deltas.harmless_blocked_delta)) deltas.push(`<span class="delta-chip">Δ harmless blocked: ${esc(String(p.deltas.harmless_blocked_delta))}</span>`);
-        }
-
-        return `<article class="pair-card">
-          <div class="pair-top">
-            <div>
-              <h3>Pair <code title="${esc(p.pair_id || "")}">${esc(truncateRunId(p.pair_id || "pair"))}</code></h3>
-              <div class="pair-meta">
-                <span>model: <code>${model}</code></span>
-                <span>pack: <code>${pack}</code></span>
-                <span>status: <code>${pairState}</code></span>
-              </div>
-            </div>
-            ${reason}
-          </div>
-
-          <div class="pair-columns">
-            <section class="run-col">
-              <div class="run-role">Baseline (Ungated)</div>
-              <div>${resultPill(base.result)}</div>
-              <div class="run-id-line">Run: ${runLink(base.run_id)}</div>
-              <div class="small">${esc(base.run_timestamp_utc || "—")}</div>
-              <div style="margin-top:6px;">${evidenceLinks(base)}</div>
-            </section>
-
-            <section class="run-col">
-              <div class="run-role">Gated (SIR)</div>
-              <div>${resultPill(gated.result)}</div>
-              <div class="run-id-line">Run: ${runLink(gated.run_id)}</div>
-              <div class="small">${esc(gated.run_timestamp_utc || "—")}</div>
-              <div style="margin-top:6px;">${evidenceLinks(gated)}</div>
-            </section>
-          </div>
-
-          ${deltas.length ? `<div class="pair-deltas">${deltas.join("")}</div>` : ""}
-        </article>`;
-      }).join("");
-    }
-
     function renderRecent(rows) {
       const target = document.getElementById("recent-rows");
       if (!rows.length) {
@@ -641,22 +238,25 @@
         return;
       }
       target.innerHTML = rows.map(r => {
+        const run = esc(r.run_id || "");
         const pack = esc(r.evaluation_target?.pack_id || "—");
         const proof = esc(r.proof_class || "—");
         const model = esc(r.model || "—");
+        const result = esc(r.result || "—");
         const ts = esc(r.run_timestamp_utc || "—");
         const leaks = esc(r.comparison?.leaks ?? "—");
         const ciUrl = esc(r.ci_run_url || "");
         const ci = ciUrl ? `<a href="${ciUrl}">CI</a>` : "—";
+        const runLink = `<a href="../runs/${run}/manifest.json"><code>${run}</code></a>`;
         return `<tr>
           <td><code>${ts}</code></td>
           <td><code>${pack}</code></td>
           <td><code>${proof}</code></td>
           <td><code>${model}</code></td>
-          <td>${resultPill(r.result)}</td>
+          <td><span class="pill">${result}</span></td>
           <td>${leaks}</td>
-          <td>${runLink(r.run_id)}</td>
-          <td>${evidenceLinks(r)}</td>
+          <td>${runLink}</td>
+          <td>${fullEvidenceLinks(r)}</td>
           <td>${ci}</td>
         </tr>`;
       }).join("");
@@ -679,12 +279,14 @@
       target.innerHTML = sorted.map(([key, group]) => {
         const latest = group[0] || {};
         const seq = group.slice(0, 6).map(g => isPass(g.result) ? "PASS" : "NON_PASS").join(" → ");
+        const runId = esc(latest.run_id || "");
+        const runLink = `<a href="../runs/${runId}/manifest.json"><code>${runId}</code></a>`;
         return `<tr>
           <td><code>${esc(key)}</code></td>
           <td>${group.length}</td>
-          <td>${resultPill(latest.result)}</td>
+          <td><span class="pill">${esc(latest.result || "—")}</span></td>
           <td><code>${esc(seq)}</code></td>
-          <td>${runLink(latest.run_id)} · ${evidenceLinks(latest)}</td>
+          <td>${runLink} · ${firstEvidenceLink(latest)}</td>
         </tr>`;
       }).join("");
     }
@@ -692,7 +294,6 @@
     function apply() {
       const rows = filteredEntries();
       renderCounters(rows);
-      renderPairs(filteredPairs());
       renderRecent(rows);
       renderPatterns(rows);
     }
@@ -714,25 +315,12 @@
 
     async function load() {
       const targetRecent = document.getElementById("recent-rows");
-      const targetPairs = document.getElementById("pair-rows");
       try {
-        const [v1Response, v2Response] = await Promise.all([
-          fetch("./benchmark_index.v1.json", { cache: "no-store" }),
-          fetch("./benchmark_index.v2.json", { cache: "no-store" }),
-        ]);
-
-        if (!v1Response.ok) throw new Error(`v1 HTTP ${v1Response.status}`);
-        if (!v2Response.ok) throw new Error(`v2 HTTP ${v2Response.status}`);
-
-        const v1Payload = await v1Response.json();
-        const v2Payload = await v2Response.json();
-
-        const entries = Array.isArray(v1Payload?.entries) ? v1Payload.entries : [];
+        const response = await fetch("./benchmark_index.v1.json", { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+        const entries = Array.isArray(payload?.entries) ? payload.entries : [];
         allEntries = entries;
-        entriesByRunId.clear();
-        entries.forEach(e => entriesByRunId.set(e.run_id, e));
-
-        pairedRows = Array.isArray(v2Payload?.pairs) ? v2Payload.pairs : [];
 
         optionize("f-model", new Set(entries.map(e => e.model).filter(Boolean)));
         optionize("f-pack", new Set(entries.map(e => e?.evaluation_target?.pack_id).filter(Boolean)));
@@ -746,7 +334,6 @@
         const reason = esc(e?.message || "unknown error");
         targetRecent.innerHTML = `<tr><td colspan="9">Failed to load benchmark index (${reason}).</td></tr>`;
         document.getElementById("pattern-rows").innerHTML = `<tr><td colspan="5">Failed to load benchmark index (${reason}).</td></tr>`;
-        targetPairs.innerHTML = `<div class="pair-card">Failed to load paired benchmark index (${reason}).</div>`;
       }
     }
 
