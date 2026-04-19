@@ -351,7 +351,7 @@
           <select id="f-kind"><option value="">All</option></select>
         </div>
         <div>
-          <label for="f-status">Result</label>
+          <label for="f-status">Gated result</label>
           <select id="f-status">
             <option value="">All</option>
             <option value="AUDIT PASSED">AUDIT PASSED</option>
@@ -387,6 +387,7 @@
       <div class="section-label">Primary reading path</div>
       <h2>Paired benchmark interpretation</h2>
       <p class="small" style="margin-bottom:10px;">Compare each paired benchmark entry directly: Baseline (Ungated) vs Gated (SIR). This section is derived from <code>runs/benchmark_index.v2.json</code>.</p>
+      <p class="small" id="pair-baseline-definition" style="margin-bottom:10px;">Baseline definition: —</p>
       <div class="pair-list" id="pair-rows">
         <div class="pair-card">Loading…</div>
       </div>
@@ -463,6 +464,12 @@
       const text = esc(result || "—");
       const cls = isPass(result) ? "pass" : "non-pass";
       return `<span class="pill ${cls}">${text}</span>`;
+    }
+
+    function pairStatusLabel(status) {
+      const normalized = (status || "").toLowerCase();
+      if (normalized === "valid_complete") return "comparable";
+      return status || "unknown";
     }
 
     function optionize(id, values) {
@@ -586,10 +593,16 @@
         const base = entriesByRunId.get(p.baseline_run_id) || {};
         const gated = entriesByRunId.get(p.gated_run_id) || {};
 
-        const pairState = esc(p.pair_status || "unknown");
+        const pairStateRaw = p.pair_status || "unknown";
+        const pairStateLabel = esc(pairStatusLabel(pairStateRaw));
+        const pairStateTitle = esc(pairStateRaw);
         const model = esc(gated.model || base.model || p.required_dimensions?.model || "—");
         const pack = esc(gated.evaluation_target?.pack_id || base.evaluation_target?.pack_id || p.required_dimensions?.pack_id || "—");
         const reason = p.non_comparable_reason ? `<span class="small">non-comparable: ${esc(p.non_comparable_reason)}</span>` : "";
+        const baseResult = base.result || "—";
+        const gatedResult = gated.result || "—";
+        const leaksDelta = Number.isFinite(p?.deltas?.leaks_delta) ? ` · Δ leaks ${esc(String(p.deltas.leaks_delta))}` : "";
+        const pairOutcomeLine = `${esc(baseResult)} → ${esc(gatedResult)}${leaksDelta}`;
 
         const deltas = [];
         if (p?.deltas && typeof p.deltas === "object") {
@@ -605,8 +618,9 @@
               <div class="pair-meta">
                 <span>model: <code>${model}</code></span>
                 <span>pack: <code>${pack}</code></span>
-                <span>status: <code>${pairState}</code></span>
+                <span>status: <code title="${pairStateTitle}">${pairStateLabel}</code></span>
               </div>
+              <p class="small" style="margin-top:6px;">Outcome: <code>${pairOutcomeLine}</code></p>
             </div>
             ${reason}
           </div>
@@ -733,6 +747,9 @@
         entries.forEach(e => entriesByRunId.set(e.run_id, e));
 
         pairedRows = Array.isArray(v2Payload?.pairs) ? v2Payload.pairs : [];
+        const baselineDefinition = pairedRows.find(p => p && p.baseline_definition)?.baseline_definition
+          || "same prompt set evaluated without SIR pre-inference gate intervention";
+        document.getElementById("pair-baseline-definition").textContent = `Baseline definition: ${baselineDefinition}`;
 
         optionize("f-model", new Set(entries.map(e => e.model).filter(Boolean)));
         optionize("f-pack", new Set(entries.map(e => e?.evaluation_target?.pack_id).filter(Boolean)));
