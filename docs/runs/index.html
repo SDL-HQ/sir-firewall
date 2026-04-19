@@ -351,7 +351,7 @@
           <select id="f-kind"><option value="">All</option></select>
         </div>
         <div>
-          <label for="f-status">Gated result</label>
+          <label for="f-status">Gated run result</label>
           <select id="f-status">
             <option value="">All</option>
             <option value="AUDIT PASSED">AUDIT PASSED</option>
@@ -387,6 +387,7 @@
       <div class="section-label">Primary reading path</div>
       <h2>Paired benchmark interpretation</h2>
       <p class="small" style="margin-bottom:10px;">Compare each paired benchmark entry directly: Baseline (Ungated) vs Gated (SIR). This section is derived from <code>runs/benchmark_index.v2.json</code>.</p>
+      <p class="small" style="margin-bottom:10px;">Status = pair comparability; outcome = baseline result → gated result; evidence links = direct run artifacts.</p>
       <p class="small" id="pair-baseline-definition" style="margin-bottom:10px;">Baseline definition: —</p>
       <div class="pair-list" id="pair-rows">
         <div class="pair-card">Loading…</div>
@@ -419,7 +420,7 @@
     </section>
 
     <details class="secondary-block">
-      <summary>Secondary grouped/pattern view (by row_identity)</summary>
+      <summary>Secondary grouped/pattern view (by row_identity, same row key)</summary>
       <p class="small" style="margin:6px 0 8px;">Grouped output is derived from the same row entries; no added semantics.</p>
       <table>
         <thead>
@@ -543,7 +544,7 @@
 
       const moreItems = allItems.filter(([, p]) => p !== primary);
       const primaryHtml = `<span class="evidence-primary"><a href="../${esc(primary)}">${esc(primaryLabel)}</a>`
-        + (moreItems.length ? `<details class="evidence-more"><summary>more</summary><div class="evidence-list">${moreItems.map(([k, p]) => `<a href="../${esc(p)}">${esc(k)}</a>`).join(" · ")}</div></details>` : "")
+        + (moreItems.length ? `<details class="evidence-more"><summary>more evidence</summary><div class="evidence-list">${moreItems.map(([k, p]) => `<a href="../${esc(p)}">${esc(k)}</a>`).join(" · ")}</div></details>` : "")
         + "</span>";
       return primaryHtml;
     }
