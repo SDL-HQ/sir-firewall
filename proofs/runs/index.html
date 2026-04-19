@@ -8,16 +8,21 @@
     :root {
       --bg: #f6f8fb;
       --card: #ffffff;
+      --card-subtle: #fbfcfe;
       --text: #1f2328;
       --muted: #59636e;
       --line: #d0d7de;
       --line-soft: #e6ebf1;
+      --line-strong: #c1c9d2;
       --pass-bg: #dafbe1;
       --pass-fg: #116329;
       --non-bg: #ffebe9;
       --non-fg: #cf222e;
       --brand-bg: #f3f6f9;
+      --primary-bg: #f8fbff;
+      --primary-line: #c8d7ea;
       --link: #0969da;
+      --focus-ring: #1f6feb;
     }
 
     * { box-sizing: border-box; }
@@ -31,7 +36,7 @@
 
     main {
       max-width: 1120px;
-      margin: 24px auto 40px;
+      margin: 20px auto 40px;
       padding: 0 16px;
     }
 
@@ -44,7 +49,7 @@
     .small { font-size: 12px; color: var(--muted); }
     .muted { color: var(--muted); }
 
-    a { color: var(--link); text-decoration: none; }
+    a { color: var(--link); text-decoration: none; text-underline-offset: 2px; }
     a:hover { text-decoration: underline; }
 
     code {
@@ -56,8 +61,8 @@
       border: 1px solid var(--line);
       border-radius: 12px;
       background: var(--card);
-      padding: 14px;
-      margin-top: 14px;
+      padding: 15px;
+      margin-top: 12px;
     }
 
     .ownership-strip {
@@ -96,8 +101,13 @@
       justify-content: flex-end;
     }
 
-    .headline {
-      margin-bottom: 10px;
+    .headline { margin-bottom: 8px; }
+
+    .primary-panel {
+      background: var(--primary-bg);
+      border-color: var(--primary-line);
+      margin-top: 14px;
+      margin-bottom: 2px;
     }
 
     .machine-indexes {
@@ -115,7 +125,7 @@
       text-transform: uppercase;
       letter-spacing: 0.06em;
       color: var(--muted);
-      margin-bottom: 4px;
+      margin-bottom: 6px;
       font-weight: 600;
     }
 
@@ -136,7 +146,22 @@
       color: var(--text);
     }
 
-    button { cursor: pointer; }
+    button {
+      cursor: pointer;
+      background: var(--card-subtle);
+      border-color: var(--line-strong);
+      font-weight: 500;
+    }
+    button:hover { background: #fff; }
+
+    a:focus-visible,
+    button:focus-visible,
+    select:focus-visible,
+    summary:focus-visible {
+      outline: 2px solid var(--focus-ring);
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
 
     .counter-grid {
       display: grid;
@@ -148,7 +173,7 @@
       border: 1px solid var(--line-soft);
       border-radius: 10px;
       padding: 10px;
-      background: #fff;
+      background: var(--card-subtle);
     }
 
     .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
@@ -160,7 +185,7 @@
     }
 
     .pair-card {
-      border: 1px solid var(--line);
+      border: 1px solid var(--line-strong);
       border-radius: 10px;
       padding: 10px;
       background: #fff;
@@ -193,7 +218,7 @@
       border: 1px solid var(--line-soft);
       border-radius: 8px;
       padding: 9px;
-      background: #fcfdff;
+      background: var(--card-subtle);
     }
 
     .run-role {
@@ -250,9 +275,14 @@
     th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 
     .secondary {
-      background: #fbfcfe;
+      background: var(--card-subtle);
       border-color: var(--line-soft);
     }
+
+    .pair-note { margin-bottom: 8px; }
+    .reset-wrap { margin-top: 10px; max-width: 180px; }
+    .meta-link { color: var(--muted); text-decoration: underline; text-decoration-color: transparent; }
+    .meta-link:hover { text-decoration-color: currentColor; }
 
     .evidence-primary {
       display: inline-flex;
@@ -269,6 +299,11 @@
       font-weight: 500;
       list-style: none;
     }
+
+    .evidence-primary a,
+    .evidence-more a { color: var(--muted); text-decoration: underline; text-decoration-color: transparent; }
+    .evidence-primary a:hover,
+    .evidence-more a:hover { text-decoration-color: currentColor; }
     .evidence-more summary::-webkit-details-marker { display: none; }
 
     .evidence-list {
@@ -286,16 +321,22 @@
       border: 1px solid var(--line-soft);
       border-radius: 10px;
       padding: 8px 10px;
-      background: #fbfcfe;
+      background: var(--card-subtle);
     }
 
     summary { cursor: pointer; font-weight: 600; }
+    .table-wrap { overflow-x: auto; margin-top: 8px; }
 
     @media (max-width: 980px) {
       .filters-grid, .counter-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
       .pair-columns { grid-template-columns: 1fr; }
       .ownership-strip { flex-direction: column; align-items: flex-start; }
       .brand-links { justify-content: flex-start; }
+    }
+
+    @media (max-width: 700px) {
+      table { font-size: 0.84rem; }
+      th, td { padding: 6px 5px; }
     }
   </style>
 </head>
@@ -311,9 +352,9 @@
           </div>
         </div>
         <nav class="brand-links" aria-label="Structural Design Labs contact">
-          <a href="https://structuraldesignlabs.com" target="_blank" rel="noopener noreferrer">structuraldesignlabs.com</a>
-          <a href="mailto:info@structuraldesignlabs.com">info@structuraldesignlabs.com</a>
-          <a href="https://x.com/SDL_HQ" target="_blank" rel="noopener noreferrer">@SDL_HQ</a>
+          <a class="meta-link" href="https://structuraldesignlabs.com" target="_blank" rel="noopener noreferrer">structuraldesignlabs.com</a>
+          <a class="meta-link" href="mailto:info@structuraldesignlabs.com">info@structuraldesignlabs.com</a>
+          <a class="meta-link" href="https://x.com/SDL_HQ" target="_blank" rel="noopener noreferrer">@SDL_HQ</a>
         </nav>
       </div>
 
@@ -351,7 +392,7 @@
           <select id="f-kind"><option value="">All</option></select>
         </div>
         <div>
-          <label for="f-status">Result</label>
+          <label for="f-status">Gated run result</label>
           <select id="f-status">
             <option value="">All</option>
             <option value="AUDIT PASSED">AUDIT PASSED</option>
@@ -366,7 +407,7 @@
           </select>
         </div>
       </div>
-      <div style="margin-top:8px; max-width: 180px;">
+      <div class="reset-wrap">
         <button id="reset">Reset filters</button>
       </div>
     </section>
@@ -383,10 +424,12 @@
       </div>
     </section>
 
-    <section class="panel" aria-label="Paired benchmark interpretation">
+    <section class="panel primary-panel" aria-label="Paired benchmark interpretation">
       <div class="section-label">Primary reading path</div>
       <h2>Paired benchmark interpretation</h2>
-      <p class="small" style="margin-bottom:10px;">Compare each paired benchmark entry directly: Baseline (Ungated) vs Gated (SIR). This section is derived from <code>runs/benchmark_index.v2.json</code>.</p>
+      <p class="small pair-note">Compare each paired benchmark entry directly: Baseline (Ungated) vs Gated (SIR). This section is derived from <code>runs/benchmark_index.v2.json</code>.</p>
+      <p class="small pair-note">Status = pair comparability; outcome = baseline result → gated result; evidence links = direct run artifacts.</p>
+      <p class="small pair-note" id="pair-baseline-definition">Baseline definition: —</p>
       <div class="pair-list" id="pair-rows">
         <div class="pair-card">Loading…</div>
       </div>
@@ -396,43 +439,48 @@
       <div class="section-label">Secondary evidence surface</div>
       <h2>Recent runs (row evidence)</h2>
       <p class="small">Raw row-level evidence remains authoritative and one click away.</p>
-      <table>
-        <thead>
-          <tr>
-            <th>Timestamp</th>
-            <th>Pack</th>
-            <th>Proof class</th>
-            <th>Model</th>
-            <th>Result</th>
-            <th>Leaks</th>
-            <th>Run ID</th>
-            <th>Evidence</th>
-            <th>CI</th>
-          </tr>
-        </thead>
-        <tbody id="recent-rows">
-          <tr><td colspan="9">Loading…</td></tr>
-        </tbody>
-      </table>
+      <p class="small">For benchmark interpretation, use paired view first. Row table is raw evidence.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Pack</th>
+              <th>Proof class</th>
+              <th>Model</th>
+              <th>Result</th>
+              <th>Leaks</th>
+              <th>Run ID</th>
+              <th>Evidence</th>
+              <th>CI</th>
+            </tr>
+          </thead>
+          <tbody id="recent-rows">
+            <tr><td colspan="9">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <details class="secondary-block">
-      <summary>Secondary grouped/pattern view (by row_identity)</summary>
-      <p class="small" style="margin:6px 0 8px;">Grouped output is derived from the same row entries; no added semantics.</p>
-      <table>
-        <thead>
-          <tr>
-            <th>row_identity</th>
-            <th>Runs</th>
-            <th>Latest</th>
-            <th>Sequence (new → old)</th>
-            <th>Latest run</th>
-          </tr>
-        </thead>
-        <tbody id="pattern-rows">
-          <tr><td colspan="5">Loading…</td></tr>
-        </tbody>
-      </table>
+      <summary>Secondary grouped/pattern view (by row_identity, same row key)</summary>
+      <p class="small pair-note">Grouped output is derived from the same row entries; no added semantics.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>row_identity</th>
+              <th>Runs</th>
+              <th>Latest</th>
+              <th>Sequence (new → old)</th>
+              <th>Latest run</th>
+            </tr>
+          </thead>
+          <tbody id="pattern-rows">
+            <tr><td colspan="5">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
     </details>
   </main>
 
@@ -443,6 +491,7 @@
     let allEntries = [];
     let pairedRows = [];
     const entriesByRunId = new Map();
+    const rowContextByRunId = new Map();
 
     function esc(s) {
       return (s ?? "").toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -463,6 +512,12 @@
       const text = esc(result || "—");
       const cls = isPass(result) ? "pass" : "non-pass";
       return `<span class="pill ${cls}">${text}</span>`;
+    }
+
+    function pairStatusLabel(status) {
+      const normalized = (status || "").toLowerCase();
+      if (normalized === "valid_complete") return "comparable";
+      return status || "unknown";
     }
 
     function optionize(id, values) {
@@ -490,6 +545,32 @@
       return `<a href="../runs/${full}/manifest.json" title="${full}"><code>${display}</code></a>`;
     }
 
+    function buildRowContextMap(pairs) {
+      rowContextByRunId.clear();
+      (pairs || []).forEach(p => {
+        if (p?.baseline_run_id) {
+          rowContextByRunId.set(p.baseline_run_id, {
+            benchmark_role: "baseline",
+            gate_mode: "ungated",
+          });
+        }
+        if (p?.gated_run_id) {
+          rowContextByRunId.set(p.gated_run_id, {
+            benchmark_role: "gated",
+            gate_mode: "sir_gated",
+          });
+        }
+      });
+    }
+
+    function rowContextLabel(entry) {
+      const runId = entry?.run_id || "";
+      const context = rowContextByRunId.get(runId);
+      if (context?.benchmark_role === "baseline") return "benchmark context: baseline (ungated reference)";
+      if (context?.benchmark_role === "gated") return "benchmark context: gated (SIR)";
+      return "benchmark context: unpaired row evidence";
+    }
+
     function evidenceLinks(entry) {
       const ev = entry?.evidence || {};
       const primary = ev.audit || ev.manifest || ev.archive_receipt || ev.run_summary || null;
@@ -508,7 +589,7 @@
 
       const moreItems = allItems.filter(([, p]) => p !== primary);
       const primaryHtml = `<span class="evidence-primary"><a href="../${esc(primary)}">${esc(primaryLabel)}</a>`
-        + (moreItems.length ? `<details class="evidence-more"><summary>more</summary><div class="evidence-list">${moreItems.map(([k, p]) => `<a href="../${esc(p)}">${esc(k)}</a>`).join(" · ")}</div></details>` : "")
+        + (moreItems.length ? `<details class="evidence-more"><summary>more evidence</summary><div class="evidence-list">${moreItems.map(([k, p]) => `<a href="../${esc(p)}">${esc(k)}</a>`).join(" · ")}</div></details>` : "")
         + "</span>";
       return primaryHtml;
     }
@@ -586,10 +667,16 @@
         const base = entriesByRunId.get(p.baseline_run_id) || {};
         const gated = entriesByRunId.get(p.gated_run_id) || {};
 
-        const pairState = esc(p.pair_status || "unknown");
+        const pairStateRaw = p.pair_status || "unknown";
+        const pairStateLabel = esc(pairStatusLabel(pairStateRaw));
+        const pairStateTitle = esc(pairStateRaw);
         const model = esc(gated.model || base.model || p.required_dimensions?.model || "—");
         const pack = esc(gated.evaluation_target?.pack_id || base.evaluation_target?.pack_id || p.required_dimensions?.pack_id || "—");
         const reason = p.non_comparable_reason ? `<span class="small">non-comparable: ${esc(p.non_comparable_reason)}</span>` : "";
+        const baseResult = base.result || "—";
+        const gatedResult = gated.result || "—";
+        const leaksDelta = Number.isFinite(p?.deltas?.leaks_delta) ? ` · Δ leaks ${esc(String(p.deltas.leaks_delta))}` : "";
+        const pairOutcomeLine = `${esc(baseResult)} → ${esc(gatedResult)}${leaksDelta}`;
 
         const deltas = [];
         if (p?.deltas && typeof p.deltas === "object") {
@@ -605,8 +692,9 @@
               <div class="pair-meta">
                 <span>model: <code>${model}</code></span>
                 <span>pack: <code>${pack}</code></span>
-                <span>status: <code>${pairState}</code></span>
+                <span>status: <code title="${pairStateTitle}">${pairStateLabel}</code></span>
               </div>
+              <p class="small" style="margin-top:6px;">Outcome: <code>${pairOutcomeLine}</code></p>
             </div>
             ${reason}
           </div>
@@ -643,6 +731,7 @@
       target.innerHTML = rows.map(r => {
         const pack = esc(r.evaluation_target?.pack_id || "—");
         const proof = esc(r.proof_class || "—");
+        const context = esc(rowContextLabel(r));
         const model = esc(r.model || "—");
         const ts = esc(r.run_timestamp_utc || "—");
         const leaks = esc(r.comparison?.leaks ?? "—");
@@ -651,7 +740,7 @@
         return `<tr>
           <td><code>${ts}</code></td>
           <td><code>${pack}</code></td>
-          <td><code>${proof}</code></td>
+          <td><code>${proof}</code><div class="small">${context}</div></td>
           <td><code>${model}</code></td>
           <td>${resultPill(r.result)}</td>
           <td>${leaks}</td>
@@ -733,6 +822,10 @@
         entries.forEach(e => entriesByRunId.set(e.run_id, e));
 
         pairedRows = Array.isArray(v2Payload?.pairs) ? v2Payload.pairs : [];
+        buildRowContextMap(pairedRows);
+        const baselineDefinition = pairedRows.find(p => p && p.baseline_definition)?.baseline_definition
+          || "same prompt set evaluated without SIR pre-inference gate intervention";
+        document.getElementById("pair-baseline-definition").textContent = `Baseline definition: ${baselineDefinition}`;
 
         optionize("f-model", new Set(entries.map(e => e.model).filter(Boolean)));
         optionize("f-pack", new Set(entries.map(e => e?.evaluation_target?.pack_id).filter(Boolean)));
