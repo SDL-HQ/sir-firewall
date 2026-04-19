@@ -8,6 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from sir_firewall.model_selection import DEFAULT_MODEL, DEFAULT_PROVIDER, validate_execution_selection
+
 
 ROOT = Path(__file__).resolve().parents[2]
 PACK_REGISTRY = ROOT / "spec" / "packs" / "pack_registry.v1.json"
@@ -30,20 +32,20 @@ def _cmd_run(ns: argparse.Namespace) -> int:
     if ns.mode not in {"audit", "live", "scenario"}:
         raise SystemExit(f"ERROR: unsupported --mode {ns.mode}")
 
-    if ns.mode == "live":
-        if not os.getenv("XAI_API_KEY", "").strip():
-            print(
-                "ERROR: LIVE mode requires your own provider credentials (XAI_API_KEY). "
-                "Set XAI_API_KEY before running LIVE mode. SIR does not ship keys.",
-                file=sys.stderr,
-            )
-            return 2
-        if importlib.util.find_spec("litellm") is None:
-            print(
-                'ERROR: LIVE mode requires litellm installed. Run: python3 -m pip install -e ".[live]"',
-                file=sys.stderr,
-            )
-            return 2
+    provider = getattr(ns, "provider", DEFAULT_PROVIDER)
+    model = getattr(ns, "model", DEFAULT_MODEL)
+    try:
+        provider, model = validate_execution_selection(provider=provider, model=model, mode=ns.mode)
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+
+    if ns.mode == "live" and importlib.util.find_spec("litellm") is None:
+        print(
+            'ERROR: LIVE mode requires litellm installed. Run: python3 -m pip install -e ".[live]"',
+            file=sys.stderr,
+        )
+        return 2
 
     if ns.mode == "scenario":
         if ns.suite:
@@ -80,8 +82,10 @@ def _cmd_run(ns: argparse.Namespace) -> int:
         argv.extend(["--suite", ns.suite])
     if ns.scenario:
         argv.extend(["--scenario", ns.scenario])
-    if ns.model:
-        argv.extend(["--model", ns.model])
+    if provider:
+        argv.extend(["--provider", provider])
+    if model:
+        argv.extend(["--model", model])
     if ns.template:
         argv.extend(["--template", ns.template])
     if ns.no_model_calls:
@@ -131,15 +135,21 @@ def _cmd_benchmark_run(ns: argparse.Namespace) -> int:
     if ns.mode == "scenario":
         print("ERROR: benchmark run currently supports --mode audit|live only.", file=sys.stderr)
         return 2
-    args: list[str] = ["--mode", ns.mode]
+    provider = getattr(ns, "provider", DEFAULT_PROVIDER)
+    model = getattr(ns, "model", DEFAULT_MODEL)
+    try:
+        provider, model = validate_execution_selection(provider=provider, model=model, mode=ns.mode)
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+
+    args: list[str] = ["--mode", ns.mode, "--provider", provider, "--model", model]
     if ns.pack:
         args.extend(["--pack", ns.pack])
     if ns.suite:
         args.extend(["--suite", ns.suite])
     if ns.scenario:
         args.extend(["--scenario", ns.scenario])
-    if ns.model:
-        args.extend(["--model", ns.model])
     if ns.template:
         args.extend(["--template", ns.template])
     if ns.no_model_calls:
@@ -191,7 +201,7 @@ def build_parser() -> argparse.ArgumentParser:
             "Run SIR via the common operator path.\n"
             "Modes:\n"
             "  audit    Deterministic offline gate evaluation (default).\n"
-            "  live     Provider-call gating check (requires XAI_API_KEY and litellm).\n"
+            "  live     Provider-call gating check (requires provider credential env var + litellm).\n"
             "  scenario Scenario-only path; requires exactly one of --scenario or --pack\n"
             "           where --pack resolves to schema scenario_json_v1.\n\n"
             "Discover packs with `sir packs list` and inspect with `sir packs show <pack_id>`."
@@ -219,7 +229,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Scenario JSON path for --mode scenario (mutually exclusive with --pack in scenario mode).",
     )
-    run.add_argument("--model", default=None, help="Model override for compatible run paths.")
+    run.add_argument(
+        "--provider",
+        choices=["xai", "openai"],
+        default=DEFAULT_PROVIDER,
+        help="Provider selection for model execution paths (default: xai).",
+    )
+    run.add_argument("--model", default=DEFAULT_MODEL, help="Model override for compatible run paths.")
     run.add_argument("--template", default=None, help="Prompt template override for compatible run paths.")
     run.add_argument(
         "--no-model-calls",
@@ -271,7 +287,8 @@ def build_parser() -> argparse.ArgumentParser:
     b_run.add_argument("--pack", default=None)
     b_run.add_argument("--suite", default=None)
     b_run.add_argument("--scenario", default=None)
-    b_run.add_argument("--model", default=None)
+    b_run.add_argument("--provider", choices=["xai", "openai"], default=DEFAULT_PROVIDER)
+    b_run.add_argument("--model", default=DEFAULT_MODEL)
     b_run.add_argument("--template", default=None)
     b_run.add_argument("--no-model-calls", action="store_true")
     b_run.add_argument("--pair-key", default=None)
