@@ -202,14 +202,15 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 
 ## Guides
 
-* Assurance kit (canonical evaluation and verification path): `docs/assurance-kit.md`
-* External technical review preparation: `docs/external-technical-review-prep.md`
-* Evaluator technical explainer: `docs/evaluator-technical-explainer.md`
-* Engineer guide (local runs, signing, serving): `docs/engineer-guide.md`
-* Trial guide (auditors, insurers, evidence capture): `docs/trial-guide.md`
-* Key governance readiness (authority map and CRYPTO_ENFORCED checklist): `docs/key-governance-readiness.md`
-* Release notes (2.0 closeout): `docs/release-notes-2.0.md`
-* Retention / Tier B export: `RETENTION.md`
+* [Assurance kit](docs/assurance-kit.md) (canonical evaluation and verification path)
+* [Evidence perimeter note](docs/evidence-perimeter.v1.md) (current bounded benchmark perimeter)
+* [External technical review preparation](docs/external-technical-review-prep.md)
+* [Evaluator technical explainer](docs/evaluator-technical-explainer.md)
+* [Engineer guide](docs/engineer-guide.md) (local runs, signing, serving)
+* [Trial guide](docs/trial-guide.md) (auditors, insurers, evidence capture)
+* [Key governance readiness](docs/key-governance-readiness.md) (authority map and CRYPTO_ENFORCED checklist)
+* [Release notes](docs/release-notes-2.0.md) (2.0 closeout)
+* [Retention / Tier B export](RETENTION.md)
 
 ---
 
