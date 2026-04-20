@@ -12,6 +12,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from sir_firewall.model_selection import DEFAULT_MODEL, DEFAULT_PROVIDER, validate_execution_selection
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -153,7 +155,18 @@ def _validate_pair(*, baseline_audit: Dict[str, Any], gated_audit: Dict[str, Any
     return "valid_complete", None, required
 
 
-def _run_single(*, mode: str, pack: Optional[str], suite: Optional[str], scenario: Optional[str], model: Optional[str], template: Optional[str], no_model_calls: bool, ungated_baseline: bool) -> tuple[str, Dict[str, Any]]:
+def _run_single(
+    *,
+    mode: str,
+    pack: Optional[str],
+    suite: Optional[str],
+    scenario: Optional[str],
+    provider: str,
+    model: str,
+    template: Optional[str],
+    no_model_calls: bool,
+    ungated_baseline: bool,
+) -> tuple[str, Dict[str, Any]]:
     suite_cmd = [sys.executable, str(ROOT / "red_team_suite.py"), "--mode", mode]
     if pack:
         suite_cmd.extend(["--pack", pack])
@@ -161,8 +174,7 @@ def _run_single(*, mode: str, pack: Optional[str], suite: Optional[str], scenari
         suite_cmd.extend(["--suite", suite])
     if scenario:
         suite_cmd.extend(["--scenario", scenario])
-    if model:
-        suite_cmd.extend(["--model", model])
+    suite_cmd.extend(["--provider", provider, "--model", model])
     if template:
         suite_cmd.extend(["--template", template])
     if no_model_calls:
@@ -205,18 +217,24 @@ def main() -> int:
     ap.add_argument("--pack", default=None)
     ap.add_argument("--suite", default=None)
     ap.add_argument("--scenario", default=None)
-    ap.add_argument("--model", default=None)
+    ap.add_argument("--provider", choices=["xai", "openai"], default=DEFAULT_PROVIDER)
+    ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--template", default=None)
     ap.add_argument("--no-model-calls", action="store_true")
     ap.add_argument("--pair-key", default=None, help="Optional operator-supplied pair key; otherwise derived from required dimensions.")
     args = ap.parse_args()
+    try:
+        provider, model = validate_execution_selection(provider=args.provider, model=args.model, mode=args.mode)
+    except ValueError as exc:
+        raise SystemExit(f"ERROR: {exc}") from exc
 
     baseline_run_id, baseline_audit = _run_single(
         mode=args.mode,
         pack=args.pack,
         suite=args.suite,
         scenario=args.scenario,
-        model=args.model,
+        provider=provider,
+        model=model,
         template=args.template,
         no_model_calls=args.no_model_calls,
         ungated_baseline=True,
@@ -226,7 +244,8 @@ def main() -> int:
         pack=args.pack,
         suite=args.suite,
         scenario=args.scenario,
-        model=args.model,
+        provider=provider,
+        model=model,
         template=args.template,
         no_model_calls=args.no_model_calls,
         ungated_baseline=False,

@@ -95,11 +95,18 @@ Live gating check (PASS prompts call provider):
 
 ```bash
 python3 -m pip install -e ".[live]"
+# xAI example
 export XAI_API_KEY=your_xai_api_key_here
-sir run --mode live --pack generic_safety
+sir run --mode live --pack generic_safety --provider xai --model grok-4-1-fast
+
+# OpenAI example
+export OPENAI_API_KEY=your_openai_api_key_here
+sir run --mode live --pack generic_safety --provider openai --model gpt-4.1-mini
 ```
 
 Windows note: if `pip install -e ".[live]"` fails due to long paths, run from a short path (e.g. `C:\sir\...`) or enable Windows long path support.
+
+Current supported provider/model selection is documented in `docs/model-selection.md`.
 
 `publish_run.py` produces signed archive receipts and requires `SDL_PRIVATE_KEY_PEM`; not required for basic evaluation.
 

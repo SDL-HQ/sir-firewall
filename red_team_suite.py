@@ -32,11 +32,16 @@ from typing import Dict, List, Tuple, Optional, Any
 
 from sir_firewall import validate_sir
 from sir_firewall.core import load_domain_pack
+from sir_firewall.model_selection import (
+    DEFAULT_MODEL as DEFAULT_SELECTED_MODEL,
+    DEFAULT_PROVIDER,
+    validate_execution_selection,
+)
 
 
 DEFAULT_SUITE = os.getenv("SIR_SUITE_PATH", "tests/domain_packs/generic_safety.csv")
 PACK_REGISTRY_PATH = "spec/packs/pack_registry.v1.json"
-DEFAULT_MODEL = os.getenv("LITELLM_MODEL", "xai/grok-3-beta")
+DEFAULT_MODEL = os.getenv("LITELLM_MODEL", DEFAULT_SELECTED_MODEL)
 DEFAULT_TEMPLATE_ID = os.getenv("SIR_TEMPLATE_ID", "EU-AI-Act-ISC-v1")
 
 LEDGER_PATH = os.path.join("proofs", "itgl_ledger.jsonl")
@@ -369,6 +374,7 @@ def main() -> None:
     ap.add_argument("--pack", default=None, help="Pack ID from spec/packs/pack_registry.v1.json")
     ap.add_argument("--suite", default=None, help="Path to CSV suite file (explicit override)")
     ap.add_argument("--scenario", default=None, help="Path to scenario JSON file (explicit override)")
+    ap.add_argument("--provider", choices=["xai", "openai"], default=DEFAULT_PROVIDER, help="Provider id")
     ap.add_argument("--model", default=DEFAULT_MODEL, help="LiteLLM model name")
     ap.add_argument("--template", default=DEFAULT_TEMPLATE_ID, help="ISC template_id to use")
     ap.add_argument("--no-model-calls", action="store_true", help="Skip model calls even for PASS prompts")
@@ -381,11 +387,14 @@ def main() -> None:
 
     if args.mode == "live" and args.no_model_calls:
         raise SystemExit("ERROR: --mode live cannot be used with --no-model-calls.")
+    provider_arg = getattr(args, "provider", DEFAULT_PROVIDER)
+    model_arg = getattr(args, "model", DEFAULT_MODEL)
+    try:
+        provider_name, model_name = validate_execution_selection(provider=provider_arg, model=model_arg, mode=args.mode)
+    except ValueError as exc:
+        raise SystemExit(f"ERROR: {exc}") from exc
+
     if args.mode == "live":
-        if not os.getenv("XAI_API_KEY", "").strip():
-            raise SystemExit(
-                "ERROR: LIVE mode requires your own provider credentials (XAI_API_KEY). SIR does not ship keys."
-            )
         try:
             from litellm import completion as _completion  # noqa: F401
         except ImportError as exc:
@@ -398,7 +407,6 @@ def main() -> None:
         env_suite=os.getenv("SIR_SUITE_PATH", "").strip(),
         default_suite=DEFAULT_SUITE,
     )
-    model_name = args.model
     template_id = args.template
     do_model_calls = args.mode == "live"
     proof_class = "LIVE_GATING_CHECK" if args.mode == "live" else "FIREWALL_ONLY_AUDIT"
@@ -574,7 +582,7 @@ def main() -> None:
         "timestamp_utc": summary_ts,
         "proof_class": proof_class,
         "model": model_name,
-        "provider": os.getenv("SIR_PROVIDER", "xai"),
+        "provider": provider_name,
         "pack_id": runtime_pack_id,
         "pack_version": selected_pack_version,
         "selected_pack_id": selected_pack_id,
