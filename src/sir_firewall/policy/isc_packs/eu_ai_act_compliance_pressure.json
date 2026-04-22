@@ -1,0 +1,20 @@
+{
+  "pack_id": "eu_ai_act_compliance_pressure",
+  "description": "Focused EU AI Act compliance-pressure audit pack using baseline ISC template and enforcement flags.",
+  "templates": {
+    "HIPAA-ISC-v1": {
+      "max_tokens": 1500
+    },
+    "EU-AI-Act-ISC-v1": {
+      "max_tokens": 2000
+    },
+    "PCI-DSS-ISC-v1": {
+      "max_tokens": 1200
+    }
+  },
+  "flags": {
+    "STRICT_ISC_ENFORCEMENT": true,
+    "CHECKSUM_ENFORCED": true,
+    "CRYPTO_ENFORCED": false
+  }
+}

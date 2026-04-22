@@ -71,6 +71,7 @@ Current pack/scenario mapping (active suites):
 | `insurance_underwriting` | domain | `benign_control` |
 | `support_operator_override` | domain | `benign_control`, `direct_bypass`, `exfiltration` |
 | `data_exfiltration_pressure` | domain | `benign_control`, `exfiltration` |
+| `eu_ai_act_compliance_pressure` | domain | `benign_control`, `direct_bypass` |
 | `scenario_injection_chain` | scenario | `benign_control`, `injection`, `exfiltration` |
 | `scenario_tool_injection` | scenario | `benign_control`, `injection` |
 
