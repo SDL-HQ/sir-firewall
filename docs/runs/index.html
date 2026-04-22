@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Governance Gate — Benchmark Review</title>
+  <title>Governance Gate - Benchmark Review</title>
   <style>
     :root {
       --bg: #f6f8fb;
@@ -35,14 +35,14 @@
     }
 
     main {
-      max-width: 1120px;
+      max-width: 1160px;
       margin: 20px auto 40px;
       padding: 0 16px;
     }
 
     h1, h2, h3 { margin: 0; line-height: 1.25; }
     h1 { font-size: 1.55rem; margin-bottom: 6px; }
-    h2 { font-size: 1.1rem; margin-bottom: 10px; }
+    h2 { font-size: 1.05rem; margin-bottom: 10px; }
     h3 { font-size: 0.95rem; }
 
     p { margin: 0; }
@@ -61,7 +61,7 @@
       border: 1px solid var(--line);
       border-radius: 12px;
       background: var(--card);
-      padding: 15px;
+      padding: 14px;
       margin-top: 12px;
     }
 
@@ -102,13 +102,8 @@
     }
 
     .headline { margin-bottom: 8px; }
-
-    .primary-panel {
-      background: var(--primary-bg);
-      border-color: var(--primary-line);
-      margin-top: 14px;
-      margin-bottom: 2px;
-    }
+    .meta-link { color: var(--muted); text-decoration: underline; text-decoration-color: transparent; }
+    .meta-link:hover { text-decoration-color: currentColor; }
 
     .machine-indexes {
       margin-top: 8px;
@@ -136,6 +131,7 @@
     }
 
     label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+
     select, button {
       width: 100%;
       padding: 7px;
@@ -163,74 +159,43 @@
       border-radius: 6px;
     }
 
+    .reset-wrap { margin-top: 10px; max-width: 180px; }
+
+    .primary-panel {
+      background: var(--primary-bg);
+      border-color: var(--primary-line);
+    }
+
     .counter-grid {
       display: grid;
       grid-template-columns: repeat(5, minmax(140px, 1fr));
       gap: 8px;
+      margin-bottom: 10px;
     }
 
     .counter-card {
       border: 1px solid var(--line-soft);
       border-radius: 10px;
       padding: 10px;
-      background: var(--card-subtle);
-    }
-
-    .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
-    .v { font-size: 20px; font-weight: 600; margin-top: 3px; }
-
-    .pair-list {
-      display: grid;
-      gap: 10px;
-    }
-
-    .pair-card {
-      border: 1px solid var(--line-strong);
-      border-radius: 10px;
-      padding: 10px;
       background: #fff;
     }
 
-    .pair-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      align-items: baseline;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
+    .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+    .v { font-size: 20px; font-weight: 650; margin-top: 3px; }
 
-    .pair-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .pair-columns {
+    .pair-summary-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(240px, 1fr));
-      gap: 8px;
+      grid-template-columns: 1.25fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
     }
 
-    .run-col {
+    .pair-summary-box {
       border: 1px solid var(--line-soft);
-      border-radius: 8px;
-      padding: 9px;
-      background: var(--card-subtle);
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px;
     }
-
-    .run-role {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      color: var(--muted);
-      margin-bottom: 4px;
-      font-weight: 600;
-    }
-
-    .run-id-line { margin: 4px 0; }
 
     .pill {
       display: inline-block;
@@ -240,6 +205,7 @@
       border: 1px solid var(--line);
       color: var(--muted);
       background: #fff;
+      white-space: nowrap;
     }
 
     .pill.pass {
@@ -254,67 +220,86 @@
       background: var(--non-bg);
     }
 
-    .pair-deltas {
-      margin-top: 8px;
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      font-size: 12px;
-      color: var(--muted);
-    }
+    .table-wrap { overflow-x: auto; margin-top: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.89rem; }
+    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #d8dee4; vertical-align: top; }
+    th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+
+    .pair-table td { padding-top: 10px; padding-bottom: 10px; }
+    .pair-meta { display: flex; flex-direction: column; gap: 4px; min-width: 210px; }
+    .pair-outcome { min-width: 190px; }
+    .pair-deltas { display: flex; gap: 5px; flex-wrap: wrap; }
 
     .delta-chip {
       border: 1px solid var(--line-soft);
       border-radius: 999px;
       padding: 2px 8px;
       background: #fff;
+      font-size: 12px;
+      color: var(--muted);
     }
 
-    table { width: 100%; border-collapse: collapse; font-size: 0.91rem; }
-    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #d8dee4; vertical-align: top; }
-    th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+    .evidence-cell { display: grid; gap: 7px; min-width: 270px; }
+    .evidence-row {
+      display: grid;
+      grid-template-columns: 58px 1fr;
+      gap: 6px;
+      align-items: start;
+    }
+    .evidence-role {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      padding-top: 3px;
+      font-weight: 600;
+    }
+
+    .link-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .link-chip {
+      border: 1px solid var(--line-soft);
+      background: #fff;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      color: var(--muted);
+      text-decoration: none;
+    }
+    .link-chip:hover { border-color: var(--line-strong); text-decoration: none; color: var(--text); }
+
+    .evidence-more summary {
+      list-style: none;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .evidence-more summary::-webkit-details-marker { display: none; }
 
     .secondary {
       background: var(--card-subtle);
       border-color: var(--line-soft);
     }
 
-    .pair-note { margin-bottom: 8px; }
-    .reset-wrap { margin-top: 10px; max-width: 180px; }
-    .meta-link { color: var(--muted); text-decoration: underline; text-decoration-color: transparent; }
-    .meta-link:hover { text-decoration-color: currentColor; }
-
-    .evidence-primary {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      font-size: 12px;
-    }
-
-    .evidence-more summary {
-      cursor: pointer;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 500;
-      list-style: none;
-    }
-
-    .evidence-primary a,
-    .evidence-more a { color: var(--muted); text-decoration: underline; text-decoration-color: transparent; }
-    .evidence-primary a:hover,
-    .evidence-more a:hover { text-decoration-color: currentColor; }
-    .evidence-more summary::-webkit-details-marker { display: none; }
-
-    .evidence-list {
-      margin-top: 4px;
-      font-size: 12px;
+    .table-toolbar {
       display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
       flex-wrap: wrap;
-      gap: 5px;
+      margin-bottom: 4px;
     }
 
-    .sr { position: absolute; left: -10000px; }
+    .inline-btn {
+      width: auto;
+      padding: 4px 10px;
+      font-size: 12px;
+    }
 
     details.secondary-block {
       margin-top: 14px;
@@ -325,18 +310,19 @@
     }
 
     summary { cursor: pointer; font-weight: 600; }
-    .table-wrap { overflow-x: auto; margin-top: 8px; }
 
     @media (max-width: 980px) {
       .filters-grid, .counter-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
-      .pair-columns { grid-template-columns: 1fr; }
       .ownership-strip { flex-direction: column; align-items: flex-start; }
       .brand-links { justify-content: flex-start; }
+      .pair-summary-grid { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 700px) {
       table { font-size: 0.84rem; }
       th, td { padding: 6px 5px; }
+      .evidence-row { grid-template-columns: 1fr; }
+      .evidence-role { padding-top: 0; }
     }
   </style>
 </head>
@@ -359,15 +345,13 @@
       </div>
 
       <div class="panel headline">
-        <h1>Governance Gate — Benchmark Review</h1>
-        <p class="muted">
-          Pair-first benchmark surface derived from per-run archives and machine indexes. Default scope is post-2.0 baseline onward (from 2026-04-16 UTC).
-        </p>
+        <h1>Governance Gate - Benchmark Review</h1>
+        <p class="muted">Pair-first benchmark surface derived from per-run archives and machine indexes. Default scope is post-2.0 baseline onward from 2026-04-16 UTC.</p>
         <div class="machine-indexes">
           Machine indexes:
           <a href="index.json"><code>runs/index.json</code></a> ·
-          <a href="benchmark_index.v1.json"><code>runs/benchmark_index.v1.json</code></a> (row evidence) ·
-          <a href="benchmark_index.v2.json"><code>runs/benchmark_index.v2.json</code></a> (paired benchmark view)
+          <a href="benchmark_index.v1.json"><code>runs/benchmark_index.v1.json</code></a> row evidence ·
+          <a href="benchmark_index.v2.json"><code>runs/benchmark_index.v2.json</code></a> paired benchmark view
         </div>
       </div>
     </header>
@@ -396,13 +380,13 @@
           <select id="f-status">
             <option value="">All</option>
             <option value="AUDIT PASSED">AUDIT PASSED</option>
-            <option value="NON_PASS">Non-pass (FAIL/INCONCLUSIVE/other)</option>
+            <option value="NON_PASS">Non-pass</option>
           </select>
         </div>
         <div>
           <label for="f-scope">Scope</label>
           <select id="f-scope">
-            <option value="post2">Post-2.0 only (default)</option>
+            <option value="post2">Post-2.0 only default</option>
             <option value="all">Include legacy</option>
           </select>
         </div>
@@ -412,34 +396,58 @@
       </div>
     </section>
 
-    <section class="panel" aria-label="Overview counters">
-      <div class="section-label">Overview</div>
-      <h2>Rows in current filter view</h2>
-      <div class="counter-grid" id="counters">
-        <div class="counter-card"><div class="k">Runs in view</div><div class="v" id="c-runs">—</div></div>
-        <div class="counter-card"><div class="k">Non-pass</div><div class="v" id="c-nonpass">—</div></div>
-        <div class="counter-card"><div class="k">Models</div><div class="v" id="c-models">—</div></div>
-        <div class="counter-card"><div class="k">Packs</div><div class="v" id="c-packs">—</div></div>
-        <div class="counter-card"><div class="k">Proof classes</div><div class="v" id="c-proofs">—</div></div>
-      </div>
-    </section>
-
     <section class="panel primary-panel" aria-label="Paired benchmark interpretation">
       <div class="section-label">Primary reading path</div>
-      <h2>Paired benchmark interpretation</h2>
-      <p class="small pair-note">Compare each paired benchmark entry directly: Baseline (Ungated) vs Gated (SIR). This section is derived from <code>runs/benchmark_index.v2.json</code>.</p>
-      <p class="small pair-note">Status = pair comparability; outcome = baseline result → gated result; evidence links = direct run artifacts.</p>
-      <p class="small pair-note" id="pair-baseline-definition">Baseline definition: —</p>
-      <div class="pair-list" id="pair-rows">
-        <div class="pair-card">Loading…</div>
+      <h2>Paired benchmark evidence</h2>
+      <p class="small">Pairs are the primary benchmark interpretation path. This is not a model leaderboard.</p>
+      <p class="small" id="pair-baseline-definition">Baseline definition: --</p>
+
+      <div class="counter-grid" id="counters">
+        <div class="counter-card"><div class="k">Rows in view</div><div class="v" id="c-runs">--</div></div>
+        <div class="counter-card"><div class="k">Non-pass rows</div><div class="v" id="c-nonpass">--</div></div>
+        <div class="counter-card"><div class="k">Models</div><div class="v" id="c-models">--</div></div>
+        <div class="counter-card"><div class="k">Packs</div><div class="v" id="c-packs">--</div></div>
+        <div class="counter-card"><div class="k">Proof classes</div><div class="v" id="c-proofs">--</div></div>
+      </div>
+
+      <div class="pair-summary-grid">
+        <div class="pair-summary-box">
+          <div class="k">Pair view summary</div>
+          <div class="small" id="pair-summary-line">Loading pair metrics.</div>
+        </div>
+        <div class="pair-summary-box">
+          <div class="k">Evidence handling</div>
+          <div class="small">Each pair row keeps baseline and gated evidence grouped. Primary links stay visible and archive/proof files stay one click away.</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="pair-table">
+          <thead>
+            <tr>
+              <th>Pair</th>
+              <th>Outcome</th>
+              <th>Deltas</th>
+              <th>Evidence links</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="pair-rows">
+            <tr><td colspan="5">Loading paired benchmark rows.</td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
     <section class="panel secondary" aria-label="Recent row evidence">
       <div class="section-label">Secondary evidence surface</div>
-      <h2>Recent runs (row evidence)</h2>
-      <p class="small">Raw row-level evidence remains authoritative and one click away.</p>
-      <p class="small">For benchmark interpretation, use paired view first. Row table is raw evidence.</p>
+      <div class="table-toolbar">
+        <div>
+          <h2>Recent row evidence</h2>
+          <p class="small">Raw row evidence remains authoritative. Default view shows latest rows first.</p>
+        </div>
+        <button id="toggle-recent" class="inline-btn">Show all rows</button>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -456,15 +464,15 @@
             </tr>
           </thead>
           <tbody id="recent-rows">
-            <tr><td colspan="9">Loading…</td></tr>
+            <tr><td colspan="9">Loading row evidence.</td></tr>
           </tbody>
         </table>
       </div>
     </section>
 
     <details class="secondary-block">
-      <summary>Secondary grouped/pattern view (by row_identity, same row key)</summary>
-      <p class="small pair-note">Grouped output is derived from the same row entries; no added semantics.</p>
+      <summary>Secondary grouped view by row_identity</summary>
+      <p class="small">Grouped output is derived from the same row entries with no added semantics.</p>
       <div class="table-wrap">
         <table>
           <thead>
@@ -472,12 +480,12 @@
               <th>row_identity</th>
               <th>Runs</th>
               <th>Latest</th>
-              <th>Sequence (new → old)</th>
+              <th>Sequence new to old</th>
               <th>Latest run</th>
             </tr>
           </thead>
           <tbody id="pattern-rows">
-            <tr><td colspan="5">Loading…</td></tr>
+            <tr><td colspan="5">Loading grouped rows.</td></tr>
           </tbody>
         </table>
       </div>
@@ -487,9 +495,11 @@
   <script>
     const POST2_CUTOFF_UTC = "2026-04-16T00:00:00Z";
     const FILTER_IDS = ["f-model", "f-pack", "f-proof", "f-kind", "f-status", "f-scope"];
+    const RECENT_DEFAULT_LIMIT = 18;
 
     let allEntries = [];
     let pairedRows = [];
+    let recentExpanded = false;
     const entriesByRunId = new Map();
     const rowContextByRunId = new Map();
 
@@ -509,7 +519,7 @@
     }
 
     function resultPill(result) {
-      const text = esc(result || "—");
+      const text = esc(result || "--");
       const cls = isPass(result) ? "pass" : "non-pass";
       return `<span class="pill ${cls}">${text}</span>`;
     }
@@ -534,9 +544,9 @@
 
     function truncateRunId(runId) {
       const value = (runId || "").toString();
-      if (!value) return "—";
+      if (!value) return "--";
       if (value.length <= 26) return value;
-      return `${value.slice(0, 12)}…${value.slice(-10)}`;
+      return `${value.slice(0, 12)}...${value.slice(-10)}`;
     }
 
     function runLink(runId) {
@@ -566,32 +576,48 @@
     function rowContextLabel(entry) {
       const runId = entry?.run_id || "";
       const context = rowContextByRunId.get(runId);
-      if (context?.benchmark_role === "baseline") return "benchmark context: baseline (ungated reference)";
-      if (context?.benchmark_role === "gated") return "benchmark context: gated (SIR)";
+      if (context?.benchmark_role === "baseline") return "benchmark context: baseline ungated reference";
+      if (context?.benchmark_role === "gated") return "benchmark context: gated SIR";
       return "benchmark context: unpaired row evidence";
     }
 
-    function evidenceLinks(entry) {
+    function evidenceItemList(entry) {
       const ev = entry?.evidence || {};
-      const primary = ev.audit || ev.manifest || ev.archive_receipt || ev.run_summary || null;
-      const primaryLabel = ev.audit ? "audit" : ev.manifest ? "manifest" : ev.archive_receipt ? "receipt" : ev.run_summary ? "summary" : "evidence";
-      const allItems = [
+      return [
         ["audit", ev.audit],
         ["manifest", ev.manifest],
-        ["receipt", ev.archive_receipt],
         ["summary", ev.run_summary],
+        ["receipt", ev.archive_receipt],
         ["ledger", ev.itgl_ledger],
         ["hash", ev.itgl_final_hash],
         ["attempts", ev.attempt_log],
       ].filter(([, p]) => !!p);
+    }
 
-      if (!allItems.length) return "—";
+    function renderEvidenceGroup(entry) {
+      const items = evidenceItemList(entry);
+      if (!items.length) return "--";
+      const primaryKeys = new Set(["audit", "manifest", "summary", "receipt"]);
+      const primary = items.filter(([k]) => primaryKeys.has(k)).slice(0, 3);
+      const extra = items.filter(([k]) => !primary.some(([p]) => p === k));
+      const primaryHtml = primary.map(([k, p]) => `<a class="link-chip" href="../${esc(p)}">${esc(k)}</a>`).join("");
+      const extraHtml = extra.length
+        ? `<details class="evidence-more"><summary>more files</summary><div class="link-group" style="margin-top:5px;">${extra.map(([k, p]) => `<a class="link-chip" href="../${esc(p)}">${esc(k)}</a>`).join("")}</div></details>`
+        : "";
+      return `<div class="link-group">${primaryHtml}</div>${extraHtml}`;
+    }
 
-      const moreItems = allItems.filter(([, p]) => p !== primary);
-      const primaryHtml = `<span class="evidence-primary"><a href="../${esc(primary)}">${esc(primaryLabel)}</a>`
-        + (moreItems.length ? `<details class="evidence-more"><summary>more evidence</summary><div class="evidence-list">${moreItems.map(([k, p]) => `<a href="../${esc(p)}">${esc(k)}</a>`).join(" · ")}</div></details>` : "")
-        + "</span>";
-      return primaryHtml;
+    function pairEvidenceCell(base, gated) {
+      return `<div class="evidence-cell">
+        <div class="evidence-row">
+          <div class="evidence-role">Baseline</div>
+          <div>${renderEvidenceGroup(base)}</div>
+        </div>
+        <div class="evidence-row">
+          <div class="evidence-role">Gated</div>
+          <div>${renderEvidenceGroup(gated)}</div>
+        </div>
+      </div>`;
     }
 
     function rowMatchesFilters(e, f) {
@@ -656,69 +682,67 @@
       document.getElementById("c-proofs").textContent = String(proofs.size);
     }
 
+    function renderPairSummary(rows) {
+      const comparable = rows.filter(r => (r.pair_status || "").toLowerCase() === "valid_complete").length;
+      const nonComparable = rows.length - comparable;
+      const gatedPass = rows.filter(r => {
+        const gated = entriesByRunId.get(r.gated_run_id) || {};
+        return isPass(gated.result);
+      }).length;
+      const passRate = rows.length ? `${Math.round((gatedPass / rows.length) * 100)}%` : "0%";
+      document.getElementById("pair-summary-line").textContent = `${rows.length} pairs in view. Comparable: ${comparable}. Non-comparable: ${nonComparable}. Gated pass rate: ${passRate}.`;
+    }
+
     function renderPairs(rows) {
       const target = document.getElementById("pair-rows");
       if (!rows.length) {
-        target.innerHTML = '<div class="pair-card">No paired benchmark rows match current filters.</div>';
+        target.innerHTML = '<tr><td colspan="5">No paired benchmark rows match current filters.</td></tr>';
+        renderPairSummary([]);
         return;
       }
 
+      renderPairSummary(rows);
       target.innerHTML = rows.map(p => {
         const base = entriesByRunId.get(p.baseline_run_id) || {};
         const gated = entriesByRunId.get(p.gated_run_id) || {};
 
         const pairStateRaw = p.pair_status || "unknown";
         const pairStateLabel = esc(pairStatusLabel(pairStateRaw));
-        const pairStateTitle = esc(pairStateRaw);
-        const model = esc(gated.model || base.model || p.required_dimensions?.model || "—");
-        const pack = esc(gated.evaluation_target?.pack_id || base.evaluation_target?.pack_id || p.required_dimensions?.pack_id || "—");
-        const reason = p.non_comparable_reason ? `<span class="small">non-comparable: ${esc(p.non_comparable_reason)}</span>` : "";
-        const baseResult = base.result || "—";
-        const gatedResult = gated.result || "—";
-        const leaksDelta = Number.isFinite(p?.deltas?.leaks_delta) ? ` · Δ leaks ${esc(String(p.deltas.leaks_delta))}` : "";
-        const pairOutcomeLine = `${esc(baseResult)} → ${esc(gatedResult)}${leaksDelta}`;
+        const model = esc(gated.model || base.model || p.required_dimensions?.model || "--");
+        const pack = esc(gated.evaluation_target?.pack_id || base.evaluation_target?.pack_id || p.required_dimensions?.pack_id || "--");
+        const baseResult = base.result || "--";
+        const gatedResult = gated.result || "--";
 
         const deltas = [];
         if (p?.deltas && typeof p.deltas === "object") {
-          if (Number.isFinite(p.deltas.leaks_delta)) deltas.push(`<span class="delta-chip">Δ leaks: ${esc(String(p.deltas.leaks_delta))}</span>`);
-          if (Number.isFinite(p.deltas.provider_call_attempts_delta)) deltas.push(`<span class="delta-chip">Δ provider calls: ${esc(String(p.deltas.provider_call_attempts_delta))}</span>`);
-          if (Number.isFinite(p.deltas.harmless_blocked_delta)) deltas.push(`<span class="delta-chip">Δ harmless blocked: ${esc(String(p.deltas.harmless_blocked_delta))}</span>`);
+          if (Number.isFinite(p.deltas.leaks_delta)) deltas.push(`<span class="delta-chip">delta leaks ${esc(String(p.deltas.leaks_delta))}</span>`);
+          if (Number.isFinite(p.deltas.provider_call_attempts_delta)) deltas.push(`<span class="delta-chip">delta provider calls ${esc(String(p.deltas.provider_call_attempts_delta))}</span>`);
+          if (Number.isFinite(p.deltas.harmless_blocked_delta)) deltas.push(`<span class="delta-chip">delta harmless blocked ${esc(String(p.deltas.harmless_blocked_delta))}</span>`);
         }
 
-        return `<article class="pair-card">
-          <div class="pair-top">
-            <div>
-              <h3>Pair <code title="${esc(p.pair_id || "")}">${esc(truncateRunId(p.pair_id || "pair"))}</code></h3>
-              <div class="pair-meta">
-                <span>model: <code>${model}</code></span>
-                <span>pack: <code>${pack}</code></span>
-                <span>status: <code title="${pairStateTitle}">${pairStateLabel}</code></span>
-              </div>
-              <p class="small" style="margin-top:6px;">Outcome: <code>${pairOutcomeLine}</code></p>
+        const reason = p.non_comparable_reason ? `<div class="small">reason: ${esc(p.non_comparable_reason)}</div>` : "";
+
+        return `<tr>
+          <td>
+            <div class="pair-meta">
+              <div><code title="${esc(p.pair_id || "")}">${esc(truncateRunId(p.pair_id || "pair"))}</code></div>
+              <div class="small">model <code>${model}</code></div>
+              <div class="small">pack <code>${pack}</code></div>
+              <div class="small">baseline ${runLink(base.run_id)} | gated ${runLink(gated.run_id)}</div>
             </div>
+          </td>
+          <td class="pair-outcome">
+            <div>${resultPill(baseResult)} to ${resultPill(gatedResult)}</div>
+            <div class="small" style="margin-top:5px;">baseline <code>${esc(base.run_timestamp_utc || "--")}</code></div>
+            <div class="small">gated <code>${esc(gated.run_timestamp_utc || "--")}</code></div>
+          </td>
+          <td>${deltas.length ? `<div class="pair-deltas">${deltas.join("")}</div>` : '<span class="small">No deltas in index.</span>'}</td>
+          <td>${pairEvidenceCell(base, gated)}</td>
+          <td>
+            <div><code>${pairStateLabel}</code></div>
             ${reason}
-          </div>
-
-          <div class="pair-columns">
-            <section class="run-col">
-              <div class="run-role">Baseline (Ungated)</div>
-              <div>${resultPill(base.result)}</div>
-              <div class="run-id-line">Run: ${runLink(base.run_id)}</div>
-              <div class="small">${esc(base.run_timestamp_utc || "—")}</div>
-              <div style="margin-top:6px;">${evidenceLinks(base)}</div>
-            </section>
-
-            <section class="run-col">
-              <div class="run-role">Gated (SIR)</div>
-              <div>${resultPill(gated.result)}</div>
-              <div class="run-id-line">Run: ${runLink(gated.run_id)}</div>
-              <div class="small">${esc(gated.run_timestamp_utc || "—")}</div>
-              <div style="margin-top:6px;">${evidenceLinks(gated)}</div>
-            </section>
-          </div>
-
-          ${deltas.length ? `<div class="pair-deltas">${deltas.join("")}</div>` : ""}
-        </article>`;
+          </td>
+        </tr>`;
       }).join("");
     }
 
@@ -728,15 +752,20 @@
         target.innerHTML = '<tr><td colspan="9">No runs match current filters.</td></tr>';
         return;
       }
-      target.innerHTML = rows.map(r => {
-        const pack = esc(r.evaluation_target?.pack_id || "—");
-        const proof = esc(r.proof_class || "—");
+
+      const ordered = rows.slice();
+      const displayRows = recentExpanded ? ordered : ordered.slice(0, RECENT_DEFAULT_LIMIT);
+      document.getElementById("toggle-recent").textContent = recentExpanded ? "Show latest rows only" : "Show all rows";
+
+      target.innerHTML = displayRows.map(r => {
+        const pack = esc(r.evaluation_target?.pack_id || "--");
+        const proof = esc(r.proof_class || "--");
         const context = esc(rowContextLabel(r));
-        const model = esc(r.model || "—");
-        const ts = esc(r.run_timestamp_utc || "—");
-        const leaks = esc(r.comparison?.leaks ?? "—");
+        const model = esc(r.model || "--");
+        const ts = esc(r.run_timestamp_utc || "--");
+        const leaks = esc(r.comparison?.leaks ?? "--");
         const ciUrl = esc(r.ci_run_url || "");
-        const ci = ciUrl ? `<a href="${ciUrl}">CI</a>` : "—";
+        const ci = ciUrl ? `<a href="${ciUrl}">CI</a>` : "--";
         return `<tr>
           <td><code>${ts}</code></td>
           <td><code>${pack}</code></td>
@@ -745,7 +774,7 @@
           <td>${resultPill(r.result)}</td>
           <td>${leaks}</td>
           <td>${runLink(r.run_id)}</td>
-          <td>${evidenceLinks(r)}</td>
+          <td>${renderEvidenceGroup(r)}</td>
           <td>${ci}</td>
         </tr>`;
       }).join("");
@@ -767,13 +796,13 @@
       const sorted = [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
       target.innerHTML = sorted.map(([key, group]) => {
         const latest = group[0] || {};
-        const seq = group.slice(0, 6).map(g => isPass(g.result) ? "PASS" : "NON_PASS").join(" → ");
+        const seq = group.slice(0, 6).map(g => isPass(g.result) ? "PASS" : "NON_PASS").join(" -> ");
         return `<tr>
           <td><code>${esc(key)}</code></td>
           <td>${group.length}</td>
           <td>${resultPill(latest.result)}</td>
           <td><code>${esc(seq)}</code></td>
-          <td>${runLink(latest.run_id)} · ${evidenceLinks(latest)}</td>
+          <td>${runLink(latest.run_id)} · ${renderEvidenceGroup(latest)}</td>
         </tr>`;
       }).join("");
     }
@@ -790,6 +819,12 @@
       FILTER_IDS.forEach(id => {
         document.getElementById(id).addEventListener("change", apply);
       });
+
+      document.getElementById("toggle-recent").addEventListener("click", () => {
+        recentExpanded = !recentExpanded;
+        renderRecent(filteredEntries());
+      });
+
       document.getElementById("reset").addEventListener("click", () => {
         document.getElementById("f-model").value = "";
         document.getElementById("f-pack").value = "";
@@ -797,6 +832,7 @@
         document.getElementById("f-kind").value = "";
         document.getElementById("f-status").value = "";
         document.getElementById("f-scope").value = "post2";
+        recentExpanded = false;
         apply();
       });
     }
@@ -823,6 +859,7 @@
 
         pairedRows = Array.isArray(v2Payload?.pairs) ? v2Payload.pairs : [];
         buildRowContextMap(pairedRows);
+
         const baselineDefinition = pairedRows.find(p => p && p.baseline_definition)?.baseline_definition
           || "same prompt set evaluated without SIR pre-inference gate intervention";
         document.getElementById("pair-baseline-definition").textContent = `Baseline definition: ${baselineDefinition}`;
@@ -837,9 +874,9 @@
         apply();
       } catch (e) {
         const reason = esc(e?.message || "unknown error");
-        targetRecent.innerHTML = `<tr><td colspan="9">Failed to load benchmark index (${reason}).</td></tr>`;
-        document.getElementById("pattern-rows").innerHTML = `<tr><td colspan="5">Failed to load benchmark index (${reason}).</td></tr>`;
-        targetPairs.innerHTML = `<div class="pair-card">Failed to load paired benchmark index (${reason}).</div>`;
+        targetRecent.innerHTML = `<tr><td colspan="9">Failed to load benchmark index ${reason}.</td></tr>`;
+        document.getElementById("pattern-rows").innerHTML = `<tr><td colspan="5">Failed to load benchmark index ${reason}.</td></tr>`;
+        targetPairs.innerHTML = `<tr><td colspan="5">Failed to load paired benchmark index ${reason}.</td></tr>`;
       }
     }
 
