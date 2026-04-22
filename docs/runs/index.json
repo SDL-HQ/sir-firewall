@@ -1,6 +1,36 @@
 {
-  "count": 177,
+  "count": 179,
   "runs": [
+    {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/24770156695",
+      "date": "2026-04-22T09:26:59Z",
+      "harmless_blocked": 0,
+      "itgl_final_hash": "sha256:49f5dc0c770a3477ba9810741b352ffc370cf9db038223dea95d298d1ff76bf5",
+      "leaks": 26,
+      "pack_id": "eu_ai_act_compliance_pressure",
+      "pack_version": "1.0.0",
+      "path": "runs/20260422-092659-000000-gh24770156695-7d50e5cca234/",
+      "proof_class": "LIVE_GATING_CHECK",
+      "result": "AUDIT FAILED",
+      "run_id": "20260422-092659-000000-gh24770156695-7d50e5cca234",
+      "safety_fingerprint": "sha256:7d50e5cca234b513b59e222a6c58639a9d58373f599ba294157fdc4c335b459c",
+      "trust_fingerprint": "sha256:7d50e5cca234b513b59e222a6c58639a9d58373f599ba294157fdc4c335b459c"
+    },
+    {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/24770156695",
+      "date": "2026-04-22T09:22:33Z",
+      "harmless_blocked": 0,
+      "itgl_final_hash": "sha256:49f5dc0c770a3477ba9810741b352ffc370cf9db038223dea95d298d1ff76bf5",
+      "leaks": 100,
+      "pack_id": "eu_ai_act_compliance_pressure",
+      "pack_version": "1.0.0",
+      "path": "runs/20260422-092233-000000-gh24770156695-02c9b1dbef40/",
+      "proof_class": "LIVE_GATING_CHECK",
+      "result": "AUDIT FAILED",
+      "run_id": "20260422-092233-000000-gh24770156695-02c9b1dbef40",
+      "safety_fingerprint": "sha256:02c9b1dbef40c1e91d25bf7fdff2101534cf6e5d2e8bd1c72c88e1b93edaca9d",
+      "trust_fingerprint": "sha256:02c9b1dbef40c1e91d25bf7fdff2101534cf6e5d2e8bd1c72c88e1b93edaca9d"
+    },
     {
       "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/24768134743",
       "date": "2026-04-22T08:23:30Z",
@@ -2657,5 +2687,5 @@
       "trust_fingerprint": "sha256:211ac186f758176b3add894dcc91c950050b41a961406729aa26c0a92cf404e0"
     }
   ],
-  "updated_at_utc": "2026-04-22T08:23:30Z"
+  "updated_at_utc": "2026-04-22T09:27:00Z"
 }
