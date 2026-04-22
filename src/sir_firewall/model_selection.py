@@ -105,3 +105,25 @@ def validate_execution_selection(
             )
 
     return resolved_provider, resolved_model
+
+
+def normalize_live_invocation_model(*, provider: str, model: str, requested_model: str | None = None) -> str:
+    """
+    Return the model string that should be handed to the downstream LiteLLM call.
+
+    Rules are intentionally narrow:
+    - xai + bare model -> prefix with "xai/"
+    - xai + already provider-qualified request -> keep as-is
+    - non-xai providers -> unchanged
+    """
+    if provider != "xai":
+        return model
+
+    requested = str(requested_model or "").strip()
+    if requested.lower().startswith("xai/"):
+        return requested
+
+    if model.lower().startswith("xai/"):
+        return model
+
+    return f"xai/{model}"

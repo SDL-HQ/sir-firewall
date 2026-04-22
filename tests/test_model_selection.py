@@ -1,4 +1,4 @@
-from sir_firewall.model_selection import validate_execution_selection
+from sir_firewall.model_selection import normalize_live_invocation_model, validate_execution_selection
 
 
 def test_validate_execution_selection_accepts_supported_pair_in_audit():
@@ -27,3 +27,30 @@ def test_validate_execution_selection_supports_prefixed_model_when_provider_matc
     provider, model = validate_execution_selection(provider="xai", model="xai/grok-3-beta", mode="audit", env={})
     assert provider == "xai"
     assert model == "grok-3-beta"
+
+
+def test_normalize_live_invocation_model_prefixes_bare_xai_model():
+    normalized = normalize_live_invocation_model(
+        provider="xai",
+        model="grok-4-1-fast",
+        requested_model="grok-4-1-fast",
+    )
+    assert normalized == "xai/grok-4-1-fast"
+
+
+def test_normalize_live_invocation_model_keeps_prefixed_xai_model():
+    normalized = normalize_live_invocation_model(
+        provider="xai",
+        model="grok-4.20-0309-non-reasoning",
+        requested_model="xai/grok-4.20-0309-non-reasoning",
+    )
+    assert normalized == "xai/grok-4.20-0309-non-reasoning"
+
+
+def test_normalize_live_invocation_model_keeps_openai_unchanged():
+    normalized = normalize_live_invocation_model(
+        provider="openai",
+        model="gpt-4.1-mini",
+        requested_model="gpt-4.1-mini",
+    )
+    assert normalized == "gpt-4.1-mini"

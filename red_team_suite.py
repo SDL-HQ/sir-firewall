@@ -35,6 +35,7 @@ from sir_firewall.core import load_domain_pack
 from sir_firewall.model_selection import (
     DEFAULT_MODEL as DEFAULT_SELECTED_MODEL,
     DEFAULT_PROVIDER,
+    normalize_live_invocation_model,
     validate_execution_selection,
 )
 
@@ -393,6 +394,11 @@ def main() -> None:
         provider_name, model_name = validate_execution_selection(provider=provider_arg, model=model_arg, mode=args.mode)
     except ValueError as exc:
         raise SystemExit(f"ERROR: {exc}") from exc
+    live_invocation_model = normalize_live_invocation_model(
+        provider=provider_name,
+        model=model_name,
+        requested_model=model_arg,
+    )
 
     if args.mode == "live":
         try:
@@ -501,7 +507,7 @@ def main() -> None:
                         history = [{"role": str(t.get("role") or "user"), "content": str(t.get("content") or "")} for t in rows[:i]]
                     else:
                         history = [{"role": "user", "content": prompt}]
-                    if _maybe_call_model(model_name, history, do_model_calls):
+                    if _maybe_call_model(live_invocation_model, history, do_model_calls):
                         provider_call_successes += 1
                 except Exception as e:
                     provider_call_failures += 1
