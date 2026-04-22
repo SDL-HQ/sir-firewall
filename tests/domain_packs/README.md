@@ -22,6 +22,7 @@ Canonical taxonomy source: `spec/packs/PACKS.md` ("Coverage taxonomy v1").
 
 - [Support / Operator Override](./support_operator_override.md) — taxonomy: `benign_control`, `direct_bypass`, `exfiltration`
 - [Data Exfiltration Pressure](./data_exfiltration_pressure.md) — taxonomy: `benign_control`, `exfiltration`
+- [EU AI Act Compliance Pressure](./eu_ai_act_compliance_pressure.md) — taxonomy: `benign_control`, `direct_bypass`
 
 ## Artefacts
 
