@@ -535,8 +535,8 @@
     function truncateRunId(runId) {
       const value = (runId || "").toString();
       if (!value) return "—";
-      if (value.length <= 34) return value;
-      return `${value.slice(0, 16)}…${value.slice(-12)}`;
+      if (value.length <= 26) return value;
+      return `${value.slice(0, 12)}…${value.slice(-10)}`;
     }
 
     function runLink(runId) {
