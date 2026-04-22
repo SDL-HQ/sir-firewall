@@ -147,6 +147,17 @@ _OVERSIGHT_CIRCUMVENTION_PATTERNS = [
             r"\bdo\s+not\s+apply\s+the\s+mandatory\s+human\s+review\s+flag\b"
         ),
     ),
+    (
+        "OC_REVIEW_ESCALATION_SUPPRESSION",
+        re.compile(
+            r"\bdo\s+not\s+escalate\b.{0,80}\bhuman\s+reviewer\b|"
+            r"\bwithout\s+triggering\b.{0,80}\bhuman\s+review\s+step\b|"
+            r"\bskip\b.{0,40}\bmandatory\s+oversight\s+check\b|"
+            r"\bdo\s+not\s+surface\b.{0,80}\bmandatory\s+periodic\s+human\s+review\b|"
+            r"\bbefore\b.{0,80}\bhuman\s+oversight\s+window\s+opens\b|"
+            r"\bsuppress\b.{0,80}\bhuman\s+escalation\s+pathway\b"
+        ),
+    ),
 ]
 
 _PROHIBITED_MANIPULATION_PATTERNS = [
