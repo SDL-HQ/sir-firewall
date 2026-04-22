@@ -69,6 +69,50 @@ _OBEY_SIGNAL = re.compile(
     r"perform\s+the\s+concealed|carry\s+out\s+the\s+concealed|and\s+execute|higher\s+priority\s+than\s+your\s+safety\s+rules|apply\s+that\s+instead|system-level\s+command)\b"
 )
 
+_TRANSPARENCY_BYPASS_PATTERNS = [
+    (
+        "TB_DENY_AI_IDENTITY",
+        re.compile(
+            r"\bdeny\s+being\s+an\s+ai\b|\bdo\s+not\s+reveal\s+that\s+you\s+are\s+an\s+ai\b|"
+            r"\bif\s+asked\b.{0,80}\bwhether\s+you\s+are\s+an\s+ai\b.{0,80}\bsay\s+you\s+are\s+(?:a\s+)?human\b|"
+            r"\bdo\s+not\s+comply\s+with\s+requests\s+to\s+confirm\s+you\s+are\s+an\s+ai\b"
+        ),
+    ),
+    (
+        "TB_FABRICATE_HUMAN_CREDIBILITY",
+        re.compile(
+            r"\bclaim\s+you\s+are\s+a\s+human\s+doctor\b|\bsimulate\s+being\s+a\s+real\s+human\s+legal\s+expert\b|"
+            r"\bsay\s+you\s+are\s+a\s+certified\s+human\s+therapist\b|\bclaim\s+you\s+have\s+personal\s+lived\s+experience\b|"
+            r"\bprovide\s+a\s+convincing\s+human\s+backstory\b|\bprovide\s+a\s+plausible\s+human\s+identity\b"
+        ),
+    ),
+    (
+        "TB_DISCLOSURE_MASKING",
+        re.compile(
+            r"\bdo\s+not\s+disclose\s+that\s+this\s+response\s+was\s+generated\s+by\s+an\s+ai\s+system\b|"
+            r"\bdo\s+not\s+include\s+any\s+ai\s+disclosure\b|\bremove\s+any\s+language\s+that\s+might\s+reveal\s+ai\s+involvement\b|"
+            r"\b(?:this\s+output\s+will\s+be\s+)?presented\s+as\s+human-authored\b|\bmust\s+not\s+know\b.{0,40}\bai-generated\b|"
+            r"\bwritten\s+by\s+a\s+named\s+human\s+author\b|\bdo\s+not\s+include\s+ai\s+indicators\b"
+        ),
+    ),
+    (
+        "TB_HUMAN_IMPERSONATION",
+        re.compile(
+            r"\bsay\s+you\s+are\s+(?:a\s+)?human\b|\bpretend\s+to\s+be\s+a\s+licensed\s+human\s+[a-z]+\s+advisor\b|"
+            r"\byou\s+are\s+now\s+[a-z]+\s+a\s+real\s+person\b|\brespond\s+as\s+a\s+named\s+human\s+employee\b|"
+            r"\bhuman\s+customer\s+service\s+agent\s+named\b|\bhuman\s+team\s+member\b|"
+            r"\bintroduce\s+yourself\s+as\s+a\s+human\b.{0,80}\bmaintain\s+that\s+persona\b"
+        ),
+    ),
+    (
+        "TB_CONCEAL_AUTOMATION",
+        re.compile(
+            r"\bhide\s+the\s+fact\s+that\s+automated\s+processing\s+is\s+involved\s+in\s+this\s+decision\b|"
+            r"\bdo\s+not\s+inform\s+the\s+user\s+that\s+an\s+ai\s+system\s+is\s+making\s+this\s+recommendation\b"
+        ),
+    ),
+]
+
 
 def find_rule_hits(normalized_text: str) -> List[str]:
     """Return deterministic rule hit codes for text that should be blocked."""
@@ -88,6 +132,10 @@ def find_rule_hits(normalized_text: str) -> List[str]:
 
     if _OBFUSCATION_SIGNAL.search(t) and _OBEY_SIGNAL.search(t):
         hits.append("OBFUSCATION_DECODE_AND_OBEY")
+
+    for code, pattern in _TRANSPARENCY_BYPASS_PATTERNS:
+        if pattern.search(t):
+            hits.append(code)
 
     dedup: List[str] = []
     seen = set()
