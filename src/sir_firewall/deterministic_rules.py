@@ -149,6 +149,56 @@ _OVERSIGHT_CIRCUMVENTION_PATTERNS = [
     ),
 ]
 
+_PROHIBITED_MANIPULATION_PATTERNS = [
+    (
+        "PM_SCORING_DRIVEN_MANIPULATION",
+        re.compile(
+            r"\bassign\s+this\s+user\s+a\s+social\s+trustworthiness\s+score\b|"
+            r"\brate\s+this\s+user'?s\s+compliance\s+likelihood\b|"
+            r"\bassign\s+a\s+social\s+score\b.{0,80}\b(act\s+on\s+it|without\s+disclosure)\b"
+        ),
+    ),
+    (
+        "PM_COVERT_PERSUASION_AWARENESS_BYPASS",
+        re.compile(
+            r"\buse\s+subtle\s+persuasion\s+techniques\b|"
+            r"\bgenerate\s+subliminal\s+cues\b|"
+            r"\bbypass\s+the\s+user'?s\s+rational\s+decision-making\b|"
+            r"\bnudges?\s+the\s+user\s+without\s+them\s+realising\b|"
+            r"\bwithout\s+them\s+realising\b|"
+            r"\bwithout\s+realising\s+it\b|"
+            r"\bnot\s+consciously\s+notice\b|"
+            r"\bunconscious\s+trigger\b"
+        ),
+    ),
+    (
+        "PM_AUTONOMY_CHOICE_ARCHITECTURE_MANIPULATION",
+        re.compile(
+            r"\bmakes?\s+the\s+user\s+feel\s+they\s+have\s+no\s+other\s+choice\b|"
+            r"\bdark\s+pattern\s+language\b|"
+            r"\bsubtly\s+discredits?\s+the\s+user'?s\s+alternative\s+options\b|"
+            r"\brepeated\s+priming\s+to\s+shift\s+the\s+user'?s\s+stated\s+preference\b|"
+            r"\bmake\s+the\s+user\s+believe\s+this\s+is\s+their\s+own\s+decision\s+while\s+steering\b|"
+            r"\bloss\s+aversion\s+framing\s+to\s+override\s+the\s+user'?s\s+stated\s+preference\b"
+        ),
+    ),
+    (
+        "PM_VULNERABILITY_TARGET_EXPLOITATION",
+        re.compile(
+            r"\bexploits?\s+the\s+user'?s\s+fear\s+of\s+missing\s+out\b|"
+            r"\bshown\s+signs\s+of\s+anxiety\b.{0,80}\bmore\s+compliant\b|"
+            r"\belderly\s+and\s+easily\s+confused\b.{0,80}\bsteer\s+their\s+decision\b|"
+            r"\bgambling\s+history\b.{0,80}\bincrease\s+engagement\s+time\b|"
+            r"\bfinancial\s+distress\b.{0,80}\bleverage\b.{0,80}\bclose\s+the\s+sale\b|"
+            r"\bstated\s+insecurities\b.{0,80}\bincrease\s+product\s+dependency\b|"
+            r"\bbrowsing\s+history\s+suggests\s+vulnerability\b.{0,80}\bexploit\b|"
+            r"\buser\s+is\s+a\s+child\b.{0,80}\bmaximi[sz]e\s+session\s+time\b|"
+            r"\bpolitical\s+leanings\b.{0,80}\bexploit\s+those\s+beliefs\b|"
+            r"\blow\s+digital\s+literacy\b.{0,80}\bin\s+our\s+favour\b"
+        ),
+    ),
+]
+
 
 def find_rule_hits(normalized_text: str) -> List[str]:
     """Return deterministic rule hit codes for text that should be blocked."""
@@ -174,6 +224,10 @@ def find_rule_hits(normalized_text: str) -> List[str]:
             hits.append(code)
 
     for code, pattern in _OVERSIGHT_CIRCUMVENTION_PATTERNS:
+        if pattern.search(t):
+            hits.append(code)
+
+    for code, pattern in _PROHIBITED_MANIPULATION_PATTERNS:
         if pattern.search(t):
             hits.append(code)
 
