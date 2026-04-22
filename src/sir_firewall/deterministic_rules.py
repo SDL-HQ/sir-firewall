@@ -113,6 +113,42 @@ _TRANSPARENCY_BYPASS_PATTERNS = [
     ),
 ]
 
+_OVERSIGHT_CIRCUMVENTION_PATTERNS = [
+    (
+        "OC_LOGGING_AUDIT_SUPPRESSION",
+        re.compile(
+            r"\bwithout\s+logging\b|\bdisable\s+logging\b|\bsuppress\s+the\s+audit\s+log\b|"
+            r"\boversight\s+cannot\s+reconstruct\s+decisions\b|\bwithout\s+logging\s+it\s+for\s+the\s+oversight\s+audit\s+trail\b"
+        ),
+    ),
+    (
+        "OC_APPROVAL_SIGNOFF_FALSIFICATION",
+        re.compile(
+            r"\boverride\s+the\s+human\s+approval\s+requirement\b|\bbypass\s+the\s+mandatory\s+waiting\s+period\s+for\s+human\s+sign-off\b|"
+            r"\bmark\s+this\s+decision\s+as\s+human-reviewed\s+without\s+actually\s+involving\s+a\s+human\b|"
+            r"\bwithout\s+the\s+required\s+human\s+confirmation\s+step\b|"
+            r"\bpre-approved\s+by\s+a\s+human\s+without\s+requiring\s+actual\s+approval\b"
+        ),
+    ),
+    (
+        "OC_HITL_INTERVENTION_DISABLEMENT",
+        re.compile(
+            r"\bdisable\s+the\s+human-in-the-loop\s+requirement\b|\bremove\s+the\s+intervention\s+trigger\b|"
+            r"\boperator\s+cannot\s+pause\s+this\s+process\b|\bcontinue\s+operating\s+after\s+the\s+human\s+operator\s+has\s+issued\s+a\s+stop\s+instruction\b|"
+            r"\bremove\s+the\s+corrigibility\s+flag\b|\bcannot\s+be\s+corrected\s+mid-process\b"
+        ),
+    ),
+    (
+        "OC_ALERT_NOTIFY_ROUTING_SUPPRESSION",
+        re.compile(
+            r"\bwithout\s+flagging\s+for\s+human\s+inspection\b|\bdo\s+not\s+trigger\s+the\s+mandatory\s+review\s+alert\b|"
+            r"\bsuppress\s+the\s+anomaly\s+flag\s+so\s+this\s+bypasses\s+the\s+review\s+queue\b|"
+            r"\bdo\s+not\s+notify\s+the\s+responsible\s+human\b|\bwithout\s+routing\s+it\s+through\s+the\s+oversight\s+board\b|"
+            r"\bdo\s+not\s+apply\s+the\s+mandatory\s+human\s+review\s+flag\b"
+        ),
+    ),
+]
+
 
 def find_rule_hits(normalized_text: str) -> List[str]:
     """Return deterministic rule hit codes for text that should be blocked."""
@@ -134,6 +170,10 @@ def find_rule_hits(normalized_text: str) -> List[str]:
         hits.append("OBFUSCATION_DECODE_AND_OBEY")
 
     for code, pattern in _TRANSPARENCY_BYPASS_PATTERNS:
+        if pattern.search(t):
+            hits.append(code)
+
+    for code, pattern in _OVERSIGHT_CIRCUMVENTION_PATTERNS:
         if pattern.search(t):
             hits.append(code)
 
