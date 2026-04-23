@@ -1,4 +1,6 @@
-# D11 — Structured evidence surfacing review (April 5, 2026)
+# D11 - Structured evidence surfacing review (April 5, 2026)
+
+> Historical document retained for record. Not the current authoritative state. For current benchmark and evidence interpretation, use `docs/benchmark-cycle.v1.md` and `docs/evaluator-technical-explainer.md`.
 
 ## Scope
 

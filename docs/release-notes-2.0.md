@@ -1,5 +1,7 @@
 # SIR 2.0 Release Closeout
 
+> Historical release closeout document retained for record. Not the current authoritative state. For current operational and benchmark truth, use `README.md`, `docs/minimal-pilot-runbook.md`, and `docs/benchmark-cycle.v1.md`.
+
 Date: 2026-04-05
 
 This document closes the SIR 2.0 line as a release-closeout pass.
