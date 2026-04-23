@@ -52,7 +52,7 @@ SIR produces evidence artefacts, including:
 - signed certificate pointer for latest passing audit (`proofs/latest-audit.json`, `proofs/latest-audit.html`)
 - latest run status surface (`docs/latest-run.json`, served as `/latest-run.json`) with PASS/FAIL/INCONCLUSIVE truth
 - per-run archive evidence (`proofs/runs/<run_id>/...`) with manifest, audit snapshot, and archive receipt
-- benchmark index mapping (`proofs/runs/benchmark_index.v1.json`) as evidence-linked comparison rows
+- benchmark index mapping (`docs/runs/benchmark_index.v2.json`, served as `/runs/benchmark_index.v2.json`) as evidence-linked comparison rows
 
 Public Pages and published GitHub artefacts are the authoritative public truth surfaces for shared evidence review.
 Explanatory documentation describes how to read those surfaces; it does not replace them.

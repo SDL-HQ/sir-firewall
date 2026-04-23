@@ -1,4 +1,6 @@
-# D5 — First benchmark execution and evidence review (April 5, 2026)
+# D5 - First benchmark execution and evidence review (April 5, 2026)
+
+> Historical document retained for record. Not the current authoritative state. For current benchmark contract and surfaces, use `docs/benchmark-cycle.v1.md` and `docs/runs/benchmark_index.v2.json`.
 
 This note records the D5 execution outcome for the canonical benchmark cycle contract in `docs/benchmark-cycle.v1.md`.
 
@@ -62,7 +64,7 @@ Required set from D4:
 - D5 did **not** produce a full valid canonical v1 cycle because the live sentinel row could not run without provider credentials.
 - No workflow/product redesign was done in D5; only benchmark execution evidence and a review note were added.
 
-## B1 addendum — post-2.0 baseline attempt (April 16, 2026)
+## B1 addendum - post-2.0 baseline attempt (April 16, 2026)
 
 This addendum records the first fresh post-2.0 baseline cycle attempt after D5.
 
