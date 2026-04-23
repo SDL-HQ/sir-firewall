@@ -1,3 +1,5 @@
+> Historical document retained for record. Not the current authoritative state. For current perimeter truth, use `docs/evidence-perimeter.v2.md` and current benchmark surfaces.
+
 ## SIR current evidence perimeter v1
 
 Date (UTC): 2026-04-20

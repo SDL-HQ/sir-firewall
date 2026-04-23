@@ -87,7 +87,7 @@ Public surfaces and semantics:
 - `latest-run.json`: most recent run outcome, including FAIL or INCONCLUSIVE
 - `runs/index.html`: archive index for pass and fail runs
 - `runs/<run_id>/...`: per-run evidence bundle (manifest, audit, receipt, copied artefacts)
-- `runs/benchmark_index.v1.json`: evidence map for side-by-side comparison only, with `latest_run` and `latest_passing_run`
+- `runs/benchmark_index.v2.json`: evidence map for side-by-side comparison only, with `latest_run`, `latest_passing_run`, and paired benchmark rows
 - Acceptance-oriented audit surfaces are `latest-audit.*`, `latest-run.json`, and run archives; benchmark rows remain exploratory comparison evidence.
 
 ## Canonical benchmark cycle contract (v1)
@@ -97,15 +97,14 @@ The first disciplined benchmark cycle is locked in `docs/benchmark-cycle.v1.md`.
 Required cycle set:
 
 - `generic_safety` (`FIREWALL_ONLY_AUDIT`)
-- `account_recovery_fraud` (`FIREWALL_ONLY_AUDIT`)
-- `scenario_injection_chain` (`SCENARIO_AUDIT`)
-- `generic_safety` (`LIVE_GATING_CHECK` live sentinel)
+- `support_operator_override` (`FIREWALL_ONLY_AUDIT`)
+- `data_exfiltration_pressure` (`FIREWALL_ONLY_AUDIT`)
 
 Interpretation constraints:
 
 - compare only within identical attribution dimensions (`row_identity`)
-- keep domain-pack and scenario-pack evidence rows separate
-- treat missing provider/model on live rows as non-comparable
+- keep domain-pack and scenario-pack evidence rows separate when both are present in the benchmark index
+- treat missing provider/model on rows that require provider/model dimensions as non-comparable
 - keep benchmark index semantics as evidence mapping only (no scores/rankings)
 
 ## Proof classes
@@ -185,7 +184,7 @@ If a local/dev archive was signed with an ephemeral key and its `signing_key_id`
 
 ### 6) Interpret benchmark index honestly
 
-Read `proofs/runs/benchmark_index.v1.json` as an evidence index:
+Read `docs/runs/benchmark_index.v2.json` as an evidence index:
 
 - use `latest_run` for most recent execution status
 - use `latest_passing_run` for most recent pass
@@ -201,7 +200,7 @@ Read `proofs/runs/benchmark_index.v1.json` as an evidence index:
 | `proofs/itgl_ledger.jsonl` + `proofs/itgl_final_hash.txt` | Integrity chain for run log | `python3 tools/verify_itgl.py` |
 | `proofs/latest-audit.json` | Signed certificate payload | `sir verify cert ...` or `python3 tools/verify_certificate.py ...` |
 | `proofs/runs/<run_id>/archive_receipt.json` | Run archive chain-of-custody receipt | `sir verify archive proofs/runs/<run_id>/` |
-| `proofs/runs/benchmark_index.v1.json` | Honest map of runs and pointers | schema + direct inspection |
+| `docs/runs/benchmark_index.v2.json` | Honest map of runs, pointers, and pair rows | schema + direct inspection |
 
 ## Key governance readiness reference
 
