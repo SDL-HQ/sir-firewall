@@ -23,7 +23,14 @@ def test_tool_result_valid_input_routes_through_isc_path():
 
     assert out["status"] == "PASS"
     assert out["governance_context"]["tool_result_mode"] == "tool_result_v1"
-    assert any(step.get("component") == "tool_result_validation" and step.get("outcome") == "pass" for step in out["itgl_log"])
+    assert out["governance_context"]["tool_name"] == "browser"
+    validation_steps = [
+        step
+        for step in out["itgl_log"]
+        if step.get("component") == "tool_result_validation" and step.get("outcome") == "pass"
+    ]
+    assert len(validation_steps) == 1
+    assert validation_steps[0]["output"]["tool_name"] == "browser"
 
 
 def test_tool_result_malformed_input_fails_closed():
