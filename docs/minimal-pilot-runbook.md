@@ -3,7 +3,9 @@
 This runbook defines one minimal, repeatable pilot/evaluation path.
 
 Use it when a reviewer/operator needs a linear procedure without extra interpretation layers.
-This is the canonical operator/reviewer method for this repository.
+This is the canonical operator/reviewer cold-start method for this repository.
+
+If interpretation detail is needed after this flow, use `docs/evaluator-technical-explainer.md`.
 
 ## Scope and truth posture
 
@@ -111,7 +113,7 @@ For local CLI operation, use:
 Action/command:
 
 ```bash
-python3 tools/verify_certificate.py proofs/latest-audit.json
+sir verify cert proofs/latest-audit.json
 ```
 
 Artifact to inspect:
