@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import threading
 import time
 import unicodedata
 from pathlib import Path
@@ -236,6 +237,7 @@ def _has_override_envelope_prompt_exposure(payload: str) -> bool:
 _POLICY_LOADED = False
 _POLICY_VERSION: str | None = None
 _POLICY_HASH: str | None = None
+_POLICY_LOAD_LOCK = threading.Lock()
 
 
 def _load_isc_policy() -> None:
@@ -258,78 +260,82 @@ def _load_isc_policy() -> None:
 
     dev_mode = os.getenv("SIR_DEV_MODE") == "1"
 
-    try:
-        here = Path(__file__).resolve()
-        candidates: List[Path] = []
-
-        # Repo layout: <repo_root>/src/sir_firewall/core.py → <repo_root>/policy/isc_policy.json
-        if len(here.parents) >= 3:
-            candidates.append(here.parents[2] / "policy" / "isc_policy.json")
-
-        # Package layout: sir_firewall/policy/isc_policy.json
-        candidates.append(here.parent / "policy" / "isc_policy.json")
-
-        policy_path: Path | None = None
-        for candidate in candidates:
-            if candidate.is_file():
-                policy_path = candidate
-                break
-
-        if policy_path is None:
-            raise FileNotFoundError("ISC policy file not found")
-
-        with policy_path.open("r", encoding="utf-8") as f:
-            policy = json.load(f)
-
-        _POLICY_VERSION = str(policy.get("version", "unknown"))
-
-        templates = policy.get("templates", {})
-        if isinstance(templates, dict) and templates:
-            ALLOWED_TEMPLATES = set(templates.keys())
-
-            # Policy-level baseline friction limits (Domain packs can still override)
-            for template_id, cfg in templates.items():
-                if isinstance(cfg, dict) and "max_tokens" in cfg:
-                    try:
-                        MAX_FRICTION_BY_TEMPLATE[template_id] = int(cfg["max_tokens"])
-                    except Exception:
-                        pass
-
-        flags = policy.get("flags", {})
-        if isinstance(flags, dict):
-            if "STRICT_ISC_ENFORCEMENT" in flags:
-                STRICT_ISC_ENFORCEMENT = bool(flags["STRICT_ISC_ENFORCEMENT"])
-            if "CHECKSUM_ENFORCED" in flags:
-                CHECKSUM_ENFORCED = bool(flags["CHECKSUM_ENFORCED"])
-            if "CRYPTO_ENFORCED" in flags:
-                CRYPTO_ENFORCED = bool(flags["CRYPTO_ENFORCED"])
-
-        rules = policy.get("rules", {})
-        if isinstance(rules, dict):
-            dw = rules.get("danger_words")
-            if isinstance(dw, list):
-                extras = [str(w).lower() for w in dw]
-                _DANGER_WORDS = sorted(set(_DANGER_WORDS) | set(extras))
-
-            sf = rules.get("safety_phrases")
-            if isinstance(sf, list):
-                extras = [str(w).lower() for w in sf]
-                _SAFETY_PHRASES = sorted(set(_SAFETY_PHRASES) | set(extras))
-
-            hr = rules.get("high_risk_patterns")
-            if isinstance(hr, list):
-                extras = [str(w).lower() for w in hr]
-                _HIGH_RISK_KEYWORDS = sorted(set(_HIGH_RISK_KEYWORDS) | set(extras))
-
-        payload_bytes = json.dumps(policy, sort_keys=True, separators=(",", ":")).encode("utf-8")
-        _POLICY_HASH = "sha256:" + hashlib.sha256(payload_bytes).hexdigest()
-
-        _POLICY_LOADED = True
-    except Exception:
-        if dev_mode:
-            _POLICY_LOADED = True
+    with _POLICY_LOAD_LOCK:
+        if _POLICY_LOADED:
             return
-        raise
+
+        try:
+            here = Path(__file__).resolve()
+            candidates: List[Path] = []
+
+            # Repo layout: <repo_root>/src/sir_firewall/core.py → <repo_root>/policy/isc_policy.json
+            if len(here.parents) >= 3:
+                candidates.append(here.parents[2] / "policy" / "isc_policy.json")
+
+            # Package layout: sir_firewall/policy/isc_policy.json
+            candidates.append(here.parent / "policy" / "isc_policy.json")
+
+            policy_path: Path | None = None
+            for candidate in candidates:
+                if candidate.is_file():
+                    policy_path = candidate
+                    break
+
+            if policy_path is None:
+                raise FileNotFoundError("ISC policy file not found")
+
+            with policy_path.open("r", encoding="utf-8") as f:
+                policy = json.load(f)
+
+            _POLICY_VERSION = str(policy.get("version", "unknown"))
+
+            templates = policy.get("templates", {})
+            if isinstance(templates, dict) and templates:
+                ALLOWED_TEMPLATES = set(templates.keys())
+
+                # Policy-level baseline friction limits (Domain packs can still override)
+                for template_id, cfg in templates.items():
+                    if isinstance(cfg, dict) and "max_tokens" in cfg:
+                        try:
+                            MAX_FRICTION_BY_TEMPLATE[template_id] = int(cfg["max_tokens"])
+                        except Exception:
+                            pass
+
+            flags = policy.get("flags", {})
+            if isinstance(flags, dict):
+                if "STRICT_ISC_ENFORCEMENT" in flags:
+                    STRICT_ISC_ENFORCEMENT = bool(flags["STRICT_ISC_ENFORCEMENT"])
+                if "CHECKSUM_ENFORCED" in flags:
+                    CHECKSUM_ENFORCED = bool(flags["CHECKSUM_ENFORCED"])
+                if "CRYPTO_ENFORCED" in flags:
+                    CRYPTO_ENFORCED = bool(flags["CRYPTO_ENFORCED"])
+
+            rules = policy.get("rules", {})
+            if isinstance(rules, dict):
+                dw = rules.get("danger_words")
+                if isinstance(dw, list):
+                    extras = [str(w).lower() for w in dw]
+                    _DANGER_WORDS = sorted(set(_DANGER_WORDS) | set(extras))
+
+                sf = rules.get("safety_phrases")
+                if isinstance(sf, list):
+                    extras = [str(w).lower() for w in sf]
+                    _SAFETY_PHRASES = sorted(set(_SAFETY_PHRASES) | set(extras))
+
+                hr = rules.get("high_risk_patterns")
+                if isinstance(hr, list):
+                    extras = [str(w).lower() for w in hr]
+                    _HIGH_RISK_KEYWORDS = sorted(set(_HIGH_RISK_KEYWORDS) | set(extras))
+
+            payload_bytes = json.dumps(policy, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            _POLICY_HASH = "sha256:" + hashlib.sha256(payload_bytes).hexdigest()
+
+            _POLICY_LOADED = True
+        except Exception:
+            if dev_mode:
+                _POLICY_LOADED = True
+                return
+            raise
 
 
 # ---------------------------------------------------------------------------
