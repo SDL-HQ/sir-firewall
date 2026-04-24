@@ -176,6 +176,8 @@ def _benchmark_entry_from_run(runs_dir: Path, run: Dict[str, Any]) -> Dict[str, 
         "itgl_final_hash": artifact_path("proofs/itgl_final_hash.txt"),
         "attempt_log": artifact_path("proofs/latest-attempts.log"),
     }
+    if (run_dir / "proofs" / "downstream_evidence.jsonl").exists():
+        evidence["downstream_evidence"] = artifact_path("proofs/downstream_evidence.jsonl")
 
     entry: Dict[str, Any] = {
         "run_id": run_id,
@@ -612,6 +614,9 @@ def main() -> int:
 
     archived_audit = run_dir / "audit.json"
     shutil.copy2(cert_path, archived_audit)
+    downstream_evidence_rel = "proofs/downstream_evidence.jsonl"
+    if (repo_root / downstream_evidence_rel).is_file() and downstream_evidence_rel not in args.copy:
+        args.copy.append(downstream_evidence_rel)
     _copy_optional_artifacts(repo_root, run_dir, args.copy)
 
     # Persist run_id for workflow consumers (e.g. docs/latest-run.json publishing).

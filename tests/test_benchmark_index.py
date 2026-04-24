@@ -157,6 +157,64 @@ def test_benchmark_entry_prefers_effective_pack_id_from_audit(tmp_path):
     assert entry["evaluation_target"]["pack_version"] == "1.2.3"
 
 
+def test_benchmark_entry_adds_downstream_evidence_link_only_when_artifact_present(tmp_path):
+    publish_run = _load_publish_run_module()
+
+    runs_dir = tmp_path / "runs"
+    run_id = "run-live"
+    run_dir = runs_dir / run_id
+    (run_dir / "proofs").mkdir(parents=True)
+    (run_dir / "audit.json").write_text(
+        json.dumps(
+            {
+                "result": "AUDIT PASSED",
+                "proof_class": "LIVE_GATING_CHECK",
+                "pack_id": "generic_safety",
+                "pack_version": "1.0.0",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    no_sidecar_entry = publish_run._benchmark_entry_from_run(
+        runs_dir=runs_dir,
+        run={"run_id": run_id, "path": f"runs/{run_id}/"},
+    )
+    assert "downstream_evidence" not in no_sidecar_entry["evidence"]
+
+    (run_dir / "proofs" / "downstream_evidence.jsonl").write_text("{}", encoding="utf-8")
+    with_sidecar_entry = publish_run._benchmark_entry_from_run(
+        runs_dir=runs_dir,
+        run={"run_id": run_id, "path": f"runs/{run_id}/"},
+    )
+    assert with_sidecar_entry["evidence"]["downstream_evidence"] == f"runs/{run_id}/proofs/downstream_evidence.jsonl"
+
+
+def test_copy_optional_artifacts_includes_downstream_sidecar_in_manifest(tmp_path):
+    publish_run = _load_publish_run_module()
+
+    repo_root = tmp_path / "repo"
+    run_dir = tmp_path / "archive" / "run-1"
+    (repo_root / "proofs").mkdir(parents=True)
+    run_dir.mkdir(parents=True)
+    (repo_root / "proofs" / "downstream_evidence.jsonl").write_text('{"ok":true}\n', encoding="utf-8")
+
+    copied = publish_run._copy_optional_artifacts(
+        repo_root=repo_root,
+        run_dir=run_dir,
+        extra_paths=["proofs/downstream_evidence.jsonl"],
+    )
+    assert copied == ["proofs/downstream_evidence.jsonl"]
+
+    manifest = publish_run._build_manifest(
+        run_dir=run_dir,
+        run_id="run-1",
+        cert={"repository": "SDL-HQ/sir-firewall", "commit_sha": "abc"},
+    )
+    manifest_paths = {entry["path"] for entry in manifest["files"]}
+    assert "proofs/downstream_evidence.jsonl" in manifest_paths
+
+
 def test_benchmark_index_v2_loads_pair_artifact_and_computes_deltas(tmp_path):
     publish_run = _load_publish_run_module()
 
