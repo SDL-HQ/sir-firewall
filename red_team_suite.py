@@ -480,7 +480,14 @@ def main() -> None:
                     "domain_pack": effective_pack_id or selected_pack_id or "",
                 }
             else:
-                verdict = validate_sir({"isc": isc}, enforcement_pack_id=(pack_id or None))
+                verdict = validate_sir(
+                    {"isc": isc},
+                    enforcement_pack_id=(pack_id or None),
+                    pack_identity_context={
+                        "pack_version": selected_pack_version,
+                        "pack_hash": suite_hash,
+                    },
+                )
             status = str(verdict.get("status", "UNKNOWN"))
 
             expected_status = "PASS" if expected == "allow" else "BLOCKED"
