@@ -94,6 +94,62 @@ def test_structured_schema_sourced_from_pack_declaration(monkeypatch):
     assert out["governance_context"]["isc_template"] == "PCI-DSS-ISC-v1"
 
 
+def test_structured_mode_passes_with_support_operator_override_pack():
+    out = core.validate_sir(
+        {"structured_request": _structured()},
+        enforcement_pack_id="support_operator_override",
+    )
+
+    assert out["status"] == "PASS"
+    assert out["reason"] == "clean"
+    assert out["domain_pack"] == "support_operator_override"
+    assert out["governance_context"]["structured_mode"] == "account_recovery_challenge_request_v1"
+    assert out["governance_context"]["isc_template"] == "EU-AI-Act-ISC-v1"
+
+
+def test_structured_mode_passes_with_data_exfiltration_pressure_pack():
+    out = core.validate_sir(
+        {"structured_request": _structured()},
+        enforcement_pack_id="data_exfiltration_pressure",
+    )
+
+    assert out["status"] == "PASS"
+    assert out["reason"] == "clean"
+    assert out["domain_pack"] == "data_exfiltration_pressure"
+    assert out["governance_context"]["structured_mode"] == "account_recovery_challenge_request_v1"
+    assert out["governance_context"]["isc_template"] == "EU-AI-Act-ISC-v1"
+
+
+def test_structured_mode_declaration_drift_in_additional_pack_fails_closed(monkeypatch):
+    real_load_domain_pack = core.load_domain_pack
+
+    def _drifted_pack(pack_id=None):
+        data = real_load_domain_pack(pack_id=pack_id)
+        if data.get("pack_id") == "support_operator_override":
+            drifted = dict(data)
+            schema_decl = dict(drifted.get("structured_request_schema", {}))
+            schema_decl["required_fields"] = [
+                "schema_version",
+                "request_class",
+                "action",
+                "request_text",
+            ]
+            drifted["structured_request_schema"] = schema_decl
+            return drifted
+        return data
+
+    monkeypatch.setattr(core, "load_domain_pack", _drifted_pack)
+
+    out = core.validate_sir(
+        {"structured_request": _structured()},
+        enforcement_pack_id="support_operator_override",
+    )
+
+    assert out["status"] == "BLOCKED"
+    assert out["reason"] == "structured_validation_failed"
+    assert out["type"] == "structured_schema_declaration_invalid"
+
+
 def test_structured_schema_semantic_drift_fails_closed(monkeypatch):
     def _fake_pack(pack_id=None):
         return {
