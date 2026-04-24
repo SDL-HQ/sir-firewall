@@ -225,3 +225,44 @@ def test_benchmark_run_invokes_paired_runner(monkeypatch):
     assert captured["script_rel"] == "tools/run_paired_benchmark.py"
     assert "--pack" in captured["args"]
     assert "--pair-key" in captured["args"]
+
+
+def test_packs_list_filters_internal_visibility(monkeypatch, capsys):
+    cli = _load_cli_module()
+    monkeypatch.setattr(
+        cli,
+        "_load_registry",
+        lambda: {
+            "packs": [
+                {"pack_id": "generic_safety", "schema": "csv_single_turn_v1", "status": "active", "visibility": "public"},
+                {"pack_id": "canary_fail", "schema": "csv_single_turn_v1", "status": "draft", "visibility": "internal"},
+            ]
+        },
+    )
+
+    rc = cli._cmd_packs_list(cli.argparse.Namespace())
+
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "generic_safety\tcsv_single_turn_v1\tactive" in captured.out
+    assert "canary_fail" not in captured.out
+
+
+def test_packs_show_keeps_explicit_lookup_for_internal(monkeypatch, capsys):
+    cli = _load_cli_module()
+    monkeypatch.setattr(
+        cli,
+        "_load_registry",
+        lambda: {
+            "packs": [
+                {"pack_id": "canary_fail", "schema": "csv_single_turn_v1", "status": "draft", "visibility": "internal"}
+            ]
+        },
+    )
+
+    rc = cli._cmd_packs_show(cli.argparse.Namespace(pack_id="canary_fail"))
+
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert '"pack_id": "canary_fail"' in captured.out
+    assert '"visibility": "internal"' in captured.out
