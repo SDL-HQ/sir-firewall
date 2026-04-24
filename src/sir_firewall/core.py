@@ -1425,7 +1425,7 @@ def validate_sir(
             "tool_result_validation",
             "pass",
             {"fields": sorted(tool_result_request.keys()) if isinstance(tool_result_request, dict) else []},
-            {},
+            {"tool_name": str((tool_result_request or {}).get("tool_name", ""))},
             itgl_log,
             prev_hash,
         )
@@ -1552,6 +1552,7 @@ def validate_sir(
         governance_context["structured_mode"] = str((structured_schema_decl or {}).get("schema_id") or STRUCTURED_SCHEMA_ID)
     if tool_result_request is not None:
         governance_context["tool_result_mode"] = "tool_result_v1"
+        governance_context["tool_name"] = str(tool_result_request.get("tool_name", ""))
 
     if _POLICY_VERSION:
         governance_context.setdefault("policy_version", _POLICY_VERSION)
