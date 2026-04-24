@@ -1033,6 +1033,8 @@ def _validate_tool_result_request(raw: Any) -> Tuple[Dict[str, Any] | None, str 
             return None, "tool_result_nested_value"
         if not isinstance(field_value, str):
             return None, "tool_result_type_mismatch"
+    if len(obj["content"]) > 4000:
+        return None, "tool_result_content_length_out_of_bounds"
 
     return {
         "tool_name": obj["tool_name"],

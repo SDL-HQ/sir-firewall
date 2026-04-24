@@ -54,6 +54,21 @@ def test_tool_result_mixed_mode_fails_closed():
     assert out["type"] == "tool_result_mixed_mode_not_allowed"
 
 
+def test_tool_result_content_length_out_of_bounds_fails_closed():
+    out = core.validate_sir(
+        {
+            "tool_result": {
+                "tool_name": "browser",
+                "content": "a" * 4001,
+            }
+        }
+    )
+
+    assert out["status"] == "BLOCKED"
+    assert out["reason"] == "tool_result_validation_failed"
+    assert out["type"] == "tool_result_content_length_out_of_bounds"
+
+
 def test_existing_structured_mixed_mode_code_remains_unchanged():
     out = core.validate_sir(
         {
