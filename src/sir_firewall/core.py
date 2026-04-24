@@ -972,7 +972,11 @@ def _structured_to_isc_payload(structured_request: Dict[str, Any]) -> Dict[str, 
 # Public entrypoint
 # ---------------------------------------------------------------------------
 
-def validate_sir(input_dict: Dict[str, Any], enforcement_pack_id: str | None = None) -> Dict[str, Any]:
+def validate_sir(
+    input_dict: Dict[str, Any],
+    enforcement_pack_id: str | None = None,
+    pack_identity_context: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
     itgl_log: List[Dict[str, Any]] = []
     prev_hash: str = GENESIS_HASH
     structured_mode = STRUCTURED_REQUEST_FIELD in input_dict
@@ -1065,10 +1069,20 @@ def validate_sir(input_dict: Dict[str, Any], enforcement_pack_id: str | None = N
             except Exception:
                 continue
 
+    pack_identity = pack_identity_context if isinstance(pack_identity_context, dict) else {}
+    pack_version = str(pack_identity.get("pack_version") or "").strip()
+    pack_hash = str(pack_identity.get("pack_hash") or "").strip()
+
+    context_input: Dict[str, Any] = {"domain_pack": domain_pack_id}
+    if pack_version:
+        context_input["pack_version"] = pack_version
+    if pack_hash:
+        context_input["pack_hash"] = pack_hash
+
     itgl_log, prev_hash = _append_itgl(
         "context",
         "init",
-        {"domain_pack": domain_pack_id},
+        context_input,
         {},
         itgl_log,
         prev_hash,
@@ -1144,6 +1158,10 @@ def validate_sir(input_dict: Dict[str, Any], enforcement_pack_id: str | None = N
         "isc_template": isc_template,
         "itgl_final_hash": f"sha256:{final_hash}",
     }
+    if pack_version:
+        governance_context["pack_version"] = pack_version
+    if pack_hash:
+        governance_context["pack_hash"] = pack_hash
     if structured_request is not None:
         governance_context["structured_mode"] = "account_recovery_challenge_request_v1"
 
