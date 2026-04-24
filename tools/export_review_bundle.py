@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 from pathlib import Path
 from typing import Iterable
@@ -64,6 +65,107 @@ def _write_manifest(out: Path, included_files: Iterable[str], run_id: str | None
     manifest_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def _read_json_file(path: Path) -> dict:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise SystemExit(f"ERROR: malformed JSON: {path.as_posix()} ({exc})") from exc
+    if not isinstance(data, dict):
+        raise SystemExit(f"ERROR: expected JSON object at: {path.as_posix()}")
+    return data
+
+
+def _render_report_section(title: str, source_path: str, payload: dict, keys: Iterable[str]) -> list[str]:
+    lines = [f"## {title}", "", f"Source: `{source_path}`", ""]
+    for key in keys:
+        value = payload.get(key)
+        lines.append(f"- `{key}`: `{json.dumps(value, ensure_ascii=False)}`")
+    lines.append("")
+    return lines
+
+
+def _write_human_audit_report(out: Path, run_id: str | None) -> None:
+    latest_audit_rel = "proofs/latest-audit.json"
+    latest_run_rel = "docs/latest-run.json"
+    latest_audit = _read_json_file(out / latest_audit_rel)
+    latest_run = _read_json_file(out / latest_run_rel)
+
+    lines = [
+        "# HUMAN_AUDIT_REPORT",
+        "",
+        "This file is a deterministic, static restatement of already copied bundle artefacts.",
+        "No verdicts are recomputed here.",
+        "",
+        "Semantics note:",
+        "- `latest-audit.json` is latest passing proof material.",
+        "- `latest-run.json` is most recent run status material.",
+        "- These are distinct surfaces and can differ.",
+        "",
+        "Authority note:",
+        "- Source artefacts remain authoritative.",
+        "- This report is convenience-only.",
+        "",
+    ]
+
+    lines.extend(
+        _render_report_section(
+            title="Latest passing proof",
+            source_path=latest_audit_rel,
+            payload=latest_audit,
+            keys=(
+                "result",
+                "proof_class",
+                "date",
+                "timestamp_utc",
+                "suite_name",
+                "suite_path",
+                "model",
+                "provider",
+                "jailbreaks_leaked",
+                "harmless_blocked",
+                "commit_sha",
+                "payload_hash",
+                "trust_fingerprint",
+            ),
+        )
+    )
+    lines.extend(
+        _render_report_section(
+            title="Latest run status",
+            source_path=latest_run_rel,
+            payload=latest_run,
+            keys=(
+                "status",
+                "timestamp_utc",
+                "run_id",
+                "sha",
+                "source",
+            ),
+        )
+    )
+
+    if run_id:
+        run_manifest_rel = f"proofs/runs/{run_id}/manifest.json"
+        run_manifest = _read_json_file(out / run_manifest_rel)
+        lines.extend(
+            _render_report_section(
+                title="Selected run manifest",
+                source_path=run_manifest_rel,
+                payload=run_manifest,
+                keys=(
+                    "run_id",
+                    "run_timestamp_utc",
+                    "result",
+                    "proof_class",
+                    "archive_receipt_path",
+                    "audit_path",
+                ),
+            )
+        )
+
+    (out / "HUMAN_AUDIT_REPORT.md").write_text("\n".join(lines), encoding="utf-8")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description=(
@@ -119,6 +221,7 @@ def main() -> int:
         _copy_tree(repo_root, out_dir, run_rel)
 
     _write_manifest(out_dir, EXPLICIT_FILES, args.run_id)
+    _write_human_audit_report(out_dir, args.run_id)
 
     print(f"OK: exported B9 local review bundle -> {out_dir}")
     print(f"OK: included {len(EXPLICIT_FILES)} explicit files")
