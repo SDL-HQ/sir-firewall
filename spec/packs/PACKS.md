@@ -27,7 +27,7 @@ Each registry entry must include:
 - `suite_path`
 - `hash_binds_to` (`decoded_prompt_content`)
 - `pack_class` (`domain` or `scenario`)
-- `visibility` (`public` or `encoded`)
+- `visibility` (`public`, `encoded`, or `internal`)
 - `maturity` (`canonical` or `demo`)
 
 Optional:

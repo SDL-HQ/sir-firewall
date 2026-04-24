@@ -13,7 +13,7 @@ ALLOWED_SCHEMA = {"csv_single_turn_v1", "scenario_json_v1"}
 ALLOWED_RISK_CLASS = {"baseline", "encoded_high_risk", "domain"}
 ALLOWED_STATUS = {"active", "draft", "deprecated"}
 ALLOWED_PACK_CLASS = {"domain", "scenario"}
-ALLOWED_VISIBILITY = {"public", "encoded"}
+ALLOWED_VISIBILITY = {"public", "encoded", "internal"}
 ALLOWED_MATURITY = {"canonical", "demo"}
 REQUIRED_PACK_FIELDS = {
     "pack_id",
