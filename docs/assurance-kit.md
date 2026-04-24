@@ -3,6 +3,7 @@
 For evaluator review order, start with `docs/evaluator-technical-explainer.md` (primary evaluator entry point). This document is a compact supporting walkthrough.
 
 For the linear S4.3 pilot procedure (one minimal path), use `docs/minimal-pilot-runbook.md`.
+For explicit offline-capable operator steps based on existing behavior, see `docs/minimal-pilot-runbook.md#offline-capable-operator-path-existing-behavior`.
 
 It is for operators, auditors, buyers, and reviewers who need a compact, evidence-first way to understand what SIR does and verify outputs without repo archaeology.
 
