@@ -570,6 +570,12 @@ def main() -> None:
                 "prev_hash": prev_ledger_hash,
                 "ledger_hash": ledger_hash,
             }
+            pass_rule_explainability = verdict.get("pass_rule_explainability")
+            if status == "PASS" and isinstance(pass_rule_explainability, dict):
+                entry["pass_rule_explainability"] = {
+                    "evaluated_rule_families": list(pass_rule_explainability.get("evaluated_rule_families") or []),
+                    "clean_rule_families": list(pass_rule_explainability.get("clean_rule_families") or []),
+                }
             if scenario_mode:
                 entry["scenario_id"] = scenario_id
                 entry["scenario_hash"] = scenario_hash

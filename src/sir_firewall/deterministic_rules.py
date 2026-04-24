@@ -6,6 +6,16 @@ import re
 from typing import List
 
 
+_DETERMINISTIC_RULE_FAMILIES = [
+    "jailbreak_bypass",
+    "exfiltration",
+    "tool_injection",
+    "obfuscation_override",
+    "transparency_bypass",
+    "oversight_circumvention",
+    "prohibited_manipulation",
+]
+
 _BYPASS_PATTERNS = [
     ("JB_DISABLE_GUARDRAILS", re.compile(r"\b(disable|remove|turn\s*off)\s+(all\s+)?(guardrails|safeguards|safety|filters?)\b")),
     ("JB_UNRESTRICTED_MODE", re.compile(r"\b(unrestricted|no\s+restrictions?|uncensored|allow[_ -]?all|nolimitsgpt)\b")),
@@ -209,6 +219,41 @@ _PROHIBITED_MANIPULATION_PATTERNS = [
         ),
     ),
 ]
+
+
+def list_deterministic_rule_families() -> List[str]:
+    """Return stable deterministic rule families evaluated by find_rule_hits()."""
+    return list(_DETERMINISTIC_RULE_FAMILIES)
+
+
+def _rule_hit_family(rule_hit: str) -> str | None:
+    if rule_hit.startswith("JB_"):
+        return "jailbreak_bypass"
+    if rule_hit == "EXFIL_INTENT_TARGET":
+        return "exfiltration"
+    if rule_hit.startswith("TOOL_"):
+        return "tool_injection"
+    if rule_hit == "OBFUSCATION_DECODE_AND_OBEY":
+        return "obfuscation_override"
+    if rule_hit.startswith("TB_"):
+        return "transparency_bypass"
+    if rule_hit.startswith("OC_"):
+        return "oversight_circumvention"
+    if rule_hit.startswith("PM_"):
+        return "prohibited_manipulation"
+    return None
+
+
+def find_rule_hit_families(rule_hits: List[str]) -> List[str]:
+    """Map deterministic hit codes to stable rule family identities."""
+    seen = set()
+    families: List[str] = []
+    for rule_hit in rule_hits:
+        family = _rule_hit_family(rule_hit)
+        if family and family not in seen:
+            families.append(family)
+            seen.add(family)
+    return families
 
 
 def find_rule_hits(normalized_text: str) -> List[str]:
