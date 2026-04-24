@@ -1017,6 +1017,27 @@ def _structured_to_isc_payload(structured_request: Dict[str, Any]) -> Dict[str, 
     }
 
 
+def validate_text(
+    payload: str,
+    template_id: str = STRUCTURED_TEMPLATE_ID,
+    enforcement_pack_id: str | None = None,
+    pack_identity_context: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    text_payload = str(payload)
+    isc = {
+        "version": "1.0",
+        "template_id": str(template_id),
+        "payload": text_payload,
+        "checksum": _compute_checksum(text_payload),
+        "signature": "",
+    }
+    return validate_sir(
+        {"isc": isc},
+        enforcement_pack_id=enforcement_pack_id,
+        pack_identity_context=pack_identity_context,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Public entrypoint
 # ---------------------------------------------------------------------------
