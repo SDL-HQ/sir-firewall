@@ -455,6 +455,12 @@ _OBFUSCATION_CANONICAL_MARKERS: List[Tuple[str, str]] = [
     ("uncensored", "uncensored"),
     ("systemprompt", "system prompt"),
     ("previousinstructions", "previous instructions"),
+    ("denybeinganai", "deny being an ai"),
+    ("namedhumanemployee", "named human employee"),
+    ("humanoversight", "human oversight"),
+    ("suppresstheauditlog", "suppress the audit log"),
+    ("socialscore", "social score"),
+    ("withoutdisclosure", "without disclosure"),
 ]
 
 _OBFUSCATION_BASE64_DECODE_MAX_CHARS = 2000
