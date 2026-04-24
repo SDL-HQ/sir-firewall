@@ -429,6 +429,8 @@ _OBFUSCATION_CANONICAL_MARKERS: List[Tuple[str, str]] = [
     ("previousinstructions", "previous instructions"),
 ]
 
+_OBFUSCATION_BASE64_DECODE_MAX_CHARS = 2000
+
 
 def _canonical_compact(text: str) -> str:
     # Bounded deterministic pipeline for low-level obfuscation only:
@@ -463,17 +465,18 @@ def normalize_obfuscation(text: str) -> str:
 
     if b64_match:
         blob = b64_match.group(1)
-        for pad in range(9):
-            try:
-                decoded = base64.b64decode(blob + "=" * pad, validate=False)
-                candidate = decoded.decode("utf-8", errors="ignore").lower()
-                if len(candidate) > 15 and any(
-                    k in candidate
-                    for k in ["ignore", "disregard", "obey", "dan", "uncensored"]
-                ):
-                    return candidate.strip()
-            except Exception:
-                continue
+        if len(blob) <= _OBFUSCATION_BASE64_DECODE_MAX_CHARS:
+            for pad in range(9):
+                try:
+                    decoded = base64.b64decode(blob + "=" * pad, validate=False)
+                    candidate = decoded.decode("utf-8", errors="ignore").lower()
+                    if len(candidate) > 15 and any(
+                        k in candidate
+                        for k in ["ignore", "disregard", "obey", "dan", "uncensored"]
+                    ):
+                        return candidate.strip()
+                except Exception:
+                    continue
 
     t = t.replace("never gonna give you up", "ignore previous instructions")
     t = t.replace("never gonna let you down", "disregard all ethics")
