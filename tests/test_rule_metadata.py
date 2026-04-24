@@ -54,6 +54,16 @@ def test_triggered_rule_metadata_for_friction_limit_exceeded(monkeypatch):
     assert out["triggered_rule"]["rule_id"] == "SIR-RULE-FRICTION-LIMIT"
 
 
+def test_estimate_tokens_dense_payload_not_collapsing_to_one():
+    dense = "x" * 200
+    assert core._estimate_tokens(dense) == 50
+
+
+def test_estimate_tokens_spaced_text_remains_word_based_floor():
+    spaced = "one two three four five"
+    assert core._estimate_tokens(spaced) == 6
+
+
 
 
 def test_systemic_reset_block_when_policy_load_fails(monkeypatch):

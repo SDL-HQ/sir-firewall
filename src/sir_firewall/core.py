@@ -698,7 +698,10 @@ def _check_crypto(
 
 
 def _estimate_tokens(payload: str) -> int:
-    return len(str(payload).split())
+    s = str(payload)
+    word_count = len(s.split())
+    char_estimate = (len(s) + 3) // 4
+    return max(word_count, char_estimate)
 
 
 def _check_friction(
