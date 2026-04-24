@@ -28,6 +28,8 @@ REQUIRED_ISC_FIELDS = ["version", "template_id", "payload", "checksum", "signatu
 STRUCTURED_REQUEST_FIELD = "structured_request"
 STRUCTURED_REASON = "structured_validation_failed"
 STRUCTURED_TEMPLATE_ID = "EU-AI-Act-ISC-v1"
+STRUCTURED_SCHEMA_DECLARATION_KEY = "structured_request_schema"
+STRUCTURED_SCHEMA_ID = "account_recovery_challenge_request_v1"
 
 _STRUCTURED_REQUIRED_FIELDS = {
     "schema_version",
@@ -952,17 +954,116 @@ def _load_structured_request_object(raw: Any) -> Tuple[Dict[str, Any] | None, st
 
 
 def _validate_structured_request(raw: Any) -> Tuple[Dict[str, Any] | None, str | None]:
+    return _validate_structured_request_with_schema(raw, _build_structured_schema_from_legacy_defaults())
+
+
+def _build_structured_schema_from_legacy_defaults() -> Dict[str, Any]:
+    return {
+        "schema_id": STRUCTURED_SCHEMA_ID,
+        "template_id": STRUCTURED_TEMPLATE_ID,
+        "required_fields": sorted(_STRUCTURED_REQUIRED_FIELDS),
+        "optional_fields": sorted(_STRUCTURED_OPTIONAL_FIELDS),
+        "schema_version_const": "v1",
+        "request_class_const": "account_recovery_challenge",
+        "action_enum": sorted(_STRUCTURED_ACTION_ENUM),
+        "channel_enum": sorted(_STRUCTURED_CHANNEL_ENUM),
+        "declared_auth_state_enum": sorted(_STRUCTURED_DECLARED_AUTH_STATE_ENUM),
+        "case_ref_pattern": _STRUCTURED_CASE_REF_PATTERN.pattern,
+        "request_text_min_length": 1,
+        "request_text_max_length": 4000,
+    }
+
+
+def _load_structured_schema_declaration(domain_cfg: Dict[str, Any]) -> Tuple[Dict[str, Any] | None, str | None]:
+    raw_decl = domain_cfg.get(STRUCTURED_SCHEMA_DECLARATION_KEY)
+    if raw_decl is None:
+        return None, "structured_schema_declaration_missing"
+    if not isinstance(raw_decl, dict):
+        return None, "structured_schema_declaration_invalid"
+
+    required_keys = {
+        "schema_id",
+        "required_fields",
+        "optional_fields",
+        "schema_version_const",
+        "request_class_const",
+        "action_enum",
+        "channel_enum",
+        "declared_auth_state_enum",
+        "case_ref_pattern",
+        "request_text_min_length",
+        "request_text_max_length",
+    }
+    if any(k not in raw_decl for k in required_keys):
+        return None, "structured_schema_declaration_invalid"
+
+    try:
+        schema_id = str(raw_decl["schema_id"])
+        required_fields_raw = raw_decl["required_fields"]
+        optional_fields_raw = raw_decl["optional_fields"]
+        if not isinstance(required_fields_raw, list) or not isinstance(optional_fields_raw, list):
+            return None, "structured_schema_declaration_invalid"
+        required_fields = [str(x) for x in required_fields_raw]
+        optional_fields = [str(x) for x in optional_fields_raw]
+
+        action_enum_raw = raw_decl["action_enum"]
+        channel_enum_raw = raw_decl["channel_enum"]
+        declared_auth_state_enum_raw = raw_decl["declared_auth_state_enum"]
+        if not isinstance(action_enum_raw, list) or not isinstance(channel_enum_raw, list) or not isinstance(
+            declared_auth_state_enum_raw, list
+        ):
+            return None, "structured_schema_declaration_invalid"
+        action_enum = [str(x) for x in action_enum_raw]
+        channel_enum = [str(x) for x in channel_enum_raw]
+        declared_auth_state_enum = [str(x) for x in declared_auth_state_enum_raw]
+
+        schema_version_const = str(raw_decl["schema_version_const"])
+        request_class_const = str(raw_decl["request_class_const"])
+        case_ref_pattern = str(raw_decl["case_ref_pattern"])
+        request_text_min_length = int(raw_decl["request_text_min_length"])
+        request_text_max_length = int(raw_decl["request_text_max_length"])
+        if request_text_min_length < 0 or request_text_max_length < request_text_min_length:
+            return None, "structured_schema_declaration_invalid"
+        re.compile(case_ref_pattern)
+    except Exception:
+        return None, "structured_schema_declaration_invalid"
+
+    template_id = str(raw_decl.get("template_id") or "").strip() or STRUCTURED_TEMPLATE_ID
+    return {
+        "schema_id": schema_id,
+        "template_id": template_id,
+        "required_fields": required_fields,
+        "optional_fields": optional_fields,
+        "schema_version_const": schema_version_const,
+        "request_class_const": request_class_const,
+        "action_enum": action_enum,
+        "channel_enum": channel_enum,
+        "declared_auth_state_enum": declared_auth_state_enum,
+        "case_ref_pattern": case_ref_pattern,
+        "request_text_min_length": request_text_min_length,
+        "request_text_max_length": request_text_max_length,
+    }, None
+
+
+def _validate_structured_request_with_schema(
+    raw: Any,
+    schema_decl: Dict[str, Any],
+) -> Tuple[Dict[str, Any] | None, str | None]:
     obj, error_code = _load_structured_request_object(raw)
     if error_code is not None:
         return None, error_code
     if obj is None:
         return None, "structured_not_object"
 
-    unknown_fields = sorted(set(obj.keys()) - _STRUCTURED_ALLOWED_FIELDS)
+    required_fields = set(schema_decl["required_fields"])
+    optional_fields = set(schema_decl["optional_fields"])
+    allowed_fields = required_fields | optional_fields
+
+    unknown_fields = sorted(set(obj.keys()) - allowed_fields)
     if unknown_fields:
         return None, "structured_unknown_field"
 
-    missing_fields = sorted(_STRUCTURED_REQUIRED_FIELDS - set(obj.keys()))
+    missing_fields = sorted(required_fields - set(obj.keys()))
     if missing_fields:
         return None, "structured_missing_required_field"
 
@@ -972,23 +1073,26 @@ def _validate_structured_request(raw: Any) -> Tuple[Dict[str, Any] | None, str |
         if not isinstance(field_value, str):
             return None, "structured_type_mismatch"
 
-    if obj["schema_version"] != "v1":
+    if obj["schema_version"] != str(schema_decl["schema_version_const"]):
         return None, "structured_schema_version_mismatch"
-    if obj["request_class"] != "account_recovery_challenge":
+    if obj["request_class"] != str(schema_decl["request_class_const"]):
         return None, "structured_request_class_mismatch"
-    if obj["action"] not in _STRUCTURED_ACTION_ENUM:
+    if obj["action"] not in set(schema_decl["action_enum"]):
         return None, "structured_action_enum_mismatch"
-    if obj["channel"] not in _STRUCTURED_CHANNEL_ENUM:
+    if obj["channel"] not in set(schema_decl["channel_enum"]):
         return None, "structured_channel_enum_mismatch"
-    if not (1 <= len(obj["request_text"]) <= 4000):
+    if not (
+        int(schema_decl["request_text_min_length"]) <= len(obj["request_text"]) <= int(schema_decl["request_text_max_length"])
+    ):
         return None, "structured_request_text_length_out_of_bounds"
 
     declared_auth_state = obj.get("declared_auth_state")
-    if declared_auth_state is not None and declared_auth_state not in _STRUCTURED_DECLARED_AUTH_STATE_ENUM:
+    if declared_auth_state is not None and declared_auth_state not in set(schema_decl["declared_auth_state_enum"]):
         return None, "structured_declared_auth_state_enum_mismatch"
 
     case_ref = obj.get("case_ref")
-    if case_ref is not None and not _STRUCTURED_CASE_REF_PATTERN.match(case_ref):
+    case_ref_pattern = re.compile(str(schema_decl["case_ref_pattern"]))
+    if case_ref is not None and not case_ref_pattern.match(case_ref):
         return None, "structured_case_ref_pattern_mismatch"
 
     normalized = {
@@ -1006,11 +1110,14 @@ def _validate_structured_request(raw: Any) -> Tuple[Dict[str, Any] | None, str |
     return normalized, None
 
 
-def _structured_to_isc_payload(structured_request: Dict[str, Any]) -> Dict[str, Any]:
+def _structured_to_isc_payload(structured_request: Dict[str, Any], schema_decl: Dict[str, Any] | None = None) -> Dict[str, Any]:
     payload = str(structured_request["request_text"])
+    template_id = STRUCTURED_TEMPLATE_ID
+    if isinstance(schema_decl, dict):
+        template_id = str(schema_decl.get("template_id") or "").strip() or STRUCTURED_TEMPLATE_ID
     return {
         "version": "1.0",
-        "template_id": STRUCTURED_TEMPLATE_ID,
+        "template_id": template_id,
         "payload": payload,
         "checksum": _compute_checksum(payload),
         "signature": "",
@@ -1061,16 +1168,7 @@ def validate_sir(
         )
 
     structured_request: Dict[str, Any] | None = None
-    if structured_mode:
-        structured_request, error_code = _validate_structured_request(input_dict.get(STRUCTURED_REQUEST_FIELD))
-        if error_code is not None:
-            return _reject_structured_validation(
-                error_code,
-                "request_rejected_before_inference",
-                itgl_log,
-                prev_hash,
-                domain_pack=None,
-            )
+    structured_schema_decl: Dict[str, Any] | None = None
 
     try:
         _load_isc_policy()
@@ -1125,6 +1223,38 @@ def validate_sir(
             domain_pack=None,
         )
 
+    if structured_mode:
+        structured_schema_decl, declaration_error = _load_structured_schema_declaration(domain_cfg)
+        if declaration_error is not None:
+            return _reject_structured_validation(
+                declaration_error,
+                "request_rejected_before_inference",
+                itgl_log,
+                prev_hash,
+                domain_pack=None,
+            )
+        if structured_schema_decl is None:
+            return _reject_structured_validation(
+                "structured_schema_declaration_invalid",
+                "request_rejected_before_inference",
+                itgl_log,
+                prev_hash,
+                domain_pack=None,
+            )
+
+        structured_request, error_code = _validate_structured_request_with_schema(
+            input_dict.get(STRUCTURED_REQUEST_FIELD),
+            structured_schema_decl,
+        )
+        if error_code is not None:
+            return _reject_structured_validation(
+                error_code,
+                "request_rejected_before_inference",
+                itgl_log,
+                prev_hash,
+                domain_pack=None,
+            )
+
     flags = domain_cfg.get("flags", {})
     strict_isc = bool(flags.get("STRICT_ISC_ENFORCEMENT", STRICT_ISC_ENFORCEMENT))
     checksum_enforced = bool(flags.get("CHECKSUM_ENFORCED", CHECKSUM_ENFORCED))
@@ -1158,7 +1288,11 @@ def validate_sir(
         prev_hash,
     )
 
-    isc = _structured_to_isc_payload(structured_request) if structured_request is not None else input_dict.get("isc")
+    isc = (
+        _structured_to_isc_payload(structured_request, structured_schema_decl)
+        if structured_request is not None
+        else input_dict.get("isc")
+    )
     if not isinstance(isc, dict) or "payload" not in isc:
         return {
             "status": "BLOCKED",
@@ -1238,7 +1372,7 @@ def validate_sir(
     if pack_hash:
         governance_context["pack_hash"] = pack_hash
     if structured_request is not None:
-        governance_context["structured_mode"] = "account_recovery_challenge_request_v1"
+        governance_context["structured_mode"] = str((structured_schema_decl or {}).get("schema_id") or STRUCTURED_SCHEMA_ID)
 
     if _POLICY_VERSION:
         governance_context.setdefault("policy_version", _POLICY_VERSION)
