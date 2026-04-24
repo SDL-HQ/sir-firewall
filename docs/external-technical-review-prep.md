@@ -56,28 +56,31 @@ Review in this order.
 1. Product and public trust-surface overview
    - `README.md`
 
-2. Canonical evaluation, scope, and verification semantics
-   - `docs/assurance-kit.md`
+2. Canonical operator/reviewer cold-start execution
+   - `docs/minimal-pilot-runbook.md`
 
 3. Evaluator-facing boundary and residual-risk explainer
    - `docs/evaluator-technical-explainer.md`
 
-4. Engineering execution and local verification flows
+4. Supporting compact walkthrough aligned to canonical surfaces
+   - `docs/assurance-kit.md`
+
+5. Engineering execution and local verification flows
    - `docs/engineer-guide.md`
 
-5. Benchmark contract (locked v1)
+6. Benchmark contract (locked v1)
    - `docs/benchmark-cycle.v1.md`
 
-6. First benchmark-cycle execution note (D5)
+7. First benchmark-cycle execution note (D5)
    - `docs/d5-benchmark-first-cycle-review.md`
 
-7. Key authority and trust-readiness semantics
+8. Key authority and trust-readiness semantics
    - `docs/key-governance-readiness.md`
 
-8. Retention and durability semantics
+9. Retention and durability semantics
    - `RETENTION.md`
 
-9. Canonical technical truth surfaces and verification tools
+10. Canonical technical truth surfaces and verification tools
    - public Pages surfaces referenced in `README.md` (`latest-audit.*`, `latest-run.json`, `runs/index.html`)
    - certificate contract: `spec/evidence_contract.v1.json`
    - certificate verification: `tools/verify_certificate.py`
