@@ -129,6 +129,46 @@ The run summary records:
 
 Supported provider/model selection and defaults are documented in `docs/model-selection.md`.
 
+## Integration patterns (existing behavior only)
+
+This section documents current integration usage only. It does not introduce a new runtime feature.
+
+### Python middleware
+
+Minimal pattern:
+
+1. Receive request text or structured payload in middleware before model execution.
+2. Call `validate_text(...)` for plain text or `validate_sir(...)` for ISC/structured input.
+3. Block and return an application-level refusal on any non-`PASS` result.
+4. Call the downstream model only when status is `PASS`.
+
+This is documentation of existing behavior, not a new runtime feature.
+Any model path that bypasses SIR is out of claim scope.
+
+### containerised sidecar deployment
+
+Minimal pattern:
+
+1. Route each model-bound request through a local sidecar process that invokes SIR first.
+2. Call `validate_text(...)` for plain text or `validate_sir(...)` for ISC/structured input.
+3. Block and return a deny response on any non-`PASS` result.
+4. Forward to the model service only when status is `PASS`.
+
+This is documentation of existing behavior, not a new runtime feature.
+Any model path that bypasses SIR is out of claim scope.
+
+### agentic pipeline pre-call wrapper
+
+Minimal pattern:
+
+1. Receive agent step input before each model call in the pipeline.
+2. Call `validate_text(...)` for plain text or `validate_sir(...)` for ISC/structured input.
+3. Block and stop the step on any non-`PASS` result.
+4. Execute the model call only when status is `PASS`.
+
+This is documentation of existing behavior, not a new runtime feature.
+Any model path that bypasses SIR is out of claim scope.
+
 ## Generate a locally signed certificate (dev/test key)
 
 Certificate generation and run-archive publishing require a signing key in `SDL_PRIVATE_KEY_PEM`.
