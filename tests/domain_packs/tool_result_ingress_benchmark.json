@@ -1,0 +1,78 @@
+{
+  "pack_id": "tool_result_ingress_benchmark",
+  "pack_version": "0.1.0",
+  "schema": "tool_result_benchmark_fixture_v1",
+  "mode": "exploratory",
+  "request_surface": "tool_result_v1",
+  "notes": "Exploratory tool_result ingress benchmark fixture; not an acceptance/public audit surface.",
+  "cases": [
+    {
+      "id": "valid-control-tool-result",
+      "description": "Valid control tool_result payload should pass.",
+      "input": {
+        "tool_result": {
+          "tool_name": "browser",
+          "content": "safe request"
+        }
+      },
+      "expected": {
+        "status": "PASS",
+        "reason": "clean"
+      }
+    },
+    {
+      "id": "nested-content-fails-closed",
+      "description": "Nested non-scalar content should fail closed.",
+      "input": {
+        "tool_result": {
+          "tool_name": "browser",
+          "content": {
+            "nested": "bad"
+          }
+        }
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "tool_result_validation_failed",
+        "type": "tool_result_nested_value"
+      }
+    },
+    {
+      "id": "mixed-mode-fails-closed",
+      "description": "Mixed ingress modes with isc and tool_result should fail closed.",
+      "input": {
+        "isc": {
+          "version": "1.0",
+          "template_id": "EU-AI-Act-ISC-v1",
+          "payload": "safe request",
+          "checksum": "89bef6be057a588446e8f642c2a2183ca2a850befd7e21c68ffeff5654fa3807",
+          "signature": ""
+        },
+        "tool_result": {
+          "tool_name": "browser",
+          "content": "safe request"
+        }
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "tool_result_validation_failed",
+        "type": "tool_result_mixed_mode_not_allowed"
+      }
+    },
+    {
+      "id": "content-length-fails-closed",
+      "description": "Tool result content over 4000 chars should fail closed.",
+      "input": {
+        "tool_result": {
+          "tool_name": "browser",
+          "content": "REPEAT_4001_CHARS"
+        }
+      },
+      "expected": {
+        "status": "BLOCKED",
+        "reason": "tool_result_validation_failed",
+        "type": "tool_result_content_length_out_of_bounds"
+      }
+    }
+  ]
+}
