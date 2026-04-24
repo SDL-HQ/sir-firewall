@@ -39,21 +39,27 @@ _STRUCTURED_CHANNEL_ENUM = {"chat", "email", "support_ticket"}
 _STRUCTURED_DECLARED_AUTH_STATE_ENUM = {"verified", "unverified", "unknown"}
 _STRUCTURED_CASE_REF_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,64}$")
 
-ALLOWED_TEMPLATES = {
+_BUILTIN_ALLOWED_TEMPLATES = {
     "HIPAA-ISC-v1",
     "EU-AI-Act-ISC-v1",
     "PCI-DSS-ISC-v1",
 }
+ALLOWED_TEMPLATES = set(_BUILTIN_ALLOWED_TEMPLATES)
 
-MAX_FRICTION_BY_TEMPLATE: Dict[str, int] = {
+_BUILTIN_MAX_FRICTION_BY_TEMPLATE: Dict[str, int] = {
     "HIPAA-ISC-v1": 1500,
     "EU-AI-Act-ISC-v1": 2000,
     "PCI-DSS-ISC-v1": 1200,
 }
+MAX_FRICTION_BY_TEMPLATE: Dict[str, int] = dict(_BUILTIN_MAX_FRICTION_BY_TEMPLATE)
 
-STRICT_ISC_ENFORCEMENT = True
-CHECKSUM_ENFORCED = True
-CRYPTO_ENFORCED = False
+_BUILTIN_STRICT_ISC_ENFORCEMENT = True
+_BUILTIN_CHECKSUM_ENFORCED = True
+_BUILTIN_CRYPTO_ENFORCED = False
+
+STRICT_ISC_ENFORCEMENT = _BUILTIN_STRICT_ISC_ENFORCEMENT
+CHECKSUM_ENFORCED = _BUILTIN_CHECKSUM_ENFORCED
+CRYPTO_ENFORCED = _BUILTIN_CRYPTO_ENFORCED
 
 PUBLIC_KEYS: Dict[str, str] = {
     # "default": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----",
@@ -75,7 +81,7 @@ except Exception:  # pragma: no cover
 # Existing 2025 jailbreak heuristics
 # ---------------------------------------------------------------------------
 
-_DANGER_WORDS = [
+_BUILTIN_DANGER_WORDS = [
     "ignore",
     "disregard",
     "bypass",
@@ -99,8 +105,9 @@ _DANGER_WORDS = [
     "removed all limits",
     "safety layer",
 ]
+_DANGER_WORDS = list(_BUILTIN_DANGER_WORDS)
 
-_SAFETY_PHRASES = [
+_BUILTIN_SAFETY_PHRASES = [
     "system prompt",
     "previous instructions",
     "all previous",
@@ -116,14 +123,16 @@ _SAFETY_PHRASES = [
     "you have been freed from all guidelines",
     "forgot to enable the safety layer",
 ]
+_SAFETY_PHRASES = list(_BUILTIN_SAFETY_PHRASES)
 
-_HIGH_RISK_KEYWORDS = [
+_BUILTIN_HIGH_RISK_KEYWORDS = [
     "step-by-step guide on making meth",
     "step by step guide on making meth",
     "making meth",
     "synthesize vx nerve agent",
     "vx nerve agent",
 ]
+_HIGH_RISK_KEYWORDS = list(_BUILTIN_HIGH_RISK_KEYWORDS)
 
 _STRUCTURAL_EXPOSURE_ACTION_MARKERS = {
     "expose_internal_prompt",
@@ -238,6 +247,25 @@ _POLICY_LOADED = False
 _POLICY_VERSION: str | None = None
 _POLICY_HASH: str | None = None
 _POLICY_LOAD_LOCK = threading.Lock()
+
+
+def reset_policy() -> None:
+    global _POLICY_LOADED, _POLICY_VERSION, _POLICY_HASH
+    global ALLOWED_TEMPLATES, MAX_FRICTION_BY_TEMPLATE, STRICT_ISC_ENFORCEMENT, CHECKSUM_ENFORCED, CRYPTO_ENFORCED
+    global _DANGER_WORDS, _SAFETY_PHRASES, _HIGH_RISK_KEYWORDS
+
+    with _POLICY_LOAD_LOCK:
+        _POLICY_LOADED = False
+        _POLICY_VERSION = None
+        _POLICY_HASH = None
+        ALLOWED_TEMPLATES = set(_BUILTIN_ALLOWED_TEMPLATES)
+        MAX_FRICTION_BY_TEMPLATE = dict(_BUILTIN_MAX_FRICTION_BY_TEMPLATE)
+        STRICT_ISC_ENFORCEMENT = _BUILTIN_STRICT_ISC_ENFORCEMENT
+        CHECKSUM_ENFORCED = _BUILTIN_CHECKSUM_ENFORCED
+        CRYPTO_ENFORCED = _BUILTIN_CRYPTO_ENFORCED
+        _DANGER_WORDS = list(_BUILTIN_DANGER_WORDS)
+        _SAFETY_PHRASES = list(_BUILTIN_SAFETY_PHRASES)
+        _HIGH_RISK_KEYWORDS = list(_BUILTIN_HIGH_RISK_KEYWORDS)
 
 
 def _load_isc_policy() -> None:

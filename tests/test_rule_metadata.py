@@ -109,14 +109,7 @@ def test_load_isc_policy_single_writer_first_load(monkeypatch):
         time.sleep(0.05)
         return original_json_load(fp)
 
-    monkeypatch.setattr(core, "_POLICY_LOADED", False)
-    monkeypatch.setattr(core, "_POLICY_VERSION", None)
-    monkeypatch.setattr(core, "_POLICY_HASH", None)
-    monkeypatch.setattr(core, "ALLOWED_TEMPLATES", set(core.ALLOWED_TEMPLATES))
-    monkeypatch.setattr(core, "MAX_FRICTION_BY_TEMPLATE", dict(core.MAX_FRICTION_BY_TEMPLATE))
-    monkeypatch.setattr(core, "_DANGER_WORDS", list(core._DANGER_WORDS))
-    monkeypatch.setattr(core, "_SAFETY_PHRASES", list(core._SAFETY_PHRASES))
-    monkeypatch.setattr(core, "_HIGH_RISK_KEYWORDS", list(core._HIGH_RISK_KEYWORDS))
+    core.reset_policy()
     monkeypatch.setattr(core.json, "load", delayed_json_load)
 
     errors = []
@@ -137,3 +130,31 @@ def test_load_isc_policy_single_writer_first_load(monkeypatch):
     assert errors == []
     assert core._POLICY_LOADED is True
     assert load_calls["count"] == 1
+
+
+def test_reset_policy_restores_builtins():
+    core._POLICY_LOADED = True
+    core._POLICY_VERSION = "mutated"
+    core._POLICY_HASH = "sha256:mutated"
+    core.ALLOWED_TEMPLATES = {"mutated"}
+    core.MAX_FRICTION_BY_TEMPLATE = {"mutated": 1}
+    core.STRICT_ISC_ENFORCEMENT = False
+    core.CHECKSUM_ENFORCED = False
+    core.CRYPTO_ENFORCED = True
+    core._DANGER_WORDS = ["mutated"]
+    core._SAFETY_PHRASES = ["mutated"]
+    core._HIGH_RISK_KEYWORDS = ["mutated"]
+
+    core.reset_policy()
+
+    assert core._POLICY_LOADED is False
+    assert core._POLICY_VERSION is None
+    assert core._POLICY_HASH is None
+    assert core.ALLOWED_TEMPLATES == set(core._BUILTIN_ALLOWED_TEMPLATES)
+    assert core.MAX_FRICTION_BY_TEMPLATE == dict(core._BUILTIN_MAX_FRICTION_BY_TEMPLATE)
+    assert core.STRICT_ISC_ENFORCEMENT is core._BUILTIN_STRICT_ISC_ENFORCEMENT
+    assert core.CHECKSUM_ENFORCED is core._BUILTIN_CHECKSUM_ENFORCED
+    assert core.CRYPTO_ENFORCED is core._BUILTIN_CRYPTO_ENFORCED
+    assert core._DANGER_WORDS == list(core._BUILTIN_DANGER_WORDS)
+    assert core._SAFETY_PHRASES == list(core._BUILTIN_SAFETY_PHRASES)
+    assert core._HIGH_RISK_KEYWORDS == list(core._BUILTIN_HIGH_RISK_KEYWORDS)
