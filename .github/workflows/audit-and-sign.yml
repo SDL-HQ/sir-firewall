@@ -328,6 +328,15 @@ jobs:
           python -m json.tool proofs/runs/index.json >/dev/null
           python -m json.tool docs/runs/index.json >/dev/null
 
+      - name: Publish monitor summary to docs/
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        run: |
+          set -euo pipefail
+          python tools/generate_monitor_summary.py \
+            --index proofs/runs/index.json \
+            --out docs/monitor-summary.json \
+            --window 20
+
       - name: Publish latest run marker to docs/ (always)
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
         env:
@@ -439,7 +448,7 @@ jobs:
               continue
             fi
 
-            git add proofs/runs/ docs/runs/ docs/latest-run.json
+            git add proofs/runs/ docs/runs/ docs/latest-run.json docs/monitor-summary.json
 
             if [ "${AUDIT_PASS}" = "true" ]; then
               git add proofs/latest-audit.json proofs/latest-audit.html || true
@@ -636,6 +645,15 @@ jobs:
           python -m json.tool proofs/runs/index.json >/dev/null
           python -m json.tool docs/runs/index.json >/dev/null
 
+      - name: Publish monitor summary to docs/
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        run: |
+          set -euo pipefail
+          python tools/generate_monitor_summary.py \
+            --index proofs/runs/index.json \
+            --out docs/monitor-summary.json \
+            --window 20
+
       - name: Upload benchmark artifact (always)
         if: always()
         uses: actions/upload-artifact@v7
@@ -668,7 +686,7 @@ jobs:
               continue
             fi
 
-            git add proofs/runs/ docs/runs/
+            git add proofs/runs/ docs/runs/ docs/monitor-summary.json
             git commit -m "SIR Benchmark: paired benchmark dispatch $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "Nothing to commit"
 
             if git push; then
