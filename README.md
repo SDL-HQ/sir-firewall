@@ -203,7 +203,7 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 ## Guides
 
 * [Assurance kit](docs/assurance-kit.md) (canonical evaluation and verification path)
-* [Evidence perimeter note](docs/evidence-perimeter.v1.md) (current bounded benchmark perimeter)
+* [Evidence perimeter note](docs/evidence-perimeter.v2.md) (current bounded benchmark perimeter)
 * [External technical review preparation](docs/external-technical-review-prep.md)
 * [Evaluator technical explainer](docs/evaluator-technical-explainer.md)
 * [Engineer guide](docs/engineer-guide.md) (local runs, signing, serving)
