@@ -26,7 +26,9 @@ USE_SEMANTIC_CHECK = False
 
 REQUIRED_ISC_FIELDS = ["version", "template_id", "payload", "checksum", "signature"]
 STRUCTURED_REQUEST_FIELD = "structured_request"
+TOOL_RESULT_FIELD = "tool_result"
 STRUCTURED_REASON = "structured_validation_failed"
+TOOL_RESULT_REASON = "tool_result_validation_failed"
 STRUCTURED_TEMPLATE_ID = "EU-AI-Act-ISC-v1"
 STRUCTURED_SCHEMA_DECLARATION_KEY = "structured_request_schema"
 STRUCTURED_SCHEMA_ID = "account_recovery_challenge_request_v1"
@@ -45,6 +47,12 @@ _STRUCTURED_ACTION_ENUM = {"password_reset", "mfa_reset", "email_change", "phone
 _STRUCTURED_CHANNEL_ENUM = {"chat", "email", "support_ticket"}
 _STRUCTURED_DECLARED_AUTH_STATE_ENUM = {"verified", "unverified", "unknown"}
 _STRUCTURED_CASE_REF_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,64}$")
+
+_TOOL_RESULT_REQUIRED_FIELDS = {
+    "tool_name",
+    "content",
+}
+_TOOL_RESULT_ALLOWED_FIELDS = _TOOL_RESULT_REQUIRED_FIELDS
 
 _BUILTIN_ALLOWED_TEMPLATES = {
     "HIPAA-ISC-v1",
@@ -199,6 +207,12 @@ _RULE_GROUPS: Dict[str, Dict[str, str]] = {
         "rule_id": "SIR-RULE-STRUCTURED-VALIDATION",
         "rule_description": "Structured request input failed deterministic schema validation checks.",
         "rule_category": "structured_validation",
+        "rule_outcome_class": "BLOCK",
+    },
+    TOOL_RESULT_REASON: {
+        "rule_id": "SIR-RULE-TOOL-RESULT-VALIDATION",
+        "rule_description": "Tool-result input failed deterministic schema validation checks.",
+        "rule_category": "tool_result_validation",
         "rule_outcome_class": "BLOCK",
     },
 }
@@ -934,6 +948,29 @@ def _reject_structured_validation(
     )
 
 
+def _reject_tool_result_validation(
+    code: str,
+    detail: str,
+    itgl_log: List[Dict[str, Any]],
+    prev_hash: str,
+    domain_pack: str | None = None,
+) -> Dict[str, Any]:
+    itgl_log, _ = _append_itgl(
+        "tool_result_validation",
+        "fail",
+        {"code": code},
+        {"detail": detail},
+        itgl_log,
+        prev_hash,
+    )
+    return _build_block(
+        TOOL_RESULT_REASON,
+        itgl_log,
+        block_type=code,
+        domain_pack=domain_pack,
+    )
+
+
 def _load_structured_request_object(raw: Any) -> Tuple[Dict[str, Any] | None, str | None]:
     if isinstance(raw, dict):
         return raw, None
@@ -955,6 +992,52 @@ def _load_structured_request_object(raw: Any) -> Tuple[Dict[str, Any] | None, st
 
 def _validate_structured_request(raw: Any) -> Tuple[Dict[str, Any] | None, str | None]:
     return _validate_structured_request_with_schema(raw, _build_structured_schema_from_legacy_defaults())
+
+
+def _load_tool_result_object(raw: Any) -> Tuple[Dict[str, Any] | None, str | None]:
+    if isinstance(raw, dict):
+        return raw, None
+    if isinstance(raw, str):
+        try:
+            pairs = json.loads(raw, object_pairs_hook=list)
+        except json.JSONDecodeError:
+            return None, "tool_result_invalid_json"
+        if not isinstance(pairs, list):
+            return None, "tool_result_not_object"
+        obj: Dict[str, Any] = {}
+        for key, value in pairs:
+            if key in obj:
+                return None, "tool_result_duplicate_keys"
+            obj[key] = value
+        return obj, None
+    return None, "tool_result_not_object"
+
+
+def _validate_tool_result_request(raw: Any) -> Tuple[Dict[str, Any] | None, str | None]:
+    obj, error_code = _load_tool_result_object(raw)
+    if error_code is not None:
+        return None, error_code
+    if obj is None:
+        return None, "tool_result_not_object"
+
+    unknown_fields = sorted(set(obj.keys()) - _TOOL_RESULT_ALLOWED_FIELDS)
+    if unknown_fields:
+        return None, "tool_result_unknown_field"
+
+    missing_fields = sorted(_TOOL_RESULT_REQUIRED_FIELDS - set(obj.keys()))
+    if missing_fields:
+        return None, "tool_result_missing_required_field"
+
+    for field_name, field_value in obj.items():
+        if isinstance(field_value, (dict, list)):
+            return None, "tool_result_nested_value"
+        if not isinstance(field_value, str):
+            return None, "tool_result_type_mismatch"
+
+    return {
+        "tool_name": obj["tool_name"],
+        "content": obj["content"],
+    }, None
 
 
 def _build_structured_schema_from_legacy_defaults() -> Dict[str, Any]:
@@ -1165,6 +1248,17 @@ def _structured_to_isc_payload(structured_request: Dict[str, Any], schema_decl: 
     }
 
 
+def _tool_result_to_isc_payload(tool_result: Dict[str, Any]) -> Dict[str, Any]:
+    payload = str(tool_result["content"])
+    return {
+        "version": "1.0",
+        "template_id": STRUCTURED_TEMPLATE_ID,
+        "payload": payload,
+        "checksum": _compute_checksum(payload),
+        "signature": "",
+    }
+
+
 def validate_text(
     payload: str,
     template_id: str = STRUCTURED_TEMPLATE_ID,
@@ -1198,8 +1292,10 @@ def validate_sir(
     itgl_log: List[Dict[str, Any]] = []
     prev_hash: str = GENESIS_HASH
     structured_mode = STRUCTURED_REQUEST_FIELD in input_dict
+    tool_result_mode = TOOL_RESULT_FIELD in input_dict
+    isc_mode = "isc" in input_dict
 
-    if structured_mode and "isc" in input_dict:
+    if structured_mode and isc_mode and not tool_result_mode:
         return _reject_structured_validation(
             "structured_mixed_mode_not_allowed",
             "both_structured_and_isc_present",
@@ -1207,9 +1303,18 @@ def validate_sir(
             prev_hash,
             domain_pack=None,
         )
+    if sum(1 for active in (isc_mode, structured_mode, tool_result_mode) if active) > 1:
+        return _reject_tool_result_validation(
+            "tool_result_mixed_mode_not_allowed",
+            "multiple_ingress_modes_present",
+            itgl_log,
+            prev_hash,
+            domain_pack=None,
+        )
 
     structured_request: Dict[str, Any] | None = None
     structured_schema_decl: Dict[str, Any] | None = None
+    tool_result_request: Dict[str, Any] | None = None
 
     try:
         _load_isc_policy()
@@ -1291,7 +1396,6 @@ def validate_sir(
                 prev_hash,
                 domain_pack=None,
             )
-
         structured_request, error_code = _validate_structured_request_with_schema(
             input_dict.get(STRUCTURED_REQUEST_FIELD),
             structured_schema_decl,
@@ -1304,6 +1408,25 @@ def validate_sir(
                 prev_hash,
                 domain_pack=None,
             )
+
+    if tool_result_mode:
+        tool_result_request, error_code = _validate_tool_result_request(input_dict.get(TOOL_RESULT_FIELD))
+        if error_code is not None:
+            return _reject_tool_result_validation(
+                error_code,
+                "request_rejected_before_inference",
+                itgl_log,
+                prev_hash,
+                domain_pack=None,
+            )
+        itgl_log, prev_hash = _append_itgl(
+            "tool_result_validation",
+            "pass",
+            {"fields": sorted(tool_result_request.keys()) if isinstance(tool_result_request, dict) else []},
+            {},
+            itgl_log,
+            prev_hash,
+        )
 
     flags = domain_cfg.get("flags", {})
     strict_isc = bool(flags.get("STRICT_ISC_ENFORCEMENT", STRICT_ISC_ENFORCEMENT))
@@ -1341,6 +1464,8 @@ def validate_sir(
     isc = (
         _structured_to_isc_payload(structured_request, structured_schema_decl)
         if structured_request is not None
+        else _tool_result_to_isc_payload(tool_result_request)
+        if tool_result_request is not None
         else input_dict.get("isc")
     )
     if not isinstance(isc, dict) or "payload" not in isc:
@@ -1423,6 +1548,8 @@ def validate_sir(
         governance_context["pack_hash"] = pack_hash
     if structured_request is not None:
         governance_context["structured_mode"] = str((structured_schema_decl or {}).get("schema_id") or STRUCTURED_SCHEMA_ID)
+    if tool_result_request is not None:
+        governance_context["tool_result_mode"] = "tool_result_v1"
 
     if _POLICY_VERSION:
         governance_context.setdefault("policy_version", _POLICY_VERSION)
