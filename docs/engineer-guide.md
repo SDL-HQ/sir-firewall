@@ -2,7 +2,9 @@
 
 This guide is for running SIR locally, generating artefacts, and serving proof pages during development.
 
-For the canonical evaluation and offline verification path, use `docs/assurance-kit.md`.
+For canonical operator/reviewer cold-start execution, use `docs/minimal-pilot-runbook.md`.
+For evaluator interpretation and boundary semantics, use `docs/evaluator-technical-explainer.md`.
+Use `docs/assurance-kit.md` as a compact supporting walkthrough aligned to the same surfaces.
 
 For the first disciplined benchmark-cycle contract (what to run, required artefacts, and comparability rules), use `docs/benchmark-cycle.v1.md`.
 
@@ -197,7 +199,7 @@ Publishing a run archive creates:
 * `proofs/runs/<run_id>/manifest.json`
 * `proofs/runs/<run_id>/audit.json`
 * `proofs/runs/<run_id>/archive_receipt.json` (signed)
-* `proofs/runs/benchmark_index.v1.json` (machine-readable benchmark/index summary)
+* `proofs/runs/benchmark_index.v2.json` (machine-readable benchmark/index summary)
 
 It requires `SDL_PRIVATE_KEY_PEM` to be set.
 
@@ -222,7 +224,7 @@ If `archive_receipt.json` carries a `signing_key_id` that does not exist in the 
 
 Benchmark/index semantics:
 
-* `proofs/runs/benchmark_index.v1.json` is an evidence map, not a score.
+* `proofs/runs/benchmark_index.v2.json` is an evidence map, not a score.
 * It records attributable per-run comparison rows: `sir_firewall_version`, `commit_sha`, explicit `evaluation_target` (`domain_pack` or `scenario_pack` + pack identifiers), `proof_class`, `provider`, `model`, `result`, `leaks`, `harmless_blocked`, and evidence links.
 * It includes both `latest_run` and `latest_passing_run` pointers so fail/pass truth stays explicit.
 * `comparison` is raw run metadata for side-by-side reading only (counts, hashes, and provider call totals), not a ranking model.

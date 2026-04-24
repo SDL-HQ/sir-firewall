@@ -2,7 +2,9 @@
 
 This guide is for auditors, insurers, regulators, and cautious organisations that want a role-specific way to evaluate SIR evidence without changing production systems.
 
-For the canonical run and verification workflow, use `docs/assurance-kit.md`.
+For canonical operator/reviewer cold-start workflow, use `docs/minimal-pilot-runbook.md`.
+For evaluator interpretation and trust-boundary semantics, use `docs/evaluator-technical-explainer.md`.
+Use `docs/assurance-kit.md` as a compact supporting walkthrough aligned to the same surfaces.
 
 ## What to review first
 
@@ -26,7 +28,7 @@ Current product boundary in trial terms:
 
 ## Trial workflow
 
-1. Follow the canonical path in `docs/assurance-kit.md`.
+1. Follow the canonical cold-start path in `docs/minimal-pilot-runbook.md`.
 2. Record verification outputs and artefact hashes in your internal review file.
 3. Keep pass/fail truth explicit by capturing both latest pass and latest run surfaces.
 
@@ -51,6 +53,6 @@ For governance or underwriting records, capture:
 
 This guide does not redefine proof semantics or verification commands.
 
-Use `docs/assurance-kit.md` as the canonical source for those details.
+Use `docs/minimal-pilot-runbook.md` and `docs/evaluator-technical-explainer.md` as canonical references for execution order and interpretation details.
 
 For blunt failure-mode and residual-risk interpretation, use `docs/assurance-kit.md` directly.
