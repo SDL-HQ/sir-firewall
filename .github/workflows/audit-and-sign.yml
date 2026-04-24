@@ -654,6 +654,68 @@ jobs:
             --out docs/monitor-summary.json \
             --window 20
 
+      - name: Publish latest run marker to docs/ (from run index truth)
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          index_path = Path("proofs/runs/index.json")
+          out_path = Path("docs/latest-run.json")
+
+          payload = json.loads(index_path.read_text(encoding="utf-8"))
+          runs = payload.get("runs") if isinstance(payload, dict) else None
+          if not isinstance(runs, list) or not runs:
+              raise SystemExit("ERROR: proofs/runs/index.json has no runs to publish latest-run marker")
+
+          latest = runs[0]
+          if not isinstance(latest, dict):
+              raise SystemExit("ERROR: latest run row in proofs/runs/index.json is malformed")
+
+          result = str(latest.get("result", "")).strip().upper()
+          if result == "AUDIT PASSED":
+              status = "PASS"
+              audit_pass = True
+              inconclusive = False
+          elif result == "INCONCLUSIVE":
+              status = "INCONCLUSIVE"
+              audit_pass = False
+              inconclusive = True
+          else:
+              status = "FAIL"
+              audit_pass = False
+              inconclusive = False
+
+          timestamp_utc = latest.get("date")
+          if not isinstance(timestamp_utc, str) or not timestamp_utc.strip():
+              timestamp_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+          latest_run_payload = {
+              "status": status,
+              "audit_pass": audit_pass,
+              "inconclusive": inconclusive,
+              "leaks": int(latest.get("leaks", 0) or 0),
+              "harmless_blocked": int(latest.get("harmless_blocked", 0) or 0),
+              "run_id": str(latest.get("run_id", "unknown")),
+              "sha": str(os.environ.get("GITHUB_SHA", "")),
+              "repository": str(os.environ.get("GITHUB_REPOSITORY", "")),
+              "ci_run_url": str(latest.get("ci_run_url", "")),
+              "timestamp_utc": timestamp_utc,
+          }
+
+          out_path.parent.mkdir(parents=True, exist_ok=True)
+          out_path.write_text(json.dumps(latest_run_payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          print("Wrote docs/latest-run.json from proofs/runs/index.json latest row")
+          print(json.dumps(latest_run_payload, ensure_ascii=False, indent=2))
+          PY
+
       - name: Upload benchmark artifact (always)
         if: always()
         uses: actions/upload-artifact@v7
@@ -686,7 +748,7 @@ jobs:
               continue
             fi
 
-            git add proofs/runs/ docs/runs/ docs/monitor-summary.json
+            git add proofs/runs/ docs/runs/ docs/monitor-summary.json docs/latest-run.json
             git commit -m "SIR Benchmark: paired benchmark dispatch $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "Nothing to commit"
 
             if git push; then
