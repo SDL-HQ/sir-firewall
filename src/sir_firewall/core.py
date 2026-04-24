@@ -1045,6 +1045,47 @@ def _load_structured_schema_declaration(domain_cfg: Dict[str, Any]) -> Tuple[Dic
     }, None
 
 
+def _validate_supported_structured_schema_contract(schema_decl: Dict[str, Any]) -> str | None:
+    if str(schema_decl.get("schema_id") or "") != STRUCTURED_SCHEMA_ID:
+        return "structured_schema_declaration_invalid"
+
+    required_fields = set(schema_decl.get("required_fields") or [])
+    optional_fields = set(schema_decl.get("optional_fields") or [])
+    if required_fields != _STRUCTURED_REQUIRED_FIELDS:
+        return "structured_schema_declaration_invalid"
+    if optional_fields != _STRUCTURED_OPTIONAL_FIELDS:
+        return "structured_schema_declaration_invalid"
+
+    if str(schema_decl.get("schema_version_const") or "") != "v1":
+        return "structured_schema_declaration_invalid"
+    if str(schema_decl.get("request_class_const") or "") != "account_recovery_challenge":
+        return "structured_schema_declaration_invalid"
+
+    action_enum = set(schema_decl.get("action_enum") or [])
+    channel_enum = set(schema_decl.get("channel_enum") or [])
+    declared_auth_state_enum = set(schema_decl.get("declared_auth_state_enum") or [])
+    if action_enum != _STRUCTURED_ACTION_ENUM:
+        return "structured_schema_declaration_invalid"
+    if channel_enum != _STRUCTURED_CHANNEL_ENUM:
+        return "structured_schema_declaration_invalid"
+    if declared_auth_state_enum != _STRUCTURED_DECLARED_AUTH_STATE_ENUM:
+        return "structured_schema_declaration_invalid"
+
+    if str(schema_decl.get("case_ref_pattern") or "") != _STRUCTURED_CASE_REF_PATTERN.pattern:
+        return "structured_schema_declaration_invalid"
+
+    if int(schema_decl.get("request_text_min_length", -1)) != 1:
+        return "structured_schema_declaration_invalid"
+    if int(schema_decl.get("request_text_max_length", -1)) != 4000:
+        return "structured_schema_declaration_invalid"
+
+    template_id = str(schema_decl.get("template_id") or "").strip() or STRUCTURED_TEMPLATE_ID
+    if template_id not in ALLOWED_TEMPLATES:
+        return "structured_schema_declaration_invalid"
+
+    return None
+
+
 def _validate_structured_request_with_schema(
     raw: Any,
     schema_decl: Dict[str, Any],
@@ -1236,6 +1277,15 @@ def validate_sir(
         if structured_schema_decl is None:
             return _reject_structured_validation(
                 "structured_schema_declaration_invalid",
+                "request_rejected_before_inference",
+                itgl_log,
+                prev_hash,
+                domain_pack=None,
+            )
+        declaration_contract_error = _validate_supported_structured_schema_contract(structured_schema_decl)
+        if declaration_contract_error is not None:
+            return _reject_structured_validation(
+                declaration_contract_error,
                 "request_rejected_before_inference",
                 itgl_log,
                 prev_hash,
