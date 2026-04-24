@@ -575,6 +575,9 @@ def main() -> None:
                 entry["pass_rule_explainability"] = {
                     "evaluated_rule_families": list(pass_rule_explainability.get("evaluated_rule_families") or []),
                     "clean_rule_families": list(pass_rule_explainability.get("clean_rule_families") or []),
+                    "obfuscation_signal_detected": bool(
+                        pass_rule_explainability.get("obfuscation_signal_detected", False)
+                    ),
                 }
             if scenario_mode:
                 entry["scenario_id"] = scenario_id

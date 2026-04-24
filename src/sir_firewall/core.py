@@ -10,7 +10,12 @@ import unicodedata
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from .deterministic_rules import find_rule_hit_families, find_rule_hits, list_deterministic_rule_families
+from .deterministic_rules import (
+    find_rule_hit_families,
+    find_rule_hits,
+    has_obfuscation_signal,
+    list_deterministic_rule_families,
+)
 
 # Deliberately unused — kept as a loud reminder that we win without it
 USE_SEMANTIC_CHECK = False
@@ -785,7 +790,7 @@ def _check_jailbreak(
     isc: Dict[str, Any],
     log: List[Dict[str, Any]],
     prev_hash: str,
-) -> Tuple[bool, List[Dict[str, Any]], str, str | None, List[str], List[str], List[str]]:
+) -> Tuple[bool, List[Dict[str, Any]], str, str | None, List[str], List[str], List[str], bool]:
     raw_payload = str(isc.get("payload", ""))
     normalized = normalize_obfuscation(raw_payload)
 
@@ -796,6 +801,7 @@ def _check_jailbreak(
 
     step_input = {"payload_len": len(normalized)}
     rule_hits = find_rule_hits(normalized)
+    obfuscation_signal_detected = has_obfuscation_signal(normalized)
     evaluated_rule_families = list_deterministic_rule_families()
     hit_rule_families = find_rule_hit_families(rule_hits)
     hit_rule_family_set = set(hit_rule_families)
@@ -806,6 +812,7 @@ def _check_jailbreak(
         "has_safety": has_safety,
         "has_high_risk": has_high_risk,
         "has_structural_override_exposure": has_structural_override_exposure,
+        "obfuscation_signal_detected": obfuscation_signal_detected,
         "rule_hits": rule_hits,
         "evaluated_rule_families": evaluated_rule_families,
         "clean_rule_families": clean_rule_families,
@@ -820,7 +827,16 @@ def _check_jailbreak(
             log,
             prev_hash,
         )
-        return False, log, prev_hash, "high_risk_content", rule_hits, evaluated_rule_families, clean_rule_families
+        return (
+            False,
+            log,
+            prev_hash,
+            "high_risk_content",
+            rule_hits,
+            evaluated_rule_families,
+            clean_rule_families,
+            obfuscation_signal_detected,
+        )
 
     if has_danger and has_safety:
         log, prev_hash = _append_itgl(
@@ -831,7 +847,16 @@ def _check_jailbreak(
             log,
             prev_hash,
         )
-        return False, log, prev_hash, "danger+safety_combo", rule_hits, evaluated_rule_families, clean_rule_families
+        return (
+            False,
+            log,
+            prev_hash,
+            "danger+safety_combo",
+            rule_hits,
+            evaluated_rule_families,
+            clean_rule_families,
+            obfuscation_signal_detected,
+        )
 
     if has_structural_override_exposure:
         log, prev_hash = _append_itgl(
@@ -842,7 +867,16 @@ def _check_jailbreak(
             log,
             prev_hash,
         )
-        return False, log, prev_hash, "structural_override_exposure", rule_hits, evaluated_rule_families, clean_rule_families
+        return (
+            False,
+            log,
+            prev_hash,
+            "structural_override_exposure",
+            rule_hits,
+            evaluated_rule_families,
+            clean_rule_families,
+            obfuscation_signal_detected,
+        )
 
     if rule_hits:
         log, prev_hash = _append_itgl(
@@ -853,7 +887,16 @@ def _check_jailbreak(
             log,
             prev_hash,
         )
-        return False, log, prev_hash, "deterministic_rule_match", rule_hits, evaluated_rule_families, clean_rule_families
+        return (
+            False,
+            log,
+            prev_hash,
+            "deterministic_rule_match",
+            rule_hits,
+            evaluated_rule_families,
+            clean_rule_families,
+            obfuscation_signal_detected,
+        )
 
     log, prev_hash = _append_itgl(
         "jailbreak",
@@ -863,7 +906,7 @@ def _check_jailbreak(
         log,
         prev_hash,
     )
-    return True, log, prev_hash, None, [], evaluated_rule_families, clean_rule_families
+    return True, log, prev_hash, None, [], evaluated_rule_families, clean_rule_families, obfuscation_signal_detected
 
 
 def _reject_structured_validation(
@@ -1134,11 +1177,16 @@ def validate_sir(
             domain_pack=domain_pack_id,
         )
 
-    ok, itgl_log, prev_hash, block_type, rule_hits, evaluated_rule_families, clean_rule_families = _check_jailbreak(
-        isc,
+    (
+        ok,
         itgl_log,
         prev_hash,
-    )
+        block_type,
+        rule_hits,
+        evaluated_rule_families,
+        clean_rule_families,
+        obfuscation_signal_detected,
+    ) = _check_jailbreak(isc, itgl_log, prev_hash)
     if not ok:
         return _build_block(
             "2025_jailbreak_pattern",
@@ -1198,6 +1246,7 @@ def validate_sir(
         "pass_rule_explainability": {
             "evaluated_rule_families": list(evaluated_rule_families),
             "clean_rule_families": list(clean_rule_families),
+            "obfuscation_signal_detected": bool(obfuscation_signal_detected),
         },
         "governance_context": governance_context,
         "itgl_log": itgl_log,

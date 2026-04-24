@@ -256,6 +256,11 @@ def find_rule_hit_families(rule_hits: List[str]) -> List[str]:
     return families
 
 
+def has_obfuscation_signal(normalized_text: str) -> bool:
+    """Return whether obfuscation signal markers are present in normalized text."""
+    return bool(_OBFUSCATION_SIGNAL.search(normalized_text.lower()))
+
+
 def find_rule_hits(normalized_text: str) -> List[str]:
     """Return deterministic rule hit codes for text that should be blocked."""
     t = normalized_text.lower()
