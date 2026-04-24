@@ -5,7 +5,7 @@ on:
     branches: [ main ]
 
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
     paths-ignore:
       - 'proofs/**'
       - 'docs/**'
@@ -47,7 +47,7 @@ on:
 
 # Hardening: prevent overlapping runs from fighting over commits / pages.
 concurrency:
-  group: sir-audit-and-sign-main
+  group: sir-audit-and-sign-${{ github.ref }}
   cancel-in-progress: true
 
 env:
