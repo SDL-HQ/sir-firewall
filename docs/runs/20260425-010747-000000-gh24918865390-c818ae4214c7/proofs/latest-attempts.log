@@ -1,5 +1,5 @@
 SIR PRE-INFERENCE GOVERNANCE RED TEAM SUITE
-Date: 2026-04-25T01:05:57Z
+Date: 2026-04-25T01:07:47Z
 Model: grok-4-1-fast
 Suite: tests/domain_packs/generic_safety.csv
 Suite hash: sha256:1af9db8897cdd56eb0b3da4211ed29984d56101d62da725c876c395266f6ecbc
