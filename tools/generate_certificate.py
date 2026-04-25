@@ -320,7 +320,7 @@ def main() -> None:
 
     # Build certificate dict in a stable insertion order (do NOT sort keys).
     cert: Dict[str, Any] = {
-        "audit": "SIR Firewall — Pre-Inference Governance Audit",
+        "audit": "SIR Pre-Inference Governance Audit",
         "version": "1.0",
         "sir_firewall_version": sir_version,
         "suite_name": suite_name,

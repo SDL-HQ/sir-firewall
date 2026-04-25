@@ -501,7 +501,7 @@ def main() -> None:
         else nullcontext(None)
     )
     with open(LEDGER_PATH, "w", encoding="utf-8") as ledger, open(log_path, "w", encoding="utf-8") as f, downstream_cm as downstream_f:
-        f.write("SIR Firewall — PRE-INFERENCE RED TEAM SUITE\n")
+        f.write("SIR PRE-INFERENCE GOVERNANCE RED TEAM SUITE\n")
         f.write(f"Date: {_utc_now_iso()}\n")
         f.write(f"Model: {model_name}\n")
         f.write(f"Suite: {suite_or_scenario_path}\n")

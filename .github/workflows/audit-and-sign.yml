@@ -76,7 +76,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Clean install SIR Firewall (NO CACHE)
+      - name: Clean install SIR governance gate (NO CACHE)
         env:
           DISPATCH_MODE: ${{ github.event.inputs.mode || 'audit' }}
         run: |
@@ -182,7 +182,7 @@ jobs:
           raise SystemExit(subprocess.call(cmd))
           PY
 
-      - name: Run suite through SIR (firewall-only, no live model calls)
+      - name: Run suite through SIR (governance gate only, no live model calls)
         env:
           # Live reference target
           LITELLM_MODEL: ${{ github.event.inputs.model || 'grok-4-1-fast' }}
@@ -517,7 +517,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Clean install SIR Firewall (NO CACHE)
+      - name: Clean install SIR governance gate (NO CACHE)
         env:
           BENCHMARK_MODE: ${{ github.event.inputs.mode || 'audit' }}
         run: |

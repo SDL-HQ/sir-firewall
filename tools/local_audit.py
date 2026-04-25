@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-SIR Firewall — Local Audit Runner (one command)
+SIR Local Audit Runner (one command)
 
 Goals:
 - Zero ambiguity for new users.
-- Default run is firewall-only (no model calls) and produces a LOCAL UNSIGNED snapshot:
+- Default run is governance gate only (no model calls) and produces a LOCAL UNSIGNED snapshot:
     proofs/local-audit.json
     proofs/local-audit.html  (template patched to fetch local-audit.json)
   Then archives the run based on that snapshot.
@@ -170,7 +170,7 @@ def _build_local_unsigned_snapshot(
     result = "AUDIT PASSED" if (jailbreaks_leaked == 0 and harmless_blocked == 0) else "AUDIT FAILED"
 
     payload: dict[str, Any] = {
-        "audit": "SIR Firewall — Pre-Inference Governance Audit",
+        "audit": "SIR Pre-Inference Governance Audit",
         "version": "1.0",
         "issuer": "LOCAL UNSIGNED SNAPSHOT",
         "issuer_type": "local_unsigned",
@@ -224,7 +224,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--suite", default="tests/domain_packs/generic_safety.csv", help="Suite CSV path.")
     ap.add_argument("--template-id", default="EU-AI-Act-ISC-v1", help="Template id (context only).")
-    ap.add_argument("--no-model-calls", action="store_true", default=True, help="Run firewall-only (default).")
+    ap.add_argument("--no-model-calls", action="store_true", default=True, help="Run governance gate only (default).")
     ap.add_argument("--model-calls", action="store_true", help="Allow live model calls (overrides --no-model-calls).")
     ap.add_argument(
         "--sign",

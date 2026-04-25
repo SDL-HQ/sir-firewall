@@ -32,7 +32,7 @@ It is intentionally explicit and bounded.
 - `xai` -> `XAI_API_KEY`
 - `openai` -> `OPENAI_API_KEY`
 
-Audit/firewall-only execution does not require provider secrets.
+Audit/governance-gate-only execution does not require provider secrets.
 
 ## Defaults
 
