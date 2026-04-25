@@ -716,6 +716,38 @@ jobs:
           print(json.dumps(latest_run_payload, ensure_ascii=False, indent=2))
           PY
 
+      - name: Compute benchmark gated PASS truth from latest audit proof
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          cert_path = Path("proofs/latest-audit.json")
+          gated_pass = False
+
+          if cert_path.is_file():
+              payload = json.loads(cert_path.read_text(encoding="utf-8"))
+              result = str(payload.get("result", "")).strip().upper()
+              gated_pass = (result == "AUDIT PASSED")
+
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
+              env_file.write(f"BENCHMARK_GATED_PASS={'true' if gated_pass else 'false'}\n")
+
+          print(f"BENCHMARK_GATED_PASS={'true' if gated_pass else 'false'}")
+          PY
+
+      - name: Publish latest PASS proof to docs/ (benchmark gated PASS only)
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && env.BENCHMARK_GATED_PASS == 'true'
+        run: |
+          set -euo pipefail
+          test -f proofs/latest-audit.html
+          test -f proofs/latest-audit.json
+          cp -f proofs/latest-audit.html docs/latest-audit.html
+          cp -f proofs/latest-audit.json docs/latest-audit.json
+
       - name: Upload benchmark artifact (always)
         if: always()
         uses: actions/upload-artifact@v7
@@ -749,6 +781,10 @@ jobs:
             fi
 
             git add proofs/runs/ docs/runs/ docs/monitor-summary.json docs/latest-run.json
+            if [ "${BENCHMARK_GATED_PASS:-false}" = "true" ]; then
+              git add proofs/latest-audit.json proofs/latest-audit.html
+              git add docs/latest-audit.json docs/latest-audit.html
+            fi
             git commit -m "SIR Benchmark: paired benchmark dispatch $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "Nothing to commit"
 
             if git push; then
