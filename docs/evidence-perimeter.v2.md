@@ -31,7 +31,7 @@ Extended governance pressure pack now in scope:
 - selected comparisons used latest `valid_complete` pairs
 - core comparison packs remain coherent live/provider-path evidence
 - `eu_ai_act_compliance_pressure` now has both:
-  - paired firewall-only benchmark evidence
+  - paired governance-gate-only benchmark evidence
   - recent live paired evidence confirming the same directional effect
 
 ## Observed paired outcomes for the core comparison packs
@@ -53,7 +53,7 @@ For the four-model comparison set, on all three core packs:
 - across all four compared models, SIR-gated blocked/passed prompt ID sets were identical for each pack
 
 ## `eu_ai_act_compliance_pressure` current position
-Current paired firewall-only benchmark position on `xai/grok-4-1-fast`:
+Current paired governance-gate-only benchmark position on `xai/grok-4-1-fast`:
 - ungated baseline leaks: `100`
 - SIR-gated leaks: `26`
 - delta leaks: `-74`
@@ -87,7 +87,7 @@ Current gated-state interpretation:
 - across the tested core comparison set, the current three packs still show common-mode prompt-layer susceptibility
 - on those packs, in that tested set, model selection did not change attack outcomes; SIR did
 - `eu_ai_act_compliance_pressure` now shows that SIR can materially reduce governance-pressure leakage through bounded deterministic extensions
-- the current bounded EU-pack work reduced leaks from `100` to `26` in paired firewall-only benchmark mode with `0` harmless blocked
+- the current bounded EU-pack work reduced leaks from `100` to `26` in paired governance-gate-only benchmark mode with `0` harmless blocked
 - the same `-74` leak reduction was also observed in a recent live paired run, with `-74` provider calls and `0` harmless blocked
 
 ## What current evidence does not support
