@@ -6,11 +6,11 @@ It defines what current SIR does, what evidence it produces, what claims are in 
 
 ## Evaluator path (start here)
 
-Use this document as the **single primary evaluator entry point**.
+Use this document as the evaluator interpretation reference.
 
-For a strictly procedural single-path pilot flow, use `docs/minimal-pilot-runbook.md`.
+For a strict cold-start procedure, run `docs/minimal-pilot-runbook.md` first, then return here for boundary and interpretation detail.
 
-Read and verify in this order:
+Read in this order when interpretation detail is needed:
 
 1. **Scope and boundary** in this document (`What SIR is`, `What SIR does not prove`, `Current gate capability boundary`).
 2. **Truth surfaces and interpretation rules** in this document (`What SIR produces`, `Benchmark and proof interpretation semantics`).

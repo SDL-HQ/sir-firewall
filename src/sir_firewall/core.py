@@ -4,12 +4,18 @@ import hashlib
 import json
 import os
 import re
+import threading
 import time
 import unicodedata
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from .deterministic_rules import find_rule_hits
+from .deterministic_rules import (
+    find_rule_hit_families,
+    find_rule_hits,
+    has_obfuscation_signal,
+    list_deterministic_rule_families,
+)
 
 # Deliberately unused — kept as a loud reminder that we win without it
 USE_SEMANTIC_CHECK = False
@@ -20,8 +26,12 @@ USE_SEMANTIC_CHECK = False
 
 REQUIRED_ISC_FIELDS = ["version", "template_id", "payload", "checksum", "signature"]
 STRUCTURED_REQUEST_FIELD = "structured_request"
+TOOL_RESULT_FIELD = "tool_result"
 STRUCTURED_REASON = "structured_validation_failed"
+TOOL_RESULT_REASON = "tool_result_validation_failed"
 STRUCTURED_TEMPLATE_ID = "EU-AI-Act-ISC-v1"
+STRUCTURED_SCHEMA_DECLARATION_KEY = "structured_request_schema"
+STRUCTURED_SCHEMA_ID = "account_recovery_challenge_request_v1"
 
 _STRUCTURED_REQUIRED_FIELDS = {
     "schema_version",
@@ -38,21 +48,33 @@ _STRUCTURED_CHANNEL_ENUM = {"chat", "email", "support_ticket"}
 _STRUCTURED_DECLARED_AUTH_STATE_ENUM = {"verified", "unverified", "unknown"}
 _STRUCTURED_CASE_REF_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,64}$")
 
-ALLOWED_TEMPLATES = {
+_TOOL_RESULT_REQUIRED_FIELDS = {
+    "tool_name",
+    "content",
+}
+_TOOL_RESULT_ALLOWED_FIELDS = _TOOL_RESULT_REQUIRED_FIELDS
+
+_BUILTIN_ALLOWED_TEMPLATES = {
     "HIPAA-ISC-v1",
     "EU-AI-Act-ISC-v1",
     "PCI-DSS-ISC-v1",
 }
+ALLOWED_TEMPLATES = set(_BUILTIN_ALLOWED_TEMPLATES)
 
-MAX_FRICTION_BY_TEMPLATE: Dict[str, int] = {
+_BUILTIN_MAX_FRICTION_BY_TEMPLATE: Dict[str, int] = {
     "HIPAA-ISC-v1": 1500,
     "EU-AI-Act-ISC-v1": 2000,
     "PCI-DSS-ISC-v1": 1200,
 }
+MAX_FRICTION_BY_TEMPLATE: Dict[str, int] = dict(_BUILTIN_MAX_FRICTION_BY_TEMPLATE)
 
-STRICT_ISC_ENFORCEMENT = True
-CHECKSUM_ENFORCED = True
-CRYPTO_ENFORCED = False
+_BUILTIN_STRICT_ISC_ENFORCEMENT = True
+_BUILTIN_CHECKSUM_ENFORCED = True
+_BUILTIN_CRYPTO_ENFORCED = False
+
+STRICT_ISC_ENFORCEMENT = _BUILTIN_STRICT_ISC_ENFORCEMENT
+CHECKSUM_ENFORCED = _BUILTIN_CHECKSUM_ENFORCED
+CRYPTO_ENFORCED = _BUILTIN_CRYPTO_ENFORCED
 
 PUBLIC_KEYS: Dict[str, str] = {
     # "default": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----",
@@ -74,7 +96,7 @@ except Exception:  # pragma: no cover
 # Existing 2025 jailbreak heuristics
 # ---------------------------------------------------------------------------
 
-_DANGER_WORDS = [
+_BUILTIN_DANGER_WORDS = [
     "ignore",
     "disregard",
     "bypass",
@@ -98,8 +120,9 @@ _DANGER_WORDS = [
     "removed all limits",
     "safety layer",
 ]
+_DANGER_WORDS = list(_BUILTIN_DANGER_WORDS)
 
-_SAFETY_PHRASES = [
+_BUILTIN_SAFETY_PHRASES = [
     "system prompt",
     "previous instructions",
     "all previous",
@@ -115,14 +138,16 @@ _SAFETY_PHRASES = [
     "you have been freed from all guidelines",
     "forgot to enable the safety layer",
 ]
+_SAFETY_PHRASES = list(_BUILTIN_SAFETY_PHRASES)
 
-_HIGH_RISK_KEYWORDS = [
+_BUILTIN_HIGH_RISK_KEYWORDS = [
     "step-by-step guide on making meth",
     "step by step guide on making meth",
     "making meth",
     "synthesize vx nerve agent",
     "vx nerve agent",
 ]
+_HIGH_RISK_KEYWORDS = list(_BUILTIN_HIGH_RISK_KEYWORDS)
 
 _STRUCTURAL_EXPOSURE_ACTION_MARKERS = {
     "expose_internal_prompt",
@@ -184,6 +209,12 @@ _RULE_GROUPS: Dict[str, Dict[str, str]] = {
         "rule_category": "structured_validation",
         "rule_outcome_class": "BLOCK",
     },
+    TOOL_RESULT_REASON: {
+        "rule_id": "SIR-RULE-TOOL-RESULT-VALIDATION",
+        "rule_description": "Tool-result input failed deterministic schema validation checks.",
+        "rule_category": "tool_result_validation",
+        "rule_outcome_class": "BLOCK",
+    },
 }
 
 
@@ -236,6 +267,26 @@ def _has_override_envelope_prompt_exposure(payload: str) -> bool:
 _POLICY_LOADED = False
 _POLICY_VERSION: str | None = None
 _POLICY_HASH: str | None = None
+_POLICY_LOAD_LOCK = threading.Lock()
+
+
+def reset_policy() -> None:
+    global _POLICY_LOADED, _POLICY_VERSION, _POLICY_HASH
+    global ALLOWED_TEMPLATES, MAX_FRICTION_BY_TEMPLATE, STRICT_ISC_ENFORCEMENT, CHECKSUM_ENFORCED, CRYPTO_ENFORCED
+    global _DANGER_WORDS, _SAFETY_PHRASES, _HIGH_RISK_KEYWORDS
+
+    with _POLICY_LOAD_LOCK:
+        _POLICY_LOADED = False
+        _POLICY_VERSION = None
+        _POLICY_HASH = None
+        ALLOWED_TEMPLATES = set(_BUILTIN_ALLOWED_TEMPLATES)
+        MAX_FRICTION_BY_TEMPLATE = dict(_BUILTIN_MAX_FRICTION_BY_TEMPLATE)
+        STRICT_ISC_ENFORCEMENT = _BUILTIN_STRICT_ISC_ENFORCEMENT
+        CHECKSUM_ENFORCED = _BUILTIN_CHECKSUM_ENFORCED
+        CRYPTO_ENFORCED = _BUILTIN_CRYPTO_ENFORCED
+        _DANGER_WORDS = list(_BUILTIN_DANGER_WORDS)
+        _SAFETY_PHRASES = list(_BUILTIN_SAFETY_PHRASES)
+        _HIGH_RISK_KEYWORDS = list(_BUILTIN_HIGH_RISK_KEYWORDS)
 
 
 def _load_isc_policy() -> None:
@@ -258,78 +309,82 @@ def _load_isc_policy() -> None:
 
     dev_mode = os.getenv("SIR_DEV_MODE") == "1"
 
-    try:
-        here = Path(__file__).resolve()
-        candidates: List[Path] = []
-
-        # Repo layout: <repo_root>/src/sir_firewall/core.py → <repo_root>/policy/isc_policy.json
-        if len(here.parents) >= 3:
-            candidates.append(here.parents[2] / "policy" / "isc_policy.json")
-
-        # Package layout: sir_firewall/policy/isc_policy.json
-        candidates.append(here.parent / "policy" / "isc_policy.json")
-
-        policy_path: Path | None = None
-        for candidate in candidates:
-            if candidate.is_file():
-                policy_path = candidate
-                break
-
-        if policy_path is None:
-            raise FileNotFoundError("ISC policy file not found")
-
-        with policy_path.open("r", encoding="utf-8") as f:
-            policy = json.load(f)
-
-        _POLICY_VERSION = str(policy.get("version", "unknown"))
-
-        templates = policy.get("templates", {})
-        if isinstance(templates, dict) and templates:
-            ALLOWED_TEMPLATES = set(templates.keys())
-
-            # Policy-level baseline friction limits (Domain packs can still override)
-            for template_id, cfg in templates.items():
-                if isinstance(cfg, dict) and "max_tokens" in cfg:
-                    try:
-                        MAX_FRICTION_BY_TEMPLATE[template_id] = int(cfg["max_tokens"])
-                    except Exception:
-                        pass
-
-        flags = policy.get("flags", {})
-        if isinstance(flags, dict):
-            if "STRICT_ISC_ENFORCEMENT" in flags:
-                STRICT_ISC_ENFORCEMENT = bool(flags["STRICT_ISC_ENFORCEMENT"])
-            if "CHECKSUM_ENFORCED" in flags:
-                CHECKSUM_ENFORCED = bool(flags["CHECKSUM_ENFORCED"])
-            if "CRYPTO_ENFORCED" in flags:
-                CRYPTO_ENFORCED = bool(flags["CRYPTO_ENFORCED"])
-
-        rules = policy.get("rules", {})
-        if isinstance(rules, dict):
-            dw = rules.get("danger_words")
-            if isinstance(dw, list):
-                extras = [str(w).lower() for w in dw]
-                _DANGER_WORDS = sorted(set(_DANGER_WORDS) | set(extras))
-
-            sf = rules.get("safety_phrases")
-            if isinstance(sf, list):
-                extras = [str(w).lower() for w in sf]
-                _SAFETY_PHRASES = sorted(set(_SAFETY_PHRASES) | set(extras))
-
-            hr = rules.get("high_risk_patterns")
-            if isinstance(hr, list):
-                extras = [str(w).lower() for w in hr]
-                _HIGH_RISK_KEYWORDS = sorted(set(_HIGH_RISK_KEYWORDS) | set(extras))
-
-        payload_bytes = json.dumps(policy, sort_keys=True, separators=(",", ":")).encode("utf-8")
-        _POLICY_HASH = "sha256:" + hashlib.sha256(payload_bytes).hexdigest()
-
-        _POLICY_LOADED = True
-    except Exception:
-        if dev_mode:
-            _POLICY_LOADED = True
+    with _POLICY_LOAD_LOCK:
+        if _POLICY_LOADED:
             return
-        raise
+
+        try:
+            here = Path(__file__).resolve()
+            candidates: List[Path] = []
+
+            # Repo layout: <repo_root>/src/sir_firewall/core.py → <repo_root>/policy/isc_policy.json
+            if len(here.parents) >= 3:
+                candidates.append(here.parents[2] / "policy" / "isc_policy.json")
+
+            # Package layout: sir_firewall/policy/isc_policy.json
+            candidates.append(here.parent / "policy" / "isc_policy.json")
+
+            policy_path: Path | None = None
+            for candidate in candidates:
+                if candidate.is_file():
+                    policy_path = candidate
+                    break
+
+            if policy_path is None:
+                raise FileNotFoundError("ISC policy file not found")
+
+            with policy_path.open("r", encoding="utf-8") as f:
+                policy = json.load(f)
+
+            _POLICY_VERSION = str(policy.get("version", "unknown"))
+
+            templates = policy.get("templates", {})
+            if isinstance(templates, dict) and templates:
+                ALLOWED_TEMPLATES = set(templates.keys())
+
+                # Policy-level baseline friction limits (Domain packs can still override)
+                for template_id, cfg in templates.items():
+                    if isinstance(cfg, dict) and "max_tokens" in cfg:
+                        try:
+                            MAX_FRICTION_BY_TEMPLATE[template_id] = int(cfg["max_tokens"])
+                        except Exception:
+                            pass
+
+            flags = policy.get("flags", {})
+            if isinstance(flags, dict):
+                if "STRICT_ISC_ENFORCEMENT" in flags:
+                    STRICT_ISC_ENFORCEMENT = bool(flags["STRICT_ISC_ENFORCEMENT"])
+                if "CHECKSUM_ENFORCED" in flags:
+                    CHECKSUM_ENFORCED = bool(flags["CHECKSUM_ENFORCED"])
+                if "CRYPTO_ENFORCED" in flags:
+                    CRYPTO_ENFORCED = bool(flags["CRYPTO_ENFORCED"])
+
+            rules = policy.get("rules", {})
+            if isinstance(rules, dict):
+                dw = rules.get("danger_words")
+                if isinstance(dw, list):
+                    extras = [str(w).lower() for w in dw]
+                    _DANGER_WORDS = sorted(set(_DANGER_WORDS) | set(extras))
+
+                sf = rules.get("safety_phrases")
+                if isinstance(sf, list):
+                    extras = [str(w).lower() for w in sf]
+                    _SAFETY_PHRASES = sorted(set(_SAFETY_PHRASES) | set(extras))
+
+                hr = rules.get("high_risk_patterns")
+                if isinstance(hr, list):
+                    extras = [str(w).lower() for w in hr]
+                    _HIGH_RISK_KEYWORDS = sorted(set(_HIGH_RISK_KEYWORDS) | set(extras))
+
+            payload_bytes = json.dumps(policy, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            _POLICY_HASH = "sha256:" + hashlib.sha256(payload_bytes).hexdigest()
+
+            _POLICY_LOADED = True
+        except Exception:
+            if dev_mode:
+                _POLICY_LOADED = True
+                return
+            raise
 
 
 # ---------------------------------------------------------------------------
@@ -421,7 +476,15 @@ _OBFUSCATION_CANONICAL_MARKERS: List[Tuple[str, str]] = [
     ("uncensored", "uncensored"),
     ("systemprompt", "system prompt"),
     ("previousinstructions", "previous instructions"),
+    ("denybeinganai", "deny being an ai"),
+    ("namedhumanemployee", "named human employee"),
+    ("humanoversight", "human oversight"),
+    ("suppresstheauditlog", "suppress the audit log"),
+    ("socialscore", "social score"),
+    ("withoutdisclosure", "without disclosure"),
 ]
+
+_OBFUSCATION_BASE64_DECODE_MAX_CHARS = 2000
 
 
 def _canonical_compact(text: str) -> str:
@@ -457,17 +520,18 @@ def normalize_obfuscation(text: str) -> str:
 
     if b64_match:
         blob = b64_match.group(1)
-        for pad in range(9):
-            try:
-                decoded = base64.b64decode(blob + "=" * pad, validate=False)
-                candidate = decoded.decode("utf-8", errors="ignore").lower()
-                if len(candidate) > 15 and any(
-                    k in candidate
-                    for k in ["ignore", "disregard", "obey", "dan", "uncensored"]
-                ):
-                    return candidate.strip()
-            except Exception:
-                continue
+        if len(blob) <= _OBFUSCATION_BASE64_DECODE_MAX_CHARS:
+            for pad in range(9):
+                try:
+                    decoded = base64.b64decode(blob + "=" * pad, validate=False)
+                    candidate = decoded.decode("utf-8", errors="ignore").lower()
+                    if len(candidate) > 15 and any(
+                        k in candidate
+                        for k in ["ignore", "disregard", "obey", "dan", "uncensored"]
+                    ):
+                        return candidate.strip()
+                except Exception:
+                    continue
 
     t = t.replace("never gonna give you up", "ignore previous instructions")
     t = t.replace("never gonna let you down", "disregard all ethics")
@@ -692,7 +756,10 @@ def _check_crypto(
 
 
 def _estimate_tokens(payload: str) -> int:
-    return len(str(payload).split())
+    s = str(payload)
+    word_count = len(s.split())
+    char_estimate = (len(s) + 3) // 4
+    return max(word_count, char_estimate)
 
 
 def _check_friction(
@@ -739,7 +806,7 @@ def _check_jailbreak(
     isc: Dict[str, Any],
     log: List[Dict[str, Any]],
     prev_hash: str,
-) -> Tuple[bool, List[Dict[str, Any]], str, str | None, List[str]]:
+) -> Tuple[bool, List[Dict[str, Any]], str, str | None, List[str], List[str], List[str], bool]:
     raw_payload = str(isc.get("payload", ""))
     normalized = normalize_obfuscation(raw_payload)
 
@@ -750,13 +817,21 @@ def _check_jailbreak(
 
     step_input = {"payload_len": len(normalized)}
     rule_hits = find_rule_hits(normalized)
+    obfuscation_signal_detected = has_obfuscation_signal(normalized)
+    evaluated_rule_families = list_deterministic_rule_families()
+    hit_rule_families = find_rule_hit_families(rule_hits)
+    hit_rule_family_set = set(hit_rule_families)
+    clean_rule_families = [family for family in evaluated_rule_families if family not in hit_rule_family_set]
 
     step_output = {
         "has_danger": has_danger,
         "has_safety": has_safety,
         "has_high_risk": has_high_risk,
         "has_structural_override_exposure": has_structural_override_exposure,
+        "obfuscation_signal_detected": obfuscation_signal_detected,
         "rule_hits": rule_hits,
+        "evaluated_rule_families": evaluated_rule_families,
+        "clean_rule_families": clean_rule_families,
     }
 
     if has_high_risk:
@@ -768,7 +843,16 @@ def _check_jailbreak(
             log,
             prev_hash,
         )
-        return False, log, prev_hash, "high_risk_content", rule_hits
+        return (
+            False,
+            log,
+            prev_hash,
+            "high_risk_content",
+            rule_hits,
+            evaluated_rule_families,
+            clean_rule_families,
+            obfuscation_signal_detected,
+        )
 
     if has_danger and has_safety:
         log, prev_hash = _append_itgl(
@@ -779,7 +863,16 @@ def _check_jailbreak(
             log,
             prev_hash,
         )
-        return False, log, prev_hash, "danger+safety_combo", rule_hits
+        return (
+            False,
+            log,
+            prev_hash,
+            "danger+safety_combo",
+            rule_hits,
+            evaluated_rule_families,
+            clean_rule_families,
+            obfuscation_signal_detected,
+        )
 
     if has_structural_override_exposure:
         log, prev_hash = _append_itgl(
@@ -790,7 +883,16 @@ def _check_jailbreak(
             log,
             prev_hash,
         )
-        return False, log, prev_hash, "structural_override_exposure", rule_hits
+        return (
+            False,
+            log,
+            prev_hash,
+            "structural_override_exposure",
+            rule_hits,
+            evaluated_rule_families,
+            clean_rule_families,
+            obfuscation_signal_detected,
+        )
 
     if rule_hits:
         log, prev_hash = _append_itgl(
@@ -801,7 +903,16 @@ def _check_jailbreak(
             log,
             prev_hash,
         )
-        return False, log, prev_hash, "deterministic_rule_match", rule_hits
+        return (
+            False,
+            log,
+            prev_hash,
+            "deterministic_rule_match",
+            rule_hits,
+            evaluated_rule_families,
+            clean_rule_families,
+            obfuscation_signal_detected,
+        )
 
     log, prev_hash = _append_itgl(
         "jailbreak",
@@ -811,7 +922,7 @@ def _check_jailbreak(
         log,
         prev_hash,
     )
-    return True, log, prev_hash, None, []
+    return True, log, prev_hash, None, [], evaluated_rule_families, clean_rule_families, obfuscation_signal_detected
 
 
 def _reject_structured_validation(
@@ -831,6 +942,29 @@ def _reject_structured_validation(
     )
     return _build_block(
         STRUCTURED_REASON,
+        itgl_log,
+        block_type=code,
+        domain_pack=domain_pack,
+    )
+
+
+def _reject_tool_result_validation(
+    code: str,
+    detail: str,
+    itgl_log: List[Dict[str, Any]],
+    prev_hash: str,
+    domain_pack: str | None = None,
+) -> Dict[str, Any]:
+    itgl_log, _ = _append_itgl(
+        "tool_result_validation",
+        "fail",
+        {"code": code},
+        {"detail": detail},
+        itgl_log,
+        prev_hash,
+    )
+    return _build_block(
+        TOOL_RESULT_REASON,
         itgl_log,
         block_type=code,
         domain_pack=domain_pack,
@@ -857,17 +991,205 @@ def _load_structured_request_object(raw: Any) -> Tuple[Dict[str, Any] | None, st
 
 
 def _validate_structured_request(raw: Any) -> Tuple[Dict[str, Any] | None, str | None]:
+    return _validate_structured_request_with_schema(raw, _build_structured_schema_from_legacy_defaults())
+
+
+def _load_tool_result_object(raw: Any) -> Tuple[Dict[str, Any] | None, str | None]:
+    if isinstance(raw, dict):
+        return raw, None
+    if isinstance(raw, str):
+        try:
+            pairs = json.loads(raw, object_pairs_hook=list)
+        except json.JSONDecodeError:
+            return None, "tool_result_invalid_json"
+        if not isinstance(pairs, list):
+            return None, "tool_result_not_object"
+        obj: Dict[str, Any] = {}
+        for key, value in pairs:
+            if key in obj:
+                return None, "tool_result_duplicate_keys"
+            obj[key] = value
+        return obj, None
+    return None, "tool_result_not_object"
+
+
+def _validate_tool_result_request(raw: Any) -> Tuple[Dict[str, Any] | None, str | None]:
+    obj, error_code = _load_tool_result_object(raw)
+    if error_code is not None:
+        return None, error_code
+    if obj is None:
+        return None, "tool_result_not_object"
+
+    unknown_fields = sorted(set(obj.keys()) - _TOOL_RESULT_ALLOWED_FIELDS)
+    if unknown_fields:
+        return None, "tool_result_unknown_field"
+
+    missing_fields = sorted(_TOOL_RESULT_REQUIRED_FIELDS - set(obj.keys()))
+    if missing_fields:
+        return None, "tool_result_missing_required_field"
+
+    for field_name, field_value in obj.items():
+        if isinstance(field_value, (dict, list)):
+            return None, "tool_result_nested_value"
+        if not isinstance(field_value, str):
+            return None, "tool_result_type_mismatch"
+    if len(obj["content"]) > 4000:
+        return None, "tool_result_content_length_out_of_bounds"
+
+    return {
+        "tool_name": obj["tool_name"],
+        "content": obj["content"],
+    }, None
+
+
+def _build_structured_schema_from_legacy_defaults() -> Dict[str, Any]:
+    return {
+        "schema_id": STRUCTURED_SCHEMA_ID,
+        "template_id": STRUCTURED_TEMPLATE_ID,
+        "required_fields": sorted(_STRUCTURED_REQUIRED_FIELDS),
+        "optional_fields": sorted(_STRUCTURED_OPTIONAL_FIELDS),
+        "schema_version_const": "v1",
+        "request_class_const": "account_recovery_challenge",
+        "action_enum": sorted(_STRUCTURED_ACTION_ENUM),
+        "channel_enum": sorted(_STRUCTURED_CHANNEL_ENUM),
+        "declared_auth_state_enum": sorted(_STRUCTURED_DECLARED_AUTH_STATE_ENUM),
+        "case_ref_pattern": _STRUCTURED_CASE_REF_PATTERN.pattern,
+        "request_text_min_length": 1,
+        "request_text_max_length": 4000,
+    }
+
+
+def _load_structured_schema_declaration(domain_cfg: Dict[str, Any]) -> Tuple[Dict[str, Any] | None, str | None]:
+    raw_decl = domain_cfg.get(STRUCTURED_SCHEMA_DECLARATION_KEY)
+    if raw_decl is None:
+        return None, "structured_schema_declaration_missing"
+    if not isinstance(raw_decl, dict):
+        return None, "structured_schema_declaration_invalid"
+
+    required_keys = {
+        "schema_id",
+        "required_fields",
+        "optional_fields",
+        "schema_version_const",
+        "request_class_const",
+        "action_enum",
+        "channel_enum",
+        "declared_auth_state_enum",
+        "case_ref_pattern",
+        "request_text_min_length",
+        "request_text_max_length",
+    }
+    if any(k not in raw_decl for k in required_keys):
+        return None, "structured_schema_declaration_invalid"
+
+    try:
+        schema_id = str(raw_decl["schema_id"])
+        required_fields_raw = raw_decl["required_fields"]
+        optional_fields_raw = raw_decl["optional_fields"]
+        if not isinstance(required_fields_raw, list) or not isinstance(optional_fields_raw, list):
+            return None, "structured_schema_declaration_invalid"
+        required_fields = [str(x) for x in required_fields_raw]
+        optional_fields = [str(x) for x in optional_fields_raw]
+
+        action_enum_raw = raw_decl["action_enum"]
+        channel_enum_raw = raw_decl["channel_enum"]
+        declared_auth_state_enum_raw = raw_decl["declared_auth_state_enum"]
+        if not isinstance(action_enum_raw, list) or not isinstance(channel_enum_raw, list) or not isinstance(
+            declared_auth_state_enum_raw, list
+        ):
+            return None, "structured_schema_declaration_invalid"
+        action_enum = [str(x) for x in action_enum_raw]
+        channel_enum = [str(x) for x in channel_enum_raw]
+        declared_auth_state_enum = [str(x) for x in declared_auth_state_enum_raw]
+
+        schema_version_const = str(raw_decl["schema_version_const"])
+        request_class_const = str(raw_decl["request_class_const"])
+        case_ref_pattern = str(raw_decl["case_ref_pattern"])
+        request_text_min_length = int(raw_decl["request_text_min_length"])
+        request_text_max_length = int(raw_decl["request_text_max_length"])
+        if request_text_min_length < 0 or request_text_max_length < request_text_min_length:
+            return None, "structured_schema_declaration_invalid"
+        re.compile(case_ref_pattern)
+    except Exception:
+        return None, "structured_schema_declaration_invalid"
+
+    template_id = str(raw_decl.get("template_id") or "").strip() or STRUCTURED_TEMPLATE_ID
+    return {
+        "schema_id": schema_id,
+        "template_id": template_id,
+        "required_fields": required_fields,
+        "optional_fields": optional_fields,
+        "schema_version_const": schema_version_const,
+        "request_class_const": request_class_const,
+        "action_enum": action_enum,
+        "channel_enum": channel_enum,
+        "declared_auth_state_enum": declared_auth_state_enum,
+        "case_ref_pattern": case_ref_pattern,
+        "request_text_min_length": request_text_min_length,
+        "request_text_max_length": request_text_max_length,
+    }, None
+
+
+def _validate_supported_structured_schema_contract(schema_decl: Dict[str, Any]) -> str | None:
+    if str(schema_decl.get("schema_id") or "") != STRUCTURED_SCHEMA_ID:
+        return "structured_schema_declaration_invalid"
+
+    required_fields = set(schema_decl.get("required_fields") or [])
+    optional_fields = set(schema_decl.get("optional_fields") or [])
+    if required_fields != _STRUCTURED_REQUIRED_FIELDS:
+        return "structured_schema_declaration_invalid"
+    if optional_fields != _STRUCTURED_OPTIONAL_FIELDS:
+        return "structured_schema_declaration_invalid"
+
+    if str(schema_decl.get("schema_version_const") or "") != "v1":
+        return "structured_schema_declaration_invalid"
+    if str(schema_decl.get("request_class_const") or "") != "account_recovery_challenge":
+        return "structured_schema_declaration_invalid"
+
+    action_enum = set(schema_decl.get("action_enum") or [])
+    channel_enum = set(schema_decl.get("channel_enum") or [])
+    declared_auth_state_enum = set(schema_decl.get("declared_auth_state_enum") or [])
+    if action_enum != _STRUCTURED_ACTION_ENUM:
+        return "structured_schema_declaration_invalid"
+    if channel_enum != _STRUCTURED_CHANNEL_ENUM:
+        return "structured_schema_declaration_invalid"
+    if declared_auth_state_enum != _STRUCTURED_DECLARED_AUTH_STATE_ENUM:
+        return "structured_schema_declaration_invalid"
+
+    if str(schema_decl.get("case_ref_pattern") or "") != _STRUCTURED_CASE_REF_PATTERN.pattern:
+        return "structured_schema_declaration_invalid"
+
+    if int(schema_decl.get("request_text_min_length", -1)) != 1:
+        return "structured_schema_declaration_invalid"
+    if int(schema_decl.get("request_text_max_length", -1)) != 4000:
+        return "structured_schema_declaration_invalid"
+
+    template_id = str(schema_decl.get("template_id") or "").strip() or STRUCTURED_TEMPLATE_ID
+    if template_id not in ALLOWED_TEMPLATES:
+        return "structured_schema_declaration_invalid"
+
+    return None
+
+
+def _validate_structured_request_with_schema(
+    raw: Any,
+    schema_decl: Dict[str, Any],
+) -> Tuple[Dict[str, Any] | None, str | None]:
     obj, error_code = _load_structured_request_object(raw)
     if error_code is not None:
         return None, error_code
     if obj is None:
         return None, "structured_not_object"
 
-    unknown_fields = sorted(set(obj.keys()) - _STRUCTURED_ALLOWED_FIELDS)
+    required_fields = set(schema_decl["required_fields"])
+    optional_fields = set(schema_decl["optional_fields"])
+    allowed_fields = required_fields | optional_fields
+
+    unknown_fields = sorted(set(obj.keys()) - allowed_fields)
     if unknown_fields:
         return None, "structured_unknown_field"
 
-    missing_fields = sorted(_STRUCTURED_REQUIRED_FIELDS - set(obj.keys()))
+    missing_fields = sorted(required_fields - set(obj.keys()))
     if missing_fields:
         return None, "structured_missing_required_field"
 
@@ -877,23 +1199,26 @@ def _validate_structured_request(raw: Any) -> Tuple[Dict[str, Any] | None, str |
         if not isinstance(field_value, str):
             return None, "structured_type_mismatch"
 
-    if obj["schema_version"] != "v1":
+    if obj["schema_version"] != str(schema_decl["schema_version_const"]):
         return None, "structured_schema_version_mismatch"
-    if obj["request_class"] != "account_recovery_challenge":
+    if obj["request_class"] != str(schema_decl["request_class_const"]):
         return None, "structured_request_class_mismatch"
-    if obj["action"] not in _STRUCTURED_ACTION_ENUM:
+    if obj["action"] not in set(schema_decl["action_enum"]):
         return None, "structured_action_enum_mismatch"
-    if obj["channel"] not in _STRUCTURED_CHANNEL_ENUM:
+    if obj["channel"] not in set(schema_decl["channel_enum"]):
         return None, "structured_channel_enum_mismatch"
-    if not (1 <= len(obj["request_text"]) <= 4000):
+    if not (
+        int(schema_decl["request_text_min_length"]) <= len(obj["request_text"]) <= int(schema_decl["request_text_max_length"])
+    ):
         return None, "structured_request_text_length_out_of_bounds"
 
     declared_auth_state = obj.get("declared_auth_state")
-    if declared_auth_state is not None and declared_auth_state not in _STRUCTURED_DECLARED_AUTH_STATE_ENUM:
+    if declared_auth_state is not None and declared_auth_state not in set(schema_decl["declared_auth_state_enum"]):
         return None, "structured_declared_auth_state_enum_mismatch"
 
     case_ref = obj.get("case_ref")
-    if case_ref is not None and not _STRUCTURED_CASE_REF_PATTERN.match(case_ref):
+    case_ref_pattern = re.compile(str(schema_decl["case_ref_pattern"]))
+    if case_ref is not None and not case_ref_pattern.match(case_ref):
         return None, "structured_case_ref_pattern_mismatch"
 
     normalized = {
@@ -911,8 +1236,22 @@ def _validate_structured_request(raw: Any) -> Tuple[Dict[str, Any] | None, str |
     return normalized, None
 
 
-def _structured_to_isc_payload(structured_request: Dict[str, Any]) -> Dict[str, Any]:
+def _structured_to_isc_payload(structured_request: Dict[str, Any], schema_decl: Dict[str, Any] | None = None) -> Dict[str, Any]:
     payload = str(structured_request["request_text"])
+    template_id = STRUCTURED_TEMPLATE_ID
+    if isinstance(schema_decl, dict):
+        template_id = str(schema_decl.get("template_id") or "").strip() or STRUCTURED_TEMPLATE_ID
+    return {
+        "version": "1.0",
+        "template_id": template_id,
+        "payload": payload,
+        "checksum": _compute_checksum(payload),
+        "signature": "",
+    }
+
+
+def _tool_result_to_isc_payload(tool_result: Dict[str, Any]) -> Dict[str, Any]:
+    payload = str(tool_result["content"])
     return {
         "version": "1.0",
         "template_id": STRUCTURED_TEMPLATE_ID,
@@ -922,16 +1261,43 @@ def _structured_to_isc_payload(structured_request: Dict[str, Any]) -> Dict[str, 
     }
 
 
+def validate_text(
+    payload: str,
+    template_id: str = STRUCTURED_TEMPLATE_ID,
+    enforcement_pack_id: str | None = None,
+    pack_identity_context: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    text_payload = str(payload)
+    isc = {
+        "version": "1.0",
+        "template_id": str(template_id),
+        "payload": text_payload,
+        "checksum": _compute_checksum(text_payload),
+        "signature": "",
+    }
+    return validate_sir(
+        {"isc": isc},
+        enforcement_pack_id=enforcement_pack_id,
+        pack_identity_context=pack_identity_context,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Public entrypoint
 # ---------------------------------------------------------------------------
 
-def validate_sir(input_dict: Dict[str, Any], enforcement_pack_id: str | None = None) -> Dict[str, Any]:
+def validate_sir(
+    input_dict: Dict[str, Any],
+    enforcement_pack_id: str | None = None,
+    pack_identity_context: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
     itgl_log: List[Dict[str, Any]] = []
     prev_hash: str = GENESIS_HASH
     structured_mode = STRUCTURED_REQUEST_FIELD in input_dict
+    tool_result_mode = TOOL_RESULT_FIELD in input_dict
+    isc_mode = "isc" in input_dict
 
-    if structured_mode and "isc" in input_dict:
+    if structured_mode and isc_mode and not tool_result_mode:
         return _reject_structured_validation(
             "structured_mixed_mode_not_allowed",
             "both_structured_and_isc_present",
@@ -939,18 +1305,18 @@ def validate_sir(input_dict: Dict[str, Any], enforcement_pack_id: str | None = N
             prev_hash,
             domain_pack=None,
         )
+    if sum(1 for active in (isc_mode, structured_mode, tool_result_mode) if active) > 1:
+        return _reject_tool_result_validation(
+            "tool_result_mixed_mode_not_allowed",
+            "multiple_ingress_modes_present",
+            itgl_log,
+            prev_hash,
+            domain_pack=None,
+        )
 
     structured_request: Dict[str, Any] | None = None
-    if structured_mode:
-        structured_request, error_code = _validate_structured_request(input_dict.get(STRUCTURED_REQUEST_FIELD))
-        if error_code is not None:
-            return _reject_structured_validation(
-                error_code,
-                "request_rejected_before_inference",
-                itgl_log,
-                prev_hash,
-                domain_pack=None,
-            )
+    structured_schema_decl: Dict[str, Any] | None = None
+    tool_result_request: Dict[str, Any] | None = None
 
     try:
         _load_isc_policy()
@@ -1005,6 +1371,65 @@ def validate_sir(input_dict: Dict[str, Any], enforcement_pack_id: str | None = N
             domain_pack=None,
         )
 
+    if structured_mode:
+        structured_schema_decl, declaration_error = _load_structured_schema_declaration(domain_cfg)
+        if declaration_error is not None:
+            return _reject_structured_validation(
+                declaration_error,
+                "request_rejected_before_inference",
+                itgl_log,
+                prev_hash,
+                domain_pack=None,
+            )
+        if structured_schema_decl is None:
+            return _reject_structured_validation(
+                "structured_schema_declaration_invalid",
+                "request_rejected_before_inference",
+                itgl_log,
+                prev_hash,
+                domain_pack=None,
+            )
+        declaration_contract_error = _validate_supported_structured_schema_contract(structured_schema_decl)
+        if declaration_contract_error is not None:
+            return _reject_structured_validation(
+                declaration_contract_error,
+                "request_rejected_before_inference",
+                itgl_log,
+                prev_hash,
+                domain_pack=None,
+            )
+        structured_request, error_code = _validate_structured_request_with_schema(
+            input_dict.get(STRUCTURED_REQUEST_FIELD),
+            structured_schema_decl,
+        )
+        if error_code is not None:
+            return _reject_structured_validation(
+                error_code,
+                "request_rejected_before_inference",
+                itgl_log,
+                prev_hash,
+                domain_pack=None,
+            )
+
+    if tool_result_mode:
+        tool_result_request, error_code = _validate_tool_result_request(input_dict.get(TOOL_RESULT_FIELD))
+        if error_code is not None:
+            return _reject_tool_result_validation(
+                error_code,
+                "request_rejected_before_inference",
+                itgl_log,
+                prev_hash,
+                domain_pack=None,
+            )
+        itgl_log, prev_hash = _append_itgl(
+            "tool_result_validation",
+            "pass",
+            {"fields": sorted(tool_result_request.keys()) if isinstance(tool_result_request, dict) else []},
+            {"tool_name": str((tool_result_request or {}).get("tool_name", ""))},
+            itgl_log,
+            prev_hash,
+        )
+
     flags = domain_cfg.get("flags", {})
     strict_isc = bool(flags.get("STRICT_ISC_ENFORCEMENT", STRICT_ISC_ENFORCEMENT))
     checksum_enforced = bool(flags.get("CHECKSUM_ENFORCED", CHECKSUM_ENFORCED))
@@ -1019,16 +1444,32 @@ def validate_sir(input_dict: Dict[str, Any], enforcement_pack_id: str | None = N
             except Exception:
                 continue
 
+    pack_identity = pack_identity_context if isinstance(pack_identity_context, dict) else {}
+    pack_version = str(pack_identity.get("pack_version") or "").strip()
+    pack_hash = str(pack_identity.get("pack_hash") or "").strip()
+
+    context_input: Dict[str, Any] = {"domain_pack": domain_pack_id}
+    if pack_version:
+        context_input["pack_version"] = pack_version
+    if pack_hash:
+        context_input["pack_hash"] = pack_hash
+
     itgl_log, prev_hash = _append_itgl(
         "context",
         "init",
-        {"domain_pack": domain_pack_id},
+        context_input,
         {},
         itgl_log,
         prev_hash,
     )
 
-    isc = _structured_to_isc_payload(structured_request) if structured_request is not None else input_dict.get("isc")
+    isc = (
+        _structured_to_isc_payload(structured_request, structured_schema_decl)
+        if structured_request is not None
+        else _tool_result_to_isc_payload(tool_result_request)
+        if tool_result_request is not None
+        else input_dict.get("isc")
+    )
     if not isinstance(isc, dict) or "payload" not in isc:
         return {
             "status": "BLOCKED",
@@ -1068,11 +1509,16 @@ def validate_sir(input_dict: Dict[str, Any], enforcement_pack_id: str | None = N
             domain_pack=domain_pack_id,
         )
 
-    ok, itgl_log, prev_hash, block_type, rule_hits = _check_jailbreak(
-        isc,
+    (
+        ok,
         itgl_log,
         prev_hash,
-    )
+        block_type,
+        rule_hits,
+        evaluated_rule_families,
+        clean_rule_families,
+        obfuscation_signal_detected,
+    ) = _check_jailbreak(isc, itgl_log, prev_hash)
     if not ok:
         return _build_block(
             "2025_jailbreak_pattern",
@@ -1098,8 +1544,15 @@ def validate_sir(input_dict: Dict[str, Any], enforcement_pack_id: str | None = N
         "isc_template": isc_template,
         "itgl_final_hash": f"sha256:{final_hash}",
     }
+    if pack_version:
+        governance_context["pack_version"] = pack_version
+    if pack_hash:
+        governance_context["pack_hash"] = pack_hash
     if structured_request is not None:
-        governance_context["structured_mode"] = "account_recovery_challenge_request_v1"
+        governance_context["structured_mode"] = str((structured_schema_decl or {}).get("schema_id") or STRUCTURED_SCHEMA_ID)
+    if tool_result_request is not None:
+        governance_context["tool_result_mode"] = "tool_result_v1"
+        governance_context["tool_name"] = str(tool_result_request.get("tool_name", ""))
 
     if _POLICY_VERSION:
         governance_context.setdefault("policy_version", _POLICY_VERSION)
@@ -1125,6 +1578,11 @@ def validate_sir(input_dict: Dict[str, Any], enforcement_pack_id: str | None = N
         "status": "PASS",
         "reason": "clean",
         "domain_pack": domain_pack_id,
+        "pass_rule_explainability": {
+            "evaluated_rule_families": list(evaluated_rule_families),
+            "clean_rule_families": list(clean_rule_families),
+            "obfuscation_signal_detected": bool(obfuscation_signal_detected),
+        },
         "governance_context": governance_context,
         "itgl_log": itgl_log,
     }

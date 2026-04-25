@@ -2,7 +2,9 @@
 
 This guide is for running SIR locally, generating artefacts, and serving proof pages during development.
 
-For the canonical evaluation and offline verification path, use `docs/assurance-kit.md`.
+For canonical operator/reviewer cold-start execution, use `docs/minimal-pilot-runbook.md`.
+For evaluator interpretation and boundary semantics, use `docs/evaluator-technical-explainer.md`.
+Use `docs/assurance-kit.md` as a compact supporting walkthrough aligned to the same surfaces.
 
 For the first disciplined benchmark-cycle contract (what to run, required artefacts, and comparability rules), use `docs/benchmark-cycle.v1.md`.
 
@@ -129,6 +131,46 @@ The run summary records:
 
 Supported provider/model selection and defaults are documented in `docs/model-selection.md`.
 
+## Integration patterns (existing behavior only)
+
+This section documents current integration usage only. It does not introduce a new runtime feature.
+
+### Python middleware
+
+Minimal pattern:
+
+1. Receive request text or structured payload in middleware before model execution.
+2. Call `validate_text(...)` for plain text or `validate_sir(...)` for ISC/structured input.
+3. Block and return an application-level refusal on any non-`PASS` result.
+4. Call the downstream model only when status is `PASS`.
+
+This is documentation of existing behavior, not a new runtime feature.
+Any model path that bypasses SIR is out of claim scope.
+
+### containerised sidecar deployment
+
+Minimal pattern:
+
+1. Route each model-bound request through a local sidecar process that invokes SIR first.
+2. Call `validate_text(...)` for plain text or `validate_sir(...)` for ISC/structured input.
+3. Block and return a deny response on any non-`PASS` result.
+4. Forward to the model service only when status is `PASS`.
+
+This is documentation of existing behavior, not a new runtime feature.
+Any model path that bypasses SIR is out of claim scope.
+
+### agentic pipeline pre-call wrapper
+
+Minimal pattern:
+
+1. Receive agent step input before each model call in the pipeline.
+2. Call `validate_text(...)` for plain text or `validate_sir(...)` for ISC/structured input.
+3. Block and stop the step on any non-`PASS` result.
+4. Execute the model call only when status is `PASS`.
+
+This is documentation of existing behavior, not a new runtime feature.
+Any model path that bypasses SIR is out of claim scope.
+
 ## Generate a locally signed certificate (dev/test key)
 
 Certificate generation and run-archive publishing require a signing key in `SDL_PRIVATE_KEY_PEM`.
@@ -157,7 +199,7 @@ Publishing a run archive creates:
 * `proofs/runs/<run_id>/manifest.json`
 * `proofs/runs/<run_id>/audit.json`
 * `proofs/runs/<run_id>/archive_receipt.json` (signed)
-* `proofs/runs/benchmark_index.v1.json` (machine-readable benchmark/index summary)
+* `proofs/runs/benchmark_index.v2.json` (machine-readable benchmark/index summary)
 
 It requires `SDL_PRIVATE_KEY_PEM` to be set.
 
@@ -182,7 +224,7 @@ If `archive_receipt.json` carries a `signing_key_id` that does not exist in the 
 
 Benchmark/index semantics:
 
-* `proofs/runs/benchmark_index.v1.json` is an evidence map, not a score.
+* `proofs/runs/benchmark_index.v2.json` is an evidence map, not a score.
 * It records attributable per-run comparison rows: `sir_firewall_version`, `commit_sha`, explicit `evaluation_target` (`domain_pack` or `scenario_pack` + pack identifiers), `proof_class`, `provider`, `model`, `result`, `leaks`, `harmless_blocked`, and evidence links.
 * It includes both `latest_run` and `latest_passing_run` pointers so fail/pass truth stays explicit.
 * `comparison` is raw run metadata for side-by-side reading only (counts, hashes, and provider call totals), not a ranking model.

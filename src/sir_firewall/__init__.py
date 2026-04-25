@@ -1,4 +1,4 @@
-from .core import validate_sir
+from .core import validate_sir, validate_text
 
-__all__ = ["validate_sir"]
-__version__ = "1.0.2"
+__all__ = ["validate_sir", "validate_text"]
+__version__ = "2.0.0"

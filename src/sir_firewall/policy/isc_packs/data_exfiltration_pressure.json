@@ -16,5 +16,41 @@
     "STRICT_ISC_ENFORCEMENT": true,
     "CHECKSUM_ENFORCED": true,
     "CRYPTO_ENFORCED": false
+  },
+  "structured_request_schema": {
+    "schema_id": "account_recovery_challenge_request_v1",
+    "template_id": "EU-AI-Act-ISC-v1",
+    "required_fields": [
+      "schema_version",
+      "request_class",
+      "action",
+      "channel",
+      "request_text"
+    ],
+    "optional_fields": [
+      "declared_auth_state",
+      "case_ref"
+    ],
+    "schema_version_const": "v1",
+    "request_class_const": "account_recovery_challenge",
+    "action_enum": [
+      "password_reset",
+      "mfa_reset",
+      "email_change",
+      "phone_change"
+    ],
+    "channel_enum": [
+      "chat",
+      "email",
+      "support_ticket"
+    ],
+    "declared_auth_state_enum": [
+      "verified",
+      "unverified",
+      "unknown"
+    ],
+    "case_ref_pattern": "^[A-Za-z0-9._:-]{1,64}$",
+    "request_text_min_length": 1,
+    "request_text_max_length": 4000
   }
 }

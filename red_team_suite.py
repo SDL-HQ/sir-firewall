@@ -27,6 +27,7 @@ import csv
 import hashlib
 import json
 import os
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from typing import Dict, List, Tuple, Optional, Any
 
@@ -46,6 +47,7 @@ DEFAULT_MODEL = os.getenv("LITELLM_MODEL", DEFAULT_SELECTED_MODEL)
 DEFAULT_TEMPLATE_ID = os.getenv("SIR_TEMPLATE_ID", "EU-AI-Act-ISC-v1")
 
 LEDGER_PATH = os.path.join("proofs", "itgl_ledger.jsonl")
+DOWNSTREAM_EVIDENCE_PATH = os.path.join("proofs", "downstream_evidence.jsonl")
 
 
 def _utc_now_iso() -> str:
@@ -304,22 +306,51 @@ def _build_isc_envelope(prompt: str, template_id: str) -> Dict[str, str]:
     }
 
 
-def _maybe_call_model(model: str, messages: List[Dict[str, str]], enable: bool) -> bool:
+def _stable_response_text(response: Any) -> str:
+    try:
+        return json.dumps(response, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str)
+    except Exception:
+        return repr(response)
+
+
+def _extract_response_excerpt(response: Any, excerpt_chars: int) -> str:
+    if excerpt_chars <= 0:
+        return ""
+    try:
+        if isinstance(response, dict):
+            choices = response.get("choices")
+            if isinstance(choices, list) and choices:
+                first = choices[0]
+                if isinstance(first, dict):
+                    message = first.get("message")
+                    if isinstance(message, dict):
+                        content = message.get("content")
+                        if isinstance(content, str):
+                            return content.replace("\r", " ").replace("\n", " ").strip()[:excerpt_chars]
+    except Exception:
+        return ""
+    return ""
+
+
+def _maybe_call_model(model: str, messages: List[Dict[str, str]], enable: bool, excerpt_chars: int = 0) -> Dict[str, str]:
     if not enable:
-        return False
+        return {"response_hash": "", "response_excerpt": ""}
     try:
         from litellm import completion
     except ImportError as exc:
         raise SystemExit("ERROR: LIVE mode requires litellm installed.") from exc
     # Keep this minimal: we're proving SIR is in front of a real model call.
     # The audit result is still based on SIR gating outcomes, not model content.
-    completion(
+    response = completion(
         model=model,
         messages=messages,
         temperature=0,
         max_tokens=1,
     )
-    return True
+    response_text = _stable_response_text(response)
+    response_hash = "sha256:" + hashlib.sha256(response_text.encode("utf-8")).hexdigest()
+    response_excerpt = _extract_response_excerpt(response, excerpt_chars=excerpt_chars)
+    return {"response_hash": response_hash, "response_excerpt": response_excerpt}
 
 
 def _prompt_hash(prompt: str) -> str:
@@ -380,6 +411,17 @@ def main() -> None:
     ap.add_argument("--template", default=DEFAULT_TEMPLATE_ID, help="ISC template_id to use")
     ap.add_argument("--no-model-calls", action="store_true", help="Skip model calls even for PASS prompts")
     ap.add_argument(
+        "--capture-downstream-evidence",
+        action="store_true",
+        help="Write optional downstream provider-call evidence sidecar for PASS rows in live mode.",
+    )
+    ap.add_argument(
+        "--downstream-evidence-excerpt-chars",
+        type=int,
+        default=0,
+        help="Optional bounded excerpt length for downstream evidence records (default: 0, hash-only).",
+    )
+    ap.add_argument(
         "--ungated-baseline",
         action="store_true",
         help="Execute the prompt set without SIR pre-inference gate intervention (paired benchmark baseline).",
@@ -415,6 +457,8 @@ def main() -> None:
     )
     template_id = args.template
     do_model_calls = args.mode == "live"
+    capture_downstream_evidence = bool(getattr(args, "capture_downstream_evidence", False) and args.mode == "live")
+    downstream_excerpt_chars = max(0, int(getattr(args, "downstream_evidence_excerpt_chars", 0) or 0))
     proof_class = "LIVE_GATING_CHECK" if args.mode == "live" else "FIREWALL_ONLY_AUDIT"
     selected_pack_id = str(pack_id or "")
     selected_pack_version = str(pack_version or "")
@@ -451,8 +495,13 @@ def main() -> None:
 
     # Regenerate the ITGL ledger every run (prevents stale-proof reuse)
     prev_ledger_hash = "GENESIS"
-    with open(LEDGER_PATH, "w", encoding="utf-8") as ledger, open(log_path, "w", encoding="utf-8") as f:
-        f.write("SIR Firewall — PRE-INFERENCE RED TEAM SUITE\n")
+    downstream_cm = (
+        open(DOWNSTREAM_EVIDENCE_PATH, "w", encoding="utf-8")
+        if capture_downstream_evidence
+        else nullcontext(None)
+    )
+    with open(LEDGER_PATH, "w", encoding="utf-8") as ledger, open(log_path, "w", encoding="utf-8") as f, downstream_cm as downstream_f:
+        f.write("SIR PRE-INFERENCE GOVERNANCE RED TEAM SUITE\n")
         f.write(f"Date: {_utc_now_iso()}\n")
         f.write(f"Model: {model_name}\n")
         f.write(f"Suite: {suite_or_scenario_path}\n")
@@ -480,7 +529,14 @@ def main() -> None:
                     "domain_pack": effective_pack_id or selected_pack_id or "",
                 }
             else:
-                verdict = validate_sir({"isc": isc}, enforcement_pack_id=(pack_id or None))
+                verdict = validate_sir(
+                    {"isc": isc},
+                    enforcement_pack_id=(pack_id or None),
+                    pack_identity_context={
+                        "pack_version": selected_pack_version,
+                        "pack_hash": suite_hash,
+                    },
+                )
             status = str(verdict.get("status", "UNKNOWN"))
 
             expected_status = "PASS" if expected == "allow" else "BLOCKED"
@@ -507,12 +563,49 @@ def main() -> None:
                         history = [{"role": str(t.get("role") or "user"), "content": str(t.get("content") or "")} for t in rows[:i]]
                     else:
                         history = [{"role": "user", "content": prompt}]
-                    if _maybe_call_model(live_invocation_model, history, do_model_calls):
-                        provider_call_successes += 1
+                    call_meta = _maybe_call_model(
+                        live_invocation_model,
+                        history,
+                        do_model_calls,
+                        excerpt_chars=(downstream_excerpt_chars if capture_downstream_evidence else 0),
+                    )
+                    provider_call_successes += 1
+                    if downstream_f is not None:
+                        downstream_record: Dict[str, Any] = {
+                            "ts": _utc_now_iso(),
+                            "prompt_index": i,
+                            "prompt_id": rid or "",
+                            "provider": provider_name,
+                            "model": model_name,
+                            "call_outcome": "success",
+                            "response_storage_mode": "hash_plus_excerpt"
+                            if (call_meta.get("response_excerpt") or "")
+                            else "hash_only",
+                            "response_hash": call_meta.get("response_hash") or "",
+                            "artifact_ref": DOWNSTREAM_EVIDENCE_PATH,
+                        }
+                        if call_meta.get("response_excerpt"):
+                            downstream_record["response_excerpt"] = call_meta["response_excerpt"]
+                        downstream_f.write(json.dumps(downstream_record, separators=(",", ":"), ensure_ascii=False) + "\n")
                 except Exception as e:
                     provider_call_failures += 1
                     # Never persist model response content. Only record call error metadata.
                     f.write(f"  model_call_error: {type(e).__name__}: {e}\n")
+                    if downstream_f is not None:
+                        downstream_record = {
+                            "ts": _utc_now_iso(),
+                            "prompt_index": i,
+                            "prompt_id": rid or "",
+                            "provider": provider_name,
+                            "model": model_name,
+                            "call_outcome": "error",
+                            "response_storage_mode": "none",
+                            "response_hash": "",
+                            "artifact_ref": DOWNSTREAM_EVIDENCE_PATH,
+                            "error_type": type(e).__name__,
+                            "error_message": str(e)[:200],
+                        }
+                        downstream_f.write(json.dumps(downstream_record, separators=(",", ":"), ensure_ascii=False) + "\n")
 
             # Build per-prompt ledger entry
             final_hash_raw = _final_hash_from_verdict(verdict)
@@ -563,6 +656,15 @@ def main() -> None:
                 "prev_hash": prev_ledger_hash,
                 "ledger_hash": ledger_hash,
             }
+            pass_rule_explainability = verdict.get("pass_rule_explainability")
+            if status == "PASS" and isinstance(pass_rule_explainability, dict):
+                entry["pass_rule_explainability"] = {
+                    "evaluated_rule_families": list(pass_rule_explainability.get("evaluated_rule_families") or []),
+                    "clean_rule_families": list(pass_rule_explainability.get("clean_rule_families") or []),
+                    "obfuscation_signal_detected": bool(
+                        pass_rule_explainability.get("obfuscation_signal_detected", False)
+                    ),
+                }
             if scenario_mode:
                 entry["scenario_id"] = scenario_id
                 entry["scenario_hash"] = scenario_hash

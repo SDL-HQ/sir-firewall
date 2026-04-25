@@ -170,6 +170,8 @@ def _load_registry() -> dict:
 def _cmd_packs_list(_: argparse.Namespace) -> int:
     reg = _load_registry()
     for pack in reg.get("packs", []):
+        if pack.get("visibility") != "public":
+            continue
         pid = pack.get("pack_id", "")
         schema = pack.get("schema", "")
         status = pack.get("status", "")

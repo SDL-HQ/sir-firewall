@@ -25,6 +25,299 @@ def test_valid_structured_input_passes():
 
     assert out["status"] == "PASS"
     assert out["reason"] == "clean"
+
+
+def test_structured_schema_sourced_from_pack_declaration(monkeypatch):
+    def _fake_pack(pack_id=None):
+        return {
+            "pack_id": "generic_safety",
+            "templates": {
+                "HIPAA-ISC-v1": {"max_tokens": 1500},
+                "EU-AI-Act-ISC-v1": {"max_tokens": 2000},
+                "PCI-DSS-ISC-v1": {"max_tokens": 1200},
+            },
+            "flags": {
+                "STRICT_ISC_ENFORCEMENT": True,
+                "CHECKSUM_ENFORCED": True,
+                "CRYPTO_ENFORCED": False,
+            },
+            "structured_request_schema": {
+                "schema_id": "account_recovery_challenge_request_v1",
+                "template_id": "PCI-DSS-ISC-v1",
+                "required_fields": [
+                    "schema_version",
+                    "request_class",
+                    "action",
+                    "channel",
+                    "request_text",
+                ],
+                "optional_fields": [
+                    "declared_auth_state",
+                    "case_ref",
+                ],
+                "schema_version_const": "v1",
+                "request_class_const": "account_recovery_challenge",
+                "action_enum": [
+                    "password_reset",
+                    "mfa_reset",
+                    "email_change",
+                    "phone_change",
+                ],
+                "channel_enum": [
+                    "chat",
+                    "email",
+                    "support_ticket",
+                ],
+                "declared_auth_state_enum": [
+                    "verified",
+                    "unverified",
+                    "unknown",
+                ],
+                "case_ref_pattern": "^[A-Za-z0-9._:-]{1,64}$",
+                "request_text_min_length": 1,
+                "request_text_max_length": 4000,
+            },
+        }
+
+    monkeypatch.setattr(core, "load_domain_pack", _fake_pack)
+    out = core.validate_sir(
+        {
+            "structured_request": _structured(
+                action="password_reset",
+                channel="chat",
+                declared_auth_state="unknown",
+            )
+        }
+    )
+
+    assert out["status"] == "PASS"
+    assert out["governance_context"]["isc_template"] == "PCI-DSS-ISC-v1"
+
+
+def test_structured_mode_passes_with_support_operator_override_pack():
+    out = core.validate_sir(
+        {"structured_request": _structured()},
+        enforcement_pack_id="support_operator_override",
+    )
+
+    assert out["status"] == "PASS"
+    assert out["reason"] == "clean"
+    assert out["domain_pack"] == "support_operator_override"
+    assert out["governance_context"]["structured_mode"] == "account_recovery_challenge_request_v1"
+    assert out["governance_context"]["isc_template"] == "EU-AI-Act-ISC-v1"
+
+
+def test_structured_mode_passes_with_data_exfiltration_pressure_pack():
+    out = core.validate_sir(
+        {"structured_request": _structured()},
+        enforcement_pack_id="data_exfiltration_pressure",
+    )
+
+    assert out["status"] == "PASS"
+    assert out["reason"] == "clean"
+    assert out["domain_pack"] == "data_exfiltration_pressure"
+    assert out["governance_context"]["structured_mode"] == "account_recovery_challenge_request_v1"
+    assert out["governance_context"]["isc_template"] == "EU-AI-Act-ISC-v1"
+
+
+def test_structured_mode_declaration_drift_in_additional_pack_fails_closed(monkeypatch):
+    real_load_domain_pack = core.load_domain_pack
+
+    def _drifted_pack(pack_id=None):
+        data = real_load_domain_pack(pack_id=pack_id)
+        if data.get("pack_id") == "support_operator_override":
+            drifted = dict(data)
+            schema_decl = dict(drifted.get("structured_request_schema", {}))
+            schema_decl["required_fields"] = [
+                "schema_version",
+                "request_class",
+                "action",
+                "request_text",
+            ]
+            drifted["structured_request_schema"] = schema_decl
+            return drifted
+        return data
+
+    monkeypatch.setattr(core, "load_domain_pack", _drifted_pack)
+
+    out = core.validate_sir(
+        {"structured_request": _structured()},
+        enforcement_pack_id="support_operator_override",
+    )
+
+    assert out["status"] == "BLOCKED"
+    assert out["reason"] == "structured_validation_failed"
+    assert out["type"] == "structured_schema_declaration_invalid"
+
+
+def test_structured_schema_semantic_drift_fails_closed(monkeypatch):
+    def _fake_pack(pack_id=None):
+        return {
+            "pack_id": "generic_safety",
+            "templates": {
+                "HIPAA-ISC-v1": {"max_tokens": 1500},
+                "EU-AI-Act-ISC-v1": {"max_tokens": 2000},
+                "PCI-DSS-ISC-v1": {"max_tokens": 1200},
+            },
+            "flags": {
+                "STRICT_ISC_ENFORCEMENT": True,
+                "CHECKSUM_ENFORCED": True,
+                "CRYPTO_ENFORCED": False,
+            },
+            "structured_request_schema": {
+                "schema_id": "account_recovery_challenge_request_v1",
+                "template_id": "EU-AI-Act-ISC-v1",
+                "required_fields": [
+                    "schema_version",
+                    "request_class",
+                    "action",
+                    "request_text",
+                ],
+                "optional_fields": [
+                    "declared_auth_state",
+                    "case_ref",
+                ],
+                "schema_version_const": "v1",
+                "request_class_const": "account_recovery_challenge",
+                "action_enum": [
+                    "password_reset",
+                    "mfa_reset",
+                    "email_change",
+                    "phone_change",
+                ],
+                "channel_enum": [
+                    "chat",
+                    "email",
+                    "support_ticket",
+                ],
+                "declared_auth_state_enum": [
+                    "verified",
+                    "unverified",
+                    "unknown",
+                ],
+                "case_ref_pattern": "^[A-Za-z0-9._:-]{1,64}$",
+                "request_text_min_length": 1,
+                "request_text_max_length": 4000,
+            },
+        }
+
+    monkeypatch.setattr(core, "load_domain_pack", _fake_pack)
+    out = core.validate_sir({"structured_request": _structured()})
+
+    assert out["status"] == "BLOCKED"
+    assert out["reason"] == "structured_validation_failed"
+    assert out["type"] == "structured_schema_declaration_invalid"
+
+
+def test_structured_schema_missing_declaration_fails_closed(monkeypatch):
+    def _fake_pack(pack_id=None):
+        return {
+            "pack_id": "generic_safety",
+            "templates": {
+                "HIPAA-ISC-v1": {"max_tokens": 1500},
+                "EU-AI-Act-ISC-v1": {"max_tokens": 2000},
+                "PCI-DSS-ISC-v1": {"max_tokens": 1200},
+            },
+            "flags": {
+                "STRICT_ISC_ENFORCEMENT": True,
+                "CHECKSUM_ENFORCED": True,
+                "CRYPTO_ENFORCED": False,
+            },
+        }
+
+    monkeypatch.setattr(core, "load_domain_pack", _fake_pack)
+    out = core.validate_sir({"structured_request": _structured()})
+
+    assert out["status"] == "BLOCKED"
+    assert out["reason"] == "structured_validation_failed"
+    assert out["type"] == "structured_schema_declaration_missing"
+
+
+def test_structured_schema_invalid_declaration_fails_closed(monkeypatch):
+    def _fake_pack(pack_id=None):
+        return {
+            "pack_id": "generic_safety",
+            "templates": {
+                "HIPAA-ISC-v1": {"max_tokens": 1500},
+                "EU-AI-Act-ISC-v1": {"max_tokens": 2000},
+                "PCI-DSS-ISC-v1": {"max_tokens": 1200},
+            },
+            "flags": {
+                "STRICT_ISC_ENFORCEMENT": True,
+                "CHECKSUM_ENFORCED": True,
+                "CRYPTO_ENFORCED": False,
+            },
+            "structured_request_schema": {
+                "schema_id": "account_recovery_challenge_request_v1",
+                "required_fields": "invalid-type",
+            },
+        }
+
+    monkeypatch.setattr(core, "load_domain_pack", _fake_pack)
+    out = core.validate_sir({"structured_request": _structured()})
+
+    assert out["status"] == "BLOCKED"
+    assert out["reason"] == "structured_validation_failed"
+    assert out["type"] == "structured_schema_declaration_invalid"
+
+
+def test_structured_schema_template_fallback_remains_compatible(monkeypatch):
+    def _fake_pack(pack_id=None):
+        return {
+            "pack_id": "generic_safety",
+            "templates": {
+                "HIPAA-ISC-v1": {"max_tokens": 1500},
+                "EU-AI-Act-ISC-v1": {"max_tokens": 2000},
+                "PCI-DSS-ISC-v1": {"max_tokens": 1200},
+            },
+            "flags": {
+                "STRICT_ISC_ENFORCEMENT": True,
+                "CHECKSUM_ENFORCED": True,
+                "CRYPTO_ENFORCED": False,
+            },
+            "structured_request_schema": {
+                "schema_id": "account_recovery_challenge_request_v1",
+                "template_id": "",
+                "required_fields": [
+                    "schema_version",
+                    "request_class",
+                    "action",
+                    "channel",
+                    "request_text",
+                ],
+                "optional_fields": [
+                    "declared_auth_state",
+                    "case_ref",
+                ],
+                "schema_version_const": "v1",
+                "request_class_const": "account_recovery_challenge",
+                "action_enum": [
+                    "password_reset",
+                    "mfa_reset",
+                    "email_change",
+                    "phone_change",
+                ],
+                "channel_enum": [
+                    "chat",
+                    "email",
+                    "support_ticket",
+                ],
+                "declared_auth_state_enum": [
+                    "verified",
+                    "unverified",
+                    "unknown",
+                ],
+                "case_ref_pattern": "^[A-Za-z0-9._:-]{1,64}$",
+                "request_text_min_length": 1,
+                "request_text_max_length": 4000,
+            },
+        }
+
+    monkeypatch.setattr(core, "load_domain_pack", _fake_pack)
+    out = core.validate_sir({"structured_request": _structured()})
+
+    assert out["status"] == "PASS"
+    assert out["governance_context"]["isc_template"] == "EU-AI-Act-ISC-v1"
     assert out["governance_context"]["structured_mode"] == "account_recovery_challenge_request_v1"
 
 

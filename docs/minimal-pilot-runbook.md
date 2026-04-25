@@ -3,7 +3,9 @@
 This runbook defines one minimal, repeatable pilot/evaluation path.
 
 Use it when a reviewer/operator needs a linear procedure without extra interpretation layers.
-This is the canonical operator/reviewer method for this repository.
+This is the canonical operator/reviewer cold-start method for this repository.
+
+If interpretation detail is needed after this flow, use `docs/evaluator-technical-explainer.md`.
 
 ## Scope and truth posture
 
@@ -34,6 +36,63 @@ Semantics to keep explicit during review:
 python3 -m pip install -e .
 ```
 
+## Offline-capable operator path (existing behavior)
+
+This subsection documents the existing offline-capable path only. It does not change runtime behavior or trust semantics.
+
+### Offline-capable commands (when run from a local checkout)
+
+- Audit run (deterministic gate, no provider calls):
+
+```bash
+sir run --mode audit --pack generic_safety
+```
+
+- ITGL integrity verification:
+
+```bash
+python3 tools/verify_itgl.py
+```
+
+- Certificate verification from a local file:
+
+```bash
+sir verify cert proofs/latest-audit.json
+```
+
+- Archive receipt verification from a local run directory:
+
+```bash
+RUN_DIR="$(ls -dt proofs/runs/*/ | head -n 1)"
+sir verify archive "$RUN_DIR"
+```
+
+### Network requirement by step
+
+- `sir run --mode audit --pack ...`: does not require network for runtime evaluation.
+- `python3 tools/verify_itgl.py`: does not require network.
+- `sir verify cert <local-file>`: does not require network.
+- `sir verify archive <local-run-dir>`: does not require network.
+- Any command that fetches remote artefacts (for example `curl` from GitHub) requires network.
+- Initial dependency installation may require network depending on local environment state.
+
+### Local/dev key verification boundary
+
+- Local or dev certificates and archive receipts may be signed by non-authoritative keys.
+- If `signing_key_id` does not resolve in the default registry, verification can still be performed with an explicit matching key:
+
+```bash
+sir verify cert proofs/latest-audit.json --key <pubkey.pem>
+sir verify archive "$RUN_DIR" --key <pubkey.pem>
+```
+
+- This validates integrity and signature against the provided key material. It does not make the result SDL/public-authoritative.
+
+### What verification proves and does not prove
+
+- Verification proves payload or receipt integrity and signature validity against resolved key material.
+- Verification does not prove policy correctness, model safety, deployment completeness, or broader organizational trust posture.
+
 ## Minimal pilot flow (single path)
 
 For manual GitHub Actions dispatch (`SIR Real Governance Audit`), use these exact workflow inputs:
@@ -54,7 +113,7 @@ For local CLI operation, use:
 Action/command:
 
 ```bash
-python3 tools/verify_certificate.py proofs/latest-audit.json
+sir verify cert proofs/latest-audit.json
 ```
 
 Artifact to inspect:
