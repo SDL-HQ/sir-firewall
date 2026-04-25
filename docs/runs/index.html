@@ -668,7 +668,7 @@
       const runId = entry?.run_id || "";
       const context = rowContextByRunId.get(runId);
       if (context?.benchmark_role === "baseline") return "benchmark context: baseline ungated reference";
-      if (context?.benchmark_role === "gated") return "benchmark context: gated SIR";
+      if (context?.benchmark_role === "gated") return "benchmark context: gated governance gate";
       return "benchmark context: unpaired row evidence";
     }
 
@@ -709,6 +709,17 @@
           <div>${renderEvidenceGroup(gated)}</div>
         </div>
       </div>`;
+    }
+
+    function pairDeltaChipHtml(pair) {
+      const deltas = [];
+      const source = pair?.deltas;
+      if (source && typeof source === "object") {
+        if (Number.isFinite(source.leaks_delta)) deltas.push(`<span class="delta-chip">delta leaks ${esc(String(source.leaks_delta))}</span>`);
+        if (Number.isFinite(source.provider_call_attempts_delta)) deltas.push(`<span class="delta-chip">delta provider calls ${esc(String(source.provider_call_attempts_delta))}</span>`);
+        if (Number.isFinite(source.harmless_blocked_delta)) deltas.push(`<span class="delta-chip">delta harmless blocked ${esc(String(source.harmless_blocked_delta))}</span>`);
+      }
+      return deltas.length ? `<div class="pair-deltas">${deltas.join("")}</div>` : '<div class="small">No deltas in index.</div>';
     }
 
     function rowMatchesFilters(e, f) {
@@ -832,13 +843,6 @@
         const model = esc(latestGated.model || latestBase.model || latestPair.required_dimensions?.model || "--");
         const pack = esc(latestGated.evaluation_target?.pack_id || latestBase.evaluation_target?.pack_id || latestPair.required_dimensions?.pack_id || "--");
 
-        const deltas = [];
-        if (latestPair?.deltas && typeof latestPair.deltas === "object") {
-          if (Number.isFinite(latestPair.deltas.leaks_delta)) deltas.push(`<span class="delta-chip">delta leaks ${esc(String(latestPair.deltas.leaks_delta))}</span>`);
-          if (Number.isFinite(latestPair.deltas.provider_call_attempts_delta)) deltas.push(`<span class="delta-chip">delta provider calls ${esc(String(latestPair.deltas.provider_call_attempts_delta))}</span>`);
-          if (Number.isFinite(latestPair.deltas.harmless_blocked_delta)) deltas.push(`<span class="delta-chip">delta harmless blocked ${esc(String(latestPair.deltas.harmless_blocked_delta))}</span>`);
-        }
-
         const historyChips = group.slice(0, GROUP_HISTORY_CHIPS).map(item => {
           const pairStatus = esc(pairStatusLabel(item.pair.pair_status || "unknown"));
           const stamp = esc((item.gated.run_timestamp_utc || item.base.run_timestamp_utc || "").slice(0, 19).replace("T", " "));
@@ -854,9 +858,10 @@
             <td>${resultPill(item.base.result)} to ${resultPill(item.gated.result)}</td>
             <td><code>${esc(item.gated.run_timestamp_utc || item.base.run_timestamp_utc || "--")}</code></td>
             <td><code>${esc(pairStatusLabel(item.pair.pair_status || "unknown"))}</code></td>
+            <td>${pairDeltaChipHtml(item.pair)}</td>
             <td>${pairEvidenceCell(item.base, item.gated)}</td>
           </tr>
-        `).join("") : '<tr><td colspan="5" class="small">No older items in this stream.</td></tr>';
+        `).join("") : '<tr><td colspan="6" class="small">No older items in this stream.</td></tr>';
 
         const reason = latestPair.non_comparable_reason ? `<div class="small">reason: ${esc(latestPair.non_comparable_reason)}</div>` : "";
 
@@ -879,7 +884,7 @@
               <div class="small" style="margin-top:6px;">baseline ${runLink(latestBase.run_id)} · gated ${runLink(latestGated.run_id)}</div>
               <div class="small">baseline <code>${esc(latestBase.run_timestamp_utc || "--")}</code> · gated <code>${esc(latestGated.run_timestamp_utc || "--")}</code></div>
               ${reason}
-              ${deltas.length ? `<div class="pair-deltas">${deltas.join("")}</div>` : '<div class="small" style="margin-top:5px;">No deltas in index.</div>'}
+              <div style="margin-top:5px;">${pairDeltaChipHtml(latestPair)}</div>
             </div>
             <div class="latest-box">
               <div class="small">Latest evidence access</div>
@@ -906,6 +911,7 @@
                     <th>Outcome</th>
                     <th>Timestamp</th>
                     <th>Status</th>
+                    <th>Deltas</th>
                     <th>Evidence</th>
                   </tr>
                 </thead>
@@ -1037,8 +1043,11 @@
         pairedRows = Array.isArray(v2Payload?.pairs) ? v2Payload.pairs : [];
         buildRowContextMap(pairedRows);
 
-        const baselineDefinition = pairedRows.find(p => p && p.baseline_definition)?.baseline_definition
+        const baselineDefinitionRaw = pairedRows.find(p => p && p.baseline_definition)?.baseline_definition
           || "same prompt set evaluated without SIR pre-inference gate intervention";
+        const baselineDefinition = baselineDefinitionRaw === "same prompt set evaluated without SIR pre-inference gate intervention"
+          ? "same prompt set evaluated without governance gate intervention"
+          : baselineDefinitionRaw;
         document.getElementById("pair-baseline-definition").textContent = `Baseline definition: ${baselineDefinition}`;
 
         optionize("f-model", new Set(entries.map(e => e.model).filter(Boolean)));
