@@ -1,4 +1,4 @@
-# S2.3 Comparison Discipline v2 (Internal)
+# S2.3 Comparison Discipline v2 (Transparent)
 
 Purpose: keep benchmark-cycle and pack-result comparisons boring, evidence-linked, and reproducible.
 
