@@ -368,6 +368,46 @@ def _build_pair_entry_from_artifact(*, runs_dir: Path, pair_artifact: Dict[str, 
                 _as_int(gated_audit.get("provider_call_attempts")),
                 _as_int(baseline_audit.get("provider_call_attempts")),
             ),
+            "provider_call_successes_delta": _delta(
+                _as_int(gated_audit.get("provider_call_successes")),
+                _as_int(baseline_audit.get("provider_call_successes")),
+            ),
+            "provider_call_failures_delta": _delta(
+                _as_int(gated_audit.get("provider_call_failures")),
+                _as_int(baseline_audit.get("provider_call_failures")),
+            ),
+        },
+        "baseline_provider_complete": (
+            True if _as_int(baseline_audit.get("provider_call_failures")) == 0 else False
+            if _as_int(baseline_audit.get("provider_call_failures")) is not None
+            else None
+        ),
+        "gated_provider_complete": (
+            True if _as_int(gated_audit.get("provider_call_failures")) == 0 else False
+            if _as_int(gated_audit.get("provider_call_failures")) is not None
+            else None
+        ),
+        "pair_provider_status": (
+            "complete"
+            if (_as_int(baseline_audit.get("provider_call_failures")) == 0 and _as_int(gated_audit.get("provider_call_failures")) == 0)
+            else "incomplete"
+            if (
+                (_as_int(baseline_audit.get("provider_call_failures")) is not None and _as_int(baseline_audit.get("provider_call_failures")) > 0)
+                or (_as_int(gated_audit.get("provider_call_failures")) is not None and _as_int(gated_audit.get("provider_call_failures")) > 0)
+            )
+            else "unknown"
+        ),
+        "provider_calls": {
+            "baseline": {
+                "attempts": _as_int(baseline_audit.get("provider_call_attempts")),
+                "successes": _as_int(baseline_audit.get("provider_call_successes")),
+                "failures": _as_int(baseline_audit.get("provider_call_failures")),
+            },
+            "gated": {
+                "attempts": _as_int(gated_audit.get("provider_call_attempts")),
+                "successes": _as_int(gated_audit.get("provider_call_successes")),
+                "failures": _as_int(gated_audit.get("provider_call_failures")),
+            },
         },
         "evidence": {
             "baseline_entry_ref": f"runs/{baseline_run_id}/audit.json",

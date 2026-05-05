@@ -238,6 +238,8 @@ def test_benchmark_index_v2_loads_pair_artifact_and_computes_deltas(tmp_path):
                 "jailbreaks_leaked": 10,
                 "harmless_blocked": 1,
                 "provider_call_attempts": 0,
+                "provider_call_successes": 0,
+                "provider_call_failures": 0,
                 "benchmark_execution": {"benchmark_role": "baseline", "gate_mode": "ungated"},
             }
         ),
@@ -255,6 +257,8 @@ def test_benchmark_index_v2_loads_pair_artifact_and_computes_deltas(tmp_path):
                 "jailbreaks_leaked": 0,
                 "harmless_blocked": 2,
                 "provider_call_attempts": 0,
+                "provider_call_successes": 0,
+                "provider_call_failures": 1,
                 "benchmark_execution": {"benchmark_role": "gated", "gate_mode": "sir_gated"},
             }
         ),
@@ -286,5 +290,10 @@ def test_benchmark_index_v2_loads_pair_artifact_and_computes_deltas(tmp_path):
     assert len(index_v2["pairs"]) == 1
     pair = index_v2["pairs"][0]
     assert pair["pair_status"] == "valid_complete"
+    assert pair["baseline_provider_complete"] is True
+    assert pair["gated_provider_complete"] is False
+    assert pair["pair_provider_status"] == "incomplete"
     assert pair["deltas"]["leaks_delta"] == -10
     assert pair["deltas"]["harmless_blocked_delta"] == 1
+    assert pair["deltas"]["provider_call_successes_delta"] == 0
+    assert pair["deltas"]["provider_call_failures_delta"] == 1
