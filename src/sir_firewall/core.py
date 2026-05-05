@@ -505,7 +505,7 @@ def normalize_obfuscation(text: str) -> str:
     # Intentionally bounded: this normalizer handles low-level formatting/encoding
     # evasions and does not do semantic rewriting or intent inference.
     raw = re.sub(
-        r"[\u200b-\u206f\u2800\u202a-\u202f\u3000\u3164\ufffc\s]+",
+        r"[\u200b-\u206f\u2800\u202a-\u202f\u3000\u3164\ufffc\ufe00-\ufe0f\U000e0000-\U000e007f\U000e0100-\U000e01ef\s]+",
         " ",
         unicodedata.normalize("NFKC", text),
     ).strip()
