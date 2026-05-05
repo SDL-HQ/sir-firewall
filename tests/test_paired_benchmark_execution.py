@@ -179,3 +179,107 @@ def test_live_mode_capture_writes_bounded_downstream_evidence(tmp_path, monkeypa
     assert full_reply not in run_summary
     assert full_reply not in attempt_log
     assert full_reply not in itgl_rows
+
+
+def test_openai_api_mode_resolver_auto_and_overrides(monkeypatch):
+    rts = _load_red_team_suite_module()
+
+    monkeypatch.delenv("SIR_OPENAI_API_MODE", raising=False)
+    assert rts._resolve_openai_api_mode("gpt-5-mini") == "responses"
+    assert rts._resolve_openai_api_mode("gpt-5.4-mini") == "responses"
+    assert rts._resolve_openai_api_mode("gpt-5.5") == "responses"
+    assert rts._resolve_openai_api_mode("gpt-4.1") == "completion"
+    assert rts._resolve_openai_api_mode("gpt-4.1-mini") == "completion"
+    assert rts._resolve_openai_api_mode("xai/grok-4-1-fast") == "completion"
+
+    monkeypatch.setenv("SIR_OPENAI_API_MODE", "completion")
+    assert rts._resolve_openai_api_mode("gpt-5-mini") == "completion"
+
+    monkeypatch.setenv("SIR_OPENAI_API_MODE", "responses")
+    assert rts._resolve_openai_api_mode("gpt-4.1") == "responses"
+
+
+def test_openai_api_mode_resolver_invalid_fails_closed(monkeypatch):
+    rts = _load_red_team_suite_module()
+    monkeypatch.setenv("SIR_OPENAI_API_MODE", "bad-value")
+    try:
+        rts._resolve_openai_api_mode("gpt-5-mini")
+    except ValueError as exc:
+        assert "Invalid SIR_OPENAI_API_MODE" in str(exc)
+    else:
+        raise AssertionError("Expected invalid SIR_OPENAI_API_MODE to fail closed")
+
+
+def test_extract_response_excerpt_completion_and_responses_shapes():
+    rts = _load_red_team_suite_module()
+
+    completion_payload = {"choices": [{"message": {"content": "hello\nworld"}}]}
+    assert rts._extract_response_excerpt(completion_payload, 20) == "hello world"
+
+    responses_payload = {
+        "output": [
+            {"content": [{"type": "output_text", "text": "first block"}]},
+            {"content": [{"type": "output_text", "text": "second block"}]},
+        ]
+    }
+    assert rts._extract_response_excerpt(responses_payload, 50) == "first block second block"
+
+
+def test_extract_response_excerpt_malformed_responses_payload_returns_empty():
+    rts = _load_red_team_suite_module()
+    malformed = {"output": [{"content": [123, {"type": "x"}]}]}
+    assert rts._extract_response_excerpt(malformed, 20) == ""
+
+
+def test_call_provider_model_routing_and_exception(monkeypatch):
+    rts = _load_red_team_suite_module()
+    calls = []
+
+    def _completion(**kwargs):
+        calls.append(("completion", kwargs))
+        return {"choices": [{"message": {"content": "ok"}}]}
+
+    def _responses(**kwargs):
+        calls.append(("responses", kwargs))
+        return {"output": [{"content": [{"text": "ok"}]}]}
+
+    fake_litellm = types.ModuleType("litellm")
+    fake_litellm.completion = _completion
+    fake_litellm.responses = _responses
+    monkeypatch.setitem(sys.modules, "litellm", fake_litellm)
+
+    monkeypatch.delenv("SIR_OPENAI_API_MODE", raising=False)
+    rts._call_provider_model("openai", "gpt-5-mini", [{"role": "user", "content": "hi"}])
+    assert calls[-1][0] == "responses"
+    assert calls[-1][1]["input"] == [{"role": "user", "content": "hi"}]
+    assert "messages" not in calls[-1][1]
+    assert calls[-1][1]["max_output_tokens"] == 32
+    assert calls[-1][1]["stream"] is False
+    assert "max_tokens" not in calls[-1][1]
+
+    rts._call_provider_model("openai", "gpt-4.1", [{"role": "user", "content": "hi"}])
+    assert calls[-1][0] == "completion"
+    assert calls[-1][1]["max_tokens"] == 1
+
+    rts._call_provider_model("xai", "xai/grok-4-1-fast", [{"role": "user", "content": "hi"}])
+    assert calls[-1][0] == "completion"
+
+    monkeypatch.setenv("SIR_OPENAI_API_MODE", "completion")
+    rts._call_provider_model("openai", "gpt-5.4-mini", [{"role": "user", "content": "hi"}])
+    assert calls[-1][0] == "completion"
+
+    monkeypatch.setenv("SIR_OPENAI_API_MODE", "responses")
+    rts._call_provider_model("openai", "gpt-4.1", [{"role": "user", "content": "hi"}])
+    assert calls[-1][0] == "responses"
+
+    def _boom(**_kwargs):
+        raise RuntimeError("provider error")
+
+    fake_litellm.responses = _boom
+    monkeypatch.setenv("SIR_OPENAI_API_MODE", "responses")
+    try:
+        rts._call_provider_model("openai", "gpt-5-mini", [{"role": "user", "content": "hi"}])
+    except RuntimeError as exc:
+        assert "provider error" in str(exc)
+    else:
+        raise AssertionError("Expected adapter exception to propagate")
