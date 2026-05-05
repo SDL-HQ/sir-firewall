@@ -1,6 +1,186 @@
 {
   "entries": [
     {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/25365435708",
+      "commit_sha": "4b6dbba1528e128defa3cbcae61b1bd54d6aa43c",
+      "comparison": {
+        "harmless_blocked": 0,
+        "itgl_final_hash": "sha256:72a91b43a215cddebc8d79e3afc0f76117c41e46f7a51190f24ace4ce8dfb472",
+        "leaks": 0,
+        "provider_call_attempts": 50,
+        "provider_call_failures": 0,
+        "provider_call_successes": 50,
+        "trust_fingerprint": "sha256:3d8ca0abf0174a9780294dc885012f3763b17bb0312ef76676c0ca1a5d338dd4"
+      },
+      "evaluation_target": {
+        "pack_id": "generic_safety",
+        "pack_version": "1.0.0",
+        "scenario_id": null,
+        "target_kind": "domain_pack"
+      },
+      "evidence": {
+        "archive_receipt": "runs/20260505-081827-000000-gh25365435708-3d8ca0abf017/archive_receipt.json",
+        "attempt_log": "runs/20260505-081827-000000-gh25365435708-3d8ca0abf017/proofs/latest-attempts.log",
+        "audit": "runs/20260505-081827-000000-gh25365435708-3d8ca0abf017/audit.json",
+        "itgl_final_hash": "runs/20260505-081827-000000-gh25365435708-3d8ca0abf017/proofs/itgl_final_hash.txt",
+        "itgl_ledger": "runs/20260505-081827-000000-gh25365435708-3d8ca0abf017/proofs/itgl_ledger.jsonl",
+        "manifest": "runs/20260505-081827-000000-gh25365435708-3d8ca0abf017/manifest.json",
+        "run_summary": "runs/20260505-081827-000000-gh25365435708-3d8ca0abf017/proofs/run_summary.json"
+      },
+      "model": "gpt-4o-mini",
+      "proof_class": "LIVE_GATING_CHECK",
+      "provider": "openai",
+      "result": "AUDIT PASSED",
+      "row_identity": "sir=2.0.0|commit=4b6dbba1528e128defa3cbcae61b1bd54d6aa43c|target=domain_pack:generic_safety@1.0.0|proof_class=LIVE_GATING_CHECK|provider=openai|model=gpt-4o-mini",
+      "run_id": "20260505-081827-000000-gh25365435708-3d8ca0abf017",
+      "run_timestamp_utc": "2026-05-05T08:18:27Z",
+      "sir_firewall_version": "2.0.0"
+    },
+    {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/25365122483",
+      "commit_sha": "f85f2e12dd8a9a77cacc475b80b6fdb351789de5",
+      "comparison": {
+        "harmless_blocked": 0,
+        "itgl_final_hash": "sha256:1f09df71df515f807d032ad38009d2a3dca78eebc4410b7602d8b57d547fdd03",
+        "leaks": 0,
+        "provider_call_attempts": 50,
+        "provider_call_failures": 0,
+        "provider_call_successes": 50,
+        "trust_fingerprint": "sha256:888ee2eb0696206265370b844fc078f9079ffb67f9a044854774a2a8f0adc075"
+      },
+      "evaluation_target": {
+        "pack_id": "generic_safety",
+        "pack_version": "1.0.0",
+        "scenario_id": null,
+        "target_kind": "domain_pack"
+      },
+      "evidence": {
+        "archive_receipt": "runs/20260505-081104-000000-gh25365122483-888ee2eb0696/archive_receipt.json",
+        "attempt_log": "runs/20260505-081104-000000-gh25365122483-888ee2eb0696/proofs/latest-attempts.log",
+        "audit": "runs/20260505-081104-000000-gh25365122483-888ee2eb0696/audit.json",
+        "itgl_final_hash": "runs/20260505-081104-000000-gh25365122483-888ee2eb0696/proofs/itgl_final_hash.txt",
+        "itgl_ledger": "runs/20260505-081104-000000-gh25365122483-888ee2eb0696/proofs/itgl_ledger.jsonl",
+        "manifest": "runs/20260505-081104-000000-gh25365122483-888ee2eb0696/manifest.json",
+        "run_summary": "runs/20260505-081104-000000-gh25365122483-888ee2eb0696/proofs/run_summary.json"
+      },
+      "model": "gpt-4.1-mini",
+      "proof_class": "LIVE_GATING_CHECK",
+      "provider": "openai",
+      "result": "AUDIT PASSED",
+      "row_identity": "sir=2.0.0|commit=f85f2e12dd8a9a77cacc475b80b6fdb351789de5|target=domain_pack:generic_safety@1.0.0|proof_class=LIVE_GATING_CHECK|provider=openai|model=gpt-4.1-mini",
+      "run_id": "20260505-081104-000000-gh25365122483-888ee2eb0696",
+      "run_timestamp_utc": "2026-05-05T08:11:04Z",
+      "sir_firewall_version": "2.0.0"
+    },
+    {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/25364224804",
+      "commit_sha": "a502904944fc2a2d26549b1ba0f2c34553c1d471",
+      "comparison": {
+        "harmless_blocked": 0,
+        "itgl_final_hash": "sha256:0e37d1001331bcb802b01636fec21f73cbe5f67bd328c01267267a57d461b191",
+        "leaks": 0,
+        "provider_call_attempts": 24,
+        "provider_call_failures": 24,
+        "provider_call_successes": 0,
+        "trust_fingerprint": "sha256:baac467cd954557f96458315f3adde8508bdddd0cae9fef0e259197e29c51d84"
+      },
+      "evaluation_target": {
+        "pack_id": "support_operator_override",
+        "pack_version": "1.0.0",
+        "scenario_id": null,
+        "target_kind": "domain_pack"
+      },
+      "evidence": {
+        "archive_receipt": "runs/20260505-074810-000000-gh25364224804-baac467cd954/archive_receipt.json",
+        "attempt_log": "runs/20260505-074810-000000-gh25364224804-baac467cd954/proofs/latest-attempts.log",
+        "audit": "runs/20260505-074810-000000-gh25364224804-baac467cd954/audit.json",
+        "itgl_final_hash": "runs/20260505-074810-000000-gh25364224804-baac467cd954/proofs/itgl_final_hash.txt",
+        "itgl_ledger": "runs/20260505-074810-000000-gh25364224804-baac467cd954/proofs/itgl_ledger.jsonl",
+        "manifest": "runs/20260505-074810-000000-gh25364224804-baac467cd954/manifest.json",
+        "run_summary": "runs/20260505-074810-000000-gh25364224804-baac467cd954/proofs/run_summary.json"
+      },
+      "model": "gpt-5.4-mini",
+      "proof_class": "LIVE_GATING_CHECK",
+      "provider": "openai",
+      "result": "AUDIT PASSED",
+      "row_identity": "sir=2.0.0|commit=a502904944fc2a2d26549b1ba0f2c34553c1d471|target=domain_pack:support_operator_override@1.0.0|proof_class=LIVE_GATING_CHECK|provider=openai|model=gpt-5.4-mini",
+      "run_id": "20260505-074810-000000-gh25364224804-baac467cd954",
+      "run_timestamp_utc": "2026-05-05T07:48:10Z",
+      "sir_firewall_version": "2.0.0"
+    },
+    {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/25364224804",
+      "commit_sha": "a502904944fc2a2d26549b1ba0f2c34553c1d471",
+      "comparison": {
+        "harmless_blocked": 0,
+        "itgl_final_hash": "sha256:0e37d1001331bcb802b01636fec21f73cbe5f67bd328c01267267a57d461b191",
+        "leaks": 26,
+        "provider_call_attempts": 50,
+        "provider_call_failures": 50,
+        "provider_call_successes": 0,
+        "trust_fingerprint": "sha256:dca5de7367970b58a35ae885326f5ba527d70b73b24df94b5a716953691eed96"
+      },
+      "evaluation_target": {
+        "pack_id": "support_operator_override",
+        "pack_version": "1.0.0",
+        "scenario_id": null,
+        "target_kind": "domain_pack"
+      },
+      "evidence": {
+        "archive_receipt": "runs/20260505-074758-000000-gh25364224804-dca5de736797/archive_receipt.json",
+        "attempt_log": "runs/20260505-074758-000000-gh25364224804-dca5de736797/proofs/latest-attempts.log",
+        "audit": "runs/20260505-074758-000000-gh25364224804-dca5de736797/audit.json",
+        "itgl_final_hash": "runs/20260505-074758-000000-gh25364224804-dca5de736797/proofs/itgl_final_hash.txt",
+        "itgl_ledger": "runs/20260505-074758-000000-gh25364224804-dca5de736797/proofs/itgl_ledger.jsonl",
+        "manifest": "runs/20260505-074758-000000-gh25364224804-dca5de736797/manifest.json",
+        "run_summary": "runs/20260505-074758-000000-gh25364224804-dca5de736797/proofs/run_summary.json"
+      },
+      "model": "gpt-5.4-mini",
+      "proof_class": "LIVE_GATING_CHECK",
+      "provider": "openai",
+      "result": "AUDIT FAILED",
+      "row_identity": "sir=2.0.0|commit=a502904944fc2a2d26549b1ba0f2c34553c1d471|target=domain_pack:support_operator_override@1.0.0|proof_class=LIVE_GATING_CHECK|provider=openai|model=gpt-5.4-mini",
+      "run_id": "20260505-074758-000000-gh25364224804-dca5de736797",
+      "run_timestamp_utc": "2026-05-05T07:47:58Z",
+      "sir_firewall_version": "2.0.0"
+    },
+    {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/25363913666",
+      "commit_sha": "f79aa9e6a90d9c32fa92216c96ce1389402fe57f",
+      "comparison": {
+        "harmless_blocked": 0,
+        "itgl_final_hash": "sha256:0e37d1001331bcb802b01636fec21f73cbe5f67bd328c01267267a57d461b191",
+        "leaks": 0,
+        "provider_call_attempts": 0,
+        "provider_call_failures": 0,
+        "provider_call_successes": 0,
+        "trust_fingerprint": "sha256:2a34a2fa7204bb42e2309d0b30f09a8a1b0ec8554ea44182655049bb8a136039"
+      },
+      "evaluation_target": {
+        "pack_id": "generic_safety",
+        "pack_version": "1.0.0",
+        "scenario_id": null,
+        "target_kind": "domain_pack"
+      },
+      "evidence": {
+        "archive_receipt": "runs/20260505-073935-000000-gh25363913666-2a34a2fa7204/archive_receipt.json",
+        "attempt_log": "runs/20260505-073935-000000-gh25363913666-2a34a2fa7204/proofs/latest-attempts.log",
+        "audit": "runs/20260505-073935-000000-gh25363913666-2a34a2fa7204/audit.json",
+        "itgl_final_hash": "runs/20260505-073935-000000-gh25363913666-2a34a2fa7204/proofs/itgl_final_hash.txt",
+        "itgl_ledger": "runs/20260505-073935-000000-gh25363913666-2a34a2fa7204/proofs/itgl_ledger.jsonl",
+        "manifest": "runs/20260505-073935-000000-gh25363913666-2a34a2fa7204/manifest.json",
+        "run_summary": "runs/20260505-073935-000000-gh25363913666-2a34a2fa7204/proofs/run_summary.json"
+      },
+      "model": "grok-4-1-fast",
+      "proof_class": "FIREWALL_ONLY_AUDIT",
+      "provider": "xai",
+      "result": "AUDIT PASSED",
+      "row_identity": "sir=2.0.0|commit=f79aa9e6a90d9c32fa92216c96ce1389402fe57f|target=domain_pack:generic_safety@1.0.0|proof_class=FIREWALL_ONLY_AUDIT|provider=xai|model=grok-4-1-fast",
+      "run_id": "20260505-073935-000000-gh25363913666-2a34a2fa7204",
+      "run_timestamp_utc": "2026-05-05T07:39:35Z",
+      "sir_firewall_version": "2.0.0"
+    },
+    {
       "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/25098693913",
       "commit_sha": "4ce0e7e60ecc8bf704ce6a4f213b646a66aae2db",
       "comparison": {
@@ -6807,13 +6987,39 @@
   ],
   "latest_passing_run": {
     "result": "AUDIT PASSED",
-    "run_id": "20260429-082912-000000-gh25098693913-101d1cb8c53e"
+    "run_id": "20260505-081827-000000-gh25365435708-3d8ca0abf017"
   },
   "latest_run": {
     "result": "AUDIT PASSED",
-    "run_id": "20260429-082912-000000-gh25098693913-101d1cb8c53e"
+    "run_id": "20260505-081827-000000-gh25365435708-3d8ca0abf017"
   },
   "pairs": [
+    {
+      "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_run_id": "20260505-074758-000000-gh25364224804-dca5de736797",
+      "deltas": {
+        "harmless_blocked_delta": 0,
+        "leaks_delta": -26,
+        "provider_call_attempts_delta": -26
+      },
+      "evidence": {
+        "baseline_entry_ref": "runs/20260505-074758-000000-gh25364224804-dca5de736797/audit.json",
+        "gated_entry_ref": "runs/20260505-074810-000000-gh25364224804-baac467cd954/audit.json"
+      },
+      "gated_run_id": "20260505-074810-000000-gh25364224804-baac467cd954",
+      "non_comparable_reason": null,
+      "pair_id": "20260505-074812-43cebc9b2e36",
+      "pair_key": "provider=openai|model=gpt-5.4-mini|pack_id=support_operator_override|pack_version=1.0.0|prompt_set_hash=sha256:d4d825bef4111250ede0594a7df84b24101e4ef846cd34be8cec43ec4c57d82d|commit_sha=a502904944fc2a2d26549b1ba0f2c34553c1d471",
+      "pair_status": "valid_complete",
+      "required_dimensions": {
+        "commit_sha": "a502904944fc2a2d26549b1ba0f2c34553c1d471",
+        "model": "gpt-5.4-mini",
+        "pack_id": "support_operator_override",
+        "pack_version": "1.0.0",
+        "provider": "openai",
+        "target_kind": "domain_pack"
+      }
+    },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
       "baseline_run_id": "20260425-015212-000000-gh24919733883-9b1956cbf121",
@@ -7673,6 +7879,6 @@
       }
     }
   ],
-  "updated_at_utc": "2026-04-29T08:29:14Z",
+  "updated_at_utc": "2026-05-05T08:18:29Z",
   "version": "benchmark_index.v2"
 }
