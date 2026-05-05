@@ -251,6 +251,8 @@ def test_call_provider_model_routing_and_exception(monkeypatch):
     monkeypatch.delenv("SIR_OPENAI_API_MODE", raising=False)
     rts._call_provider_model("openai", "gpt-5-mini", [{"role": "user", "content": "hi"}])
     assert calls[-1][0] == "responses"
+    assert calls[-1][1]["input"] == [{"role": "user", "content": "hi"}]
+    assert "messages" not in calls[-1][1]
     assert calls[-1][1]["max_output_tokens"] == 32
     assert calls[-1][1]["stream"] is False
     assert "max_tokens" not in calls[-1][1]
