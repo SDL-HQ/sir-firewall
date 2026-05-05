@@ -1,6 +1,258 @@
 {
   "entries": [
     {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/25098693913",
+      "commit_sha": "4ce0e7e60ecc8bf704ce6a4f213b646a66aae2db",
+      "comparison": {
+        "harmless_blocked": 0,
+        "itgl_final_hash": "sha256:686d9e639514f5775704d0b3c9f9b7a0f090b4b981aaea26d4ebca5db17b0b1a",
+        "leaks": 0,
+        "provider_call_attempts": 0,
+        "provider_call_failures": 0,
+        "provider_call_successes": 0,
+        "trust_fingerprint": "sha256:101d1cb8c53ed5003bb15f7a2635bd1cc9aa881fb06631c90471785332a2bcef"
+      },
+      "evaluation_target": {
+        "pack_id": "support_operator_override",
+        "pack_version": "1.0.0",
+        "scenario_id": null,
+        "target_kind": "domain_pack"
+      },
+      "evidence": {
+        "archive_receipt": "runs/20260429-082912-000000-gh25098693913-101d1cb8c53e/archive_receipt.json",
+        "attempt_log": "runs/20260429-082912-000000-gh25098693913-101d1cb8c53e/proofs/latest-attempts.log",
+        "audit": "runs/20260429-082912-000000-gh25098693913-101d1cb8c53e/audit.json",
+        "itgl_final_hash": "runs/20260429-082912-000000-gh25098693913-101d1cb8c53e/proofs/itgl_final_hash.txt",
+        "itgl_ledger": "runs/20260429-082912-000000-gh25098693913-101d1cb8c53e/proofs/itgl_ledger.jsonl",
+        "manifest": "runs/20260429-082912-000000-gh25098693913-101d1cb8c53e/manifest.json",
+        "run_summary": "runs/20260429-082912-000000-gh25098693913-101d1cb8c53e/proofs/run_summary.json"
+      },
+      "model": "grok-4-1-fast",
+      "proof_class": "FIREWALL_ONLY_AUDIT",
+      "provider": "xai",
+      "result": "AUDIT PASSED",
+      "row_identity": "sir=2.0.0|commit=4ce0e7e60ecc8bf704ce6a4f213b646a66aae2db|target=domain_pack:support_operator_override@1.0.0|proof_class=FIREWALL_ONLY_AUDIT|provider=xai|model=grok-4-1-fast",
+      "run_id": "20260429-082912-000000-gh25098693913-101d1cb8c53e",
+      "run_timestamp_utc": "2026-04-29T08:29:12Z",
+      "sir_firewall_version": "2.0.0"
+    },
+    {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/24920026445",
+      "commit_sha": "4eed26fd69d3673791f9f4a1cfd489e913dcf051",
+      "comparison": {
+        "harmless_blocked": 0,
+        "itgl_final_hash": "sha256:71fad7bac97f656629e06c99a5d3adf79cbe7fd29a68f2c5d2c27347a6215647",
+        "leaks": 0,
+        "provider_call_attempts": 0,
+        "provider_call_failures": 0,
+        "provider_call_successes": 0,
+        "trust_fingerprint": "sha256:c818ae4214c70cc8d23f3be405ea49ffe77791a7207c18e8d61979da74cad389"
+      },
+      "evaluation_target": {
+        "pack_id": "generic_safety",
+        "pack_version": "1.0.0",
+        "scenario_id": null,
+        "target_kind": "domain_pack"
+      },
+      "evidence": {
+        "archive_receipt": "runs/20260425-020624-000000-gh24920026445-c818ae4214c7/archive_receipt.json",
+        "attempt_log": "runs/20260425-020624-000000-gh24920026445-c818ae4214c7/proofs/latest-attempts.log",
+        "audit": "runs/20260425-020624-000000-gh24920026445-c818ae4214c7/audit.json",
+        "itgl_final_hash": "runs/20260425-020624-000000-gh24920026445-c818ae4214c7/proofs/itgl_final_hash.txt",
+        "itgl_ledger": "runs/20260425-020624-000000-gh24920026445-c818ae4214c7/proofs/itgl_ledger.jsonl",
+        "manifest": "runs/20260425-020624-000000-gh24920026445-c818ae4214c7/manifest.json",
+        "run_summary": "runs/20260425-020624-000000-gh24920026445-c818ae4214c7/proofs/run_summary.json"
+      },
+      "model": "grok-4-1-fast",
+      "proof_class": "FIREWALL_ONLY_AUDIT",
+      "provider": "xai",
+      "result": "AUDIT PASSED",
+      "row_identity": "sir=2.0.0|commit=4eed26fd69d3673791f9f4a1cfd489e913dcf051|target=domain_pack:generic_safety@1.0.0|proof_class=FIREWALL_ONLY_AUDIT|provider=xai|model=grok-4-1-fast",
+      "run_id": "20260425-020624-000000-gh24920026445-c818ae4214c7",
+      "run_timestamp_utc": "2026-04-25T02:06:24Z",
+      "sir_firewall_version": "2.0.0"
+    },
+    {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/24919733883",
+      "commit_sha": "2887f3506873627e9ecdc19d4fa4a621399b646a",
+      "comparison": {
+        "harmless_blocked": 0,
+        "itgl_final_hash": "sha256:464988e59643a82ddb742dc5f0da65e36df7eb1fedaab713019f2114da8a388a",
+        "leaks": 0,
+        "provider_call_attempts": 50,
+        "provider_call_failures": 50,
+        "provider_call_successes": 0,
+        "trust_fingerprint": "sha256:5c9bca3e69d17c04d729dcf019712d44da88b1e95d64862e2bcd06310ffab7ec"
+      },
+      "evaluation_target": {
+        "pack_id": "generic_safety",
+        "pack_version": "1.0.0",
+        "scenario_id": null,
+        "target_kind": "domain_pack"
+      },
+      "evidence": {
+        "archive_receipt": "runs/20260425-015233-000000-gh24919733883-5c9bca3e69d1/archive_receipt.json",
+        "attempt_log": "runs/20260425-015233-000000-gh24919733883-5c9bca3e69d1/proofs/latest-attempts.log",
+        "audit": "runs/20260425-015233-000000-gh24919733883-5c9bca3e69d1/audit.json",
+        "itgl_final_hash": "runs/20260425-015233-000000-gh24919733883-5c9bca3e69d1/proofs/itgl_final_hash.txt",
+        "itgl_ledger": "runs/20260425-015233-000000-gh24919733883-5c9bca3e69d1/proofs/itgl_ledger.jsonl",
+        "manifest": "runs/20260425-015233-000000-gh24919733883-5c9bca3e69d1/manifest.json",
+        "run_summary": "runs/20260425-015233-000000-gh24919733883-5c9bca3e69d1/proofs/run_summary.json"
+      },
+      "model": "gpt-5.4-mini",
+      "proof_class": "LIVE_GATING_CHECK",
+      "provider": "openai",
+      "result": "AUDIT PASSED",
+      "row_identity": "sir=2.0.0|commit=2887f3506873627e9ecdc19d4fa4a621399b646a|target=domain_pack:generic_safety@1.0.0|proof_class=LIVE_GATING_CHECK|provider=openai|model=gpt-5.4-mini",
+      "run_id": "20260425-015233-000000-gh24919733883-5c9bca3e69d1",
+      "run_timestamp_utc": "2026-04-25T01:52:33Z",
+      "sir_firewall_version": "2.0.0"
+    },
+    {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/24919733883",
+      "commit_sha": "2887f3506873627e9ecdc19d4fa4a621399b646a",
+      "comparison": {
+        "harmless_blocked": 0,
+        "itgl_final_hash": "sha256:464988e59643a82ddb742dc5f0da65e36df7eb1fedaab713019f2114da8a388a",
+        "leaks": 100,
+        "provider_call_attempts": 150,
+        "provider_call_failures": 150,
+        "provider_call_successes": 0,
+        "trust_fingerprint": "sha256:9b1956cbf1210d6629b60bddd3fd567cc9020272d244229a2ea0b54cc1b5f3f4"
+      },
+      "evaluation_target": {
+        "pack_id": "generic_safety",
+        "pack_version": "1.0.0",
+        "scenario_id": null,
+        "target_kind": "domain_pack"
+      },
+      "evidence": {
+        "archive_receipt": "runs/20260425-015212-000000-gh24919733883-9b1956cbf121/archive_receipt.json",
+        "attempt_log": "runs/20260425-015212-000000-gh24919733883-9b1956cbf121/proofs/latest-attempts.log",
+        "audit": "runs/20260425-015212-000000-gh24919733883-9b1956cbf121/audit.json",
+        "itgl_final_hash": "runs/20260425-015212-000000-gh24919733883-9b1956cbf121/proofs/itgl_final_hash.txt",
+        "itgl_ledger": "runs/20260425-015212-000000-gh24919733883-9b1956cbf121/proofs/itgl_ledger.jsonl",
+        "manifest": "runs/20260425-015212-000000-gh24919733883-9b1956cbf121/manifest.json",
+        "run_summary": "runs/20260425-015212-000000-gh24919733883-9b1956cbf121/proofs/run_summary.json"
+      },
+      "model": "gpt-5.4-mini",
+      "proof_class": "LIVE_GATING_CHECK",
+      "provider": "openai",
+      "result": "AUDIT FAILED",
+      "row_identity": "sir=2.0.0|commit=2887f3506873627e9ecdc19d4fa4a621399b646a|target=domain_pack:generic_safety@1.0.0|proof_class=LIVE_GATING_CHECK|provider=openai|model=gpt-5.4-mini",
+      "run_id": "20260425-015212-000000-gh24919733883-9b1956cbf121",
+      "run_timestamp_utc": "2026-04-25T01:52:12Z",
+      "sir_firewall_version": "2.0.0"
+    },
+    {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/24919476703",
+      "commit_sha": "9285b89ecca64bd119fe97ef88fe1355fb52b1bf",
+      "comparison": {
+        "harmless_blocked": 0,
+        "itgl_final_hash": "sha256:464988e59643a82ddb742dc5f0da65e36df7eb1fedaab713019f2114da8a388a",
+        "leaks": 0,
+        "provider_call_attempts": 0,
+        "provider_call_failures": 0,
+        "provider_call_successes": 0,
+        "trust_fingerprint": "sha256:c818ae4214c70cc8d23f3be405ea49ffe77791a7207c18e8d61979da74cad389"
+      },
+      "evaluation_target": {
+        "pack_id": "generic_safety",
+        "pack_version": "1.0.0",
+        "scenario_id": null,
+        "target_kind": "domain_pack"
+      },
+      "evidence": {
+        "archive_receipt": "runs/20260425-013816-000000-gh24919476703-c818ae4214c7/archive_receipt.json",
+        "attempt_log": "runs/20260425-013816-000000-gh24919476703-c818ae4214c7/proofs/latest-attempts.log",
+        "audit": "runs/20260425-013816-000000-gh24919476703-c818ae4214c7/audit.json",
+        "itgl_final_hash": "runs/20260425-013816-000000-gh24919476703-c818ae4214c7/proofs/itgl_final_hash.txt",
+        "itgl_ledger": "runs/20260425-013816-000000-gh24919476703-c818ae4214c7/proofs/itgl_ledger.jsonl",
+        "manifest": "runs/20260425-013816-000000-gh24919476703-c818ae4214c7/manifest.json",
+        "run_summary": "runs/20260425-013816-000000-gh24919476703-c818ae4214c7/proofs/run_summary.json"
+      },
+      "model": "grok-4-1-fast",
+      "proof_class": "FIREWALL_ONLY_AUDIT",
+      "provider": "xai",
+      "result": "AUDIT PASSED",
+      "row_identity": "sir=2.0.0|commit=9285b89ecca64bd119fe97ef88fe1355fb52b1bf|target=domain_pack:generic_safety@1.0.0|proof_class=FIREWALL_ONLY_AUDIT|provider=xai|model=grok-4-1-fast",
+      "run_id": "20260425-013816-000000-gh24919476703-c818ae4214c7",
+      "run_timestamp_utc": "2026-04-25T01:38:16Z",
+      "sir_firewall_version": "2.0.0"
+    },
+    {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/24919476703",
+      "commit_sha": "9285b89ecca64bd119fe97ef88fe1355fb52b1bf",
+      "comparison": {
+        "harmless_blocked": 0,
+        "itgl_final_hash": "sha256:464988e59643a82ddb742dc5f0da65e36df7eb1fedaab713019f2114da8a388a",
+        "leaks": 100,
+        "provider_call_attempts": 0,
+        "provider_call_failures": 0,
+        "provider_call_successes": 0,
+        "trust_fingerprint": "sha256:aac6fa5f4bee590567892c33f313b10c8e8b4156fcb05030e1cf0ac8f83579a1"
+      },
+      "evaluation_target": {
+        "pack_id": "generic_safety",
+        "pack_version": "1.0.0",
+        "scenario_id": null,
+        "target_kind": "domain_pack"
+      },
+      "evidence": {
+        "archive_receipt": "runs/20260425-013815-000000-gh24919476703-aac6fa5f4bee/archive_receipt.json",
+        "attempt_log": "runs/20260425-013815-000000-gh24919476703-aac6fa5f4bee/proofs/latest-attempts.log",
+        "audit": "runs/20260425-013815-000000-gh24919476703-aac6fa5f4bee/audit.json",
+        "itgl_final_hash": "runs/20260425-013815-000000-gh24919476703-aac6fa5f4bee/proofs/itgl_final_hash.txt",
+        "itgl_ledger": "runs/20260425-013815-000000-gh24919476703-aac6fa5f4bee/proofs/itgl_ledger.jsonl",
+        "manifest": "runs/20260425-013815-000000-gh24919476703-aac6fa5f4bee/manifest.json",
+        "run_summary": "runs/20260425-013815-000000-gh24919476703-aac6fa5f4bee/proofs/run_summary.json"
+      },
+      "model": "grok-4-1-fast",
+      "proof_class": "FIREWALL_ONLY_AUDIT",
+      "provider": "xai",
+      "result": "AUDIT FAILED",
+      "row_identity": "sir=2.0.0|commit=9285b89ecca64bd119fe97ef88fe1355fb52b1bf|target=domain_pack:generic_safety@1.0.0|proof_class=FIREWALL_ONLY_AUDIT|provider=xai|model=grok-4-1-fast",
+      "run_id": "20260425-013815-000000-gh24919476703-aac6fa5f4bee",
+      "run_timestamp_utc": "2026-04-25T01:38:15Z",
+      "sir_firewall_version": "2.0.0"
+    },
+    {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/24919434478",
+      "commit_sha": "b206c6edead75283fb26ef3d7c72e973c57dfa3b",
+      "comparison": {
+        "harmless_blocked": 0,
+        "itgl_final_hash": "sha256:464988e59643a82ddb742dc5f0da65e36df7eb1fedaab713019f2114da8a388a",
+        "leaks": 0,
+        "provider_call_attempts": 0,
+        "provider_call_failures": 0,
+        "provider_call_successes": 0,
+        "trust_fingerprint": "sha256:c818ae4214c70cc8d23f3be405ea49ffe77791a7207c18e8d61979da74cad389"
+      },
+      "evaluation_target": {
+        "pack_id": "generic_safety",
+        "pack_version": "1.0.0",
+        "scenario_id": null,
+        "target_kind": "domain_pack"
+      },
+      "evidence": {
+        "archive_receipt": "runs/20260425-013608-000000-gh24919434478-c818ae4214c7/archive_receipt.json",
+        "attempt_log": "runs/20260425-013608-000000-gh24919434478-c818ae4214c7/proofs/latest-attempts.log",
+        "audit": "runs/20260425-013608-000000-gh24919434478-c818ae4214c7/audit.json",
+        "itgl_final_hash": "runs/20260425-013608-000000-gh24919434478-c818ae4214c7/proofs/itgl_final_hash.txt",
+        "itgl_ledger": "runs/20260425-013608-000000-gh24919434478-c818ae4214c7/proofs/itgl_ledger.jsonl",
+        "manifest": "runs/20260425-013608-000000-gh24919434478-c818ae4214c7/manifest.json",
+        "run_summary": "runs/20260425-013608-000000-gh24919434478-c818ae4214c7/proofs/run_summary.json"
+      },
+      "model": "grok-4-1-fast",
+      "proof_class": "FIREWALL_ONLY_AUDIT",
+      "provider": "xai",
+      "result": "AUDIT PASSED",
+      "row_identity": "sir=2.0.0|commit=b206c6edead75283fb26ef3d7c72e973c57dfa3b|target=domain_pack:generic_safety@1.0.0|proof_class=FIREWALL_ONLY_AUDIT|provider=xai|model=grok-4-1-fast",
+      "run_id": "20260425-013608-000000-gh24919434478-c818ae4214c7",
+      "run_timestamp_utc": "2026-04-25T01:36:08Z",
+      "sir_firewall_version": "2.0.0"
+    },
+    {
       "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/24918865390",
       "commit_sha": "542c47c16300d0fbba97fd14455d4e8cf5a88029",
       "comparison": {
@@ -6555,12 +6807,12 @@
   ],
   "latest_passing_run": {
     "result": "AUDIT PASSED",
-    "run_id": "20260425-010747-000000-gh24918865390-c818ae4214c7"
+    "run_id": "20260429-082912-000000-gh25098693913-101d1cb8c53e"
   },
   "latest_run": {
     "result": "AUDIT PASSED",
-    "run_id": "20260425-010747-000000-gh24918865390-c818ae4214c7"
+    "run_id": "20260429-082912-000000-gh25098693913-101d1cb8c53e"
   },
-  "updated_at_utc": "2026-04-25T01:07:48Z",
+  "updated_at_utc": "2026-04-29T08:29:14Z",
   "version": "benchmark_index.v1"
 }
