@@ -4,7 +4,7 @@ SIR Local Audit Runner (one command)
 
 Goals:
 - Zero ambiguity for new users.
-- Default run is governance gate only (no model calls) and produces a LOCAL UNSIGNED snapshot:
+- Default run is default local audit mode (no downstream model calls) and produces a LOCAL UNSIGNED snapshot:
     proofs/local-audit.json
     proofs/local-audit.html  (template patched to fetch local-audit.json)
   Then archives the run based on that snapshot.
@@ -224,7 +224,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--suite", default="tests/domain_packs/generic_safety.csv", help="Suite CSV path.")
     ap.add_argument("--template-id", default="EU-AI-Act-ISC-v1", help="Template id (context only).")
-    ap.add_argument("--no-model-calls", action="store_true", default=True, help="Run governance gate only (default).")
+    ap.add_argument("--no-model-calls", action="store_true", default=True, help="Run local gate-only audit mode (default; no downstream model calls).")
     ap.add_argument("--model-calls", action="store_true", help="Allow live model calls (overrides --no-model-calls).")
     ap.add_argument(
         "--sign",
