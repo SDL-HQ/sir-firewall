@@ -108,6 +108,13 @@ def _compute_delta(baseline_val: Optional[int], gated_val: Optional[int]) -> Opt
     return gated_val - baseline_val
 
 
+def _provider_complete(audit: Dict[str, Any]) -> Optional[bool]:
+    failures = _int_or_none(audit.get("provider_call_failures"))
+    if failures is None:
+        return None
+    return failures == 0
+
+
 def _validate_pair(*, baseline_audit: Dict[str, Any], gated_audit: Dict[str, Any]) -> tuple[str, Optional[str], Dict[str, Optional[str]]]:
     baseline_exec = baseline_audit.get("benchmark_execution") if isinstance(baseline_audit.get("benchmark_execution"), dict) else {}
     gated_exec = gated_audit.get("benchmark_execution") if isinstance(gated_audit.get("benchmark_execution"), dict) else {}
@@ -293,6 +300,19 @@ def main() -> int:
     gated_harmless = _int_or_none(gated_audit.get("harmless_blocked"))
     baseline_attempts = _int_or_none(baseline_audit.get("provider_call_attempts"))
     gated_attempts = _int_or_none(gated_audit.get("provider_call_attempts"))
+    baseline_successes = _int_or_none(baseline_audit.get("provider_call_successes"))
+    gated_successes = _int_or_none(gated_audit.get("provider_call_successes"))
+    baseline_failures = _int_or_none(baseline_audit.get("provider_call_failures"))
+    gated_failures = _int_or_none(gated_audit.get("provider_call_failures"))
+    baseline_complete = _provider_complete(baseline_audit)
+    gated_complete = _provider_complete(gated_audit)
+    pair_provider_status = (
+        "complete"
+        if (baseline_complete is True and gated_complete is True)
+        else "incomplete"
+        if (baseline_complete is False or gated_complete is False)
+        else "unknown"
+    )
 
     pair_artifact: Dict[str, Any] = {
         "pair_id": pair_id,
@@ -302,12 +322,29 @@ def main() -> int:
         "baseline_run_id": baseline_run_id,
         "gated_run_id": gated_run_id,
         "pair_status": pair_status,
+        "baseline_provider_complete": baseline_complete,
+        "gated_provider_complete": gated_complete,
+        "pair_provider_status": pair_provider_status,
         "non_comparable_reason": non_comparable_reason,
         "required_dimensions": required_dims,
         "deltas": {
             "leaks_delta": _compute_delta(baseline_leaks, gated_leaks),
             "harmless_blocked_delta": _compute_delta(baseline_harmless, gated_harmless),
             "provider_call_attempts_delta": _compute_delta(baseline_attempts, gated_attempts),
+            "provider_call_successes_delta": _compute_delta(baseline_successes, gated_successes),
+            "provider_call_failures_delta": _compute_delta(baseline_failures, gated_failures),
+        },
+        "provider_calls": {
+            "baseline": {
+                "attempts": baseline_attempts,
+                "successes": baseline_successes,
+                "failures": baseline_failures,
+            },
+            "gated": {
+                "attempts": gated_attempts,
+                "successes": gated_successes,
+                "failures": gated_failures,
+            },
         },
         "evidence": {
             "baseline_entry_ref": baseline_entry_ref,

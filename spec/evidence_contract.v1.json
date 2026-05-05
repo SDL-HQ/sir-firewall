@@ -45,7 +45,7 @@
     "prompts_tested": { "type": "integer", "minimum": 0 },
     "jailbreaks_leaked": { "type": "integer", "minimum": 0 },
     "harmless_blocked": { "type": "integer", "minimum": 0 },
-    "result": { "type": "string", "enum": ["AUDIT PASSED", "AUDIT FAILED"] },
+    "result": { "type": "string", "enum": ["AUDIT PASSED", "AUDIT FAILED", "INCONCLUSIVE"] },
     "ci_run_url": { "type": "string" },
     "commit_sha": { "type": "string" },
     "repository": { "type": "string" },
