@@ -30,20 +30,37 @@ on:
           - audit
           - live
       pack:
-        description: 'Exact pack id from spec/packs/pack_registry.v1.json.'
+        description: 'Exact pack id from controlled workflow list.'
         required: false
         default: generic_safety
-        type: string
+        type: choice
+        options:
+          - generic_safety
+          - support_operator_override
+          - data_exfiltration_pressure
+          - eu_ai_act_compliance_pressure
       model:
-        description: 'Exact model id.'
+        description: 'Exact model id from controlled workflow list.'
         required: false
         default: grok-4-1-fast
-        type: string
+        type: choice
+        options:
+          - grok-3-beta
+          - grok-4-1-fast
+          - grok-4.20-0309-reasoning
+          - grok-4.20-0309-non-reasoning
+          - gpt-4o-mini
+          - gpt-4.1-mini
+          - gpt-4.1
+          - gpt-5.4-mini
       provider:
         description: 'Provider id for model execution.'
         required: false
         default: xai
-        type: string
+        type: choice
+        options:
+          - xai
+          - openai
 
 # Hardening: prevent overlapping runs from fighting over commits / pages.
 concurrency:
@@ -128,6 +145,22 @@ jobs:
               raise SystemExit(1)
           print(f"OK: generic_safety -> {suite_path}")
           PY
+
+      - name: Validate run selection tuple
+        env:
+          DISPATCH_OPERATION: ${{ github.event.inputs.operation || 'run' }}
+          DISPATCH_MODE: ${{ github.event.inputs.mode || 'audit' }}
+          DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
+          DISPATCH_PROVIDER: ${{ github.event.inputs.provider || 'xai' }}
+          DISPATCH_MODEL: ${{ github.event.inputs.model || 'grok-4-1-fast' }}
+        run: |
+          set -euo pipefail
+          python tools/validate_run_selection.py \
+            --operation "${DISPATCH_OPERATION}" \
+            --mode "${DISPATCH_MODE}" \
+            --pack "${DISPATCH_PACK}" \
+            --provider "${DISPATCH_PROVIDER}" \
+            --model "${DISPATCH_MODEL}"
 
       - name: Validate active pack schema
         env:
@@ -538,6 +571,22 @@ jobs:
         run: |
           set -euo pipefail
           python tools/validate_pack_registry.py --file spec/packs/pack_registry.v1.json
+
+      - name: Validate benchmark run selection tuple
+        env:
+          DISPATCH_OPERATION: ${{ github.event.inputs.operation || 'benchmark' }}
+          DISPATCH_MODE: ${{ github.event.inputs.mode || 'audit' }}
+          DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
+          DISPATCH_PROVIDER: ${{ github.event.inputs.provider || 'xai' }}
+          DISPATCH_MODEL: ${{ github.event.inputs.model || 'grok-4-1-fast' }}
+        run: |
+          set -euo pipefail
+          python tools/validate_run_selection.py \
+            --operation "${DISPATCH_OPERATION}" \
+            --mode "${DISPATCH_MODE}" \
+            --pack "${DISPATCH_PACK}" \
+            --provider "${DISPATCH_PROVIDER}" \
+            --model "${DISPATCH_MODEL}"
 
       - name: Validate selected benchmark pack schema
         env:
