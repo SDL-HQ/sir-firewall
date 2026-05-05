@@ -313,10 +313,46 @@ def _stable_response_text(response: Any) -> str:
         return repr(response)
 
 
+def _extract_responses_output_text(response: Any) -> str:
+    """
+    Extract text from Responses API payload shapes.
+    Best-effort and intentionally permissive; returns "" on unknown shapes.
+    """
+    try:
+        if isinstance(response, dict):
+            # LiteLLM / SDK-normalized convenience field
+            output_text = response.get("output_text")
+            if isinstance(output_text, str) and output_text:
+                return output_text
+            # OpenAI-like responses shape
+            output = response.get("output")
+            if isinstance(output, list):
+                parts: List[str] = []
+                for item in output:
+                    if not isinstance(item, dict):
+                        continue
+                    content = item.get("content")
+                    if isinstance(content, list):
+                        for block in content:
+                            if isinstance(block, dict):
+                                t = block.get("text")
+                                if isinstance(t, str) and t:
+                                    parts.append(t)
+                    t2 = item.get("text")
+                    if isinstance(t2, str) and t2:
+                        parts.append(t2)
+                if parts:
+                    return " ".join(parts).strip()
+    except Exception:
+        return ""
+    return ""
+
+
 def _extract_response_excerpt(response: Any, excerpt_chars: int) -> str:
     if excerpt_chars <= 0:
         return ""
     try:
+        # Chat-completions shape
         if isinstance(response, dict):
             choices = response.get("choices")
             if isinstance(choices, list) and choices:
@@ -327,26 +363,70 @@ def _extract_response_excerpt(response: Any, excerpt_chars: int) -> str:
                         content = message.get("content")
                         if isinstance(content, str):
                             return content.replace("\r", " ").replace("\n", " ").strip()[:excerpt_chars]
+        # Responses API shape
+        output_text = _extract_responses_output_text(response)
+        if output_text:
+            return output_text.replace("\r", " ").replace("\n", " ").strip()[:excerpt_chars]
     except Exception:
         return ""
     return ""
 
 
-def _maybe_call_model(model: str, messages: List[Dict[str, str]], enable: bool, excerpt_chars: int = 0) -> Dict[str, str]:
-    if not enable:
-        return {"response_hash": "", "response_excerpt": ""}
+def _resolve_openai_api_mode(model: str) -> str:
+    override_raw = os.getenv("SIR_OPENAI_API_MODE", "auto")
+    override = (override_raw or "auto").strip().lower()
+    if override not in {"auto", "completion", "responses"}:
+        raise ValueError(
+            f"Invalid SIR_OPENAI_API_MODE='{override_raw}'. Expected one of: auto|completion|responses."
+        )
+    if override in {"completion", "responses"}:
+        return override
+    return "responses" if (model or "").lower().startswith("gpt-5") else "completion"
+
+
+def _call_provider_model(provider: str, model: str, messages: List[Dict[str, str]]) -> Any:
     try:
         from litellm import completion
     except ImportError as exc:
         raise SystemExit("ERROR: LIVE mode requires litellm installed.") from exc
-    # Keep this minimal: we're proving SIR is in front of a real model call.
-    # The audit result is still based on SIR gating outcomes, not model content.
-    response = completion(
-        model=model,
+
+    provider_norm = (provider or "").strip().lower()
+    model_norm = (model or "").strip()
+    if provider_norm == "openai":
+        mode = _resolve_openai_api_mode(model_norm)
+        if mode == "responses":
+            try:
+                from litellm import responses
+            except ImportError as exc:
+                raise SystemExit("ERROR: SIR_OPENAI_API_MODE=responses requires litellm.responses support.") from exc
+            return responses(
+                model=model_norm,
+                messages=messages,
+                max_output_tokens=32,
+                stream=False,
+            )
+        return completion(
+            model=model_norm,
+            messages=messages,
+            temperature=0,
+            max_tokens=1,
+        )
+
+    # xai and non-openai default to completion path.
+    return completion(
+        model=model_norm,
         messages=messages,
         temperature=0,
         max_tokens=1,
     )
+
+
+def _maybe_call_model(model: str, messages: List[Dict[str, str]], enable: bool, excerpt_chars: int = 0, provider: str = "") -> Dict[str, str]:
+    if not enable:
+        return {"response_hash": "", "response_excerpt": ""}
+    # Keep this minimal: we're proving SIR is in front of a real model call.
+    # The audit result is still based on SIR gating outcomes, not model content.
+    response = _call_provider_model(provider=provider, model=model, messages=messages)
     response_text = _stable_response_text(response)
     response_hash = "sha256:" + hashlib.sha256(response_text.encode("utf-8")).hexdigest()
     response_excerpt = _extract_response_excerpt(response, excerpt_chars=excerpt_chars)
@@ -568,6 +648,7 @@ def main() -> None:
                         history,
                         do_model_calls,
                         excerpt_chars=(downstream_excerpt_chars if capture_downstream_evidence else 0),
+                        provider=provider_name,
                     )
                     provider_call_successes += 1
                     if downstream_f is not None:
