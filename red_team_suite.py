@@ -401,7 +401,7 @@ def _call_provider_model(provider: str, model: str, messages: List[Dict[str, str
                 raise SystemExit("ERROR: SIR_OPENAI_API_MODE=responses requires litellm.responses support.") from exc
             return responses(
                 model=model_norm,
-                messages=messages,
+                input=messages,
                 max_output_tokens=32,
                 stream=False,
             )
