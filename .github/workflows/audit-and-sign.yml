@@ -182,7 +182,7 @@ jobs:
           raise SystemExit(subprocess.call(cmd))
           PY
 
-      - name: Run suite through SIR (governance gate only, no live model calls)
+      - name: Run selected SIR audit mode
         env:
           # Live reference target
           LITELLM_MODEL: ${{ github.event.inputs.model || 'grok-4-1-fast' }}
@@ -210,7 +210,7 @@ jobs:
           echo "Provider: $provider"
           echo "Pack: $pack"
           echo "Model: $model"
-          echo "SIR_MODEL_CALLS: $SIR_MODEL_CALLS"
+          echo "SIR_MODEL_CALLS live-mode flag: $SIR_MODEL_CALLS"
           echo "Reference model: $LITELLM_MODEL"
           echo "SIR_PROVIDER: $SIR_PROVIDER"
           echo "SIR_TEMPLATE_ID: $SIR_TEMPLATE_ID"
