@@ -14,10 +14,11 @@ SUPPORTED_MODELS_BY_PROVIDER: dict[str, tuple[str, ...]] = {
         "grok-4.20-0309-non-reasoning",
     ),
     "openai": (
-        "gpt-4o-mini",
         "gpt-4.1-mini",
         "gpt-4.1",
+        "gpt-5-mini",
         "gpt-5.4-mini",
+        "gpt-5.5",
     ),
 }
 
