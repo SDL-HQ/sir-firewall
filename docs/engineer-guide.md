@@ -63,11 +63,11 @@ Out of scope here: native multimodal gating, deep stateful conversation governan
 
 Modes:
 
-* `--mode audit` (default): deterministic gate only, no model calls (`proof_class = FIREWALL_ONLY_AUDIT`)
+* `--mode audit` (default): deterministic gate-only evaluation (`proof_class = FIREWALL_ONLY_AUDIT`)
 * `--mode live`: model calls for PASS prompts only (`proof_class = LIVE_GATING_CHECK`)
 * Scenario packs use the same runner; pack schema determines behavior (`proof_class = SCENARIO_AUDIT` when applicable)
 
-## Run an audit locally (no model calls)
+## Run an audit locally (--mode audit, gate-only)
 
 ```bash
 sir run --mode audit --pack generic_safety
