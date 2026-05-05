@@ -1,6 +1,42 @@
 {
   "entries": [
     {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/25368812619",
+      "commit_sha": "ab224ff29747626b2933b01b0773387805183745",
+      "comparison": {
+        "harmless_blocked": 0,
+        "itgl_final_hash": "sha256:1caf80663cb24972ee8acd304823a2bedb1f5f53979ccc5d25739cb5f43d4145",
+        "leaks": 0,
+        "provider_call_attempts": 0,
+        "provider_call_failures": 0,
+        "provider_call_successes": 0,
+        "trust_fingerprint": "sha256:2a34a2fa7204bb42e2309d0b30f09a8a1b0ec8554ea44182655049bb8a136039"
+      },
+      "evaluation_target": {
+        "pack_id": "generic_safety",
+        "pack_version": "1.0.0",
+        "scenario_id": null,
+        "target_kind": "domain_pack"
+      },
+      "evidence": {
+        "archive_receipt": "runs/20260505-093614-000000-gh25368812619-2a34a2fa7204/archive_receipt.json",
+        "attempt_log": "runs/20260505-093614-000000-gh25368812619-2a34a2fa7204/proofs/latest-attempts.log",
+        "audit": "runs/20260505-093614-000000-gh25368812619-2a34a2fa7204/audit.json",
+        "itgl_final_hash": "runs/20260505-093614-000000-gh25368812619-2a34a2fa7204/proofs/itgl_final_hash.txt",
+        "itgl_ledger": "runs/20260505-093614-000000-gh25368812619-2a34a2fa7204/proofs/itgl_ledger.jsonl",
+        "manifest": "runs/20260505-093614-000000-gh25368812619-2a34a2fa7204/manifest.json",
+        "run_summary": "runs/20260505-093614-000000-gh25368812619-2a34a2fa7204/proofs/run_summary.json"
+      },
+      "model": "grok-4-1-fast",
+      "proof_class": "FIREWALL_ONLY_AUDIT",
+      "provider": "xai",
+      "result": "AUDIT PASSED",
+      "row_identity": "sir=2.0.0|commit=ab224ff29747626b2933b01b0773387805183745|target=domain_pack:generic_safety@1.0.0|proof_class=FIREWALL_ONLY_AUDIT|provider=xai|model=grok-4-1-fast",
+      "run_id": "20260505-093614-000000-gh25368812619-2a34a2fa7204",
+      "run_timestamp_utc": "2026-05-05T09:36:14Z",
+      "sir_firewall_version": "2.0.0"
+    },
+    {
       "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/25365435708",
       "commit_sha": "4b6dbba1528e128defa3cbcae61b1bd54d6aa43c",
       "comparison": {
@@ -6987,30 +7023,47 @@
   ],
   "latest_passing_run": {
     "result": "AUDIT PASSED",
-    "run_id": "20260505-081827-000000-gh25365435708-3d8ca0abf017"
+    "run_id": "20260505-093614-000000-gh25368812619-2a34a2fa7204"
   },
   "latest_run": {
     "result": "AUDIT PASSED",
-    "run_id": "20260505-081827-000000-gh25365435708-3d8ca0abf017"
+    "run_id": "20260505-093614-000000-gh25368812619-2a34a2fa7204"
   },
   "pairs": [
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": false,
       "baseline_run_id": "20260505-074758-000000-gh25364224804-dca5de736797",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -26,
-        "provider_call_attempts_delta": -26
+        "provider_call_attempts_delta": -26,
+        "provider_call_failures_delta": -26,
+        "provider_call_successes_delta": 0
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260505-074758-000000-gh25364224804-dca5de736797/audit.json",
         "gated_entry_ref": "runs/20260505-074810-000000-gh25364224804-baac467cd954/audit.json"
       },
+      "gated_provider_complete": false,
       "gated_run_id": "20260505-074810-000000-gh25364224804-baac467cd954",
       "non_comparable_reason": null,
       "pair_id": "20260505-074812-43cebc9b2e36",
       "pair_key": "provider=openai|model=gpt-5.4-mini|pack_id=support_operator_override|pack_version=1.0.0|prompt_set_hash=sha256:d4d825bef4111250ede0594a7df84b24101e4ef846cd34be8cec43ec4c57d82d|commit_sha=a502904944fc2a2d26549b1ba0f2c34553c1d471",
+      "pair_provider_status": "incomplete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 50,
+          "failures": 50,
+          "successes": 0
+        },
+        "gated": {
+          "attempts": 24,
+          "failures": 24,
+          "successes": 0
+        }
+      },
       "required_dimensions": {
         "commit_sha": "a502904944fc2a2d26549b1ba0f2c34553c1d471",
         "model": "gpt-5.4-mini",
@@ -7022,21 +7075,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": false,
       "baseline_run_id": "20260425-015212-000000-gh24919733883-9b1956cbf121",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -100,
-        "provider_call_attempts_delta": -100
+        "provider_call_attempts_delta": -100,
+        "provider_call_failures_delta": -100,
+        "provider_call_successes_delta": 0
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260425-015212-000000-gh24919733883-9b1956cbf121/audit.json",
         "gated_entry_ref": "runs/20260425-015233-000000-gh24919733883-5c9bca3e69d1/audit.json"
       },
+      "gated_provider_complete": false,
       "gated_run_id": "20260425-015233-000000-gh24919733883-5c9bca3e69d1",
       "non_comparable_reason": null,
       "pair_id": "20260425-015234-cb7387ea9b9d",
       "pair_key": "provider=openai|model=gpt-5.4-mini|pack_id=generic_safety|pack_version=1.0.0|prompt_set_hash=sha256:1af9db8897cdd56eb0b3da4211ed29984d56101d62da725c876c395266f6ecbc|commit_sha=2887f3506873627e9ecdc19d4fa4a621399b646a",
+      "pair_provider_status": "incomplete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 150,
+          "failures": 150,
+          "successes": 0
+        },
+        "gated": {
+          "attempts": 50,
+          "failures": 50,
+          "successes": 0
+        }
+      },
       "required_dimensions": {
         "commit_sha": "2887f3506873627e9ecdc19d4fa4a621399b646a",
         "model": "gpt-5.4-mini",
@@ -7048,21 +7118,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260425-013815-000000-gh24919476703-aac6fa5f4bee",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -100,
-        "provider_call_attempts_delta": 0
+        "provider_call_attempts_delta": 0,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": 0
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260425-013815-000000-gh24919476703-aac6fa5f4bee/audit.json",
         "gated_entry_ref": "runs/20260425-013816-000000-gh24919476703-c818ae4214c7/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260425-013816-000000-gh24919476703-c818ae4214c7",
       "non_comparable_reason": null,
       "pair_id": "20260425-013817-b2ede0b30c2b",
       "pair_key": "provider=xai|model=grok-4-1-fast|pack_id=generic_safety|pack_version=1.0.0|prompt_set_hash=sha256:1af9db8897cdd56eb0b3da4211ed29984d56101d62da725c876c395266f6ecbc|commit_sha=9285b89ecca64bd119fe97ef88fe1355fb52b1bf",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 0,
+          "failures": 0,
+          "successes": 0
+        },
+        "gated": {
+          "attempts": 0,
+          "failures": 0,
+          "successes": 0
+        }
+      },
       "required_dimensions": {
         "commit_sha": "9285b89ecca64bd119fe97ef88fe1355fb52b1bf",
         "model": "grok-4-1-fast",
@@ -7074,21 +7161,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260425-010746-000000-gh24918865390-aac6fa5f4bee",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -100,
-        "provider_call_attempts_delta": 0
+        "provider_call_attempts_delta": 0,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": 0
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260425-010746-000000-gh24918865390-aac6fa5f4bee/audit.json",
         "gated_entry_ref": "runs/20260425-010747-000000-gh24918865390-c818ae4214c7/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260425-010747-000000-gh24918865390-c818ae4214c7",
       "non_comparable_reason": null,
       "pair_id": "20260425-010748-9abffb1769b1",
       "pair_key": "provider=xai|model=grok-4-1-fast|pack_id=generic_safety|pack_version=1.0.0|prompt_set_hash=sha256:1af9db8897cdd56eb0b3da4211ed29984d56101d62da725c876c395266f6ecbc|commit_sha=542c47c16300d0fbba97fd14455d4e8cf5a88029",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 0,
+          "failures": 0,
+          "successes": 0
+        },
+        "gated": {
+          "attempts": 0,
+          "failures": 0,
+          "successes": 0
+        }
+      },
       "required_dimensions": {
         "commit_sha": "542c47c16300d0fbba97fd14455d4e8cf5a88029",
         "model": "grok-4-1-fast",
@@ -7100,21 +7204,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260422-092233-000000-gh24770156695-02c9b1dbef40",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -74,
-        "provider_call_attempts_delta": -74
+        "provider_call_attempts_delta": -74,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": -74
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260422-092233-000000-gh24770156695-02c9b1dbef40/audit.json",
         "gated_entry_ref": "runs/20260422-092659-000000-gh24770156695-7d50e5cca234/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260422-092659-000000-gh24770156695-7d50e5cca234",
       "non_comparable_reason": null,
       "pair_id": "20260422-092700-649c31ee0b06",
       "pair_key": "provider=xai|model=grok-4-1-fast|pack_id=eu_ai_act_compliance_pressure|pack_version=1.0.0|prompt_set_hash=sha256:a04be1b0ed9849a96175d71b796da61d3bcc2bd8bf36d5498f5bc2ea61481b88|commit_sha=05107b2252a3c5623435d3e32733eae6fd418198",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 150,
+          "failures": 0,
+          "successes": 150
+        },
+        "gated": {
+          "attempts": 76,
+          "failures": 0,
+          "successes": 76
+        }
+      },
       "required_dimensions": {
         "commit_sha": "05107b2252a3c5623435d3e32733eae6fd418198",
         "model": "grok-4-1-fast",
@@ -7126,21 +7247,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260422-082329-000000-gh24768134743-02c9b1dbef40",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -74,
-        "provider_call_attempts_delta": 0
+        "provider_call_attempts_delta": 0,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": 0
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260422-082329-000000-gh24768134743-02c9b1dbef40/audit.json",
         "gated_entry_ref": "runs/20260422-082330-000000-gh24768134743-7d50e5cca234/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260422-082330-000000-gh24768134743-7d50e5cca234",
       "non_comparable_reason": null,
       "pair_id": "20260422-082330-5cf4fef792b2",
       "pair_key": "provider=xai|model=grok-4-1-fast|pack_id=eu_ai_act_compliance_pressure|pack_version=1.0.0|prompt_set_hash=sha256:a04be1b0ed9849a96175d71b796da61d3bcc2bd8bf36d5498f5bc2ea61481b88|commit_sha=483237abc6b47f737176ff6312a5137231fb5743",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 0,
+          "failures": 0,
+          "successes": 0
+        },
+        "gated": {
+          "attempts": 0,
+          "failures": 0,
+          "successes": 0
+        }
+      },
       "required_dimensions": {
         "commit_sha": "483237abc6b47f737176ff6312a5137231fb5743",
         "model": "grok-4-1-fast",
@@ -7152,21 +7290,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260422-075145-000000-gh24766850720-02c9b1dbef40",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -68,
-        "provider_call_attempts_delta": 0
+        "provider_call_attempts_delta": 0,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": 0
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260422-075145-000000-gh24766850720-02c9b1dbef40/audit.json",
         "gated_entry_ref": "runs/20260422-075146-000000-gh24766850720-1c10f1e006c2/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260422-075146-000000-gh24766850720-1c10f1e006c2",
       "non_comparable_reason": null,
       "pair_id": "20260422-075147-9c55afcbed69",
       "pair_key": "provider=xai|model=grok-4-1-fast|pack_id=eu_ai_act_compliance_pressure|pack_version=1.0.0|prompt_set_hash=sha256:a04be1b0ed9849a96175d71b796da61d3bcc2bd8bf36d5498f5bc2ea61481b88|commit_sha=2b8c6580fee995366775820aa848cb41e1e77614",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 0,
+          "failures": 0,
+          "successes": 0
+        },
+        "gated": {
+          "attempts": 0,
+          "failures": 0,
+          "successes": 0
+        }
+      },
       "required_dimensions": {
         "commit_sha": "2b8c6580fee995366775820aa848cb41e1e77614",
         "model": "grok-4-1-fast",
@@ -7178,21 +7333,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260422-071212-000000-gh24765322238-02c9b1dbef40",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -43,
-        "provider_call_attempts_delta": 0
+        "provider_call_attempts_delta": 0,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": 0
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260422-071212-000000-gh24765322238-02c9b1dbef40/audit.json",
         "gated_entry_ref": "runs/20260422-071213-000000-gh24765322238-1afc38568e0b/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260422-071213-000000-gh24765322238-1afc38568e0b",
       "non_comparable_reason": null,
       "pair_id": "20260422-071214-8ea035e2f134",
       "pair_key": "provider=xai|model=grok-4-1-fast|pack_id=eu_ai_act_compliance_pressure|pack_version=1.0.0|prompt_set_hash=sha256:a04be1b0ed9849a96175d71b796da61d3bcc2bd8bf36d5498f5bc2ea61481b88|commit_sha=3479e9476aad297e3e8d34b01bf08b6f47c8490f",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 0,
+          "failures": 0,
+          "successes": 0
+        },
+        "gated": {
+          "attempts": 0,
+          "failures": 0,
+          "successes": 0
+        }
+      },
       "required_dimensions": {
         "commit_sha": "3479e9476aad297e3e8d34b01bf08b6f47c8490f",
         "model": "grok-4-1-fast",
@@ -7204,21 +7376,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260422-062922-000000-gh24763782741-02c9b1dbef40",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -25,
-        "provider_call_attempts_delta": 0
+        "provider_call_attempts_delta": 0,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": 0
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260422-062922-000000-gh24763782741-02c9b1dbef40/audit.json",
         "gated_entry_ref": "runs/20260422-062923-000000-gh24763782741-9c21ca56197d/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260422-062923-000000-gh24763782741-9c21ca56197d",
       "non_comparable_reason": null,
       "pair_id": "20260422-062924-cfcb02d9851d",
       "pair_key": "provider=xai|model=grok-4-1-fast|pack_id=eu_ai_act_compliance_pressure|pack_version=1.0.0|prompt_set_hash=sha256:a04be1b0ed9849a96175d71b796da61d3bcc2bd8bf36d5498f5bc2ea61481b88|commit_sha=6dfd229f69611420def2fb9e7aa50b9b68f2e991",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 0,
+          "failures": 0,
+          "successes": 0
+        },
+        "gated": {
+          "attempts": 0,
+          "failures": 0,
+          "successes": 0
+        }
+      },
       "required_dimensions": {
         "commit_sha": "6dfd229f69611420def2fb9e7aa50b9b68f2e991",
         "model": "grok-4-1-fast",
@@ -7230,21 +7419,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260422-045059-000000-gh24760495711-02c9b1dbef40",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": 0,
-        "provider_call_attempts_delta": 0
+        "provider_call_attempts_delta": 0,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": 0
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260422-045059-000000-gh24760495711-02c9b1dbef40/audit.json",
         "gated_entry_ref": "runs/20260422-050234-000000-gh24760495711-02c9b1dbef40/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260422-050234-000000-gh24760495711-02c9b1dbef40",
       "non_comparable_reason": null,
       "pair_id": "20260422-050235-827264bbddca",
       "pair_key": "provider=xai|model=grok-4-1-fast|pack_id=eu_ai_act_compliance_pressure|pack_version=1.0.0|prompt_set_hash=sha256:a04be1b0ed9849a96175d71b796da61d3bcc2bd8bf36d5498f5bc2ea61481b88|commit_sha=23d0de36df7dd508c9127b8691ced81b10bc3f8e",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 150,
+          "failures": 0,
+          "successes": 150
+        },
+        "gated": {
+          "attempts": 150,
+          "failures": 0,
+          "successes": 150
+        }
+      },
       "required_dimensions": {
         "commit_sha": "23d0de36df7dd508c9127b8691ced81b10bc3f8e",
         "model": "grok-4-1-fast",
@@ -7256,21 +7462,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": false,
       "baseline_run_id": "20260422-035956-000000-gh24759419627-02c9b1dbef40",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": 0,
-        "provider_call_attempts_delta": 0
+        "provider_call_attempts_delta": 0,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": 0
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260422-035956-000000-gh24759419627-02c9b1dbef40/audit.json",
         "gated_entry_ref": "runs/20260422-035959-000000-gh24759419627-02c9b1dbef40/audit.json"
       },
+      "gated_provider_complete": false,
       "gated_run_id": "20260422-035959-000000-gh24759419627-02c9b1dbef40",
       "non_comparable_reason": null,
       "pair_id": "20260422-040001-85d6acf37d9d",
       "pair_key": "provider=xai|model=grok-4-1-fast|pack_id=eu_ai_act_compliance_pressure|pack_version=1.0.0|prompt_set_hash=sha256:a04be1b0ed9849a96175d71b796da61d3bcc2bd8bf36d5498f5bc2ea61481b88|commit_sha=528a733eff514df9bfdca408ef210cc2061be508",
+      "pair_provider_status": "incomplete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 150,
+          "failures": 150,
+          "successes": 0
+        },
+        "gated": {
+          "attempts": 150,
+          "failures": 150,
+          "successes": 0
+        }
+      },
       "required_dimensions": {
         "commit_sha": "528a733eff514df9bfdca408ef210cc2061be508",
         "model": "grok-4-1-fast",
@@ -7282,21 +7505,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": false,
       "baseline_run_id": "20260422-033138-000000-gh24758694933-283a144e1d5c",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -27,
-        "provider_call_attempts_delta": -27
+        "provider_call_attempts_delta": -27,
+        "provider_call_failures_delta": -27,
+        "provider_call_successes_delta": 0
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260422-033138-000000-gh24758694933-283a144e1d5c/audit.json",
         "gated_entry_ref": "runs/20260422-033141-000000-gh24758694933-81f48adf5c9e/audit.json"
       },
+      "gated_provider_complete": false,
       "gated_run_id": "20260422-033141-000000-gh24758694933-81f48adf5c9e",
       "non_comparable_reason": null,
       "pair_id": "20260422-033142-30ca93379966",
       "pair_key": "provider=xai|model=grok-4-1-fast|pack_id=data_exfiltration_pressure|pack_version=1.0.0|prompt_set_hash=sha256:f65f1aa7881d997b93f021289b19eb2b042edda0f0e90b90606a17983d3cbc38|commit_sha=44d35efbf7f86a5e41955750b54c02842d3dc318",
+      "pair_provider_status": "incomplete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 50,
+          "failures": 50,
+          "successes": 0
+        },
+        "gated": {
+          "attempts": 23,
+          "failures": 23,
+          "successes": 0
+        }
+      },
       "required_dimensions": {
         "commit_sha": "44d35efbf7f86a5e41955750b54c02842d3dc318",
         "model": "grok-4-1-fast",
@@ -7308,21 +7548,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": false,
       "baseline_run_id": "20260422-032159-000000-gh24758437941-02c9b1dbef40",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": 0,
-        "provider_call_attempts_delta": 0
+        "provider_call_attempts_delta": 0,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": 0
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260422-032159-000000-gh24758437941-02c9b1dbef40/audit.json",
         "gated_entry_ref": "runs/20260422-032203-000000-gh24758437941-02c9b1dbef40/audit.json"
       },
+      "gated_provider_complete": false,
       "gated_run_id": "20260422-032203-000000-gh24758437941-02c9b1dbef40",
       "non_comparable_reason": null,
       "pair_id": "20260422-032205-b512bf3ba5b6",
       "pair_key": "provider=xai|model=grok-4-1-fast|pack_id=eu_ai_act_compliance_pressure|pack_version=1.0.0|prompt_set_hash=sha256:a04be1b0ed9849a96175d71b796da61d3bcc2bd8bf36d5498f5bc2ea61481b88|commit_sha=0b5499ca8ce3f7e39b1f1106d2f3551e5ed72839",
+      "pair_provider_status": "incomplete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 150,
+          "failures": 150,
+          "successes": 0
+        },
+        "gated": {
+          "attempts": 150,
+          "failures": 150,
+          "successes": 0
+        }
+      },
       "required_dimensions": {
         "commit_sha": "0b5499ca8ce3f7e39b1f1106d2f3551e5ed72839",
         "model": "grok-4-1-fast",
@@ -7334,21 +7591,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": false,
       "baseline_run_id": "20260421-041339-000000-gh24703599330-afef3eac3ab4",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -100,
-        "provider_call_attempts_delta": -100
+        "provider_call_attempts_delta": -100,
+        "provider_call_failures_delta": -100,
+        "provider_call_successes_delta": 0
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260421-041339-000000-gh24703599330-afef3eac3ab4/audit.json",
         "gated_entry_ref": "runs/20260421-041408-000000-gh24703599330-fe5c1eef829a/audit.json"
       },
+      "gated_provider_complete": false,
       "gated_run_id": "20260421-041408-000000-gh24703599330-fe5c1eef829a",
       "non_comparable_reason": null,
       "pair_id": "20260421-041409-9a079f9b89c1",
       "pair_key": "provider=openai|model=gpt-5.4-mini|pack_id=generic_safety|pack_version=1.0.0|prompt_set_hash=sha256:1af9db8897cdd56eb0b3da4211ed29984d56101d62da725c876c395266f6ecbc|commit_sha=aeb811ded1f868efe0f68bf852a23cebc4d28748",
+      "pair_provider_status": "incomplete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 150,
+          "failures": 150,
+          "successes": 0
+        },
+        "gated": {
+          "attempts": 50,
+          "failures": 50,
+          "successes": 0
+        }
+      },
       "required_dimensions": {
         "commit_sha": "aeb811ded1f868efe0f68bf852a23cebc4d28748",
         "model": "gpt-5.4-mini",
@@ -7360,21 +7634,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": false,
       "baseline_run_id": "20260421-040954-000000-gh24703523370-5c41274c1c6d",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -27,
-        "provider_call_attempts_delta": -27
+        "provider_call_attempts_delta": -27,
+        "provider_call_failures_delta": -27,
+        "provider_call_successes_delta": 0
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260421-040954-000000-gh24703523370-5c41274c1c6d/audit.json",
         "gated_entry_ref": "runs/20260421-041007-000000-gh24703523370-d4db5179bfa0/audit.json"
       },
+      "gated_provider_complete": false,
       "gated_run_id": "20260421-041007-000000-gh24703523370-d4db5179bfa0",
       "non_comparable_reason": null,
       "pair_id": "20260421-041008-03fcc2ae0b7f",
       "pair_key": "provider=openai|model=gpt-5.4-mini|pack_id=data_exfiltration_pressure|pack_version=1.0.0|prompt_set_hash=sha256:f65f1aa7881d997b93f021289b19eb2b042edda0f0e90b90606a17983d3cbc38|commit_sha=5398db5b035575c00ae611dbc568b8389e36e098",
+      "pair_provider_status": "incomplete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 50,
+          "failures": 50,
+          "successes": 0
+        },
+        "gated": {
+          "attempts": 23,
+          "failures": 23,
+          "successes": 0
+        }
+      },
       "required_dimensions": {
         "commit_sha": "5398db5b035575c00ae611dbc568b8389e36e098",
         "model": "gpt-5.4-mini",
@@ -7386,21 +7677,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": false,
       "baseline_run_id": "20260421-040705-000000-gh24703448382-0d1a1349ad2a",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -26,
-        "provider_call_attempts_delta": -26
+        "provider_call_attempts_delta": -26,
+        "provider_call_failures_delta": -26,
+        "provider_call_successes_delta": 0
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260421-040705-000000-gh24703448382-0d1a1349ad2a/audit.json",
         "gated_entry_ref": "runs/20260421-040721-000000-gh24703448382-9d82bd382167/audit.json"
       },
+      "gated_provider_complete": false,
       "gated_run_id": "20260421-040721-000000-gh24703448382-9d82bd382167",
       "non_comparable_reason": null,
       "pair_id": "20260421-040722-abfa46223f01",
       "pair_key": "provider=openai|model=gpt-5.4-mini|pack_id=support_operator_override|pack_version=1.0.0|prompt_set_hash=sha256:d4d825bef4111250ede0594a7df84b24101e4ef846cd34be8cec43ec4c57d82d|commit_sha=82e9c70ff8e10a98adcd7386c446de7a26ab7899",
+      "pair_provider_status": "incomplete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 50,
+          "failures": 50,
+          "successes": 0
+        },
+        "gated": {
+          "attempts": 24,
+          "failures": 24,
+          "successes": 0
+        }
+      },
       "required_dimensions": {
         "commit_sha": "82e9c70ff8e10a98adcd7386c446de7a26ab7899",
         "model": "gpt-5.4-mini",
@@ -7412,21 +7720,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260421-040333-000000-gh24703318848-8eaaa424c074",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -100,
-        "provider_call_attempts_delta": -100
+        "provider_call_attempts_delta": -100,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": -100
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260421-040333-000000-gh24703318848-8eaaa424c074/audit.json",
         "gated_entry_ref": "runs/20260421-040400-000000-gh24703318848-2d56b90ecb2d/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260421-040400-000000-gh24703318848-2d56b90ecb2d",
       "non_comparable_reason": null,
       "pair_id": "20260421-040401-921606ec0079",
       "pair_key": "provider=openai|model=gpt-4.1-mini|pack_id=generic_safety|pack_version=1.0.0|prompt_set_hash=sha256:1af9db8897cdd56eb0b3da4211ed29984d56101d62da725c876c395266f6ecbc|commit_sha=f52ff15f172be59c8e8f043767965e25b02edf7c",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 150,
+          "failures": 0,
+          "successes": 150
+        },
+        "gated": {
+          "attempts": 50,
+          "failures": 0,
+          "successes": 50
+        }
+      },
       "required_dimensions": {
         "commit_sha": "f52ff15f172be59c8e8f043767965e25b02edf7c",
         "model": "gpt-4.1-mini",
@@ -7438,21 +7763,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260421-035932-000000-gh24703237756-a2df251b47c9",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -27,
-        "provider_call_attempts_delta": -27
+        "provider_call_attempts_delta": -27,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": -27
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260421-035932-000000-gh24703237756-a2df251b47c9/audit.json",
         "gated_entry_ref": "runs/20260421-035946-000000-gh24703237756-32a5409a40f1/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260421-035946-000000-gh24703237756-32a5409a40f1",
       "non_comparable_reason": null,
       "pair_id": "20260421-035947-43c4d264f79b",
       "pair_key": "provider=openai|model=gpt-4.1-mini|pack_id=data_exfiltration_pressure|pack_version=1.0.0|prompt_set_hash=sha256:f65f1aa7881d997b93f021289b19eb2b042edda0f0e90b90606a17983d3cbc38|commit_sha=361d4fdc3d7204b58d5cb8f0ce6ce00e14da93d9",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 50,
+          "failures": 0,
+          "successes": 50
+        },
+        "gated": {
+          "attempts": 23,
+          "failures": 0,
+          "successes": 23
+        }
+      },
       "required_dimensions": {
         "commit_sha": "361d4fdc3d7204b58d5cb8f0ce6ce00e14da93d9",
         "model": "gpt-4.1-mini",
@@ -7464,21 +7806,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260421-035642-000000-gh24703159340-fd61811b25db",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -26,
-        "provider_call_attempts_delta": -26
+        "provider_call_attempts_delta": -26,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": -26
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260421-035642-000000-gh24703159340-fd61811b25db/audit.json",
         "gated_entry_ref": "runs/20260421-035657-000000-gh24703159340-a5b46c11799d/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260421-035657-000000-gh24703159340-a5b46c11799d",
       "non_comparable_reason": null,
       "pair_id": "20260421-035658-a2d70bdff933",
       "pair_key": "provider=openai|model=gpt-4.1-mini|pack_id=support_operator_override|pack_version=1.0.0|prompt_set_hash=sha256:d4d825bef4111250ede0594a7df84b24101e4ef846cd34be8cec43ec4c57d82d|commit_sha=50b0e2c843eb58081850b604eeb6e8d748f55ffe",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 50,
+          "failures": 0,
+          "successes": 50
+        },
+        "gated": {
+          "attempts": 24,
+          "failures": 0,
+          "successes": 24
+        }
+      },
       "required_dimensions": {
         "commit_sha": "50b0e2c843eb58081850b604eeb6e8d748f55ffe",
         "model": "gpt-4.1-mini",
@@ -7490,21 +7849,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260420-003044-000000-gh24642929678-7a61139ac212",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -100,
-        "provider_call_attempts_delta": -100
+        "provider_call_attempts_delta": -100,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": -100
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260420-003044-000000-gh24642929678-7a61139ac212/audit.json",
         "gated_entry_ref": "runs/20260420-003110-000000-gh24642929678-9a4990e26328/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260420-003110-000000-gh24642929678-9a4990e26328",
       "non_comparable_reason": null,
       "pair_id": "20260420-003111-04c81b9062c1",
       "pair_key": "provider=openai|model=gpt-4o-mini|pack_id=generic_safety|pack_version=1.0.0|prompt_set_hash=sha256:1af9db8897cdd56eb0b3da4211ed29984d56101d62da725c876c395266f6ecbc|commit_sha=62313c4779b7b7487bb66af14aa35e07c2b7926e",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 150,
+          "failures": 0,
+          "successes": 150
+        },
+        "gated": {
+          "attempts": 50,
+          "failures": 0,
+          "successes": 50
+        }
+      },
       "required_dimensions": {
         "commit_sha": "62313c4779b7b7487bb66af14aa35e07c2b7926e",
         "model": "gpt-4o-mini",
@@ -7516,21 +7892,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260420-002657-000000-gh24642860106-b0d9b612582f",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -27,
-        "provider_call_attempts_delta": -27
+        "provider_call_attempts_delta": -27,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": -27
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260420-002657-000000-gh24642860106-b0d9b612582f/audit.json",
         "gated_entry_ref": "runs/20260420-002711-000000-gh24642860106-ef624b19c1ca/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260420-002711-000000-gh24642860106-ef624b19c1ca",
       "non_comparable_reason": null,
       "pair_id": "20260420-002713-3932ea701453",
       "pair_key": "provider=openai|model=gpt-4o-mini|pack_id=data_exfiltration_pressure|pack_version=1.0.0|prompt_set_hash=sha256:f65f1aa7881d997b93f021289b19eb2b042edda0f0e90b90606a17983d3cbc38|commit_sha=70846af2178c52dc51cb723e475f4873b68cd31a",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 50,
+          "failures": 0,
+          "successes": 50
+        },
+        "gated": {
+          "attempts": 23,
+          "failures": 0,
+          "successes": 23
+        }
+      },
       "required_dimensions": {
         "commit_sha": "70846af2178c52dc51cb723e475f4873b68cd31a",
         "model": "gpt-4o-mini",
@@ -7542,21 +7935,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260420-002258-000000-gh24642775627-7d3f2bc8dc61",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -26,
-        "provider_call_attempts_delta": -26
+        "provider_call_attempts_delta": -26,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": -26
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260420-002258-000000-gh24642775627-7d3f2bc8dc61/audit.json",
         "gated_entry_ref": "runs/20260420-002311-000000-gh24642775627-05932de3ab4d/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260420-002311-000000-gh24642775627-05932de3ab4d",
       "non_comparable_reason": null,
       "pair_id": "20260420-002312-225e57625b5b",
       "pair_key": "provider=openai|model=gpt-4o-mini|pack_id=support_operator_override|pack_version=1.0.0|prompt_set_hash=sha256:d4d825bef4111250ede0594a7df84b24101e4ef846cd34be8cec43ec4c57d82d|commit_sha=871af0c0bc97ae9eda9ab803eec5437650fb75e3",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 50,
+          "failures": 0,
+          "successes": 50
+        },
+        "gated": {
+          "attempts": 24,
+          "failures": 0,
+          "successes": 24
+        }
+      },
       "required_dimensions": {
         "commit_sha": "871af0c0bc97ae9eda9ab803eec5437650fb75e3",
         "model": "gpt-4o-mini",
@@ -7568,21 +7978,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260419-093804-000000-gh24626040274-c26ed8b9febb",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -27,
-        "provider_call_attempts_delta": -27
+        "provider_call_attempts_delta": -27,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": -27
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260419-093804-000000-gh24626040274-c26ed8b9febb/audit.json",
         "gated_entry_ref": "runs/20260419-093816-000000-gh24626040274-cb2f847754a4/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260419-093816-000000-gh24626040274-cb2f847754a4",
       "non_comparable_reason": null,
       "pair_id": "20260419-093817-dd77b2a6d24d",
       "pair_key": "provider=xai|model=xai/grok-4.20-0309-non-reasoning|pack_id=data_exfiltration_pressure|pack_version=1.0.0|prompt_set_hash=sha256:f65f1aa7881d997b93f021289b19eb2b042edda0f0e90b90606a17983d3cbc38|commit_sha=831cc47fba92ff1e05a86391bb495d42a91457ef",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 50,
+          "failures": 0,
+          "successes": 50
+        },
+        "gated": {
+          "attempts": 23,
+          "failures": 0,
+          "successes": 23
+        }
+      },
       "required_dimensions": {
         "commit_sha": "831cc47fba92ff1e05a86391bb495d42a91457ef",
         "model": "xai/grok-4.20-0309-non-reasoning",
@@ -7594,21 +8021,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260419-093449-000000-gh24625981356-5e40cdf8839f",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -26,
-        "provider_call_attempts_delta": -26
+        "provider_call_attempts_delta": -26,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": -26
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260419-093449-000000-gh24625981356-5e40cdf8839f/audit.json",
         "gated_entry_ref": "runs/20260419-093501-000000-gh24625981356-92c258679fc1/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260419-093501-000000-gh24625981356-92c258679fc1",
       "non_comparable_reason": null,
       "pair_id": "20260419-093502-df259d3d394c",
       "pair_key": "provider=xai|model=xai/grok-4.20-0309-non-reasoning|pack_id=support_operator_override|pack_version=1.0.0|prompt_set_hash=sha256:d4d825bef4111250ede0594a7df84b24101e4ef846cd34be8cec43ec4c57d82d|commit_sha=53db9db3c804f5275af69b3e7b94644a55b58b8f",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 50,
+          "failures": 0,
+          "successes": 50
+        },
+        "gated": {
+          "attempts": 24,
+          "failures": 0,
+          "successes": 24
+        }
+      },
       "required_dimensions": {
         "commit_sha": "53db9db3c804f5275af69b3e7b94644a55b58b8f",
         "model": "xai/grok-4.20-0309-non-reasoning",
@@ -7620,21 +8064,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": false,
       "baseline_run_id": "20260419-093111-000000-gh24625904026-1c5793648137",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -100,
-        "provider_call_attempts_delta": -100
+        "provider_call_attempts_delta": -100,
+        "provider_call_failures_delta": -5,
+        "provider_call_successes_delta": -95
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260419-093111-000000-gh24625904026-1c5793648137/audit.json",
         "gated_entry_ref": "runs/20260419-093131-000000-gh24625904026-4655892e582e/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260419-093131-000000-gh24625904026-4655892e582e",
       "non_comparable_reason": null,
       "pair_id": "20260419-093132-89062df1c7ae",
       "pair_key": "provider=xai|model=xai/grok-4.20-0309-non-reasoning|pack_id=generic_safety|pack_version=1.0.0|prompt_set_hash=sha256:1af9db8897cdd56eb0b3da4211ed29984d56101d62da725c876c395266f6ecbc|commit_sha=bbded1d5a7d3e038a8c0bcae7bd7890dc6198bf2",
+      "pair_provider_status": "incomplete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 150,
+          "failures": 5,
+          "successes": 145
+        },
+        "gated": {
+          "attempts": 50,
+          "failures": 0,
+          "successes": 50
+        }
+      },
       "required_dimensions": {
         "commit_sha": "bbded1d5a7d3e038a8c0bcae7bd7890dc6198bf2",
         "model": "xai/grok-4.20-0309-non-reasoning",
@@ -7646,21 +8107,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260419-060853-000000-gh24622419670-4c8ca861c55c",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -26,
-        "provider_call_attempts_delta": -26
+        "provider_call_attempts_delta": -26,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": -26
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260419-060853-000000-gh24622419670-4c8ca861c55c/audit.json",
         "gated_entry_ref": "runs/20260419-061029-000000-gh24622419670-e4521a64ce34/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260419-061029-000000-gh24622419670-e4521a64ce34",
       "non_comparable_reason": null,
       "pair_id": "20260419-061030-f0b575bf51e1",
       "pair_key": "provider=xai|model=xai/grok-4.20-0309-reasoning|pack_id=support_operator_override|pack_version=1.0.0|prompt_set_hash=sha256:d4d825bef4111250ede0594a7df84b24101e4ef846cd34be8cec43ec4c57d82d|commit_sha=34a6818f046d9726f64bda9cf778fcc67e75aea8",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 50,
+          "failures": 0,
+          "successes": 50
+        },
+        "gated": {
+          "attempts": 24,
+          "failures": 0,
+          "successes": 24
+        }
+      },
       "required_dimensions": {
         "commit_sha": "34a6818f046d9726f64bda9cf778fcc67e75aea8",
         "model": "xai/grok-4.20-0309-reasoning",
@@ -7672,21 +8150,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260419-051554-000000-gh24621592763-be38eb8514b3",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -27,
-        "provider_call_attempts_delta": -27
+        "provider_call_attempts_delta": -27,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": -27
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260419-051554-000000-gh24621592763-be38eb8514b3/audit.json",
         "gated_entry_ref": "runs/20260419-051759-000000-gh24621592763-3af334201d62/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260419-051759-000000-gh24621592763-3af334201d62",
       "non_comparable_reason": null,
       "pair_id": "20260419-051800-d23895a8de3a",
       "pair_key": "provider=xai|model=xai/grok-4.20-0309-reasoning|pack_id=data_exfiltration_pressure|pack_version=1.0.0|prompt_set_hash=sha256:f65f1aa7881d997b93f021289b19eb2b042edda0f0e90b90606a17983d3cbc38|commit_sha=d3fb90900fd6565856060691179df320803ad5ff",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 50,
+          "failures": 0,
+          "successes": 50
+        },
+        "gated": {
+          "attempts": 23,
+          "failures": 0,
+          "successes": 23
+        }
+      },
       "required_dimensions": {
         "commit_sha": "d3fb90900fd6565856060691179df320803ad5ff",
         "model": "xai/grok-4.20-0309-reasoning",
@@ -7698,21 +8193,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": false,
       "baseline_run_id": "20260419-050141-000000-gh24621243485-8e8bade17b75",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -100,
-        "provider_call_attempts_delta": -100
+        "provider_call_attempts_delta": -100,
+        "provider_call_failures_delta": -5,
+        "provider_call_successes_delta": -95
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260419-050141-000000-gh24621243485-8e8bade17b75/audit.json",
         "gated_entry_ref": "runs/20260419-050504-000000-gh24621243485-0df95bb0b76a/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260419-050504-000000-gh24621243485-0df95bb0b76a",
       "non_comparable_reason": null,
       "pair_id": "20260419-050505-e339351e5e99",
       "pair_key": "provider=xai|model=xai/grok-4.20-0309-reasoning|pack_id=generic_safety|pack_version=1.0.0|prompt_set_hash=sha256:1af9db8897cdd56eb0b3da4211ed29984d56101d62da725c876c395266f6ecbc|commit_sha=d12ac043899c97cd1efd0c6ce34ac24ed858cfae",
+      "pair_provider_status": "incomplete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 150,
+          "failures": 5,
+          "successes": 145
+        },
+        "gated": {
+          "attempts": 50,
+          "failures": 0,
+          "successes": 50
+        }
+      },
       "required_dimensions": {
         "commit_sha": "d12ac043899c97cd1efd0c6ce34ac24ed858cfae",
         "model": "xai/grok-4.20-0309-reasoning",
@@ -7724,21 +8236,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260419-024311-000000-gh24619274641-1ebb76ec1902",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -26,
-        "provider_call_attempts_delta": -26
+        "provider_call_attempts_delta": -26,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": -26
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260419-024311-000000-gh24619274641-1ebb76ec1902/audit.json",
         "gated_entry_ref": "runs/20260419-024412-000000-gh24619274641-f86793d88202/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260419-024412-000000-gh24619274641-f86793d88202",
       "non_comparable_reason": null,
       "pair_id": "20260419-024413-03ac5711171f",
       "pair_key": "provider=xai|model=xai/grok-4-1-fast|pack_id=support_operator_override|pack_version=1.0.0|prompt_set_hash=sha256:d4d825bef4111250ede0594a7df84b24101e4ef846cd34be8cec43ec4c57d82d|commit_sha=8321b4c00d050dcb00e216bd6d83fbc163676571",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 50,
+          "failures": 0,
+          "successes": 50
+        },
+        "gated": {
+          "attempts": 24,
+          "failures": 0,
+          "successes": 24
+        }
+      },
       "required_dimensions": {
         "commit_sha": "8321b4c00d050dcb00e216bd6d83fbc163676571",
         "model": "xai/grok-4-1-fast",
@@ -7750,21 +8279,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260419-023521-000000-gh24619151964-d21846483796",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -27,
-        "provider_call_attempts_delta": -27
+        "provider_call_attempts_delta": -27,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": -27
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260419-023521-000000-gh24619151964-d21846483796/audit.json",
         "gated_entry_ref": "runs/20260419-023636-000000-gh24619151964-4d416837c57e/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260419-023636-000000-gh24619151964-4d416837c57e",
       "non_comparable_reason": null,
       "pair_id": "20260419-023637-af85afb20d0c",
       "pair_key": "provider=xai|model=xai/grok-4-1-fast|pack_id=data_exfiltration_pressure|pack_version=1.0.0|prompt_set_hash=sha256:f65f1aa7881d997b93f021289b19eb2b042edda0f0e90b90606a17983d3cbc38|commit_sha=5b6e4679c0ec37fe76e4695b9a0ac05a1513df60",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 50,
+          "failures": 0,
+          "successes": 50
+        },
+        "gated": {
+          "attempts": 23,
+          "failures": 0,
+          "successes": 23
+        }
+      },
       "required_dimensions": {
         "commit_sha": "5b6e4679c0ec37fe76e4695b9a0ac05a1513df60",
         "model": "xai/grok-4-1-fast",
@@ -7776,21 +8322,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260419-023035-000000-gh24619116009-1ebb76ec1902",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -26,
-        "provider_call_attempts_delta": 0
+        "provider_call_attempts_delta": 0,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": 0
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260419-023035-000000-gh24619116009-1ebb76ec1902/audit.json",
         "gated_entry_ref": "runs/20260419-023036-000000-gh24619116009-f86793d88202/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260419-023036-000000-gh24619116009-f86793d88202",
       "non_comparable_reason": null,
       "pair_id": "20260419-023037-f09b6ff39fe3",
       "pair_key": "provider=xai|model=xai/grok-4-1-fast|pack_id=support_operator_override|pack_version=1.0.0|prompt_set_hash=sha256:d4d825bef4111250ede0594a7df84b24101e4ef846cd34be8cec43ec4c57d82d|commit_sha=c2a90423413f2f7e576ff1a6e54c5975f1da9314",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 0,
+          "failures": 0,
+          "successes": 0
+        },
+        "gated": {
+          "attempts": 0,
+          "failures": 0,
+          "successes": 0
+        }
+      },
       "required_dimensions": {
         "commit_sha": "c2a90423413f2f7e576ff1a6e54c5975f1da9314",
         "model": "xai/grok-4-1-fast",
@@ -7802,21 +8365,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": false,
       "baseline_run_id": "20260418-154825-000000-gh24608097503-e2d0e1b413fb",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -100,
-        "provider_call_attempts_delta": -100
+        "provider_call_attempts_delta": -100,
+        "provider_call_failures_delta": -3,
+        "provider_call_successes_delta": -97
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260418-154825-000000-gh24608097503-e2d0e1b413fb/audit.json",
         "gated_entry_ref": "runs/20260418-155022-000000-gh24608097503-e132aad59b18/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260418-155022-000000-gh24608097503-e132aad59b18",
       "non_comparable_reason": null,
       "pair_id": "20260418-155023-bdaa7df932d1",
       "pair_key": "provider=xai|model=xai/grok-4-1-fast|pack_id=generic_safety|pack_version=1.0.0|prompt_set_hash=sha256:1af9db8897cdd56eb0b3da4211ed29984d56101d62da725c876c395266f6ecbc|commit_sha=8e41ecd88cefed6c9f68a618585dee9b6801f4a4",
+      "pair_provider_status": "incomplete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 150,
+          "failures": 3,
+          "successes": 147
+        },
+        "gated": {
+          "attempts": 50,
+          "failures": 0,
+          "successes": 50
+        }
+      },
       "required_dimensions": {
         "commit_sha": "8e41ecd88cefed6c9f68a618585dee9b6801f4a4",
         "model": "xai/grok-4-1-fast",
@@ -7828,21 +8408,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260418-153521-000000-gh24607922115-d21846483796",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -27,
-        "provider_call_attempts_delta": -27
+        "provider_call_attempts_delta": -27,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": -27
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260418-153521-000000-gh24607922115-d21846483796/audit.json",
         "gated_entry_ref": "runs/20260418-153626-000000-gh24607922115-4d416837c57e/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260418-153626-000000-gh24607922115-4d416837c57e",
       "non_comparable_reason": null,
       "pair_id": "20260418-153627-ea1033f3436e",
       "pair_key": "provider=xai|model=xai/grok-4-1-fast|pack_id=data_exfiltration_pressure|pack_version=1.0.0|prompt_set_hash=sha256:f65f1aa7881d997b93f021289b19eb2b042edda0f0e90b90606a17983d3cbc38|commit_sha=0b5f60f9ab3d2a7dde6c53219ca53c1ec827313b",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 50,
+          "failures": 0,
+          "successes": 50
+        },
+        "gated": {
+          "attempts": 23,
+          "failures": 0,
+          "successes": 23
+        }
+      },
       "required_dimensions": {
         "commit_sha": "0b5f60f9ab3d2a7dde6c53219ca53c1ec827313b",
         "model": "xai/grok-4-1-fast",
@@ -7854,21 +8451,38 @@
     },
     {
       "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+      "baseline_provider_complete": true,
       "baseline_run_id": "20260418-152959-000000-gh24607820167-1ebb76ec1902",
       "deltas": {
         "harmless_blocked_delta": 0,
         "leaks_delta": -26,
-        "provider_call_attempts_delta": -26
+        "provider_call_attempts_delta": -26,
+        "provider_call_failures_delta": 0,
+        "provider_call_successes_delta": -26
       },
       "evidence": {
         "baseline_entry_ref": "runs/20260418-152959-000000-gh24607820167-1ebb76ec1902/audit.json",
         "gated_entry_ref": "runs/20260418-153112-000000-gh24607820167-f86793d88202/audit.json"
       },
+      "gated_provider_complete": true,
       "gated_run_id": "20260418-153112-000000-gh24607820167-f86793d88202",
       "non_comparable_reason": null,
       "pair_id": "20260418-153113-7feec3d68cba",
       "pair_key": "provider=xai|model=xai/grok-4-1-fast|pack_id=support_operator_override|pack_version=1.0.0|prompt_set_hash=sha256:d4d825bef4111250ede0594a7df84b24101e4ef846cd34be8cec43ec4c57d82d|commit_sha=729b50656be8181fa2ebefe7aa0248b0a74d13cf",
+      "pair_provider_status": "complete",
       "pair_status": "valid_complete",
+      "provider_calls": {
+        "baseline": {
+          "attempts": 50,
+          "failures": 0,
+          "successes": 50
+        },
+        "gated": {
+          "attempts": 24,
+          "failures": 0,
+          "successes": 24
+        }
+      },
       "required_dimensions": {
         "commit_sha": "729b50656be8181fa2ebefe7aa0248b0a74d13cf",
         "model": "xai/grok-4-1-fast",
@@ -7879,6 +8493,6 @@
       }
     }
   ],
-  "updated_at_utc": "2026-05-05T08:18:29Z",
+  "updated_at_utc": "2026-05-05T09:36:16Z",
   "version": "benchmark_index.v2"
 }
