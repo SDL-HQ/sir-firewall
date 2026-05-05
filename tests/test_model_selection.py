@@ -54,3 +54,17 @@ def test_normalize_live_invocation_model_keeps_openai_unchanged():
         requested_model="gpt-4.1-mini",
     )
     assert normalized == "gpt-4.1-mini"
+
+
+def test_validate_execution_selection_accepts_new_openai_models():
+    provider, model = validate_execution_selection(provider="openai", model="gpt-5.5", mode="audit", env={})
+    assert provider == "openai"
+    assert model == "gpt-5.5"
+
+
+def test_validate_execution_selection_rejects_removed_openai_model():
+    try:
+        validate_execution_selection(provider="openai", model="gpt-4o-mini", mode="audit", env={})
+        assert False, "expected validation failure"
+    except ValueError as exc:
+        assert "unsupported model" in str(exc)
