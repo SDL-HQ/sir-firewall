@@ -3,7 +3,7 @@
     "version": "2025-12-05-R3",
     "templates": {
       "EU-AI-Act-ISC-v1": {
-        "description": "Baseline ISC template for 2025 Grok-3 suite",
+        "description": "Baseline ISC template for SIR governance evaluations",
         "max_tokens": 2000
       },
       "HIPAA-ISC-v1": {
@@ -30,6 +30,6 @@
       "high_risk_patterns": []
     }
   },
-  "payload_hash": "sha256:560449675ccccc87d47bf32cfec4e5c694998580aeb9ee6caaa05427d3fb03a5",
-  "signature": "OwlPn59hZkURFjOsYwerqWBHVTOOG6w2sjQEltMaVE0SRaQf9TN+y9Hbk7U/VPhDd7MjajhBN0qqtkof7+kgudM5AYNfj7niEemvSJGlVVF97aKAj9AMugaifTCrTcQlYJYbr3+N6qTPJX0zcGm5fqhIomOCVguXSg4cKcOvgOSRYO8Bf52Xzjvd4dQr03PyuyG/dtkfBqTEtXKbtycCAegfuJnVevcaGk/fNum6o+VyI58UJbMtoX4GcRXx23B1nwKlZ9BBQ1vz0UJ5osGtkgCElKUX3A/SCSgLnZY6ClwIPNUrLIQZ2d0EPNrIik75P3Imx23pdSFN2dsfNB17/NLmCK9LwmzHP+TcaPszbcdDF5oWsFNQL10eWuNiZAcS/fx+gbFeqpR50Se7NdUf1HgtSZELGw5gyp2RjPm66zoSL8HIcKbBfKvWoojY+ZFRsjmuHGzO038XdCKXIH5tgb4/OaMyq+dKNopXSBnpjt04AC6Ao9cNPWmAsxHXCo3tsyb2qVHnFdoT4otqzYVmTrVb80cF93Unq79molQRHmnpIS6NCZc11AV+GYwt/AGIiU+wTXcvScxXniYPln/vOR8JUnZWVKACBqFbjE1YzfX0srIa49scgMZVGzlboCM7HslVEPE5NpIS5+yfQAa/nRk1W61zQo1WwHioIlQp3Mo="
+  "payload_hash": "sha256:7192330d02108c46cfc4791e7b01ccfb9efb96c90b06505c39a8e20dcfd353f4",
+  "signature": "HkEdNMwc2ZF/PifB8oF2O+gaJ7Ah1XmTd8R2FIIwTeHgiXGIa0ckYEFTA7BsKFEMWhGZxOztgfV39MZ8i7VFK2CW2itFs3AGvLym7Re6xGAhNOUgCCeY8oTGdaf6YnNAh+yRIEhdLHaJGvntHhFtkoyWgWcFtf6pUfZDg8fDsy+GU5rxEBAjJoVJeLbTlRqyTGS6s+ZHGsXYbRHGxvE2ImYxvhUKaTg6bicxkn3Odhhe0VNq7raDKoS32nC6WJQZAxSKZQ++koWps7rsqVt8QQX6MpSbzDSs7L3yHcldY1/akDUYKwTAVhwG3LhbpbmTmMRVogoAETQJr6lFLWXT8s6PoqjDbllWaKqk7KyEUCmzgIzMdf6edAhpDEmjnf0wNTQmtSZttrJBKHxLf/ti5Eeeo27jKM35R6vAOw8vtYo8lGQ8XO+bM8QLXoB4AOk/ycjJNxWJrBDUxiVSd2H78K2BBVWUz0d58iYqbXQ9g3cqmva+7yuaTRK3c+HShBCLPSFs7LE/DJjA8ZVi0CD4pa64mmKBFzrNotrw8x3wnhBfq9xbnQ1y59ekmr9oM0VVickBbaSmwhCLGxOJKz3JUQwARh4yCLq3VTfr7gPCfzfqHcY6dfhLH43W8tzfDbQKEDrzsq0CcQNhmMUOUMyZxJ+ZRngjC2B8swhpRuXpeBU="
 }
