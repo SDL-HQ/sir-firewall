@@ -408,6 +408,8 @@ def load_domain_pack(pack_id: str | None = None) -> Dict[str, Any]:
     env_pack = (os.getenv("SIR_ISC_PACK") or "").strip()
     explicit_requested = bool(arg_pack) or bool(env_pack)
     effective_pack = arg_pack or env_pack or "generic_safety"
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", effective_pack):
+        raise ValueError(f"Invalid domain ISC pack id: {effective_pack!r}.")
 
     base_dir = Path(__file__).resolve().parent
     pack_path = base_dir / "policy" / "isc_packs" / f"{effective_pack}.json"
@@ -1479,7 +1481,7 @@ def validate_sir(
         }
 
     ok, itgl_log, prev_hash = _check_isc_structure(isc, itgl_log, prev_hash)
-    if not ok and strict_isc:
+    if not ok:
         return _build_block("invalid_isc_schema", itgl_log, domain_pack=domain_pack_id)
 
     ok, itgl_log, prev_hash = _check_crypto(

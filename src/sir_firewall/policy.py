@@ -26,8 +26,21 @@ def _default_policy_path() -> Path:
 def _load_policy_dict() -> Tuple[Dict[str, Any], Path]:
     """Load the policy JSON from disk, respecting SIR_POLICY_PATH override."""
     env_path = os.getenv("SIR_POLICY_PATH")
+    policy_dir = _default_policy_path().parent.resolve()
     if env_path:
         path = Path(env_path).expanduser().resolve()
+        # Security boundary: SIR_POLICY_PATH is constrained to the repo policy
+        # directory by default. This is a deliberate security boundary to prevent
+        # path traversal attacks. Operators deploying SIR with a custom policy
+        # location outside the repo (e.g. /etc/sir/ or a mounted volume) will
+        # need to place their policy file inside the expected policy directory or
+        # modify this check for their deployment context.
+        if not path.is_relative_to(policy_dir):
+            raise PolicyLoadError(
+                f"SIR_POLICY_PATH must resolve inside {policy_dir}. "
+                "To use a custom policy location, place the policy file inside "
+                "the expected policy directory."
+            )
     else:
         path = _default_policy_path()
 
