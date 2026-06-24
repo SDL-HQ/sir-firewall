@@ -529,7 +529,20 @@ def normalize_obfuscation(text: str) -> str:
                     candidate = decoded.decode("utf-8", errors="ignore").lower()
                     if len(candidate) > 15 and any(
                         k in candidate
-                        for k in ["ignore", "disregard", "obey", "dan", "uncensored"]
+                        for k in [
+                            "ignore",
+                            "disregard",
+                            "obey",
+                            "dan",
+                            "uncensored",
+                            "bypass",
+                            "system prompt",
+                            "tool message",
+                            "decode",
+                            "deny being an ai",
+                            "suppress the audit log",
+                            "social score",
+                        ]
                     ):
                         return candidate.strip()
                 except Exception:
@@ -543,6 +556,29 @@ def normalize_obfuscation(text: str) -> str:
         payload = rot_match.group(1)
         decoded = codecs.decode(payload, "rot13")
         t = t.replace(payload, decoded)
+
+    hex_marker_match = re.search(r"\bhex\s*:\s*([0-9a-fA-F][0-9a-fA-F\s,._-]{6,})", t)
+    if hex_marker_match:
+        payload = hex_marker_match.group(1)
+        hex_blob = re.sub(r"[^0-9a-fA-F]", "", payload)
+        if len(hex_blob) >= 8 and len(hex_blob) % 2 == 0:
+            try:
+                decoded = bytes.fromhex(hex_blob).decode("utf-8", errors="ignore").lower()
+                if decoded:
+                    t = t.replace(payload, decoded)
+            except ValueError:
+                pass
+
+    hex_escape_match = re.search(r"((?:\\x[0-9a-fA-F]{2}){4,})", raw)
+    if hex_escape_match:
+        payload = hex_escape_match.group(1)
+        hex_blob = "".join(re.findall(r"\\x([0-9a-fA-F]{2})", payload))
+        try:
+            decoded = bytes.fromhex(hex_blob).decode("utf-8", errors="ignore").lower()
+            if decoded:
+                t = t.replace(payload.lower(), decoded)
+        except ValueError:
+            pass
 
     # Marker recovery for split punctuation / repeated-char / tight leet+homoglyph
     # obfuscation. We only recover a fixed marker list and do not rewrite content.
@@ -1545,6 +1581,8 @@ def validate_sir(
         "domain_pack": domain_pack_id,
         "isc_template": isc_template,
         "itgl_final_hash": f"sha256:{final_hash}",
+        "governance_scope": "deployment",
+        "crypto_enforced": crypto_enforced,
     }
     if pack_version:
         governance_context["pack_version"] = pack_version
