@@ -4,7 +4,7 @@ import json
 import hashlib
 from pathlib import Path
 
-from sir_firewall import validate_sir
+from sir_firewall import core, validate_sir
 
 
 def _load_red_team_suite_module():
@@ -78,14 +78,14 @@ def test_run_summary_flags_use_effective_pack_context(tmp_path, monkeypatch):
             ungated_baseline=False,
         ),
     )
-    monkeypatch.setattr(
-        rts,
-        "load_domain_pack",
-        lambda pack_id=None: {
+    def _fake_load_domain_pack(pack_id=None):
+        return {
             "pack_id": pack_id or "generic_safety",
             "flags": {"CRYPTO_ENFORCED": True, "CHECKSUM_ENFORCED": False},
-        },
-    )
+        }
+
+    monkeypatch.setattr(rts, "load_domain_pack", _fake_load_domain_pack)
+    monkeypatch.setattr(core, "load_domain_pack", _fake_load_domain_pack)
 
     rts.main()
 
@@ -95,6 +95,8 @@ def test_run_summary_flags_use_effective_pack_context(tmp_path, monkeypatch):
     assert summary["pack_id"] == "pci_payments"
     assert summary["selected_pack_version"] == "1.0.0"
     assert summary["flags"] == {"CRYPTO_ENFORCED": True, "CHECKSUM_ENFORCED": False}
+    assert summary["governance_scope"] == "deployment"
+    assert summary["crypto_enforced"] is True
 
 
 def test_run_summary_separates_selected_and_effective_pack_when_selection_is_implicit(tmp_path, monkeypatch):
@@ -202,6 +204,8 @@ def test_validate_sir_binds_pack_identity_into_itgl_context_and_governance_conte
     assert context_entry["input"]["pack_hash"] == "sha256:testpackhash"
     assert verdict["governance_context"]["pack_version"] == "1.0.0"
     assert verdict["governance_context"]["pack_hash"] == "sha256:testpackhash"
+    assert verdict["governance_context"]["governance_scope"] == "deployment"
+    assert verdict["governance_context"]["crypto_enforced"] is False
 
 
 def test_red_team_suite_passes_selected_pack_identity_context_to_validate_sir(tmp_path, monkeypatch):
