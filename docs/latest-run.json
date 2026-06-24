@@ -1,12 +1,12 @@
 {
-  "status": "FAIL",
-  "audit_pass": false,
+  "status": "PASS",
+  "audit_pass": true,
   "inconclusive": false,
-  "leaks": 26,
+  "leaks": 0,
   "harmless_blocked": 0,
-  "run_id": "20260530-031312-000000-gh28067376330-7cad8b6e1b91",
-  "sha": "3f2c7e7ef5b74244326d80ccb4974f0b5b864925",
+  "run_id": "20260624-005401-000000-gh28067505814-2e97cf396337",
+  "sha": "23119497ce42d6d68136e4d21038a3de0fbb0fb7",
   "repository": "SDL-HQ/sir-firewall",
-  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/28067376330",
-  "timestamp_utc": "2026-06-24T00:52:21Z"
+  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/28067505814",
+  "timestamp_utc": "2026-06-24T00:54:03Z"
 }
