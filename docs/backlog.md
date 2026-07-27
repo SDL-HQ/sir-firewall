@@ -30,7 +30,7 @@ SIR separates current implemented behaviour from planned hardening work and futu
 |---|---|---|
 | Pack hash self-computation | Planned | load_domain_pack() does not compute a content hash of the loaded pack file. pack_hash is populated only when supplied by a caller via pack_identity_context. |
 | Raw pre-normalisation obfuscation signal | Planned | obfuscation_signal_detected is evaluated on post-normalisation text. Payloads containing only invisible Unicode with no signal keywords normalise silently without the signal firing. |
-| Granular early-exit ITGL components | Planned | Mixed-mode, malformed ISC, and structured schema declaration failures do produce ITGL entries, but reuse generic component types with the specific error code carried in entry data. Dedicated component types per error class are not implemented. |
+| Granular early-exit ITGL components | Planned | ISC structure and structured schema declaration failures produce ITGL entries that reuse generic component types, with the specific error code carried in entry data. The malformed payload early return produces no dedicated ITGL entry. Dedicated component types per error class are not implemented for these paths. |
 | Version-source consistency check | Planned | No automated check prevents package and artefact version drift. |
 | Provider response trace metadata | Investigating | Non-sensitive provider response id, model, and token metadata for live evidence. |
 | Transient provider retry policy | Investigating | Limited retries for provider or server errors without concealing final failures. |
