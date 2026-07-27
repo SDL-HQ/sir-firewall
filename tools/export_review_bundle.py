@@ -16,7 +16,7 @@ EXPLICIT_FILES: tuple[str, ...] = (
     "docs/evaluator-technical-explainer.md",
     "docs/external-technical-review-prep.md",
     "docs/benchmark-cycle.v1.md",
-    "docs/d5-benchmark-first-cycle-review.md",
+    "docs/archive/d5-benchmark-first-cycle-review.md",
     "docs/compliance-evidence-map.md",
     "docs/latest-run.json",
     "proofs/latest-audit.json",

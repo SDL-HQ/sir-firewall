@@ -154,6 +154,7 @@ Current evidence and implementation do not claim that SIR:
 - prompt-layer attack success is not just a model-quality issue; it is an exposure pathway where unsafe or deceptive requests can reach inference and create downstream operational, regulatory, or liability exposure
 - SIR reduces that exposure by blocking classes of prompt-layer requests before inference and by preserving a signed audit trail showing what was attempted, what was blocked, and what was allowed
 - for review, dispute, or claims handling, the resulting artefacts provide replayable evidence of gate behavior and decision lineage rather than post-hoc narrative alone
+- replaying a recorded gate decision requires the same request inputs and the repository configuration at the recorded `commit_sha`; published benchmark inputs are available in that repository revision, while production inputs must be supplied by the operator
 - `0` harmless blocked in the measured reductions means the current bounded rule gains were not achieved by broadly degrading normal use in the tested benign slice
 - this does not eliminate liability or certify compliance, but it does improve the evidence position and control position around prompt-layer failure modes
 

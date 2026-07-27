@@ -72,7 +72,7 @@ Review in this order.
    - `docs/benchmark-cycle.v1.md`
 
 7. First benchmark-cycle execution note (D5)
-   - `docs/d5-benchmark-first-cycle-review.md`
+   - `docs/archive/d5-benchmark-first-cycle-review.md`
 
 8. Key authority and trust-readiness semantics
    - `docs/key-governance-readiness.md`
