@@ -29,6 +29,7 @@ STRUCTURED_REQUEST_FIELD = "structured_request"
 TOOL_RESULT_FIELD = "tool_result"
 STRUCTURED_REASON = "structured_validation_failed"
 TOOL_RESULT_REASON = "tool_result_validation_failed"
+MIXED_MODE_REASON = "mixed_mode_validation_failed"
 STRUCTURED_TEMPLATE_ID = "EU-AI-Act-ISC-v1"
 STRUCTURED_SCHEMA_DECLARATION_KEY = "structured_request_schema"
 STRUCTURED_SCHEMA_ID = "account_recovery_challenge_request_v1"
@@ -213,6 +214,12 @@ _RULE_GROUPS: Dict[str, Dict[str, str]] = {
         "rule_id": "SIR-RULE-TOOL-RESULT-VALIDATION",
         "rule_description": "Tool-result input failed deterministic schema validation checks.",
         "rule_category": "tool_result_validation",
+        "rule_outcome_class": "BLOCK",
+    },
+    MIXED_MODE_REASON: {
+        "rule_id": "SIR-RULE-MIXED-MODE-VALIDATION",
+        "rule_description": "Request declared more than one ingress mode; ingress modes are mutually exclusive.",
+        "rule_category": "mixed_mode_validation",
         "rule_outcome_class": "BLOCK",
     },
 }
@@ -642,7 +649,7 @@ def _build_block(
         result["domain_pack"] = domain_pack
     if rule_hits:
         result["rule_hits"] = list(rule_hits)
-    rule_group = _RULE_GROUPS.get(block_type or reason)
+    rule_group = _RULE_GROUPS.get(block_type or "") or _RULE_GROUPS.get(reason)
     if rule_group is not None:
         result["triggered_rule"] = dict(rule_group)
     return result
@@ -1009,6 +1016,29 @@ def _reject_tool_result_validation(
     )
 
 
+def _reject_mixed_mode_validation(
+    code: str,
+    detail: str,
+    itgl_log: List[Dict[str, Any]],
+    prev_hash: str,
+    domain_pack: str | None = None,
+) -> Dict[str, Any]:
+    itgl_log, _ = _append_itgl(
+        "mixed_mode_validation",
+        "fail",
+        {"code": code},
+        {"detail": detail},
+        itgl_log,
+        prev_hash,
+    )
+    return _build_block(
+        MIXED_MODE_REASON,
+        itgl_log,
+        block_type=code,
+        domain_pack=domain_pack,
+    )
+
+
 def _load_structured_request_object(raw: Any) -> Tuple[Dict[str, Any] | None, str | None]:
     if isinstance(raw, dict):
         return raw, None
@@ -1344,8 +1374,8 @@ def validate_sir(
             domain_pack=None,
         )
     if sum(1 for active in (isc_mode, structured_mode, tool_result_mode) if active) > 1:
-        return _reject_tool_result_validation(
-            "tool_result_mixed_mode_not_allowed",
+        return _reject_mixed_mode_validation(
+            "multiple_ingress_modes_not_allowed",
             "multiple_ingress_modes_present",
             itgl_log,
             prev_hash,
@@ -1469,6 +1499,7 @@ def validate_sir(
         )
 
     flags = domain_cfg.get("flags", {})
+    # Retained for policy and pack schema compatibility; ISC structure rejection is now unconditional.
     strict_isc = bool(flags.get("STRICT_ISC_ENFORCEMENT", STRICT_ISC_ENFORCEMENT))
     checksum_enforced = bool(flags.get("CHECKSUM_ENFORCED", CHECKSUM_ENFORCED))
     crypto_enforced = bool(flags.get("CRYPTO_ENFORCED", CRYPTO_ENFORCED))

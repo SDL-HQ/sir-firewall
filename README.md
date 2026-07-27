@@ -1,4 +1,4 @@
-# SIR: Signal Integrity Resolver Version 2.1
+# SIR: Signal Integrity Resolver Version 2.2
 
 [![SIR Real Governance Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
@@ -204,12 +204,13 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 * [Minimal pilot runbook](docs/minimal-pilot-runbook.md) (procedural cold-start path)
 * [Evaluator technical explainer](docs/evaluator-technical-explainer.md) (evaluation and interpretation path)
 * [Assurance kit](docs/assurance-kit.md) (supporting evaluation and verification reference)
-* [Evidence perimeter note](docs/evidence-perimeter.v2.md) (current bounded benchmark perimeter)
+* [Evidence perimeter note](docs/evidence-perimeter.v4.md) (current bounded benchmark perimeter)
+* [Public backlog](docs/backlog.md) (known constraints and planned hardening)
 * [External technical review preparation](docs/external-technical-review-prep.md)
 * [Engineer guide](docs/engineer-guide.md) (local runs, signing, serving)
 * [Trial guide](docs/trial-guide.md) (auditors, insurers, evidence capture)
 * [Key governance readiness](docs/key-governance-readiness.md) (authority map and `CRYPTO_ENFORCED` checklist)
-* [Release notes](docs/release-notes-2.1.md) (2.1 closeout)
+* [Release notes](docs/release-notes-2.2.md) (2.2 closeout)
 * [Retention / Tier B export](RETENTION.md)
 
 ---
