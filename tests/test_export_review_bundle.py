@@ -23,7 +23,7 @@ def _make_minimal_repo(root: Path, *, malformed_latest_run: bool = False, omit_l
         "docs/evaluator-technical-explainer.md",
         "docs/external-technical-review-prep.md",
         "docs/benchmark-cycle.v1.md",
-        "docs/d5-benchmark-first-cycle-review.md",
+        "docs/archive/d5-benchmark-first-cycle-review.md",
         "docs/compliance-evidence-map.md",
         "proofs/latest-audit.html",
         "proofs/runs/index.html",

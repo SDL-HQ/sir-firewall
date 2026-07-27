@@ -13,16 +13,39 @@ SIR separates current implemented behaviour from planned hardening work and futu
 - Future candidate
 - Not in scope
 
-## Current domain packs
+## Current pack surfaces
 
-| Pack | Status | Notes |
-|---|---|---|
-| generic_safety | Current | Baseline coverage for bypass attempts, harmful requests, and prompt injection patterns. |
-| data_exfiltration_pressure | Current | Attempts to extract restricted content, secrets, or internal data through pressure and reframing. |
-| support_operator_override | Current | Override-style prompts invoking authority, support escalation, or operator language. |
-| eu_ai_act_compliance_pressure | Current | Pressure patterns testing whether stated governance, disclosure, and control boundaries hold. Bounded partial-coverage pack, not a full-pass pack. |
-| hipaa_mental_health | Current | Domain pack for HIPAA-bound mental health workloads. |
-| pci_payments | Current | Domain pack for PCI-style payment workloads. |
+ISC policy packs and benchmark test suites are distinct artefacts. ISC policy packs configure the runtime gate, while benchmark test suites provide prompts that the runner executes to produce evidence. Four identifiers exist in both surfaces: `generic_safety`, `data_exfiltration_pressure`, `support_operator_override`, and `eu_ai_act_compliance_pressure`. `hipaa_mental_health` and `pci_payments` are policy packs with no corresponding test suite.
+
+### ISC policy packs
+
+These runtime configurations are loaded by `load_domain_pack()`. They control allowed ISC templates, per-template friction limits, enforcement flags, and, where noted, a `structured_request_schema`.
+
+| Policy pack | Configuration |
+|---|---|
+| data_exfiltration_pressure | Baseline template limits and enforcement flags; declares `structured_request_schema`. |
+| eu_ai_act_compliance_pressure | Baseline template limits and enforcement flags; no structured schema. |
+| generic_safety | Baseline template limits and enforcement flags; declares `structured_request_schema`. |
+| hipaa_mental_health | Tighter template limits for HIPAA-bound mental-health workloads and enforcement flags; no structured schema. |
+| pci_payments | Payment-oriented template limits, including the tightest PCI limit, and enforcement flags; no structured schema. |
+| support_operator_override | Baseline template limits and enforcement flags; declares `structured_request_schema`. |
+
+### Current benchmark test suites
+
+These substantive prompt sets are active, public registry entries executed by the runner to produce evidence.
+
+| Benchmark suite | Size |
+|---|---:|
+| generic_safety | 150 rows |
+| eu_ai_act_compliance_pressure | 150 rows |
+| data_exfiltration_pressure | 50 rows |
+| support_operator_override | 50 rows |
+| account_recovery_fraud | 8 rows |
+| scenario_injection_chain | 15 turns |
+
+**Other registered suites:** `mental_health_clinical` has 25 rows and `encoded` visibility because its risk class is `encoded_high_risk`; its prompts are stored base64-encoded and it is not listed by `sir packs list` by design. `scenario_tool_injection` has 5 turns and is active and public. `canary_fail` is a draft/internal benchmark infrastructure check.
+
+**Non-registry fixtures:** `structured_account_recovery_benchmark.json` has 13 cases and is loaded directly by `tests/test_structured_benchmark_pack.py`. `tool_result_ingress_benchmark.json` has 4 cases and is loaded directly by `tests/test_tool_result_benchmark_pack.py`. Both are exploratory fixtures outside the registry and outside `sir packs list`.
 
 ## Evidence hardening backlog
 
@@ -36,6 +59,8 @@ SIR separates current implemented behaviour from planned hardening work and futu
 | Transient provider retry policy | Investigating | Limited retries for provider or server errors without concealing final failures. |
 | RSA-PSS signature padding | Planned | Certificate signing and verification currently use PKCS1v15. RSA-PSS is the recommended padding for new systems. |
 | CJK token estimation | Planned | _estimate_tokens() uses a character-based approximation that underestimates token count for CJK text, making friction limits more permissive for non-whitespace-delimited languages. |
+| Review bundle contents | Investigating | tools/export_review_bundle.py includes a superseded historical benchmark review in every exported compliance bundle. Reviewer-facing documentation also references it in two places. Whether superseded records belong in a review bundle intended to convey current state needs deciding. |
+| Silent skip on missing archive copy targets | Planned | publish_run.py silently skips --copy targets that do not exist. A run archive can be published with expected evidence files absent and no warning emitted. Consider warning on skipped targets, or recording skipped paths in the manifest so an archive consumer can tell the difference between a file that was never produced and one that was excluded. |
 
 ## Known constraints
 
@@ -50,15 +75,18 @@ SIR separates current implemented behaviour from planned hardening work and futu
 
 Possible expansion areas only. Not current implemented coverage.
 
-| Candidate | Status |
+| Candidate | Description |
 |---|---|
-| Tool result injection pressure | Future candidate |
-| Mental health clinical | Future candidate |
-| PII protection | Future candidate |
-| Financial services | Future candidate |
-| Legal and contracts | Future candidate |
-| Insurance and underwriting | Future candidate |
-| Code generation safety | Future candidate |
+| Mental Health Clinical | Clinical and mental-health interaction cases. |
+| PII Protection | Identity data, re-identification, and personal data handling cases. |
+| Healthcare Compliance | Healthcare process and restricted-handling cases. |
+| Financial Services | Transaction, account, and high-trust financial handling cases. |
+| Legal & Contracts | Contractual and sensitive document handling cases. |
+| Insurance & Underwriting | Evidence review and underwriting-adjacent workflow cases. |
+| Code Generation Safety | Code, command, and secret-handling cases. |
+| Educational Content | Restricted-topic and assessment-integrity cases. |
+
+Seven of these candidates have placeholder suites in the repository containing a single row. They are registered as draft/internal/demo and are not available through `sir packs list`. Mental Health Clinical is listed as a future candidate for the domain area; a separate `mental_health_clinical` test suite with 25 encoded rows exists and is registered active.
 
 ## Not in scope
 

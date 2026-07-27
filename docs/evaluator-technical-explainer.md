@@ -59,7 +59,7 @@ Explanatory documentation describes how to read those surfaces; it does not repl
 
 ## What SIR proves
 
-SIR proves deterministic gate behavior for the evaluated request path under the specific run context.
+SIR evidence attests to the recorded deterministic gate decision for the evaluated request path under the specific run context. That gate decision—not any model response—is reproducible given the same request inputs and the configuration in the repository at the recorded `commit_sha`; public benchmark inputs are available in that repository revision, while production inputs must be supplied by the operator.
 
 Concretely, SIR evidence can demonstrate:
 
@@ -75,11 +75,13 @@ This is path-bounded evidence, not a global claim over all system behavior.
 
 SIR does not prove model alignment, complete deployment safety, or organizational compliance by itself.
 
+Certificate signature verification establishes payload integrity and signature validity; it does not independently establish that the gate executed as recorded.
+
 Current SIR does **not** claim:
 
 - native multimodal gating
 - deep stateful conversational governance
-- native tool/function-call governance
+- native tool/function-call governance across external action graphs
 - full structured enterprise action-graph governance
 - internal model reasoning visibility
 - post-inference model behavior governance
@@ -173,6 +175,8 @@ This verification proves payload integrity + signature validity only; it does no
 ```bash
 python3 tools/validate_certificate_contract.py proofs/latest-audit.json
 ```
+
+Certificates generated before SIR 2.2 remain signature-valid historical evidence, but they do not satisfy the current evidence contract because `governance_scope` and `crypto_enforced` are now required fields. This is expected: signature verification answers whether the signed payload is intact and verifies against the key, while contract validation answers whether the certificate conforms to the current schema. A pre-2.2 certificate can therefore pass signature verification and fail current contract validation without invalidating its historical evidence status.
 
 ### 3) Verify local/published certificate via CLI
 

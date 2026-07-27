@@ -1,5 +1,7 @@
 # SIR current evidence perimeter v3
 
+> Historical evidence state dated 2026-05-03. Not the current authoritative state. For the current perimeter, use [docs/evidence-perimeter.v4.md](evidence-perimeter.v4.md).
+
 Date (UTC): 2026-05-03
 
 ## Method note

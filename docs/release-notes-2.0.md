@@ -14,10 +14,10 @@ D-round work in this line established and aligned the following release-facing e
 
 - Canonical evaluation/verification path and semantics in `docs/assurance-kit.md`.
 - Locked benchmark contract for the first cycle in `docs/benchmark-cycle.v1.md`.
-- First-cycle execution reality and limits in `docs/d5-benchmark-first-cycle-review.md`.
+- First-cycle execution reality and limits in `docs/archive/d5-benchmark-first-cycle-review.md`.
 - Evaluator-facing technical boundary and residual-risk explainer in `docs/evaluator-technical-explainer.md`.
 - External technical review preparation path in `docs/external-technical-review-prep.md`.
-- Structured-evidence surfacing decision to keep benchmark surfaces non-analytic in `docs/d11-structured-evidence-surfacing-review.md`.
+- Structured-evidence surfacing decision to keep benchmark surfaces non-analytic in `docs/archive/d11-structured-evidence-surfacing-review.md`.
 - Retention posture clarification in `RETENTION.md`.
 - Public proof/archive surfaces and semantics (`latest-audit.*`, `latest-run.json`, `runs/index.*`) aligned to the same interpretation model.
 

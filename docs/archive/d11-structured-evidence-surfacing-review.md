@@ -20,7 +20,7 @@ Non-goals enforced in this review:
 - `spec/benchmark_index.v1.schema.json`
 - `proofs/runs/benchmark_index.v1.json`
 - `docs/benchmark-cycle.v1.md`
-- `docs/d5-benchmark-first-cycle-review.md`
+- `docs/archive/d5-benchmark-first-cycle-review.md`
 - `docs/assurance-kit.md`
 - `docs/evaluator-technical-explainer.md`
 
