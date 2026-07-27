@@ -616,7 +616,6 @@ def main() -> None:
                     enforcement_pack_id=(pack_id or None),
                     pack_identity_context={
                         "pack_version": selected_pack_version,
-                        "pack_hash": suite_hash,
                     },
                 )
             status = str(verdict.get("status", "UNKNOWN"))

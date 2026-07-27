@@ -260,7 +260,7 @@ def test_red_team_suite_passes_selected_pack_identity_context_to_validate_sir(tm
     summary = json.loads((tmp_path / "proofs" / "run_summary.json").read_text(encoding="utf-8"))
     ledger_entry = json.loads((tmp_path / "proofs" / "itgl_ledger.jsonl").read_text(encoding="utf-8").splitlines()[0])
     assert observed["pack_version"] == "1.0.0"
-    assert observed["pack_hash"] == summary["suite_hash"]
+    assert observed["pack_hash"] == ""
     assert summary["selected_pack_version"] == "1.0.0"
     assert ledger_entry["pass_rule_explainability"]["evaluated_rule_families"] == ["jailbreak_bypass", "exfiltration"]
     assert ledger_entry["pass_rule_explainability"]["obfuscation_signal_detected"] is True

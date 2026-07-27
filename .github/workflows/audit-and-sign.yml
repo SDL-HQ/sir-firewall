@@ -301,6 +301,7 @@ jobs:
           python tools/sign_policy.py
 
       - name: Generate signed certificate + HTML
+        id: generate_certificate
         if: always()
         env:
           SDL_PRIVATE_KEY_PEM: ${{ secrets.SDL_PRIVATE_KEY_PEM }}
@@ -309,28 +310,75 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
-          python tools/generate_certificate.py
+
+          output_file="$(mktemp)"
+          python tools/generate_certificate.py | tee "$output_file"
+
+          cert_path="$(
+            sed -n 's/^OUTPUT_AUDIT_JSON=//p' "$output_file" |
+              tail -n 1
+          )"
+
+          case "$cert_path" in
+            proofs/latest-audit.json|proofs/local-audit.json)
+              ;;
+            *)
+              echo "ERROR: generate_certificate.py did not emit a valid OUTPUT_AUDIT_JSON path."
+              exit 1
+              ;;
+          esac
+
+          if [ ! -f "$cert_path" ]; then
+            echo "ERROR: generated certificate does not exist: $cert_path"
+            exit 1
+          fi
+
+          echo "audit_json=$cert_path" >> "$GITHUB_OUTPUT"
+          echo "Current-run certificate: $cert_path"
 
       - name: Validate certificate contract
         if: always()
+        env:
+          AUDIT_JSON: ${{ steps.generate_certificate.outputs.audit_json }}
         run: |
           set -euo pipefail
-          python tools/validate_certificate_contract.py proofs/latest-audit.json
+
+          if [ -z "${AUDIT_JSON:-}" ] || [ ! -f "$AUDIT_JSON" ]; then
+            echo "SKIP: generate_certificate.py did not produce a current-run certificate path."
+            exit 0
+          fi
+
+          python tools/validate_certificate_contract.py "$AUDIT_JSON"
 
       - name: Verify certificate signature
         if: always()
+        env:
+          AUDIT_JSON: ${{ steps.generate_certificate.outputs.audit_json }}
         run: |
           set -euo pipefail
-          python tools/verify_certificate.py proofs/latest-audit.json
+
+          if [ -z "${AUDIT_JSON:-}" ] || [ ! -f "$AUDIT_JSON" ]; then
+            echo "SKIP: generate_certificate.py did not produce a current-run certificate path."
+            exit 0
+          fi
+
+          python tools/verify_certificate.py "$AUDIT_JSON"
 
       - name: Archive this run (P6 truth-preserving per-run archive)
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
         env:
           SDL_PRIVATE_KEY_PEM: ${{ secrets.SDL_PRIVATE_KEY_PEM }}
+          AUDIT_JSON: ${{ steps.generate_certificate.outputs.audit_json }}
         run: |
           set -euo pipefail
+
+          if [ -z "${AUDIT_JSON:-}" ] || [ ! -f "$AUDIT_JSON" ]; then
+            echo "SKIP: generate_certificate.py did not produce a current-run certificate path."
+            exit 0
+          fi
+
           python tools/publish_run.py \
-            --cert proofs/latest-audit.json \
+            --cert "$AUDIT_JSON" \
             --copy proofs/itgl_ledger.jsonl \
             --copy proofs/itgl_final_hash.txt \
             --copy proofs/latest-attempts.log \
@@ -377,6 +425,7 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
+          AUDIT_JSON: ${{ steps.generate_certificate.outputs.audit_json }}
         run: |
           set -euo pipefail
 
@@ -385,7 +434,7 @@ jobs:
           harmless="$(cat harmless_blocked.txt 2>/dev/null || echo 0)"
 
           inconclusive="false"
-          if [ ! -f "proofs/latest-audit.json" ]; then inconclusive="true"; fi
+          if [ "${AUDIT_JSON:-}" != "proofs/latest-audit.json" ]; then inconclusive="true"; fi
           if [ ! -f "proofs/run_summary.json" ]; then inconclusive="true"; fi
           if [ ! -f "proofs/itgl_final_hash.txt" ]; then inconclusive="true"; fi
           if ! grep -q '^ITGL_FINAL_HASH=' itgl_env.txt 2>/dev/null; then inconclusive="true"; fi
@@ -428,7 +477,7 @@ jobs:
           echo "LATEST_CI_RUN_URL=${ci_run_url}" >> "$GITHUB_ENV"
 
       - name: Publish latest PASS proof to docs/ (PASS only)
-        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && env.AUDIT_PASS == 'true' && env.INCONCLUSIVE != 'true'
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.generate_certificate.outputs.audit_json == 'proofs/latest-audit.json'
         run: |
           set -euo pipefail
           test -f proofs/latest-audit.html
@@ -445,6 +494,8 @@ jobs:
           path: |
             proofs/latest-audit.json
             proofs/latest-audit.html
+            proofs/local-audit.json
+            proofs/local-audit.html
             proofs/itgl_ledger.jsonl
             proofs/itgl_final_hash.txt
             proofs/run_summary.json
@@ -461,6 +512,8 @@ jobs:
 
       - name: Commit proof files back to repo (archive always; latest PASS + sidecars only)
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        env:
+          AUDIT_JSON: ${{ steps.generate_certificate.outputs.audit_json }}
         run: |
           set -euo pipefail
 
@@ -484,7 +537,7 @@ jobs:
 
             git add proofs/runs/ docs/runs/ docs/latest-run.json docs/monitor-summary.json
 
-            if [ "${AUDIT_PASS}" = "true" ]; then
+            if [ "${AUDIT_JSON:-}" = "proofs/latest-audit.json" ]; then
               git add proofs/latest-audit.json proofs/latest-audit.html || true
               git add docs/latest-audit.json docs/latest-audit.html || true
               git add policy/isc_policy.signed.json || true
@@ -635,6 +688,7 @@ jobs:
           PY
 
       - name: Run paired benchmark through SIR
+        id: run_benchmark
         env:
           DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
           DISPATCH_PROVIDER: ${{ github.event.inputs.provider || 'xai' }}
@@ -670,7 +724,28 @@ jobs:
             fi
           fi
 
-          sir benchmark run --mode "$mode" --pack "$pack" --provider "$provider" --model "$model"
+          output_file="$(mktemp)"
+          sir benchmark run --mode "$mode" --pack "$pack" --provider "$provider" --model "$model" |
+            tee "$output_file"
+
+          gated_run_id="$(
+            sed -n 's/^GATED_RUN_ID=//p' "$output_file" |
+              tail -n 1
+          )"
+
+          if [ -z "$gated_run_id" ]; then
+            echo "ERROR: benchmark did not emit GATED_RUN_ID."
+            exit 1
+          fi
+
+          gated_cert="proofs/runs/$gated_run_id/audit.json"
+          if [ ! -f "$gated_cert" ]; then
+            echo "ERROR: gated benchmark certificate not found: $gated_cert"
+            exit 1
+          fi
+
+          echo "gated_run_id=$gated_run_id" >> "$GITHUB_OUTPUT"
+          echo "gated_audit_json=$gated_cert" >> "$GITHUB_OUTPUT"
 
       - name: Prepare docs/ for GitHub Pages
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
@@ -766,8 +841,11 @@ jobs:
           print(json.dumps(latest_run_payload, ensure_ascii=False, indent=2))
           PY
 
-      - name: Compute benchmark gated PASS truth from latest audit proof
+      - name: Compute benchmark gated PASS truth from current gated audit proof
+        id: compute_benchmark_gated_pass
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        env:
+          GATED_AUDIT_JSON: ${{ steps.run_benchmark.outputs.gated_audit_json }}
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -775,22 +853,33 @@ jobs:
           import os
           from pathlib import Path
 
-          cert_path = Path("proofs/latest-audit.json")
+          gated_path_raw = os.environ.get("GATED_AUDIT_JSON", "").strip()
+          canonical_path = Path("proofs/latest-audit.json")
           gated_pass = False
 
-          if cert_path.is_file():
-              payload = json.loads(cert_path.read_text(encoding="utf-8"))
-              result = str(payload.get("result", "")).strip().upper()
-              gated_pass = (result == "AUDIT PASSED")
+          if gated_path_raw:
+              gated_path = Path(gated_path_raw)
+              if gated_path.is_file():
+                  gated_bytes = gated_path.read_bytes()
+                  payload = json.loads(gated_bytes)
+                  result = str(payload.get("result", "")).strip().upper()
+                  gated_pass = (
+                      result == "AUDIT PASSED"
+                      and canonical_path.is_file()
+                      and canonical_path.read_bytes() == gated_bytes
+                  )
 
+          value = "true" if gated_pass else "false"
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
-              env_file.write(f"BENCHMARK_GATED_PASS={'true' if gated_pass else 'false'}\n")
+              env_file.write(f"BENCHMARK_GATED_PASS={value}\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output_file:
+              output_file.write(f"gated_pass={value}\n")
 
-          print(f"BENCHMARK_GATED_PASS={'true' if gated_pass else 'false'}")
+          print(f"BENCHMARK_GATED_PASS={value}")
           PY
 
       - name: Publish latest PASS proof to docs/ (benchmark gated PASS only)
-        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && env.BENCHMARK_GATED_PASS == 'true'
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.compute_benchmark_gated_pass.outputs.gated_pass == 'true'
         run: |
           set -euo pipefail
           test -f proofs/latest-audit.html
@@ -814,6 +903,8 @@ jobs:
 
       - name: Commit benchmark files back to repo (archive + benchmark index/pairs)
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        env:
+          BENCHMARK_GATED_PASS: ${{ steps.compute_benchmark_gated_pass.outputs.gated_pass }}
         run: |
           set -euo pipefail
           git config user.name "SIR Audit Bot"
