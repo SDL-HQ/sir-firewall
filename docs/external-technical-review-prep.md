@@ -32,10 +32,11 @@ A reviewer should assess the following technical areas.
    - append-only public evidence history posture of `proofs/runs/` (as bounded in `RETENTION.md`)
    - certificate and archive signature verification posture
 
-3. Benchmark contract and first benchmark cycle evidence
+3. Benchmark contract and benchmark evidence
    - benchmark-cycle v1 contract discipline
    - row comparability semantics (`row_identity`, proof-class separation)
-   - D5 first-cycle execution reality, including blocked live sentinel row
+   - current per-run and paired evidence in `docs/runs/benchmark_index.v2.json`
+   - D5 first-cycle execution, including its blocked live sentinel row, as explicitly historical context rather than current execution status
 
 4. Verification flow quality
    - offline verification path for certificates, archive receipts, and ITGL
@@ -71,7 +72,7 @@ Review in this order.
 6. Benchmark contract (locked v1)
    - `docs/benchmark-cycle.v1.md`
 
-7. First benchmark-cycle execution note (D5)
+7. Historical first benchmark-cycle execution note (D5)
    - `docs/archive/d5-benchmark-first-cycle-review.md`
 
 8. Key authority and trust-readiness semantics
@@ -82,6 +83,7 @@ Review in this order.
 
 10. Canonical technical truth surfaces and verification tools
    - public Pages surfaces referenced in `README.md` (`latest-audit.*`, `latest-run.json`, `runs/index.html`)
+   - current paired benchmark index: `docs/runs/benchmark_index.v2.json`
    - certificate contract: `spec/evidence_contract.v1.json`
    - certificate verification: `tools/verify_certificate.py`
    - archive receipt verification: `tools/verify_archive_receipt.py`

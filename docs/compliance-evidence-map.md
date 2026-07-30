@@ -23,7 +23,7 @@ It does **not**:
 
 SIR semantics remain unchanged:
 
-- Gate outcome: `PASS` / `BLOCK`
+- Gate request status: `PASS` / `BLOCKED`
 - Run/publication status: `PASS` / `FAIL` / `INCONCLUSIVE`
 
 ## Review order (repeatable)

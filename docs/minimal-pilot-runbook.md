@@ -20,7 +20,7 @@ If interpretation detail is needed after this flow, use `docs/evaluator-technica
 
 Semantics to keep explicit during review:
 
-- Gate outcome is `PASS` / `BLOCK`.
+- Gate request status is `PASS` / `BLOCKED`.
 - Run/publication status is `PASS` / `FAIL` / `INCONCLUSIVE`.
 - `latest-audit.*` (latest passing proof) and `latest-run.json` (most recent run status) are intentionally different surfaces.
 - Pair view (`docs/runs/index.html` paired table) is a deterministic comparison projection over archived run evidence.
@@ -162,7 +162,7 @@ What to look for:
 
 - Run completed and summary was written.
 - `proof_class` is audit class (`FIREWALL_ONLY_AUDIT`).
-- Gate behavior is explicit in run evidence (`PASS`/`BLOCK` at request level).
+- Gate behavior is explicit in run evidence (`PASS`/`BLOCKED` at request level).
 
 ### 4) Verify local run integrity chain
 

@@ -191,7 +191,7 @@ This B1 record predates the current operator-executable three-pack line defined 
 
 Semantics note:
 
-- Gate outcomes remain `PASS` / `BLOCK` at prompt level.
+- Gate request statuses remain `PASS` / `BLOCKED` at prompt level.
 - Run/publication status remains `PASS` / `FAIL` / `INCONCLUSIVE` where applicable.
 - The B1 cycle record status (`PARTIAL`) describes cycle completeness only and does not redefine gate or run result semantics.
 
