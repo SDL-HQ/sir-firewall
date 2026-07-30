@@ -215,7 +215,7 @@ For key authority boundaries, trust-source semantics, and the `CRYPTO_ENFORCED` 
 ## Semantics to preserve
 
 - Latest pass and latest run are intentionally different concepts.
-- Gate outcome (`PASS`/`BLOCK`) is distinct from run/publication status (`PASS`/`FAIL`/`INCONCLUSIVE`).
+- Gate request status (`PASS`/`BLOCKED`) is distinct from run/publication status (`PASS`/`FAIL`/`INCONCLUSIVE`).
 - Archive includes both passes and failures.
 - Benchmark index comparison fields are observed metadata, not weighted metrics.
 - Evidence contract semantics remain the source of truth for certificate structure.

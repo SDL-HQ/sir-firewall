@@ -15,6 +15,18 @@ A pack entry exists to make selection, validation, and review deterministic.
 - The registry already contains both pack types. This guidance does not introduce new scenario-pack semantics.
 - Pack evaluation binds to request-path inputs for deterministic pre-inference gate testing; this file does not define post-inference or full system-governance semantics.
 
+## Three pack artefact categories
+
+The repository uses “pack” for three distinct artefact categories:
+
+1. **ISC policy packs** under `src/sir_firewall/policy/isc_packs/` configure runtime templates, friction limits, enforcement flags and optional structured schemas.
+2. **Registry-managed benchmark suites** are the domain CSV and scenario JSON prompt sets listed in `spec/packs/pack_registry.v1.json`.
+3. **Non-registry exploratory fixtures** are loaded directly by dedicated tests and are not discoverable through `sir packs list`.
+
+See `tests/domain_packs/README.md` for the operator-facing distinction and fixture examples.
+
+Four registry suites currently have no same-named ISC policy pack: `account_recovery_fraud`, `mental_health_clinical`, `scenario_injection_chain`, and `scenario_tool_injection`. Selecting one through the `--pack` route produces systemic-reset blocks during policy load rather than meaningful suite evaluation. See `docs/backlog.md` for the execution-coupling and rule-coverage findings.
+
 ## Required metadata
 
 Each registry entry must include:
@@ -55,25 +67,25 @@ Current categories in active use:
 - `exfiltration`
 - `injection`
 
-Current pack/scenario mapping (active suites):
+Current pack/scenario taxonomy mapping (active and draft registry suites):
 
-| Pack/Scenario | Pack class | Taxonomy category |
-| --- | --- | --- |
-| `generic_safety` | domain | `benign_control`, `direct_bypass`, `obfuscation`, `exfiltration`, `injection` |
-| `account_recovery_fraud` | domain | `benign_control`, `direct_bypass` |
-| `mental_health_clinical` | domain | `benign_control`, `direct_bypass` |
-| `healthcare_compliance` | domain | `benign_control` |
-| `financial_services` | domain | `benign_control` |
-| `pii_protection` | domain | `benign_control` |
-| `code_generation_safety` | domain | `benign_control` |
-| `educational_content` | domain | `benign_control` |
-| `legal_contracts` | domain | `benign_control` |
-| `insurance_underwriting` | domain | `benign_control` |
-| `support_operator_override` | domain | `benign_control`, `direct_bypass`, `exfiltration` |
-| `data_exfiltration_pressure` | domain | `benign_control`, `exfiltration` |
-| `eu_ai_act_compliance_pressure` | domain | `benign_control`, `direct_bypass` |
-| `scenario_injection_chain` | scenario | `benign_control`, `injection`, `exfiltration` |
-| `scenario_tool_injection` | scenario | `benign_control`, `injection` |
+| Pack/Scenario | Pack class | Registry posture | Taxonomy category |
+| --- | --- | --- | --- |
+| `generic_safety` | domain | active / public / canonical | `benign_control`, `direct_bypass`, `obfuscation`, `exfiltration`, `injection` |
+| `account_recovery_fraud` | domain | active / public / canonical | `benign_control`, `direct_bypass` |
+| `mental_health_clinical` | domain | active / encoded / canonical | `benign_control`, `direct_bypass` |
+| `support_operator_override` | domain | active / public / canonical | `benign_control`, `direct_bypass`, `exfiltration` |
+| `data_exfiltration_pressure` | domain | active / public / canonical | `benign_control`, `exfiltration` |
+| `eu_ai_act_compliance_pressure` | domain | active / public / canonical | `benign_control`, `direct_bypass` |
+| `scenario_injection_chain` | scenario | active / public / canonical | `benign_control`, `injection`, `exfiltration` |
+| `scenario_tool_injection` | scenario | active / public / canonical | `benign_control`, `injection` |
+| `healthcare_compliance` | domain | draft / internal / demo | `benign_control` |
+| `financial_services` | domain | draft / internal / demo | `benign_control` |
+| `pii_protection` | domain | draft / internal / demo | `benign_control` |
+| `code_generation_safety` | domain | draft / internal / demo | `benign_control` |
+| `educational_content` | domain | draft / internal / demo | `benign_control` |
+| `legal_contracts` | domain | draft / internal / demo | `benign_control` |
+| `insurance_underwriting` | domain | draft / internal / demo | `benign_control` |
 
 ## Rule-to-suite explainability mapping (indicative only)
 
@@ -84,16 +96,18 @@ Boundary rules for this mapping:
 - This is indicative mapping only, not a completeness proof.
 - This is not a score, ranking, percentage, or certification claim.
 - Absence of a suite in a row does not mean the rule is unimportant or permanently untested.
-- Gate outcomes remain `PASS`/`BLOCK`; run/publication status remains `PASS`/`FAIL`/`INCONCLUSIVE`.
+- Gate request statuses are `PASS`/`BLOCKED`; run/publication status remains `PASS`/`FAIL`/`INCONCLUSIVE`.
 - Canonical rule IDs and descriptions are defined in code (`src/sir_firewall/core.py`); this table is a documentation crosswalk.
 
-Rule-level explainability crosswalk (grounded in current active suites and benchmark v1 composition):
+Rule-level explainability crosswalk (grounded in current active suites and the workflow-controlled paired benchmark line):
+
+The current workflow-controlled paired benchmark path selects one pack per dispatch from `generic_safety`, `support_operator_override`, `data_exfiltration_pressure`, or `eu_ai_act_compliance_pressure`, then executes an ungated baseline and a gated run for that pack. These four workflow-allowlisted packs, rather than the superseded three-pack cycle, are the current controlled benchmark execution line.
 
 | Rule ID | Rule category | Indicative suites/scenarios | Why this mapping exists (bounded rationale) |
 | --- | --- | --- | --- |
-| `SIR-RULE-ISC-SCHEMA` | `isc_validation` | `generic_safety`, `account_recovery_fraud`, `scenario_injection_chain` (benchmark v1); plus any other pack/scenario executed through the ISC request path | ISC schema validation is request-envelope validation that applies before pack-specific content interpretation. |
-| `SIR-RULE-ISC-INTEGRITY` | `integrity_validation` | `generic_safety`, `account_recovery_fraud`, `scenario_injection_chain` (benchmark v1); plus any other pack/scenario executed with integrity checks enabled | Integrity checks are request-envelope integrity controls and are not domain-pack specific. |
-| `SIR-RULE-FRICTION-LIMIT` | `friction_guard` | `generic_safety`, `account_recovery_fraud`, `scenario_injection_chain` (benchmark v1); plus any other pack/scenario where payload size can exceed configured limits | Token/friction limit checks are request-size controls independent of domain taxonomy labels. |
+| `SIR-RULE-ISC-SCHEMA` | `isc_validation` | Workflow-controlled paired benchmark packs: `generic_safety`, `support_operator_override`, `data_exfiltration_pressure`, `eu_ai_act_compliance_pressure`; plus any other pack/scenario executed through a valid ISC request path | ISC schema validation is request-envelope validation that applies before pack-specific content interpretation. |
+| `SIR-RULE-ISC-INTEGRITY` | `integrity_validation` | Workflow-controlled paired benchmark packs: `generic_safety`, `support_operator_override`, `data_exfiltration_pressure`, `eu_ai_act_compliance_pressure`; plus any other pack/scenario executed with integrity checks enabled | Integrity checks are request-envelope integrity controls and are not domain-pack specific. |
+| `SIR-RULE-FRICTION-LIMIT` | `friction_guard` | Workflow-controlled paired benchmark packs: `generic_safety`, `support_operator_override`, `data_exfiltration_pressure`, `eu_ai_act_compliance_pressure`; plus any other pack/scenario where payload size can exceed configured limits | Token/friction limit checks are request-size controls independent of domain taxonomy labels. |
 | `SIR-RULE-JB-HIGH-RISK` | `jailbreak_guard` | `generic_safety`; `scenario_injection_chain`, `scenario_tool_injection` | Current active taxonomy includes `injection` and `exfiltration` stressors, and `generic_safety` is the broad baseline jailbreak/exfiltration mix. |
 | `SIR-RULE-JB-DANGER-SAFETY` | `jailbreak_guard` | `generic_safety`; `scenario_injection_chain`, `scenario_tool_injection` | Scenario and baseline safety suites include override-style adversarial phrasing patterns relevant to this rule family. |
 | `SIR-RULE-JB-STRUCTURAL-OVERRIDE-EXFIL` | `jailbreak_guard` | `scenario_injection_chain`, `scenario_tool_injection`; `generic_safety` | Structural override + exfiltration marker patterns align most directly with injection/exfiltration scenario suites and may also appear in baseline adversarial rows. |
@@ -106,6 +120,8 @@ Interpretation guardrail:
 - Do not derive any numeric coverage metric from this table.
 
 ## Minimum pack quality bar
+
+The purpose, reviewability, non-duplication and documentation items below are editorial expectations. The automated validators enforce registry metadata and referenced-file existence, CSV schema and row values, and scenario JSON schema; they do not assess substantive editorial quality.
 
 A pack must meet all of the following:
 

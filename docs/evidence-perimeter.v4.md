@@ -6,7 +6,7 @@ Date (UTC): 2026-07-27
 Paired benchmark means an ungated baseline run and an SIR-gated run executed against the same prompt set, then compared at result and prompt ID level.
 
 ## Gate outcome versus run publication status
-Gate outcome is the per-prompt deterministic decision: `PASS` or `BLOCK`. Run publication status is the per-run aggregate: `AUDIT PASSED`, `AUDIT FAILED`, or `INCONCLUSIVE`. These are distinct levels.
+Gate request status is the per-prompt deterministic decision: `PASS` or `BLOCKED`. Run publication status is the per-run aggregate: `AUDIT PASSED`, `AUDIT FAILED`, or `INCONCLUSIVE`. These are distinct levels.
 
 ## INCONCLUSIVE
 A live run is `INCONCLUSIVE` when it did not produce complete provider evidence, even where gate metrics were otherwise clean. This is triggered when `provider_call_failures` is greater than zero, or when provider-call attempts were made with zero successes. `INCONCLUSIVE` is not a gate failure.

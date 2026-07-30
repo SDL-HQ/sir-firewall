@@ -11,12 +11,10 @@ It is not the canonical product-boundary definition document; use `docs/evaluato
 
 ## Current state
 
-As of April 4, 2026:
-
 - `CRYPTO_ENFORCED` remains `false` by design.
 - Existing verification behavior remains source compatible.
 - Local and CI workflows may use non-authoritative keys for development and acceptance.
-- Authoritative public verification is still anchored to published SDL trust material.
+- Authoritative public claims remain governed by the published SDL trust-material convention and the verification boundaries described below.
 
 ## Trust surface map
 
@@ -35,6 +33,13 @@ Intended use:
 Authority rule:
 
 - For public SDL claims, keys resolved from authoritative trust sources are authoritative.
+
+Verification-enforcement boundary:
+
+- "Authoritative" and "non-authoritative" are governance classifications, not conclusions produced solely by a successful signature check.
+- When a certificate carries a resolvable `signing_key_id`, the verifier uses the matching registry key and applies registry revocation semantics.
+- Unless `--require-registry` is used, a missing or unreadable registry causes the verifier to fall back to the configured `--pubkey` and print a warning that registry and revocation checks were not enforced.
+- Use `--require-registry` for verification that must fail closed rather than accept that fallback.
 
 ### Non-authoritative local and workflow keys
 
@@ -67,13 +72,16 @@ Authority rule:
 
 Authoritative path:
 
-- SDL-signed proof material verified against repository trust anchors.
-- Claims are bounded to published evidence and verifier output.
+- SDL-signed proof material verified with a resolvable repository registry key, or under a verification procedure that otherwise establishes the approved SDL trust anchor.
+- For fail-closed registry resolution, use `--require-registry`.
+- Successful signature verification establishes integrity and validity against the selected key; the authoritative SDL classification additionally depends on the governance provenance of that key.
+- Claims remain bounded to the published evidence and verifier output.
 
 Non-authoritative path:
 
-- Local or workflow-signed material verified with explicit non-authoritative key input.
-- Valid for test correctness and pipeline checks, not for SDL public assurance claims.
+- Local or workflow-signed material may be verified with explicit non-authoritative key input.
+- When registry material is unavailable or unreadable and `--require-registry` is not used, the verifier permits `--pubkey` fallback and warns that registry and revocation checks were not enforced.
+- Such verification is valid for test correctness and pipeline checks, not for SDL public assurance claims.
 
 Segregation rule:
 
@@ -86,7 +94,7 @@ This section is a readiness shape only.
 
 1. Add new authoritative public key entry to `spec/pubkeys/key_registry.v1.json` with `status: active` and clear validity timestamps.
 2. Keep prior key available as `active` or `retired` for compatibility window.
-3. Update signing to emit `signing_key_id` for the active authoritative key.
+3. Configure signing with `SDL_SIGNING_KEY_ID` so generated certificates identify the selected active key. Certificate generation already emits `signing_key_id`, defaulting to `default`.
 4. Verify historical proofs against the registry using proof timestamp semantics.
 5. Move old key to `retired` or `revoked` when policy requires, preserving non-retroactive verification semantics already documented by registry expectations.
 6. Keep `spec/sdl.pub` and registry alignment explicit during transition windows.

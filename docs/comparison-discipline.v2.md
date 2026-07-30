@@ -12,7 +12,7 @@ Every comparative note must keep these surfaces separate:
 
 1. **Acceptance-oriented audit surface**
    - Primary question: did required gate behavior satisfy the acceptance objective?
-   - Uses gate outcomes (`PASS` / `BLOCK`) with explicit prompt-level evidence links.
+   - Uses gate request statuses (`PASS` / `BLOCKED`) with explicit prompt-level evidence links.
 
 2. **Exploratory benchmark/scenario surface**
    - Primary question: what distinct pressure is now measurable?
@@ -31,7 +31,7 @@ Additionally:
 
 Use terms exactly as follows:
 
-- **Gate outcome**: `PASS` / `BLOCK` (prompt-level gate decision)
+- **Gate request status**: `PASS` / `BLOCKED` (prompt-level gate decision)
 - **Run/publication status**: `PASS` / `FAIL` / `INCONCLUSIVE` (run or publication state)
 - **Cycle completeness labels** (when needed): `FULL` / `PARTIAL` (completeness only; not gate/run status)
 
@@ -87,7 +87,7 @@ Disallowed:
 ### C) "Benign controls blocked"
 
 Allowed:
-- "Observed benign-control `BLOCK` outcomes in exploratory rows; record as false-positive pressure for refinement, not automatic round failure."
+- "Observed benign-control `BLOCKED` statuses in exploratory rows; record as false-positive pressure for refinement, not automatic round failure."
 
 Disallowed:
 - "Any benign block means the round failed."
@@ -117,7 +117,7 @@ Do not include:
 A comparison note is review-ready only if all answers are "yes":
 
 1. Are acceptance-oriented and exploratory surfaces explicitly separated?
-2. Are `PASS/BLOCK` and `PASS/FAIL/INCONCLUSIVE` used in correct contexts?
+2. Are `PASS/BLOCKED` and `PASS/FAIL/INCONCLUSIVE` used in correct contexts?
 3. Does each claim include concrete run/row artefact references?
 4. Are interpretations bounded (no score/ranking language)?
 5. Are benign-control blocks, if present, framed as exploratory pressure unless acceptance criteria explicitly say otherwise?
