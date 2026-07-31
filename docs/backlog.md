@@ -51,6 +51,7 @@ These substantive prompt sets are active, public registry entries executed by th
 
 | Item | Status | Notes |
 |---|---|---|
+| Test-only dependencies in runtime dependency surface | Investigating | pytest and PyYAML are declared in the primary dependency list in pyproject.toml and requirements.txt, though neither is required at runtime by any code under src/. For deployment contexts where minimising the runtime dependency surface matters, these belong in a test or dev extra. Moving them would require any CI workflow that installs the package to install that extra. |
 | Pack hash self-computation | Planned | load_domain_pack() does not compute a content hash of the loaded pack file. pack_hash is populated only when supplied by a caller via pack_identity_context. |
 | Raw pre-normalisation obfuscation signal | Planned | obfuscation_signal_detected is evaluated on post-normalisation text. Payloads containing only invisible Unicode with no signal keywords normalise silently without the signal firing. |
 | Granular early-exit ITGL components | Planned | ISC structure and structured schema declaration failures produce ITGL entries that reuse generic component types, with the specific error code carried in entry data. The malformed payload early return produces no dedicated ITGL entry. Dedicated component types per error class are not implemented for these paths. |
