@@ -18,7 +18,7 @@ Provider complete means `provider_call_failures == 0`. For paired runs, baseline
 `pair_status` indicates structural comparability of a baseline and gated pair. It does not by itself indicate that provider evidence completed. The baseline and gated provider-completeness fields must be checked separately.
 
 ## Controlled run selection
-Provider, model, and pack selection is constrained by the canonical run-selection registry at `spec/execution/run_selection_registry.v1.json`, with fail-closed validation before audit or benchmark execution. Invalid combinations do not proceed.
+GitHub workflow dispatch constrains provider, model, and pack selection through fail-closed preflight validation against the committed run-selection registry at `spec/execution/run_selection_registry.v1.json`. Local `sir run` and `sir benchmark run` execution instead authorises provider and model selection against the committed allowlist in `src/sir_firewall/model_selection.py`, with `red_team_suite.py` revalidating the selection before any provider call. Invalid combinations do not proceed on either path.
 
 ## Provider call routing
 OpenAI GPT-5-family models route through the Responses API path. GPT-4.1-family and xAI models use the completion path. This is provider-call routing, not gate logic.
