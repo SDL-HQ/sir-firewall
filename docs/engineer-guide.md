@@ -15,6 +15,8 @@ For the first disciplined benchmark-cycle contract (what to run, required artefa
 
 ## Quickstart install paths (canonical)
 
+The `sir` console command requires an editable installation of a complete repository checkout. See the installation support boundary in `README.md` before installing or moving a checkout.
+
 ```bash
 # audit mode
 python3 -m pip install -e .
@@ -78,7 +80,6 @@ Outputs (local run artefacts):
 * `proofs/latest-attempts.log`
 * `proofs/run_summary.json`
 * `proofs/itgl_ledger.jsonl`
-* `proofs/itgl_final_hash.txt`
 * `leaks_count.txt`
 * `harmless_blocked.txt`
 
@@ -86,6 +87,8 @@ Outputs (local run artefacts):
 * `selected_pack_id` / `selected_pack_version`: input selection intent
 * `effective_pack_id`: runtime enforcement pack observed from gate execution
 * `pack_id`: runtime pack alias used by downstream cert/archive metadata
+
+`proofs/itgl_final_hash.txt` is produced by the separate ITGL verification step below, not by `sir run`.
 
 Verify ITGL:
 
@@ -186,10 +189,12 @@ openssl rsa -in /tmp/sir_dev_priv.pem -pubout -out /tmp/sir_dev_pub.pem >/dev/nu
 
 Generate certificate + validate + verify (using your dev pubkey):
 
+Local generation writes `proofs/local-audit.json` because attributable CI provenance is absent. This is expected. The generator prints `OUTPUT_AUDIT_JSON=proofs/local-audit.json` so you can confirm the selected output path.
+
 ```bash
 python3 tools/generate_certificate.py
-python3 tools/validate_certificate_contract.py proofs/latest-audit.json
-python3 tools/verify_certificate.py proofs/latest-audit.json --pubkey /tmp/sir_dev_pub.pem
+python3 tools/validate_certificate_contract.py proofs/local-audit.json
+python3 tools/verify_certificate.py proofs/local-audit.json --pubkey /tmp/sir_dev_pub.pem
 ```
 
 ## Publish a local run archive (signed receipt)
@@ -204,7 +209,7 @@ Publishing a run archive creates:
 It requires `SDL_PRIVATE_KEY_PEM` to be set.
 
 ```bash
-python3 tools/publish_run.py --cert proofs/latest-audit.json \
+python3 tools/publish_run.py --cert proofs/local-audit.json \
   --copy proofs/itgl_ledger.jsonl \
   --copy proofs/itgl_final_hash.txt \
   --copy proofs/latest-attempts.log \

@@ -330,6 +330,8 @@ def main() -> None:
     selected_pack_version = str(summary.get("selected_pack_version") or summary.get("pack_version") or "")
     effective_pack_id = str(summary.get("effective_pack_id") or summary.get("pack_id") or "")
     runtime_pack_id = effective_pack_id or selected_pack_id
+    governance_scope = str(summary.get("governance_scope") or "deployment")
+    crypto_enforced = bool(summary.get("crypto_enforced", False))
 
     result = _compute_audit_result(
         proof_class=proof_class,
@@ -378,6 +380,8 @@ def main() -> None:
         "selected_pack_id": selected_pack_id,
         "selected_pack_version": selected_pack_version,
         "effective_pack_id": effective_pack_id,
+        "governance_scope": governance_scope,
+        "crypto_enforced": crypto_enforced,
         "suite_hash": suite_hash,
         "scenario_id": str(summary.get("scenario_id") or ""),
         "scenario_hash": str(summary.get("scenario_hash") or ""),

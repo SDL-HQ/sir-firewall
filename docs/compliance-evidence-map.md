@@ -23,7 +23,7 @@ It does **not**:
 
 SIR semantics remain unchanged:
 
-- Gate outcome: `PASS` / `BLOCK`
+- Gate request status: `PASS` / `BLOCKED`
 - Run/publication status: `PASS` / `FAIL` / `INCONCLUSIVE`
 
 ## Review order (repeatable)
@@ -52,7 +52,7 @@ The entries below classify each included artifact as:
 | `RETENTION.md` | Supporting context | Are retention boundaries and durability expectations explicit? |
 | `docs/external-technical-review-prep.md` | Supporting context | Is external review framed as technical verification, not certification? |
 | `docs/benchmark-cycle.v1.md` | Source of truth | Is benchmark-cycle interpretation contract explicit and score-free? |
-| `docs/d5-benchmark-first-cycle-review.md` | Supporting context | Does benchmark review narrative stay within contract semantics? |
+| `docs/archive/d5-benchmark-first-cycle-review.md` | Supporting context | Does benchmark review narrative stay within contract semantics? |
 | `proofs/latest-audit.json` | Source of truth | What is the latest passing proof payload (last known good)? |
 | `proofs/latest-audit.html` | Supporting context | Is there a human-readable rendering of the latest passing proof? |
 | `docs/latest-run.json` | Source of truth | What is the most recent run status (`PASS`/`FAIL`/`INCONCLUSIVE`)? |
@@ -63,6 +63,8 @@ The entries below classify each included artifact as:
 | `tools/verify_certificate.py` | Supporting context | Can certificate signature/integrity checks be reproduced offline? |
 | `tools/verify_archive_receipt.py` | Supporting context | Can archive receipt/manifest integrity checks be reproduced offline? |
 | `tools/verify_itgl.py` | Supporting context | Can ITGL chain integrity checks be reproduced offline? |
+
+Certificates generated before SIR 2.2 remain signature-valid historical evidence, but they do not satisfy the current evidence contract because `governance_scope` and `crypto_enforced` are now required fields. This is expected: signature verification answers whether the signed payload is intact and verifies against the key, while contract validation answers whether the certificate conforms to the current schema. A pre-2.2 certificate can therefore pass signature verification and fail current contract validation without invalidating its historical evidence status.
 
 ## Local packaging helper (B9)
 

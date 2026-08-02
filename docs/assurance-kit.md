@@ -78,7 +78,7 @@ Evidence durability under failure:
 Residual risk boundary:
 
 - Risk remains for any path, modality, tool/action chain, or post-inference behavior outside the exercised SIR request path.
-- SIR evidence proves deterministic gate behavior for the evaluated boundary; it does not prove global system safety.
+- SIR evidence attests to the recorded deterministic gate decision for the evaluated boundary; that decision—not any model response—is reproducible given the same inputs and repository configuration at the recorded `commit_sha`, while signature verification establishes payload integrity and signature validity, not independent execution correctness or global system safety.
 
 ## Evidence surfaces
 
@@ -130,7 +130,7 @@ python3 -m pip install -e .
 sir run --mode audit --pack generic_safety
 ```
 
-This run updates local run artefacts (for example `proofs/run_summary.json`, `proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`).
+This run updates local run artefacts including `proofs/run_summary.json` and `proofs/itgl_ledger.jsonl`.
 
 ### 3) Inspect run artefacts
 
@@ -138,13 +138,16 @@ Review:
 
 - `proofs/run_summary.json`
 - `proofs/itgl_ledger.jsonl`
-- `proofs/itgl_final_hash.txt`
+
+`proofs/itgl_final_hash.txt` is produced by the separate ITGL verification step below, not by `sir run`.
 
 Optional integrity check:
 
 ```bash
 python3 tools/verify_itgl.py
 ```
+
+After verification, review `proofs/itgl_final_hash.txt`.
 
 ### 4) Verify certificate offline
 
@@ -164,8 +167,10 @@ sir verify cert proofs/latest-audit.json
 
 Path C. Verify a local/non-authoritative certificate using its matching public key:
 
+Local generation writes `proofs/local-audit.json` when attributable CI provenance is absent. This is expected; the generator prints `OUTPUT_AUDIT_JSON=proofs/local-audit.json` so the operator can confirm which file was written.
+
 ```bash
-sir verify cert proofs/latest-audit.json --key <pubkey.pem>
+sir verify cert proofs/local-audit.json --key <pubkey.pem>
 ```
 
 Note: certificate generation is a separate step and is not automatic from `sir run`. Local/non-authoritative certificates may not validate against default trust anchors unless `--key` (or a matching key registry) is provided.
@@ -210,7 +215,7 @@ For key authority boundaries, trust-source semantics, and the `CRYPTO_ENFORCED` 
 ## Semantics to preserve
 
 - Latest pass and latest run are intentionally different concepts.
-- Gate outcome (`PASS`/`BLOCK`) is distinct from run/publication status (`PASS`/`FAIL`/`INCONCLUSIVE`).
+- Gate request status (`PASS`/`BLOCKED`) is distinct from run/publication status (`PASS`/`FAIL`/`INCONCLUSIVE`).
 - Archive includes both passes and failures.
 - Benchmark index comparison fields are observed metadata, not weighted metrics.
 - Evidence contract semantics remain the source of truth for certificate structure.

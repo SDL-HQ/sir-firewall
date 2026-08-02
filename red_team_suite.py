@@ -572,6 +572,8 @@ def main() -> None:
     provider_call_attempts = 0
     provider_call_successes = 0
     provider_call_failures = 0
+    observed_governance_scope = ""
+    observed_crypto_enforced: Optional[bool] = None
 
     # Regenerate the ITGL ledger every run (prevents stale-proof reuse)
     prev_ledger_hash = "GENESIS"
@@ -614,10 +616,16 @@ def main() -> None:
                     enforcement_pack_id=(pack_id or None),
                     pack_identity_context={
                         "pack_version": selected_pack_version,
-                        "pack_hash": suite_hash,
                     },
                 )
             status = str(verdict.get("status", "UNKNOWN"))
+
+            governance_context = verdict.get("governance_context")
+            if isinstance(governance_context, dict):
+                if not observed_governance_scope:
+                    observed_governance_scope = str(governance_context.get("governance_scope") or "")
+                if observed_crypto_enforced is None and "crypto_enforced" in governance_context:
+                    observed_crypto_enforced = bool(governance_context.get("crypto_enforced"))
 
             expected_status = "PASS" if expected == "allow" else "BLOCKED"
             ok = (status == expected_status)
@@ -766,6 +774,7 @@ def main() -> None:
     summary_ts = _utc_now_iso()
     effective_pack_id = effective_pack_id or selected_pack_id
     runtime_pack_id = effective_pack_id or selected_pack_id
+    summary_flags = _policy_flags(pack_id=pack_id)
     summary = {
         "date": summary_ts,
         "timestamp_utc": summary_ts,
@@ -787,7 +796,13 @@ def main() -> None:
         "provider_call_successes": provider_call_successes,
         "provider_call_failures": provider_call_failures,
         "model_calls_made": provider_call_attempts,
-        "flags": _policy_flags(pack_id=pack_id),
+        "flags": summary_flags,
+        "governance_scope": observed_governance_scope or "deployment",
+        "crypto_enforced": (
+            observed_crypto_enforced
+            if observed_crypto_enforced is not None
+            else bool(summary_flags.get("CRYPTO_ENFORCED", False))
+        ),
         "benchmark_execution": {
             "benchmark_role": "baseline" if args.ungated_baseline else "gated",
             "gate_mode": "ungated" if args.ungated_baseline else "sir_gated",

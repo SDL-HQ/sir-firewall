@@ -20,13 +20,15 @@ If interpretation detail is needed after this flow, use `docs/evaluator-technica
 
 Semantics to keep explicit during review:
 
-- Gate outcome is `PASS` / `BLOCK`.
+- Gate request status is `PASS` / `BLOCKED`.
 - Run/publication status is `PASS` / `FAIL` / `INCONCLUSIVE`.
 - `latest-audit.*` (latest passing proof) and `latest-run.json` (most recent run status) are intentionally different surfaces.
 - Pair view (`docs/runs/index.html` paired table) is a deterministic comparison projection over archived run evidence.
 - Raw run/archive evidence (`proofs/runs/<run_id>/...`) remains the source-of-truth for per-run claims.
 
 ## Prerequisites
+
+The `sir` console command requires an editable installation of a complete repository checkout. See the installation support boundary in `README.md` before installing or moving a checkout.
 
 1. Python 3.11+ is available.
 2. Repository is checked out locally.
@@ -99,9 +101,11 @@ For manual GitHub Actions dispatch (`SIR Real Governance Audit`), use these exac
 
 - `operation`: `run` = single run, `benchmark` = paired ungated vs gated
 - `mode`: `audit` = deterministic/no provider calls, `live` = provider-call path
-- `pack`: exact `pack_id` from `spec/packs/pack_registry.v1.json` (for example `generic_safety`)
+- `pack`: one of the workflow-allowlisted IDs: `generic_safety`, `support_operator_override`, `data_exfiltration_pressure`, or `eu_ai_act_compliance_pressure`. Workflow selection is validated fail-closed before execution.
 - `provider`: provider id (`xai` or `openai`)
 - `model`: exact model id for selected provider (for example `grok-4-1-fast`)
+
+Local `sir run --pack` has a wider pack-selection surface than workflow dispatch and resolves `<pack_id>` against `spec/packs/pack_registry.v1.json`.
 
 For local CLI operation, use:
 
@@ -160,7 +164,7 @@ What to look for:
 
 - Run completed and summary was written.
 - `proof_class` is audit class (`FIREWALL_ONLY_AUDIT`).
-- Gate behavior is explicit in run evidence (`PASS`/`BLOCK` at request level).
+- Gate behavior is explicit in run evidence (`PASS`/`BLOCKED` at request level).
 
 ### 4) Verify local run integrity chain
 

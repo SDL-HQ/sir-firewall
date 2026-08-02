@@ -57,8 +57,15 @@ def test_tool_result_mixed_mode_fails_closed():
     )
 
     assert out["status"] == "BLOCKED"
-    assert out["reason"] == "tool_result_validation_failed"
-    assert out["type"] == "tool_result_mixed_mode_not_allowed"
+    assert out["reason"] == "mixed_mode_validation_failed"
+    assert out["type"] == "multiple_ingress_modes_not_allowed"
+    assert out["itgl_log"][0]["component"] == "mixed_mode_validation"
+    assert out["triggered_rule"] == {
+        "rule_id": "SIR-RULE-MIXED-MODE-VALIDATION",
+        "rule_description": "Request declared more than one ingress mode; ingress modes are mutually exclusive.",
+        "rule_category": "mixed_mode_validation",
+        "rule_outcome_class": "BLOCK",
+    }
 
 
 def test_tool_result_content_length_out_of_bounds_fails_closed():

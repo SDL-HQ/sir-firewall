@@ -67,18 +67,41 @@ jobs:
           PY
 
       - name: Generate cert from current run and validate certificate contract (audit)
+        id: generate_audit_certificate
         env:
           SDL_PRIVATE_KEY_PEM: ${{ env.SDL_PRIVATE_KEY_PEM }}
         run: |
           set -euo pipefail
-          python tools/generate_certificate.py
-          python tools/validate_certificate_contract.py proofs/latest-audit.json
+
+          output_file="$(mktemp)"
+          python tools/generate_certificate.py | tee "$output_file"
+
+          cert_path="$(
+            sed -n 's/^OUTPUT_AUDIT_JSON=//p' "$output_file" |
+              tail -n 1
+          )"
+
+          case "$cert_path" in
+            proofs/latest-audit.json|proofs/local-audit.json)
+              ;;
+            *)
+              echo "ERROR: generate_certificate.py did not emit a valid OUTPUT_AUDIT_JSON path."
+              exit 1
+              ;;
+          esac
+
+          test -f "$cert_path"
+          python tools/validate_certificate_contract.py "$cert_path"
+          echo "audit_json=$cert_path" >> "$GITHUB_OUTPUT"
 
       - name: CLI verify smoke (cert path + stdin)
+        env:
+          AUDIT_JSON: ${{ steps.generate_audit_certificate.outputs.audit_json }}
         run: |
           set -euo pipefail
-          sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json proofs/latest-audit.json
-          cat proofs/latest-audit.json | sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json -
+          test -f "$AUDIT_JSON"
+          sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json "$AUDIT_JSON"
+          cat "$AUDIT_JSON" | sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json -
 
       - name: Run scenario mode (scenario_injection_chain)
         run: |
@@ -109,25 +132,50 @@ jobs:
           PY
 
       - name: Generate cert from scenario run and validate certificate contract
+        id: generate_scenario_certificate
         env:
           SDL_PRIVATE_KEY_PEM: ${{ env.SDL_PRIVATE_KEY_PEM }}
         run: |
           set -euo pipefail
-          python tools/generate_certificate.py
-          python tools/validate_certificate_contract.py proofs/latest-audit.json
+
+          output_file="$(mktemp)"
+          python tools/generate_certificate.py | tee "$output_file"
+
+          cert_path="$(
+            sed -n 's/^OUTPUT_AUDIT_JSON=//p' "$output_file" |
+              tail -n 1
+          )"
+
+          case "$cert_path" in
+            proofs/latest-audit.json|proofs/local-audit.json)
+              ;;
+            *)
+              echo "ERROR: generate_certificate.py did not emit a valid OUTPUT_AUDIT_JSON path."
+              exit 1
+              ;;
+          esac
+
+          test -f "$cert_path"
+          python tools/validate_certificate_contract.py "$cert_path"
+          echo "audit_json=$cert_path" >> "$GITHUB_OUTPUT"
 
       - name: CLI verify smoke (cert path + stdin after scenario)
+        env:
+          AUDIT_JSON: ${{ steps.generate_scenario_certificate.outputs.audit_json }}
         run: |
           set -euo pipefail
-          sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json proofs/latest-audit.json
-          cat proofs/latest-audit.json | sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json -
+          test -f "$AUDIT_JSON"
+          sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json "$AUDIT_JSON"
+          cat "$AUDIT_JSON" | sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json -
 
       - name: Create archive and verify archive via CLI
         env:
           SDL_PRIVATE_KEY_PEM: ${{ env.SDL_PRIVATE_KEY_PEM }}
+          AUDIT_JSON: ${{ steps.generate_scenario_certificate.outputs.audit_json }}
         run: |
           set -euo pipefail
-          python tools/publish_run.py --cert proofs/latest-audit.json \
+          test -f "$AUDIT_JSON"
+          python tools/publish_run.py --cert "$AUDIT_JSON" \
             --copy proofs/itgl_ledger.jsonl \
             --copy proofs/itgl_final_hash.txt \
             --copy proofs/latest-attempts.log \

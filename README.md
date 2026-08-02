@@ -1,10 +1,10 @@
-# SIR: Signal Integrity Resolver Version 2.1
+# SIR: Signal Integrity Resolver Version 2.2.0
 
 [![SIR Real Governance Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
 Deterministic pre-inference governance gate · rules-only · cryptographically signed proof
 
-Plain language: SIR sits in front of an AI model or agent and inspects a prompt before it reaches inference. It either lets the prompt through (`PASS`) or blocks it (`BLOCK`) using deterministic, versioned rules.
+Plain language: SIR sits in front of an AI model or agent and inspects a prompt before it reaches inference. It either lets the prompt through (`PASS`) or blocks it (`BLOCKED`) using deterministic, versioned rules.
 
 Models provide capability. SIR makes governance enforceable and provable. It does not claim model alignment. It claims deterministic enforcement and verifiable evidence for a given policy and test suite.
 
@@ -27,7 +27,7 @@ Important semantics:
 - `latest-audit.*` means latest passing audit (last known good proof).
 - `latest-run.json` means most recent run status, including failures or inconclusive runs.
 - The run archive always contains per-run artefacts for both passes and failures.
-- Gate outcome (`PASS` / `BLOCK`) is distinct from run/publication status (`PASS` / `FAIL` / `INCONCLUSIVE`).
+- Gate request status (`PASS` / `BLOCKED`) is distinct from run/publication status (`PASS` / `FAIL` / `INCONCLUSIVE`).
 - `latest-audit.*` and `latest-run.*` are single-run truth surfaces, not paired benchmark claims.
 - Procedural cold-start path: `docs/minimal-pilot-runbook.md`
 - Evaluation and interpretation path: `docs/evaluator-technical-explainer.md`
@@ -63,6 +63,8 @@ python3 tools/validate_certificate_contract.py proofs/latest-audit.json
 ---
 
 ## Quickstart
+
+**Installation support boundary:** The `sir` console command in SIR 2.2 is supported only from an editable installation of a complete repository checkout (`python3 -m pip install -e .`). The CLI reads committed policy, registry, suite, tool, and proof-template files from repository-relative paths. A wheel or non-editable `pip install .` is not a supported relocatable runtime installation. Running `sir` after moving or deleting the checkout used by the editable installation is unsupported.
 
 Canonical install paths:
 
@@ -204,13 +206,16 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 * [Minimal pilot runbook](docs/minimal-pilot-runbook.md) (procedural cold-start path)
 * [Evaluator technical explainer](docs/evaluator-technical-explainer.md) (evaluation and interpretation path)
 * [Assurance kit](docs/assurance-kit.md) (supporting evaluation and verification reference)
-* [Evidence perimeter note](docs/evidence-perimeter.v2.md) (current bounded benchmark perimeter)
+* [Evidence perimeter note](docs/evidence-perimeter.v4.md) (current bounded benchmark perimeter)
+* [Public backlog](docs/backlog.md) (known constraints and planned hardening)
 * [External technical review preparation](docs/external-technical-review-prep.md)
 * [Engineer guide](docs/engineer-guide.md) (local runs, signing, serving)
 * [Trial guide](docs/trial-guide.md) (auditors, insurers, evidence capture)
 * [Key governance readiness](docs/key-governance-readiness.md) (authority map and `CRYPTO_ENFORCED` checklist)
-* [Release notes](docs/release-notes-2.1.md) (2.1 closeout)
+* [Release notes](docs/release-notes-2.2.md) (2.2 closeout)
 * [Retention / Tier B export](RETENTION.md)
+* [Security policy](SECURITY.md)
+* [Archive](docs/archive/README.md) (archived and superseded documents)
 
 ---
 
@@ -235,6 +240,3 @@ MIT Licensed © 2025 Structural Design Labs
 ## Contact
 
 [https://www.structuraldesignlabs.com](https://www.structuraldesignlabs.com) · [info@structuraldesignlabs.com](mailto:info@structuraldesignlabs.com) · @SDL_HQ
-
-```
-```

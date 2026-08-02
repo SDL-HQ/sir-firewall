@@ -1,12 +1,13 @@
 [project]
 name = "sir-firewall"
-version = "2.0.0"
+version = "2.2.0"
 
 dependencies = [
   "cryptography",
   "pydantic",
   "requests",
   "pytest",
+  "PyYAML",
   "pandas"
 ]
 

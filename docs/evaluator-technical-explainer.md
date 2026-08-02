@@ -59,7 +59,7 @@ Explanatory documentation describes how to read those surfaces; it does not repl
 
 ## What SIR proves
 
-SIR proves deterministic gate behavior for the evaluated request path under the specific run context.
+SIR evidence attests to the recorded deterministic gate decision for the evaluated request path under the specific run context. That gate decision—not any model response—is reproducible given the same request inputs and the configuration in the repository at the recorded `commit_sha`; public benchmark inputs are available in that repository revision, while production inputs must be supplied by the operator.
 
 Concretely, SIR evidence can demonstrate:
 
@@ -75,11 +75,13 @@ This is path-bounded evidence, not a global claim over all system behavior.
 
 SIR does not prove model alignment, complete deployment safety, or organizational compliance by itself.
 
+Certificate signature verification establishes payload integrity and signature validity; it does not independently establish that the gate executed as recorded.
+
 Current SIR does **not** claim:
 
 - native multimodal gating
 - deep stateful conversational governance
-- native tool/function-call governance
+- native tool/function-call governance across external action graphs
 - full structured enterprise action-graph governance
 - internal model reasoning visibility
 - post-inference model behavior governance
@@ -141,7 +143,7 @@ Use these interpretation rules:
 - treat `latest-audit.*` as latest passing proof (last known good)
 - treat `latest-run.json` as most recent run outcome (including FAIL/INCONCLUSIVE)
 - treat run archive as the per-run evidence record for both passes and failures
-- treat gate outcomes (`PASS`/`BLOCK`) as separate from run/publication status (`PASS`/`FAIL`/`INCONCLUSIVE`)
+- treat gate request statuses (`PASS`/`BLOCKED`) as separate from run/publication status (`PASS`/`FAIL`/`INCONCLUSIVE`)
 - treat latest-audit/latest-run/archive surfaces as strict acceptance-oriented audit truth; treat benchmark rows as exploratory comparison evidence
 - treat benchmark index rows as attributable evidence-linked comparison rows only
 - do not reinterpret benchmark index as score/ranking output
@@ -151,7 +153,7 @@ Coverage taxonomy note (v1):
 
 - Pack/scenario taxonomy labels are coverage readability labels only.
 - Taxonomy mapping is maintained at pack/scenario level in `spec/packs/PACKS.md`.
-- Taxonomy labels do not modify gate outcomes (`PASS`/`BLOCK`).
+- Taxonomy labels do not modify gate request statuses (`PASS`/`BLOCKED`).
 - Taxonomy labels do not modify run/publication status (`PASS`/`FAIL`/`INCONCLUSIVE`).
 - Taxonomy mapping is not a row-level completeness claim and is not an analytics surface.
 
@@ -173,6 +175,8 @@ This verification proves payload integrity + signature validity only; it does no
 ```bash
 python3 tools/validate_certificate_contract.py proofs/latest-audit.json
 ```
+
+Certificates generated before SIR 2.2 remain signature-valid historical evidence, but they do not satisfy the current evidence contract because `governance_scope` and `crypto_enforced` are now required fields. This is expected: signature verification answers whether the signed payload is intact and verifies against the key, while contract validation answers whether the certificate conforms to the current schema. A pre-2.2 certificate can therefore pass signature verification and fail current contract validation without invalidating its historical evidence status.
 
 ### 3) Verify local/published certificate via CLI
 

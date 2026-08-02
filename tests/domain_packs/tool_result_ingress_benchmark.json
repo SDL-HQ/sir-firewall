@@ -55,8 +55,8 @@
       },
       "expected": {
         "status": "BLOCKED",
-        "reason": "tool_result_validation_failed",
-        "type": "tool_result_mixed_mode_not_allowed"
+        "reason": "mixed_mode_validation_failed",
+        "type": "multiple_ingress_modes_not_allowed"
       }
     },
     {

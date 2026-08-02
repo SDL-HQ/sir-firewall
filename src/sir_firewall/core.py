@@ -29,6 +29,7 @@ STRUCTURED_REQUEST_FIELD = "structured_request"
 TOOL_RESULT_FIELD = "tool_result"
 STRUCTURED_REASON = "structured_validation_failed"
 TOOL_RESULT_REASON = "tool_result_validation_failed"
+MIXED_MODE_REASON = "mixed_mode_validation_failed"
 STRUCTURED_TEMPLATE_ID = "EU-AI-Act-ISC-v1"
 STRUCTURED_SCHEMA_DECLARATION_KEY = "structured_request_schema"
 STRUCTURED_SCHEMA_ID = "account_recovery_challenge_request_v1"
@@ -213,6 +214,12 @@ _RULE_GROUPS: Dict[str, Dict[str, str]] = {
         "rule_id": "SIR-RULE-TOOL-RESULT-VALIDATION",
         "rule_description": "Tool-result input failed deterministic schema validation checks.",
         "rule_category": "tool_result_validation",
+        "rule_outcome_class": "BLOCK",
+    },
+    MIXED_MODE_REASON: {
+        "rule_id": "SIR-RULE-MIXED-MODE-VALIDATION",
+        "rule_description": "Request declared more than one ingress mode; ingress modes are mutually exclusive.",
+        "rule_category": "mixed_mode_validation",
         "rule_outcome_class": "BLOCK",
     },
 }
@@ -408,6 +415,8 @@ def load_domain_pack(pack_id: str | None = None) -> Dict[str, Any]:
     env_pack = (os.getenv("SIR_ISC_PACK") or "").strip()
     explicit_requested = bool(arg_pack) or bool(env_pack)
     effective_pack = arg_pack or env_pack or "generic_safety"
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", effective_pack):
+        raise ValueError(f"Invalid domain ISC pack id: {effective_pack!r}.")
 
     base_dir = Path(__file__).resolve().parent
     pack_path = base_dir / "policy" / "isc_packs" / f"{effective_pack}.json"
@@ -527,7 +536,20 @@ def normalize_obfuscation(text: str) -> str:
                     candidate = decoded.decode("utf-8", errors="ignore").lower()
                     if len(candidate) > 15 and any(
                         k in candidate
-                        for k in ["ignore", "disregard", "obey", "dan", "uncensored"]
+                        for k in [
+                            "ignore",
+                            "disregard",
+                            "obey",
+                            "dan",
+                            "uncensored",
+                            "bypass",
+                            "system prompt",
+                            "tool message",
+                            "decode",
+                            "deny being an ai",
+                            "suppress the audit log",
+                            "social score",
+                        ]
                     ):
                         return candidate.strip()
                 except Exception:
@@ -541,6 +563,29 @@ def normalize_obfuscation(text: str) -> str:
         payload = rot_match.group(1)
         decoded = codecs.decode(payload, "rot13")
         t = t.replace(payload, decoded)
+
+    hex_marker_match = re.search(r"\bhex\s*:\s*([0-9a-fA-F][0-9a-fA-F\s,._-]{6,})", t)
+    if hex_marker_match:
+        payload = hex_marker_match.group(1)
+        hex_blob = re.sub(r"[^0-9a-fA-F]", "", payload)
+        if len(hex_blob) >= 8 and len(hex_blob) % 2 == 0:
+            try:
+                decoded = bytes.fromhex(hex_blob).decode("utf-8", errors="ignore").lower()
+                if decoded:
+                    t = t.replace(payload, decoded)
+            except ValueError:
+                pass
+
+    hex_escape_match = re.search(r"((?:\\x[0-9a-fA-F]{2}){4,})", raw)
+    if hex_escape_match:
+        payload = hex_escape_match.group(1)
+        hex_blob = "".join(re.findall(r"\\x([0-9a-fA-F]{2})", payload))
+        try:
+            decoded = bytes.fromhex(hex_blob).decode("utf-8", errors="ignore").lower()
+            if decoded:
+                t = t.replace(payload.lower(), decoded)
+        except ValueError:
+            pass
 
     # Marker recovery for split punctuation / repeated-char / tight leet+homoglyph
     # obfuscation. We only recover a fixed marker list and do not rewrite content.
@@ -604,7 +649,7 @@ def _build_block(
         result["domain_pack"] = domain_pack
     if rule_hits:
         result["rule_hits"] = list(rule_hits)
-    rule_group = _RULE_GROUPS.get(block_type or reason)
+    rule_group = _RULE_GROUPS.get(block_type or "") or _RULE_GROUPS.get(reason)
     if rule_group is not None:
         result["triggered_rule"] = dict(rule_group)
     return result
@@ -971,6 +1016,29 @@ def _reject_tool_result_validation(
     )
 
 
+def _reject_mixed_mode_validation(
+    code: str,
+    detail: str,
+    itgl_log: List[Dict[str, Any]],
+    prev_hash: str,
+    domain_pack: str | None = None,
+) -> Dict[str, Any]:
+    itgl_log, _ = _append_itgl(
+        "mixed_mode_validation",
+        "fail",
+        {"code": code},
+        {"detail": detail},
+        itgl_log,
+        prev_hash,
+    )
+    return _build_block(
+        MIXED_MODE_REASON,
+        itgl_log,
+        block_type=code,
+        domain_pack=domain_pack,
+    )
+
+
 def _load_structured_request_object(raw: Any) -> Tuple[Dict[str, Any] | None, str | None]:
     if isinstance(raw, dict):
         return raw, None
@@ -1306,8 +1374,8 @@ def validate_sir(
             domain_pack=None,
         )
     if sum(1 for active in (isc_mode, structured_mode, tool_result_mode) if active) > 1:
-        return _reject_tool_result_validation(
-            "tool_result_mixed_mode_not_allowed",
+        return _reject_mixed_mode_validation(
+            "multiple_ingress_modes_not_allowed",
             "multiple_ingress_modes_present",
             itgl_log,
             prev_hash,
@@ -1431,6 +1499,7 @@ def validate_sir(
         )
 
     flags = domain_cfg.get("flags", {})
+    # Retained for policy and pack schema compatibility; ISC structure rejection is now unconditional.
     strict_isc = bool(flags.get("STRICT_ISC_ENFORCEMENT", STRICT_ISC_ENFORCEMENT))
     checksum_enforced = bool(flags.get("CHECKSUM_ENFORCED", CHECKSUM_ENFORCED))
     crypto_enforced = bool(flags.get("CRYPTO_ENFORCED", CRYPTO_ENFORCED))
@@ -1479,7 +1548,7 @@ def validate_sir(
         }
 
     ok, itgl_log, prev_hash = _check_isc_structure(isc, itgl_log, prev_hash)
-    if not ok and strict_isc:
+    if not ok:
         return _build_block("invalid_isc_schema", itgl_log, domain_pack=domain_pack_id)
 
     ok, itgl_log, prev_hash = _check_crypto(
@@ -1543,6 +1612,8 @@ def validate_sir(
         "domain_pack": domain_pack_id,
         "isc_template": isc_template,
         "itgl_final_hash": f"sha256:{final_hash}",
+        "governance_scope": "deployment",
+        "crypto_enforced": crypto_enforced,
     }
     if pack_version:
         governance_context["pack_version"] = pack_version

@@ -15,7 +15,7 @@ The machine-readable certificate contract is `spec/evidence_contract.v1.json`.
 
 ## 1) Current retention truth (repository reality today)
 
-Current retained artefacts are in version control under `proofs/`, including:
+Current retained artefacts are in version control under `proofs/` and `docs/`, including:
 
 - latest passing certificate pointer:
   - `proofs/latest-audit.json`

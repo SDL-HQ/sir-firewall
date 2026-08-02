@@ -1,11 +1,30 @@
-# SIR current evidence perimeter v3
+# SIR current evidence perimeter v4
 
-> Historical evidence state dated 2026-05-03. Not the current authoritative state. For the current perimeter, use [docs/evidence-perimeter.v4.md](evidence-perimeter.v4.md).
-
-Date (UTC): 2026-05-03
+Date (UTC): 2026-07-27
 
 ## Method note
 Paired benchmark means an ungated baseline run and an SIR-gated run executed against the same prompt set, then compared at result and prompt ID level.
+
+## Gate outcome versus run publication status
+Gate request status is the per-prompt deterministic decision: `PASS` or `BLOCKED`. Run publication status is the per-run aggregate: `AUDIT PASSED`, `AUDIT FAILED`, or `INCONCLUSIVE`. These are distinct levels.
+
+## INCONCLUSIVE
+A live run is `INCONCLUSIVE` when it did not produce complete provider evidence, even where gate metrics were otherwise clean. This is triggered when `provider_call_failures` is greater than zero, or when provider-call attempts were made with zero successes. `INCONCLUSIVE` is not a gate failure.
+
+## Provider completeness
+Provider complete means `provider_call_failures == 0`. For paired runs, baseline and gated provider completeness are recorded separately.
+
+## Pair status versus provider status
+`pair_status` indicates structural comparability of a baseline and gated pair. It does not by itself indicate that provider evidence completed. The baseline and gated provider-completeness fields must be checked separately.
+
+## Controlled run selection
+GitHub workflow dispatch constrains provider, model, and pack selection through fail-closed preflight validation against the committed run-selection registry at `spec/execution/run_selection_registry.v1.json`. Local `sir run` and `sir benchmark run` execution instead authorises provider and model selection against the committed allowlist in `src/sir_firewall/model_selection.py`, with `red_team_suite.py` revalidating the selection before any provider call. Invalid combinations do not proceed on either path.
+
+## Provider call routing
+OpenAI GPT-5-family models route through the Responses API path. GPT-4.1-family and xAI models use the completion path. This is provider-call routing, not gate logic.
+
+## Governance certificate fields
+Signed certificates include `governance_scope` and `crypto_enforced`. Both fields are part of the signed payload. Certificates generated before SIR 2.2 will not pass evidence-contract validation, but continue to pass signature verification and remain valid as historical evidence.
 
 ## Models included in current evidence state
 Primary cross-provider comparison set:
@@ -15,6 +34,13 @@ Primary cross-provider comparison set:
 - `xai/grok-4.20-0309-non-reasoning`
 - `gpt-4.1-mini`
 - `gpt-5.4-mini`
+
+### Provider-complete GPT-5.4-mini live pair in the current archive
+The current archive contains a provider-complete OpenAI `gpt-5.4-mini` pair for `support_operator_override`:
+- ungated baseline run `20260624-005933-000000-gh28067676116-dca5de736797`: leaks `26`, harmless blocked `0`, provider attempts `50`, successes `50`, failures `0`
+- SIR-gated run `20260624-005958-000000-gh28067676116-baac467cd954`: leaks `0`, harmless blocked `0`, provider attempts `24`, successes `24`, failures `0`
+
+Both sides satisfy the current provider-completeness condition.
 
 ## Packs included in current perimeter state
 Core gate-effect comparison packs:
@@ -34,7 +60,7 @@ Extended governance pressure pack now in scope:
   - recent live paired evidence confirming the same directional effect
 
 ## Observed paired outcomes for the core comparison packs
-For the four-model primary comparison set, on all three core packs:
+For the six-model primary comparison set, on all three core packs:
 - ungated baseline: `AUDIT FAILED`
 - SIR-gated run: `AUDIT PASSED`
 
@@ -48,8 +74,8 @@ For the four-model primary comparison set, on all three core packs:
 - total harmless blocked across compared live pairs: `0`
 
 ## Core ID-level discrimination review
-- across all four compared models, ungated leaked prompt ID sets were identical for each pack
-- across all four compared models, SIR-gated blocked/passed prompt ID sets were identical for each pack
+- across all six compared models, ungated leaked prompt ID sets were identical for each pack
+- across all six compared models, SIR-gated blocked/passed prompt ID sets were identical for each pack
 
 ## Extended cross-model ID-level finding
 ID-level discrimination review was subsequently extended to all six models in the current evidence state across the three core packs:
@@ -106,6 +132,16 @@ Current gated-state interpretation:
 - the current bounded EU-pack work reduced leaks from `100` to `26` in paired governance-gate-only benchmark mode with `0` harmless blocked
 - the same `-74` leak reduction was also observed in a recent live paired run, with `-74` provider calls and `0` harmless blocked
 
+## Explicit non-claims
+Current evidence and implementation do not claim that SIR:
+- prevents all prompt injection
+- provides semantic attack detection
+- controls downstream agent behaviour
+- proves model safety
+- replaces application-level security controls
+- evaluates content it never receives
+- validates API message ordering
+
 ## What current evidence does not support
 - it does not show that all models are equivalent generally
 - it does not show that all attack classes are common-mode generally
@@ -118,6 +154,7 @@ Current gated-state interpretation:
 - prompt-layer attack success is not just a model-quality issue; it is an exposure pathway where unsafe or deceptive requests can reach inference and create downstream operational, regulatory, or liability exposure
 - SIR reduces that exposure by blocking classes of prompt-layer requests before inference and by preserving a signed audit trail showing what was attempted, what was blocked, and what was allowed
 - for review, dispute, or claims handling, the resulting artefacts provide replayable evidence of gate behavior and decision lineage rather than post-hoc narrative alone
+- replaying a recorded gate decision requires the same request inputs and the repository configuration at the recorded `commit_sha`; published benchmark inputs are available in that repository revision, while production inputs must be supplied by the operator
 - `0` harmless blocked in the measured reductions means the current bounded rule gains were not achieved by broadly degrading normal use in the tested benign slice
 - this does not eliminate liability or certify compliance, but it does improve the evidence position and control position around prompt-layer failure modes
 
