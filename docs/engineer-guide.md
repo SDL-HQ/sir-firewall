@@ -15,6 +15,8 @@ For the first disciplined benchmark-cycle contract (what to run, required artefa
 
 ## Quickstart install paths (canonical)
 
+The `sir` console command requires an editable installation of a complete repository checkout. See the installation support boundary in `README.md` before installing or moving a checkout.
+
 ```bash
 # audit mode
 python3 -m pip install -e .

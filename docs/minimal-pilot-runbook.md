@@ -28,6 +28,8 @@ Semantics to keep explicit during review:
 
 ## Prerequisites
 
+The `sir` console command requires an editable installation of a complete repository checkout. See the installation support boundary in `README.md` before installing or moving a checkout.
+
 1. Python 3.11+ is available.
 2. Repository is checked out locally.
 3. SIR CLI is available:

@@ -1,9 +1,6 @@
 name: SIR Real Governance Audit
 
 on:
-  pull_request:
-    branches: [ main ]
-
   push:
     branches: [ main, dev ]
     paths-ignore:
@@ -84,8 +81,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          # Use push token only when we're on main (needed for committing proofs back).
-          # PR runs use the default token (no secret dependency).
+          # Canonical main publication uses the configured push token; other supported runs use github.token.
           token: ${{ github.ref == 'refs/heads/main' && secrets.SIR_AUDIT_PUSH_TOKEN || github.token }}
           fetch-depth: 0
 

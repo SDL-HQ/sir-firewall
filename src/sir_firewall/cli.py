@@ -8,11 +8,30 @@ import subprocess
 import sys
 from pathlib import Path
 
+from sir_firewall import __version__
 from sir_firewall.model_selection import DEFAULT_MODEL, DEFAULT_PROVIDER, validate_execution_selection
 
 
 ROOT = Path(__file__).resolve().parents[2]
 PACK_REGISTRY = ROOT / "spec" / "packs" / "pack_registry.v1.json"
+
+
+def _require_repository_layout() -> None:
+    required_paths = (
+        ROOT / "red_team_suite.py",
+        PACK_REGISTRY,
+        ROOT / "policy" / "isc_policy.json",
+        ROOT / "tools",
+    )
+    for path in required_paths:
+        if not path.exists():
+            print(
+                "ERROR: the sir command requires a complete editable repository checkout; "
+                "a non-editable install is not a supported relocatable runtime; "
+                f"missing required path: {path}",
+                file=sys.stderr,
+            )
+            raise SystemExit(2)
 
 
 def _unknown_pack_message(pack_id: str) -> str:
@@ -194,6 +213,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="sir",
         description="SIR operator CLI for deterministic pre-inference evaluation and verification tasks.",
     )
+    p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     run = sub.add_parser(
@@ -302,6 +322,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = build_parser()
     ns = parser.parse_args()
+    _require_repository_layout()
     rc = ns.fn(ns)
     raise SystemExit(rc)
 

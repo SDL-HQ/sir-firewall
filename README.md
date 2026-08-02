@@ -64,6 +64,8 @@ python3 tools/validate_certificate_contract.py proofs/latest-audit.json
 
 ## Quickstart
 
+**Installation support boundary:** The `sir` console command in SIR 2.2 is supported only from an editable installation of a complete repository checkout (`python3 -m pip install -e .`). The CLI reads committed policy, registry, suite, tool, and proof-template files from repository-relative paths. A wheel or non-editable `pip install .` is not a supported relocatable runtime installation. Running `sir` after moving or deleting the checkout used by the editable installation is unsupported.
+
 Canonical install paths:
 
 ```bash
