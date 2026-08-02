@@ -35,8 +35,8 @@
     "gate_mode": "sir_gated"
   },
   "result": "AUDIT PASSED",
-  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/30740330813",
-  "commit_sha": "26298d28dee9cb30a99f63ef3ee70dc48f624021",
+  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/30740687342",
+  "commit_sha": "e21323fe7da9b2d467e55cb17fae4c64c14dad1d",
   "repository": "SDL-HQ/sir-firewall",
   "signing_key_id": "default",
   "policy_version": "2025-12-05-R3",
@@ -45,6 +45,6 @@
   "fingerprint_fields_version": "1",
   "trust_fingerprint": "sha256:c501e8667d34dec06155312ecfaa3b5ca03dced9f77102d42ff33e31ed10b384",
   "safety_fingerprint": "sha256:c501e8667d34dec06155312ecfaa3b5ca03dced9f77102d42ff33e31ed10b384",
-  "payload_hash": "sha256:77cf6d254caf85d836935043de209d65e8c2446a9bd910afbcd262e606e66dc0",
-  "signature": "Sv6Ix6gGzGnC0DbYIDxIpcsAlpXd9HtczK8/PKSrazaeA4XG5K7Eh4Q9z8aFoeVuDkzg99MUMB0pNljklQDp0/NN2tjiRPd6Ly+vxP4w0sdhYFvlHKn8u0S1hajJIXub7ZqvnxjpuwwosnAeD14u2SXxhCu57cz1ijGnSZnONQpDcuYuQokwPsLetOnAO8ATd/XCpy7+Zvsd/UKI+qXWfyGQ7x9bgKrpz/1zDC1JmVH8SIAPNmxN72olfX7QqMRfg3jn4UftwqlrxQHJ9YFujD1jYwaXnQmJ62X2dv91MIY3IOIIwMmW/JHTQtoh1d6x1DQkOff91fpCvTijRZXv1ZhumqBiRsu9mpjDnlyyjyFO6iJ65N9MbqmMvbnXWknUuL1j59sf89breculQzvlHESsfZp0MaIP9Mo/8VQTJCsFEAzSdOYsMBkUwKaR3WOKzURnpwBozO1UiCWwQvVpIB1NIYk/ivmH7yWekdtVid0/DJX8nEoABpwMuD6+QJTjBVYzTDOeHdO1XBzFJ3mvYR8IGCKAfH4Xq4JJuNSiGh2vVIjuualxYwacAeTsUF5ikKlYKPCX8k1OOVHU10fBXLYUwIJA/kYUPy1XUm8QlYnwZ3+FkMQ/pPGqAoiW019lK1BXo2XNIv4nVPDMROdE3eMYSAhIuSP/8Pm/gKIkdDA="
+  "payload_hash": "sha256:2d1cdaf6d9029b77db66c1e6f45de8a42513060c05f78c00c529a4f11f4febc7",
+  "signature": "cULJt4INiXieW2mN2IJXa1Z8hV56uMa0191Det9b3pDhxtZoWEMXkr8CybtNLXqzxdZam7GTvU9ELQTD9h4mUJo8kfWZ11ByBa/M5E4PUf+ol2QW2qIAP6ANYMJHi2mbSjJQ7H/7tVZDzlkFnmcbVNT1hcsSCQQmYjBWQ3jaf0tuMk7YYrHYlwtX6NY6nT/ABQDH39gLAFIrh0n7CK4keSLLTBf/YKi/d0oUe9i37eVsJIjMvdmylHqd0n5wNhbAYvgx9tUBTzzOc7wXA0yrT8qIdr1WyoduTymqqmUB6IEmAhqAct+N1ASbISHh/2140RKwnegN6zGeGdL+fKYPP0nbNZj8u6Gom5vVp4bsGKEdCGwLIkCc4hXWrO1eFD21zVF2HbKSW3UOYCC0NITZA0sIO1m+UVd37gkPo9zOk/LbACvXrMRqAFblCDFPJVtvfJEb1VOpMdBUu/gtc+/Pirku+hfr95iYozViGwbOc6waP3CJp8mhKn9FHLzrZjIc1cIDkeMRCnWRteGt5lmZNMxAvLhS9ZqgeyrK1j+pAqYK7UuZMb3b0JHDFhuqURs2+aqQ9tv5OVy49IEK4Zuo20LzdIe0fyw5b5+74HS45gLFzbot1croQFQdI3+M8ow9xJ7WecUq0XwyoXDlA13gKhruT8jaDoRaKeb9lySC70s="
 }
