@@ -424,53 +424,122 @@ jobs:
           AUDIT_JSON: ${{ steps.generate_certificate.outputs.audit_json }}
         run: |
           set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
 
-          stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          leaks="$(cat leaks_count.txt 2>/dev/null || echo 0)"
-          harmless="$(cat harmless_blocked.txt 2>/dev/null || echo 0)"
+          audit_path_raw = os.environ.get("AUDIT_JSON", "").strip()
+          if not audit_path_raw:
+              raise SystemExit("ERROR: current-run certificate path is unavailable")
 
-          inconclusive="false"
-          if [ "${AUDIT_JSON:-}" != "proofs/latest-audit.json" ]; then inconclusive="true"; fi
-          if [ ! -f "proofs/run_summary.json" ]; then inconclusive="true"; fi
-          if [ ! -f "proofs/itgl_final_hash.txt" ]; then inconclusive="true"; fi
-          if ! grep -q '^ITGL_FINAL_HASH=' itgl_env.txt 2>/dev/null; then inconclusive="true"; fi
+          audit_path = Path(audit_path_raw)
+          if not audit_path.is_file():
+              raise SystemExit(f"ERROR: current-run certificate does not exist: {audit_path}")
 
-          status="FAIL"
-          if [ "$inconclusive" = "true" ]; then
-            status="INCONCLUSIVE"
-          else
-            if [ "${AUDIT_PASS}" = "true" ]; then status="PASS"; else status="FAIL"; fi
-          fi
+          try:
+              certificate = json.loads(audit_path.read_text(encoding="utf-8"))
+          except Exception as exc:
+              raise SystemExit(
+                  f"ERROR: failed to read current-run certificate {audit_path}: {exc}"
+              ) from exc
 
-          archive_run_id="unknown"
-          if [ -f "proofs/run_id.txt" ]; then
-            archive_run_id="$(cat proofs/run_id.txt | tr -d '\n' | tr -d '\r')"
-          fi
+          if not isinstance(certificate, dict):
+              raise SystemExit(
+                  f"ERROR: current-run certificate must be a JSON object: {audit_path}"
+              )
 
-          ci_run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          result = certificate.get("result")
+          if not isinstance(result, str):
+              raise SystemExit(
+                  f"ERROR: current-run certificate result must be a string: {result!r}"
+              )
 
-          cat > docs/latest-run.json <<EOF
-          {
-            "status": "${status}",
-            "audit_pass": ${AUDIT_PASS:-false},
-            "inconclusive": ${inconclusive},
-            "leaks": ${leaks},
-            "harmless_blocked": ${harmless},
-            "run_id": "${archive_run_id}",
-            "sha": "${GITHUB_SHA}",
-            "repository": "${GITHUB_REPOSITORY}",
-            "ci_run_url": "${ci_run_url}",
-            "timestamp_utc": "${stamp}"
+          result = result.strip().upper()
+          if result == "AUDIT PASSED":
+              status = "PASS"
+              audit_pass = True
+              inconclusive = False
+          elif result == "AUDIT FAILED":
+              status = "FAIL"
+              audit_pass = False
+              inconclusive = False
+          elif result == "INCONCLUSIVE":
+              status = "INCONCLUSIVE"
+              audit_pass = False
+              inconclusive = True
+          else:
+              raise SystemExit(
+                  f"ERROR: unsupported current-run certificate result: {result!r}"
+              )
+
+          def has_itgl_env_hash() -> bool:
+              try:
+                  return any(
+                      line.startswith("ITGL_FINAL_HASH=")
+                      for line in Path("itgl_env.txt").read_text(encoding="utf-8").splitlines()
+                  )
+              except (OSError, UnicodeError):
+                  return False
+
+
+          evidence_checks = (
+              ("proofs/run_summary.json", Path("proofs/run_summary.json").is_file()),
+              ("proofs/itgl_final_hash.txt", Path("proofs/itgl_final_hash.txt").is_file()),
+              ("ITGL_FINAL_HASH= in itgl_env.txt", has_itgl_env_hash()),
+          )
+          missing_evidence_artifacts = [
+              identifier for identifier, present in evidence_checks if not present
+          ]
+          evidence_artifacts_complete = not missing_evidence_artifacts
+          for identifier in missing_evidence_artifacts:
+              print(f"::warning::{identifier} is missing")
+
+          run_id_path = Path("proofs/run_id.txt")
+          archive_run_id = (
+              run_id_path.read_text(encoding="utf-8").strip()
+              if run_id_path.is_file()
+              else "unknown"
+          )
+
+          repository = os.environ.get("GITHUB_REPOSITORY", "")
+          github_run_id = os.environ.get("GITHUB_RUN_ID", "")
+          ci_run_url = f"https://github.com/{repository}/actions/runs/{github_run_id}"
+          stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+          latest_run_payload = {
+              "status": status,
+              "audit_pass": audit_pass,
+              "inconclusive": inconclusive,
+              "evidence_artifacts_complete": evidence_artifacts_complete,
+              "missing_evidence_artifacts": missing_evidence_artifacts,
+              "leaks": int(certificate.get("jailbreaks_leaked", 0)),
+              "harmless_blocked": int(certificate.get("harmless_blocked", 0)),
+              "run_id": archive_run_id,
+              "sha": os.environ.get("GITHUB_SHA", ""),
+              "repository": repository,
+              "ci_run_url": ci_run_url,
+              "timestamp_utc": stamp,
           }
-          EOF
 
-          echo "Wrote docs/latest-run.json:"
-          cat docs/latest-run.json
+          out_path = Path("docs/latest-run.json")
+          out_path.parent.mkdir(parents=True, exist_ok=True)
+          out_path.write_text(
+              json.dumps(latest_run_payload, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
 
-          echo "INCONCLUSIVE=${inconclusive}" >> "$GITHUB_ENV"
-          echo "LATEST_RUN_STATUS=${status}" >> "$GITHUB_ENV"
-          echo "LATEST_ARCHIVE_RUN_ID=${archive_run_id}" >> "$GITHUB_ENV"
-          echo "LATEST_CI_RUN_URL=${ci_run_url}" >> "$GITHUB_ENV"
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
+              env_file.write(f"INCONCLUSIVE={'true' if inconclusive else 'false'}\n")
+              env_file.write(f"LATEST_RUN_STATUS={status}\n")
+              env_file.write(f"LATEST_ARCHIVE_RUN_ID={archive_run_id}\n")
+              env_file.write(f"LATEST_CI_RUN_URL={ci_run_url}\n")
+              env_file.write(f"CERT_RESULT_STATUS={status}\n")
+
+          print("Wrote docs/latest-run.json from current-run certificate result:")
+          print(json.dumps(latest_run_payload, ensure_ascii=False, indent=2))
+          PY
 
       - name: Publish latest PASS proof to docs/ (PASS only)
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.generate_certificate.outputs.audit_json == 'proofs/latest-audit.json'
@@ -540,7 +609,7 @@ jobs:
               git add proofs/itgl_ledger.jsonl proofs/itgl_final_hash.txt proofs/latest-attempts.log proofs/run_summary.json || true
             fi
 
-            git commit -m "SIR Proof: ${AUDIT_PASS} | ${leaks} leaks | ${harmless} harmless | ${stamp}" || echo "Nothing to commit"
+            git commit -m "SIR Proof: ${CERT_RESULT_STATUS:-UNAVAILABLE} | ${leaks} leaks | ${harmless} harmless | ${stamp}" || echo "Nothing to commit"
 
             if git push; then
               echo "Push succeeded."
@@ -567,6 +636,11 @@ jobs:
           echo "LATEST_CI_RUN_URL=${LATEST_CI_RUN_URL:-unknown}"
           echo "LEAKS=$LEAKS"
           echo "HARMLESS_BLOCKED=$HARMLESS_BLOCKED"
+
+          if [ "${CANONICAL_PUBLICATION_CONTEXT:-false}" = "true" ] && [ -z "${LATEST_RUN_STATUS:-}" ]; then
+            echo "Run marker was not produced; certificate state could not be determined — failing CI."
+            exit 1
+          fi
 
           if [ "${INCONCLUSIVE:-false}" = "true" ]; then
             echo "Audit INCONCLUSIVE — failing CI after preserving proof."
