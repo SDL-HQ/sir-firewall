@@ -103,7 +103,7 @@ For manual GitHub Actions dispatch (`SIR Real Governance Audit`), use these exac
 - `mode`: `audit` = deterministic/no provider calls, `live` = provider-call path
 - `pack`: one of the workflow-allowlisted IDs: `generic_safety`, `support_operator_override`, `data_exfiltration_pressure`, or `eu_ai_act_compliance_pressure`. Workflow selection is validated fail-closed before execution.
 - `provider`: provider id (`xai` or `openai`)
-- `model`: exact model id for selected provider (for example `grok-4-1-fast`)
+- `model`: exact model id for selected provider (for example `grok-4.3`)
 
 Local `sir run --pack` has a wider pack-selection surface than workflow dispatch and resolves `<pack_id>` against `spec/packs/pack_registry.v1.json`.
 

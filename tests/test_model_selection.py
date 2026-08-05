@@ -9,7 +9,7 @@ def test_validate_execution_selection_accepts_supported_pair_in_audit():
 
 def test_validate_execution_selection_rejects_unsupported_model_for_provider():
     try:
-        validate_execution_selection(provider="openai", model="grok-4-1-fast", mode="audit", env={})
+        validate_execution_selection(provider="openai", model="grok-4.3", mode="audit", env={})
         assert False, "expected validation failure"
     except ValueError as exc:
         assert "unsupported model" in str(exc)
@@ -32,10 +32,10 @@ def test_validate_execution_selection_supports_prefixed_model_when_provider_matc
 def test_normalize_live_invocation_model_prefixes_bare_xai_model():
     normalized = normalize_live_invocation_model(
         provider="xai",
-        model="grok-4-1-fast",
-        requested_model="grok-4-1-fast",
+        model="grok-4.3",
+        requested_model="grok-4.3",
     )
-    assert normalized == "xai/grok-4-1-fast"
+    assert normalized == "xai/grok-4.3"
 
 
 def test_normalize_live_invocation_model_keeps_prefixed_xai_model():

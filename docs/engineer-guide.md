@@ -121,7 +121,7 @@ export OPENAI_API_KEY="paste_key_here"
 Run live:
 
 ```bash
-sir run --mode live --pack generic_safety --provider xai --model grok-4-1-fast
+sir run --mode live --pack generic_safety --provider xai --model grok-4.3
 ```
 
 If credentials or live dependencies are missing, `sir` fails fast with explicit blocker text (for example missing provider-specific credential env vars such as `XAI_API_KEY` or `OPENAI_API_KEY`, or missing `litellm`) and does not simulate/fallback.

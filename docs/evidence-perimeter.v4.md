@@ -1,6 +1,6 @@
 # SIR current evidence perimeter v4
 
-Date (UTC): 2026-07-27
+Date (UTC): 2026-05-03
 
 ## Method note
 Paired benchmark means an ungated baseline run and an SIR-gated run executed against the same prompt set, then compared at result and prompt ID level.
@@ -26,10 +26,10 @@ OpenAI GPT-5-family models route through the Responses API path. GPT-4.1-family 
 ## Governance certificate fields
 Signed certificates include `governance_scope` and `crypto_enforced`. Both fields are part of the signed payload. Certificates generated before SIR 2.2 will not pass evidence-contract validation, but continue to pass signature verification and remain valid as historical evidence.
 
-## Models included in current evidence state
+## Models included in the evidence state captured 3 May 2026
 Primary cross-provider comparison set:
-- `gpt-4o-mini`
-- `xai/grok-4-1-fast`
+- `gpt-4o-mini` (historical evidence; no longer selectable)
+- `xai/grok-4-1-fast` (historical evidence; no longer selectable)
 - `xai/grok-4.20-0309-reasoning`
 - `xai/grok-4.20-0309-non-reasoning`
 - `gpt-4.1-mini`
@@ -53,11 +53,11 @@ Extended governance pressure pack now in scope:
 
 ## Evidence classes
 - paired benchmark evidence
-- selected comparisons used latest `valid_complete` pairs
+- selected comparisons used `valid_complete` pairs available to the published comparison state
 - core comparison packs remain coherent live/provider-path evidence
 - `eu_ai_act_compliance_pressure` now has both:
   - paired governance-gate-only benchmark evidence
-  - recent live paired evidence confirming the same directional effect
+  - live paired evidence produced 22 April 2026 confirming the same directional effect
 
 ## Observed paired outcomes for the core comparison packs
 For the six-model primary comparison set, on all three core packs:
@@ -94,14 +94,14 @@ What this does not support:
 - universal claim across all models or all attack categories
 - model-vs-model discrimination within the tested set
 
-## `eu_ai_act_compliance_pressure` current position
-Current paired governance-gate-only benchmark position on `xai/grok-4-1-fast`:
+## `eu_ai_act_compliance_pressure` position recorded 22 April 2026
+Paired governance-gate-only benchmark position recorded 22 April 2026 under `xai/grok-4-1-fast`:
 - ungated baseline leaks: `100`
 - SIR-gated leaks: `26`
 - delta leaks: `-74`
 - delta harmless blocked: `0`
 
-Recent live paired position on `xai/grok-4-1-fast`:
+Live paired position produced 22 April 2026 on `xai/grok-4-1-fast`:
 - `AUDIT FAILED` to `AUDIT FAILED`
 - delta leaks: `-74`
 - delta provider calls: `-74`
@@ -130,7 +130,7 @@ Current gated-state interpretation:
 - on those packs, in that tested set, model selection did not change attack outcomes; SIR did
 - `eu_ai_act_compliance_pressure` now shows that SIR can materially reduce governance-pressure leakage through bounded deterministic extensions
 - the current bounded EU-pack work reduced leaks from `100` to `26` in paired governance-gate-only benchmark mode with `0` harmless blocked
-- the same `-74` leak reduction was also observed in a recent live paired run, with `-74` provider calls and `0` harmless blocked
+- the same `-74` leak reduction was also observed in the 22 April 2026 live paired run, with `-74` provider calls and `0` harmless blocked
 
 ## Explicit non-claims
 Current evidence and implementation do not claim that SIR:
