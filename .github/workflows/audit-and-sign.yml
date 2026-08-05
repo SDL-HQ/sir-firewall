@@ -39,11 +39,11 @@ on:
       model:
         description: 'Exact model id from controlled workflow list.'
         required: false
-        default: grok-4-1-fast
+        default: grok-4.3
         type: choice
         options:
           - grok-3-beta
-          - grok-4-1-fast
+          - grok-4.3
           - grok-4.20-0309-reasoning
           - grok-4.20-0309-non-reasoning
           - gpt-4.1-mini
@@ -149,7 +149,7 @@ jobs:
           DISPATCH_MODE: ${{ github.event.inputs.mode || 'audit' }}
           DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
           DISPATCH_PROVIDER: ${{ github.event.inputs.provider || 'xai' }}
-          DISPATCH_MODEL: ${{ github.event.inputs.model || 'grok-4-1-fast' }}
+          DISPATCH_MODEL: ${{ github.event.inputs.model || 'grok-4.3' }}
         run: |
           set -euo pipefail
           python tools/validate_run_selection.py \
@@ -215,7 +215,7 @@ jobs:
       - name: Run selected SIR audit mode
         env:
           # Live reference target
-          LITELLM_MODEL: ${{ github.event.inputs.model || 'grok-4-1-fast' }}
+          LITELLM_MODEL: ${{ github.event.inputs.model || 'grok-4.3' }}
           SIR_PROVIDER: ${{ github.event.inputs.provider || 'xai' }}
 
           # Template selection
@@ -223,7 +223,7 @@ jobs:
           DISPATCH_MODE: ${{ github.event.inputs.mode || 'audit' }}
           DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
           DISPATCH_PROVIDER: ${{ github.event.inputs.provider || 'xai' }}
-          DISPATCH_MODEL: ${{ github.event.inputs.model || 'grok-4-1-fast' }}
+          DISPATCH_MODEL: ${{ github.event.inputs.model || 'grok-4.3' }}
           SIR_MODEL_CALLS: ${{ (github.event.inputs.mode == 'live') && '1' || '0' }}
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -232,10 +232,10 @@ jobs:
           mode="${DISPATCH_MODE:-audit}"
           provider="${DISPATCH_PROVIDER:-xai}"
           pack="${DISPATCH_PACK:-generic_safety}"
-          model="${DISPATCH_MODEL:-grok-4-1-fast}"
+          model="${DISPATCH_MODEL:-grok-4.3}"
           if [ -z "${pack}" ]; then pack="generic_safety"; fi
           if [ -z "${provider}" ]; then provider="xai"; fi
-          if [ -z "${model}" ]; then model="grok-4-1-fast"; fi
+          if [ -z "${model}" ]; then model="grok-4.3"; fi
           echo "Mode: $mode"
           echo "Provider: $provider"
           echo "Pack: $pack"
@@ -702,7 +702,7 @@ jobs:
           DISPATCH_MODE: ${{ github.event.inputs.mode || 'audit' }}
           DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
           DISPATCH_PROVIDER: ${{ github.event.inputs.provider || 'xai' }}
-          DISPATCH_MODEL: ${{ github.event.inputs.model || 'grok-4-1-fast' }}
+          DISPATCH_MODEL: ${{ github.event.inputs.model || 'grok-4.3' }}
         run: |
           set -euo pipefail
           python tools/validate_run_selection.py \
@@ -762,7 +762,7 @@ jobs:
         env:
           DISPATCH_PACK: ${{ github.event.inputs.pack || 'generic_safety' }}
           DISPATCH_PROVIDER: ${{ github.event.inputs.provider || 'xai' }}
-          DISPATCH_MODEL: ${{ github.event.inputs.model || 'grok-4-1-fast' }}
+          DISPATCH_MODEL: ${{ github.event.inputs.model || 'grok-4.3' }}
           BENCHMARK_MODE: ${{ github.event.inputs.mode || 'audit' }}
           SDL_PRIVATE_KEY_PEM: ${{ secrets.SDL_PRIVATE_KEY_PEM }}
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
@@ -772,10 +772,10 @@ jobs:
           mode="${BENCHMARK_MODE:-audit}"
           provider="${DISPATCH_PROVIDER:-xai}"
           pack="${DISPATCH_PACK:-generic_safety}"
-          model="${DISPATCH_MODEL:-grok-4-1-fast}"
+          model="${DISPATCH_MODEL:-grok-4.3}"
           if [ -z "${pack}" ]; then pack="generic_safety"; fi
           if [ -z "${provider}" ]; then provider="xai"; fi
-          if [ -z "${model}" ]; then model="grok-4-1-fast"; fi
+          if [ -z "${model}" ]; then model="grok-4.3"; fi
 
           echo "Operation: benchmark"
           echo "Benchmark mode: $mode"

@@ -18,7 +18,7 @@ This shared provider/model set does not imply a shared pack-selection set: workf
 ### xai
 
 - `grok-3-beta`
-- `grok-4-1-fast`
+- `grok-4.3`
 - `grok-4.20-0309-reasoning`
 - `grok-4.20-0309-non-reasoning`
 
@@ -40,7 +40,7 @@ Audit/governance-gate-only execution does not require provider secrets.
 ## Defaults
 
 - default provider: `xai`
-- default model: `grok-4-1-fast`
+- default model: `grok-4.3`
 
 ## Selection rule
 
@@ -53,5 +53,7 @@ Unsupported provider/model combinations fail validation at execution boundaries.
 Historical run/archive evidence may contain older provider/model values that were valid for previous rounds (for example older `xai` model defaults).
 
 Published evidence also includes `gpt-4o-mini`; it is an evidence-record model, not a member of the current selectable set.
+
+`grok-4-1-fast` appears in archived certificates and run records but is no longer selectable. xAI retired its underlying variants on 15 May 2026, and requests to the slug redirect to `grok-4.3` at low reasoning effort; runs recorded against `grok-4-1-fast` after that date were served by `grok-4.3`.
 
 Those historical rows remain valid historical evidence; they do not expand the current supported selection set.

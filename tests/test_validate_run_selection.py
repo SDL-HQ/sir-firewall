@@ -131,7 +131,7 @@ def test_valid_xai_selection_passes() -> None:
         operation="run",
         mode="audit",
         provider="xai",
-        model="grok-4-1-fast",
+        model="grok-4.3",
         pack_id="generic_safety",
     )
 
@@ -163,7 +163,7 @@ def test_invalid_model_provider_combo_fails() -> None:
             operation="run",
             mode="audit",
             provider="openai",
-            model="grok-4-1-fast",
+            model="grok-4.3",
             pack_id="generic_safety",
         )
 
@@ -174,7 +174,7 @@ def test_invalid_pack_fails() -> None:
             operation="run",
             mode="audit",
             provider="xai",
-            model="grok-4-1-fast",
+            model="grok-4.3",
             pack_id="scenario_injection_chain",
         )
 

@@ -101,7 +101,7 @@ python3 -m pip install -e ".[live]"
 
 # xAI example
 export XAI_API_KEY=your_xai_api_key_here
-sir run --mode live --pack generic_safety --provider xai --model grok-4-1-fast
+sir run --mode live --pack generic_safety --provider xai --model grok-4.3
 
 # OpenAI example
 export OPENAI_API_KEY=your_openai_api_key_here

@@ -4,12 +4,12 @@ import os
 from typing import Mapping
 
 DEFAULT_PROVIDER = "xai"
-DEFAULT_MODEL = "grok-4-1-fast"
+DEFAULT_MODEL = "grok-4.3"
 
 SUPPORTED_MODELS_BY_PROVIDER: dict[str, tuple[str, ...]] = {
     "xai": (
         "grok-3-beta",
-        "grok-4-1-fast",
+        "grok-4.3",
         "grok-4.20-0309-reasoning",
         "grok-4.20-0309-non-reasoning",
     ),
