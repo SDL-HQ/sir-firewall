@@ -190,7 +190,7 @@ def test_openai_api_mode_resolver_auto_and_overrides(monkeypatch):
     assert rts._resolve_openai_api_mode("gpt-5.5") == "responses"
     assert rts._resolve_openai_api_mode("gpt-4.1") == "completion"
     assert rts._resolve_openai_api_mode("gpt-4.1-mini") == "completion"
-    assert rts._resolve_openai_api_mode("xai/grok-4-1-fast") == "completion"
+    assert rts._resolve_openai_api_mode("xai/grok-4.3") == "completion"
 
     monkeypatch.setenv("SIR_OPENAI_API_MODE", "completion")
     assert rts._resolve_openai_api_mode("gpt-5-mini") == "completion"
@@ -261,7 +261,7 @@ def test_call_provider_model_routing_and_exception(monkeypatch):
     assert calls[-1][0] == "completion"
     assert calls[-1][1]["max_tokens"] == 1
 
-    rts._call_provider_model("xai", "xai/grok-4-1-fast", [{"role": "user", "content": "hi"}])
+    rts._call_provider_model("xai", "xai/grok-4.3", [{"role": "user", "content": "hi"}])
     assert calls[-1][0] == "completion"
 
     monkeypatch.setenv("SIR_OPENAI_API_MODE", "completion")
