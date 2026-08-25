@@ -75,12 +75,17 @@ def _assert_block_invariant(clean: str, transformed: str, transformation: str) -
     )
 
 
+@st.composite
+def _case_change_case(draw) -> tuple[str, list[bool]]:
+    clean = draw(st.sampled_from(CANONICAL_BLOCKING_PAYLOADS))
+    upper = draw(st.lists(st.booleans(), min_size=len(clean), max_size=len(clean)))
+    return clean, upper
+
+
 @PROPERTY_SETTINGS
-@given(
-    clean=st.sampled_from(CANONICAL_BLOCKING_PAYLOADS),
-    upper=st.lists(st.booleans(), min_size=24, max_size=30),
-)
-def test_gate_outcome_invariant_under_case_changes(clean: str, upper: list[bool]) -> None:
+@given(case=_case_change_case())
+def test_gate_outcome_invariant_under_case_changes(case: tuple[str, list[bool]]) -> None:
+    clean, upper = case
     transformed = "".join(
         character.upper() if upper[index] else character.lower()
         for index, character in enumerate(clean)
