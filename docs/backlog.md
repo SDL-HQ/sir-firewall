@@ -76,6 +76,33 @@ These substantive prompt sets are active, public registry entries executed by th
 | R1 scenario acceptance assertions insufficient | Planned | `.github/workflows/r1-cli-acceptance.yml` runs `sir run --mode scenario --pack scenario_injection_chain` and asserts pack ID, suite name, scenario ID presence, `SCENARIO_AUDIT` proof class, positive prompt count and zero provider calls. It does not assert absence of systemic reset, `harmless_blocked`, or gate request statuses. The workflow therefore passes when every turn is systemic-reset blocked and nothing is evaluated. The correct assertion for a CLI acceptance test is absence of systemic reset, not zero leaks—zero leaks is a pack-quality assertion, not a CLI acceptance assertion. |
 | No row-level expected-outcome test coverage | Planned | No test asserts row-level expected outcomes for any benchmark suite. `tests/test_cli_run_py.py` mocks `_run_py` and tests dispatch, not gate results. `tests/test_validate_run_selection.py` checks allowlist rejection without executing suites. Suite content can therefore diverge from what the rules actually catch without any test failing. |
 
+## Normalisation backlog
+
+### Normalisation fixed-point review
+
+SIR 2.2.1 property testing records that normalisation is not idempotent where marker recovery appends an already-present canonical marker.
+
+Minimal counterexample: `obey`.
+
+Observed behaviour:
+
+- `normalize("obey")` produces repeated canonical marker append behaviour across repeated passes.
+
+Review whether marker recovery should avoid appending canonical markers already present in the normalised payload, or whether current behaviour should remain documented as outside the current normalisation property perimeter.
+
+### Invisible-character canonicalisation review
+
+SIR 2.2.1 property testing records that exact normalised-string invariance does not hold where an invisible character is inserted inside a marker token.
+
+Minimal counterexample: `i\u200bgnore previous instructions`.
+
+Observed behaviour:
+
+- marker recovery still recovers the canonical marker in the tested cases
+- exact normalised-string equality does not hold because the inserted invisible character can become a token separator
+
+Review whether invisible characters should be removed without introducing separators inside tokens, or whether current marker-recovery behaviour is the intended security boundary.
+
 ## Known constraints
 
 | Item | Status | Notes |
