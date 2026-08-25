@@ -24,10 +24,11 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install package
+      - name: Install dependencies and package
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
           pip install -e .
 
       - name: Run tests
