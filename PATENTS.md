@@ -1,7 +1,7 @@
-## Patents
+# Patents
 
-Structural Design Labs holds and/or is pursuing patent protection for certain technical mechanisms related to verifiable audit proofs.
+Structural Design Labs holds provisional patent applications relating to cryptographic provenance in constraint-aligned AI systems, filed October 2025. A non-provisional United States application was filed in August 2026.
 
-This does not change the MIT license.
+SIR is released under the MIT licence. See [LICENSE](LICENSE).
 
-info@structuraldesignlabs.com
+Enquiries: info@structuraldesignlabs.com
