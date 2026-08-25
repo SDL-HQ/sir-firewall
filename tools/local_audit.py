@@ -86,11 +86,15 @@ def _safe_git_head() -> str:
 def _sir_version() -> str:
     try:
         import sir_firewall  # type: ignore
+    except ImportError as exc:
+        raise RuntimeError(
+            "sir_firewall must be installed from the current checkout before generating evidence"
+        ) from exc
 
-        v = str(getattr(sir_firewall, "__version__", "")).strip()
-        return v or "unknown"
-    except Exception:
-        return "unknown"
+    version = str(getattr(sir_firewall, "__version__", "")).strip()
+    if not version:
+        raise RuntimeError("installed sir_firewall package does not expose __version__")
+    return version
 
 
 def _canonical_policy_meta(policy_path: Path) -> dict[str, str]:
