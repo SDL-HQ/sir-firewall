@@ -725,6 +725,10 @@ def _compute_checksum(payload: str) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def _contains_surrogate(value: str) -> bool:
+    return any(0xD800 <= ord(char) <= 0xDFFF for char in value)
+
+
 def _verify_signature(payload: str, signature_b64: str, key_id: str = "default") -> bool:
     if not _CRYPTO_AVAILABLE or not signature_b64:
         return False
@@ -845,6 +849,40 @@ def _check_friction(
         prev_hash,
     )
     return True, log, prev_hash
+
+
+def _check_payload_size(
+    isc: Dict[str, Any],
+    log: List[Dict[str, Any]],
+    prev_hash: str,
+    max_friction_by_template: Dict[str, int],
+) -> Tuple[bool, List[Dict[str, Any]], str]:
+    template_id = str(isc.get("template_id"))
+    payload = isc.get("payload", "")
+    max_friction = max_friction_by_template.get(template_id, 2000)
+
+    # Preserve the existing str() coercion behavior for non-string payloads.
+    if not isinstance(payload, str):
+        return True, log, prev_hash
+
+    max_chars = max_friction * 4
+    if len(payload) <= max_chars:
+        return True, log, prev_hash
+
+    used = (len(payload) + 3) // 4
+    log, prev_hash = _append_itgl(
+        "friction",
+        "fail",
+        {
+            "template_id": template_id,
+            "used_tokens": used,
+            "max_tokens": max_friction,
+        },
+        {"error": "friction_limit_exceeded"},
+        log,
+        prev_hash,
+    )
+    return False, log, prev_hash
 
 
 def _check_jailbreak(
@@ -1045,7 +1083,7 @@ def _load_structured_request_object(raw: Any) -> Tuple[Dict[str, Any] | None, st
     if isinstance(raw, str):
         try:
             pairs = json.loads(raw, object_pairs_hook=list)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, RecursionError):
             return None, "structured_invalid_json"
         if not isinstance(pairs, list):
             return None, "structured_not_object"
@@ -1068,7 +1106,7 @@ def _load_tool_result_object(raw: Any) -> Tuple[Dict[str, Any] | None, str | Non
     if isinstance(raw, str):
         try:
             pairs = json.loads(raw, object_pairs_hook=list)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, RecursionError):
             return None, "tool_result_invalid_json"
         if not isinstance(pairs, list):
             return None, "tool_result_not_object"
@@ -1101,6 +1139,8 @@ def _validate_tool_result_request(raw: Any) -> Tuple[Dict[str, Any] | None, str 
             return None, "tool_result_nested_value"
         if not isinstance(field_value, str):
             return None, "tool_result_type_mismatch"
+    if _contains_surrogate(obj["content"]):
+        return None, "tool_result_invalid_unicode"
     if len(obj["content"]) > 4000:
         return None, "tool_result_content_length_out_of_bounds"
 
@@ -1267,6 +1307,9 @@ def _validate_structured_request_with_schema(
         if not isinstance(field_value, str):
             return None, "structured_type_mismatch"
 
+    if _contains_surrogate(obj["request_text"]):
+        return None, "structured_invalid_unicode"
+
     if obj["schema_version"] != str(schema_decl["schema_version_const"]):
         return None, "structured_schema_version_mismatch"
     if obj["request_class"] != str(schema_decl["request_class_const"]):
@@ -1340,7 +1383,7 @@ def validate_text(
         "version": "1.0",
         "template_id": str(template_id),
         "payload": text_payload,
-        "checksum": _compute_checksum(text_payload),
+        "checksum": "" if _contains_surrogate(text_payload) else _compute_checksum(text_payload),
         "signature": "",
     }
     return validate_sir(
@@ -1550,6 +1593,36 @@ def validate_sir(
     ok, itgl_log, prev_hash = _check_isc_structure(isc, itgl_log, prev_hash)
     if not ok:
         return _build_block("invalid_isc_schema", itgl_log, domain_pack=domain_pack_id)
+
+    ok, itgl_log, prev_hash = _check_payload_size(
+        isc,
+        itgl_log,
+        prev_hash,
+        max_friction_by_template=max_friction_by_template,
+    )
+    if not ok:
+        return _build_block(
+            "friction_limit_exceeded",
+            itgl_log,
+            domain_pack=domain_pack_id,
+        )
+
+    raw_payload = isc.get("payload", "")
+    if isinstance(raw_payload, str) and _contains_surrogate(raw_payload):
+        itgl_log, prev_hash = _append_itgl(
+            "isc_structure",
+            "fail",
+            {"template_id": str(isc.get("template_id"))},
+            {"error": "invalid_unicode_payload"},
+            itgl_log,
+            prev_hash,
+        )
+        return _build_block(
+            "invalid_isc_schema",
+            itgl_log,
+            block_type="invalid_unicode_payload",
+            domain_pack=domain_pack_id,
+        )
 
     ok, itgl_log, prev_hash = _check_crypto(
         isc,

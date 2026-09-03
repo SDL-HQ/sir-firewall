@@ -116,6 +116,8 @@ Current supported provider and model selection is documented in `docs/model-sele
 
 Low-level `python3 tools/...` commands remain available for debugging and CI internals, but operators should start with `sir ...`.
 
+`sir packs list` reports public registry entries. It does not guarantee that a same-named ISC policy pack exists; see `tests/domain_packs/README.md` for the current execution constraint.
+
 ---
 
 ## What SIR is (and isn’t)

@@ -598,6 +598,15 @@
       return (s ?? "").toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
+    function safeHttpUrl(value, fallback = "") {
+      try {
+        const url = new URL(String(value));
+        return url.protocol === "https:" || url.protocol === "http:" ? String(value) : fallback;
+      } catch {
+        return fallback;
+      }
+    }
+
     function isPost2(ts) {
       if (!ts) return false;
       const t = Date.parse(ts);
@@ -941,7 +950,7 @@
         const model = esc(r.model || "--");
         const ts = esc(r.run_timestamp_utc || "--");
         const leaks = esc(r.comparison?.leaks ?? "--");
-        const ciUrl = esc(r.ci_run_url || "");
+        const ciUrl = esc(safeHttpUrl(r.ci_run_url));
         const ci = ciUrl ? `<a href="${ciUrl}">CI</a>` : "--";
         return `<tr>
           <td><code>${ts}</code></td>
