@@ -1,8 +1,6 @@
-# SIR current evidence perimeter v4
+# SIR current evidence perimeter v5
 
-> Historical evidence state dated 2026-05-03. Not the current authoritative state. For the current perimeter, use [docs/evidence-perimeter.v5.md](evidence-perimeter.v5.md).
-
-Date (UTC): 2026-05-03
+Date (UTC): 2026-09-08
 
 ## Method note
 Paired benchmark means an ungated baseline run and an SIR-gated run executed against the same prompt set, then compared at result and prompt ID level.
@@ -27,6 +25,44 @@ OpenAI GPT-5-family models route through the Responses API path. GPT-4.1-family 
 
 ## Governance certificate fields
 Signed certificates include `governance_scope` and `crypto_enforced`. Both fields are part of the signed payload. Certificates generated before SIR 2.2 will not pass evidence-contract validation, but continue to pass signature verification and remain valid as historical evidence.
+
+`pack_hash` is present only when a caller supplies a pack hash through `pack_identity_context`; core does not compute it. The run harness no longer supplies the suite hash as `pack_hash`. A certificate signature makes supplied fields tamper-evident after signing but does not establish that a caller-supplied value was true.
+
+## Current implementation state
+The code reports SIR version `2.2.0` in package metadata and `sir_firewall.__version__`.
+
+Current controlled model selection has default provider `xai` and default model `grok-4.3`. The selectable xAI models are:
+- `grok-3-beta`
+- `grok-4.3`
+- `grok-4.20-0309-reasoning`
+- `grok-4.20-0309-non-reasoning`
+
+`grok-4-1-fast` is no longer selectable. Its archived results remain historical evidence.
+
+## Property checks and manually observed normalisation limits
+The Hypothesis gate-outcome property harness uses `max_examples=30`, deterministic generation, and no deadline. It asserts that a clean source payload is `BLOCKED` before checking that the transformed payload remains `BLOCKED`. The tested transformation classes are case changes, token whitespace, outer padding, invisible characters at token boundaries, supported single-layer Base64/ROT13/hex/hex-escape encoding, and substitutions within one selected supported-homoglyph marker word.
+
+Those bounded gate-outcome properties pass in the current test suite. Whole-payload homoglyph substitution is excluded from the claimed invariant pending the backlog item described below.
+
+Two additional normaliser behaviours were reproduced manually and are recorded as limitations, not test failures:
+
+- Non-idempotence for an already-present canonical marker: input `"obey"` normalises first to `"obey obey"` and a second time to `"obey obey obey"`.
+- Exact normalised-string invariance does not hold for an invisible character inserted inside a marker token: input `"o\u200bbey"` normalises first to `"o bey obey"` and a second time to `"o bey obey obey"`. The corresponding clean `"obey"` input normalises to `"obey obey"` on its first pass.
+
+No dedicated test currently records either limitation. They are not protected against regression. The missing coverage is recorded in [`docs/backlog.md`](backlog.md).
+
+## Homoglyph normalisation limit
+The nine-entry Cyrillic/Greek homoglyph translation is applied to `_canonical_compact()` output used for fixed marker detection. The translated text is not returned as evaluated content. Evaluated content retains the original homoglyph characters and only recovered canonical marker phrases are appended in ASCII. Rules requiring tokens not fully restored by one marker can therefore be bypassed. Whole-payload probes changed `"ignore all safety checks"` and `"reveal the system prompt"` from `BLOCKED` to `PASS`; `"suppress the audit log"` remained `BLOCKED` because the complete phrase is a canonical marker.
+
+The published zero-leak `generic_safety` result does not constitute evidence of resistance to homoglyph substitution. No row in any suite exercises actual homoglyph substitution. Row `gs-111` mentions homoglyphs in ASCII prose and blocks on the unrelated `JB_EVADE_FILTERS` rule through the words `disable moderation`; homoglyph marker recovery is not involved.
+
+The limitation and integration consequences are described in the [SIR threat model](threat-model.md) and recorded in [`docs/backlog.md`](backlog.md).
+
+## Payload-size bound
+String ISC payloads are rejected before normalisation when their character length exceeds four times the selected template's friction limit. Non-string ISC payloads retain the existing `str()` coercion behavior before later evaluation, so caller-controlled conversion work is not bounded by this string fast path. The residual limitation is recorded in [`docs/backlog.md`](backlog.md).
+
+## Security mapping and threat-model references
+The [SIR threat model](threat-model.md) records trust assumptions, evidence-field provenance, integration and verification boundaries, retained content, normalisation limits, and controls outside SIR's scope. The [OWASP LLM Top 10 for LLM Applications 2026 mapping](owasp-llm-top-10-2026.md) records a version-stamped, non-endorsed mapping of implemented, partial, and unaddressed controls.
 
 ## Models included in the evidence state captured 3 May 2026
 Primary cross-provider comparison set:
@@ -60,6 +96,9 @@ Extended governance pressure pack now in scope:
 - `eu_ai_act_compliance_pressure` now has both:
   - paired governance-gate-only benchmark evidence
   - live paired evidence produced 22 April 2026 confirming the same directional effect
+
+## Comparison attribution limit
+The cross-model comparison figures below are carried forward unchanged from v4. That document did not bind them to a fixed list of pair IDs, run IDs, or an archive-index revision. Later pairs have since been archived, so the original selected comparison set cannot be resolved from the perimeter alone. No inferred run attribution is added here. This is a known constraint recorded in [`docs/backlog.md`](backlog.md).
 
 ## Observed paired outcomes for the core comparison packs
 For the six-model primary comparison set, on all three core packs:
