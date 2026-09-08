@@ -1,4 +1,4 @@
-# SIR: Signal Integrity Resolver Version 2.2.0
+# SIR: Signal Integrity Resolver Version 2.2.1
 
 [![SIR Real Governance Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
@@ -216,7 +216,8 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 * [Engineer guide](docs/engineer-guide.md) (local runs, signing, serving)
 * [Trial guide](docs/trial-guide.md) (auditors, insurers, evidence capture)
 * [Key governance readiness](docs/key-governance-readiness.md) (authority map and `CRYPTO_ENFORCED` checklist)
-* [Release notes](docs/release-notes-2.2.md) (2.2 closeout)
+* [SIR 2.2.1 release notes](docs/release-notes-2.2.1.md) (generative validation tests and CI dependency hygiene)
+* [SIR 2.2.0 release notes](docs/release-notes-2.2.md) (2.2 closeout)
 * [Retention / Tier B export](RETENTION.md)
 * [Security policy](SECURITY.md)
 * [Archive](docs/archive/README.md) (archived and superseded documents)

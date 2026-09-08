@@ -28,7 +28,6 @@ import base64
 import hashlib
 import json
 import os
-import re
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -163,29 +162,18 @@ def _suite_counts_and_hash(suite_path: str) -> Dict[str, str]:
 
 
 def _sir_firewall_version() -> str:
-    """Best-effort SIR version resolution for both CI and local editable repo use."""
+    """Return the package version used by the evidence-generating process."""
     try:
         import sir_firewall  # type: ignore
+    except ImportError as exc:
+        raise RuntimeError(
+            "sir_firewall must be installed from the current checkout before generating evidence"
+        ) from exc
 
-        v = getattr(sir_firewall, "__version__", "")  # set in src/sir_firewall/__init__.py
-        v = str(v).strip()
-        if v:
-            return v
-    except Exception:
-        pass
-
-    # Local fallback: parse src version constant without requiring package install.
-    try:
-        init_py = REPO_ROOT / "src" / "sir_firewall" / "__init__.py"
-        with open(init_py, "r", encoding="utf-8") as f:
-            text = f.read()
-        m = re.search(r'__version__\s*=\s*"([^"]+)"', text)
-        if m and m.group(1).strip():
-            return m.group(1).strip()
-    except Exception:
-        pass
-
-    return "unknown"
+    version = str(getattr(sir_firewall, "__version__", "")).strip()
+    if not version:
+        raise RuntimeError("installed sir_firewall package does not expose __version__")
+    return version
 
 
 def _git_commit_sha() -> str:
