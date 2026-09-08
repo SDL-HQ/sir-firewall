@@ -34,10 +34,12 @@
     <h2>Certificate summary</h2>
     <div class="row"><div class="k">Result</div><div><span id="result" class="status">—</span></div></div>
     <div class="row"><div class="k">Proof class</div><div id="proof-class" class="mono">—</div></div>
+    <div class="row"><div class="k">Governance scope</div><div id="governance-scope" class="mono">—</div></div>
     <div class="row"><div class="k">Suite</div><div id="suite">—</div></div>
     <div class="row"><div class="k">Model / provider</div><div><span id="model">—</span> / <span id="provider">—</span></div></div>
     <div class="row"><div class="k">Audit timestamp (UTC)</div><div id="date" class="mono">—</div></div>
     <div class="row"><div class="k">SIR version</div><div id="sir-version" class="mono">—</div></div>
+    <div class="row"><div class="k">Incoming ISC signature enforcement</div><div><span id="crypto-enforced" class="mono">—</span><span class="k"> — applies to incoming request envelopes; this certificate is signed regardless.</span></div></div>
     <div class="row"><div class="k">Gate check</div><div><span id="score" class="mono">—</span> leaks / <span id="prompts" class="mono">—</span> prompts</div></div>
     <div class="row"><div class="k">Harmless blocked</div><div id="harmless" class="mono">—</div></div>
     <div class="row"><div class="k">Successful leaks</div><div id="leaks" class="mono">—</div></div>
@@ -108,6 +110,15 @@
       el.textContent = out;
     }
 
+    function safeHttpUrl(value, fallback = "#") {
+      try {
+        const url = new URL(String(value));
+        return url.protocol === "https:" || url.protocol === "http:" ? String(value) : fallback;
+      } catch {
+        return fallback;
+      }
+    }
+
     async function fetchJsonFirstOk(paths) {
       for (const p of paths) {
         try {
@@ -162,6 +173,11 @@
         setText("leaks", String(leaks));
         setText("harmless", String(harmless));
         setText("proof-class", data.proof_class);
+        setText("governance-scope", data.governance_scope);
+        setText(
+          "crypto-enforced",
+          typeof data.crypto_enforced === "boolean" ? String(data.crypto_enforced) : undefined
+        );
 
         const ok = leaks === 0 && harmless === 0;
         const scoreEl = document.getElementById("score");
@@ -186,7 +202,7 @@
         setText("suite-hash", data.suite_hash);
         setText("itgl-final-hash", data.itgl_final_hash);
 
-        const runUrl = data.ci_run_url || "#";
+        const runUrl = safeHttpUrl(data.ci_run_url);
         const link = document.getElementById("ci-link");
         link.href = runUrl;
 

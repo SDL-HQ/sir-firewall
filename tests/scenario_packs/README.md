@@ -9,6 +9,10 @@ Canonical taxonomy source: `spec/packs/PACKS.md` ("Coverage taxonomy v1").
 - [Scenario Injection Chain](./scenario_injection_chain.md) — taxonomy: `benign_control`, `injection`, `exfiltration`
 - [Scenario Tool Injection](./scenario_tool_injection.md) — taxonomy: `benign_control`, `injection`
 
+## Current execution constraint
+
+Both scenario suites are registry-active, but selecting either through the `--pack` route currently produces systemic-reset blocks rather than meaningful suite evaluation because no same-named ISC policy pack exists.
+
 ## Artefacts
 
 - Scenario suites: `tests/scenario_packs/*.json`

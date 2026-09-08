@@ -46,10 +46,15 @@
       const el = document.getElementById(id);
       if (!el) return;
       const out = (val === undefined || val === null || String(val).trim() === "") ? "—" : String(val);
-      if (el.tagName === "A") {
-        el.textContent = out;
-      } else {
-        el.innerHTML = `<code>${out}</code>`;
+      el.textContent = out;
+    }
+
+    function safeHttpUrl(value, fallback = "#") {
+      try {
+        const url = new URL(String(value));
+        return url.protocol === "https:" || url.protocol === "http:" ? String(value) : fallback;
+      } catch {
+        return fallback;
       }
     }
 
@@ -67,7 +72,7 @@
         setText("harmless", data.harmless_blocked);
 
         const ci = document.getElementById("ci");
-        const url = data.ci_run_url || "#";
+        const url = safeHttpUrl(data.ci_run_url);
         ci.href = url;
         ci.textContent = url === "#" ? "—" : url;
       })
