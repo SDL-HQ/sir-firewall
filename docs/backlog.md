@@ -85,7 +85,7 @@ These substantive prompt sets are active registry entries. Public entries are di
 
 ### Normalisation fixed-point review
 
-SIR 2.2.1 property testing records that normalisation is not idempotent where marker recovery appends an already-present canonical marker.
+Manual reproduction and documentation record that normalisation is not idempotent where marker recovery appends an already-present canonical marker.
 
 Minimal counterexample: `obey`.
 
@@ -97,7 +97,7 @@ Review whether marker recovery should avoid appending canonical markers already 
 
 ### Invisible-character canonicalisation review
 
-SIR 2.2.1 property testing records that exact normalised-string invariance does not hold where an invisible character is inserted inside a marker token.
+Manual reproduction and documentation record that exact normalised-string invariance does not hold where an invisible character is inserted inside a marker token.
 
 Minimal counterexample: `i\u200bgnore previous instructions`.
 
