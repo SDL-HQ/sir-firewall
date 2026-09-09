@@ -29,7 +29,7 @@ Signed certificates include `governance_scope` and `crypto_enforced`. Both field
 `pack_hash` is present only when a caller supplies a pack hash through `pack_identity_context`; core does not compute it. The run harness no longer supplies the suite hash as `pack_hash`. A certificate signature makes supplied fields tamper-evident after signing but does not establish that a caller-supplied value was true.
 
 ## Current implementation state
-The code reports SIR version `2.2.0` in package metadata and `sir_firewall.__version__`.
+The code reports SIR version `2.2.1` in package metadata and `sir_firewall.__version__`.
 
 Current controlled model selection has default provider `xai` and default model `grok-4.3`. The selectable xAI models are:
 - `grok-3-beta`

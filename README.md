@@ -208,6 +208,7 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 * [Minimal pilot runbook](docs/minimal-pilot-runbook.md) (procedural cold-start path)
 * [Evaluator technical explainer](docs/evaluator-technical-explainer.md) (evaluation and interpretation path)
 * [Assurance kit](docs/assurance-kit.md) (supporting evaluation and verification reference)
+* [Compliance evidence map](docs/compliance-evidence-map.md) (reviewer-facing evidence packaging map)
 * [Evidence perimeter note](docs/evidence-perimeter.v5.md) (current bounded benchmark perimeter)
 * [Threat model](docs/threat-model.md) (trust, integration, verification, retention, and control boundaries)
 * [OWASP LLM Top 10 2026 mapping](docs/owasp-llm-top-10-2026.md) (version-stamped control mapping)
