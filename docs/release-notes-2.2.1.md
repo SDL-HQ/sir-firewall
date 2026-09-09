@@ -29,7 +29,7 @@ These tests cover the stated bounded transformations. They do not establish robu
 
 ## Recorded behaviours
 
-Two normalisation behaviours are recorded as executable expected behaviours using strict expected failures, not hidden skips:
+Two normalisation behaviours are documented as observed limitations of the normaliser. They are reproducible manually, but no dedicated test records either behaviour; the missing coverage is tracked in [`docs/backlog.md`](backlog.md):
 
 1. Fixed-point idempotence does not hold where marker recovery appends an already-present canonical marker. The minimal counterexample is `obey`.
 2. Exact normalised-string invariance does not hold where an invisible character is inserted inside a marker token. The minimal counterexample is `i\u200bgnore previous instructions`.
