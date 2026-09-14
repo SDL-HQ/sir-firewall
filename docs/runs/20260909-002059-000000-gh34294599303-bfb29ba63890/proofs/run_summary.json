@@ -1,9 +1,9 @@
 {
-  "date": "2026-09-12T07:18:15Z",
-  "timestamp_utc": "2026-09-12T07:18:15Z",
+  "date": "2026-09-09T00:20:59Z",
+  "timestamp_utc": "2026-09-09T00:20:59Z",
   "proof_class": "FIREWALL_ONLY_AUDIT",
-  "model": "gpt-5.4-mini",
-  "provider": "openai",
+  "model": "grok-4.3",
+  "provider": "xai",
   "pack_id": "generic_safety",
   "pack_version": "1.0.0",
   "selected_pack_id": "generic_safety",
