@@ -25,7 +25,7 @@ We will:
 
 This policy covers:
 
-- The SIR firewall code in this repository
+- The SIR governance gate code in this repository
 - Configuration and workflows in this repository that affect runtime behaviour
 
 It does **not** cover:
