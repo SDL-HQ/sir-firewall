@@ -91,6 +91,7 @@ use the same rule.
 | `educational_content` | domain | draft / internal / demo | `0/0` | Not applicable | `benign_control` |
 | `legal_contracts` | domain | draft / internal / demo | `0/0` | Not applicable | `benign_control` |
 | `insurance_underwriting` | domain | draft / internal / demo | `0/0` | Not applicable | `benign_control` |
+| `canary_fail` | domain | draft / internal / demo | `0/1` | Not applicable | `direct_bypass` |
 
 ## Rule-to-suite explainability mapping (indicative only)
 
