@@ -67,25 +67,31 @@ Current categories in active use:
 - `exfiltration`
 - `injection`
 
-Current pack/scenario taxonomy mapping (active and draft registry suites):
+Current pack/scenario taxonomy mapping (active and draft registry suites).
+Full-gate coverage is the published `n/n` measurement in
+[`docs/rule-coverage.md`](../../docs/rule-coverage.md). Runner evaluability is
+independent of coverage and records whether the standard runner can execute the
+suite. The values below are sourced from the generated report, which derives the
+property from same-named ISC enforcement-policy-pack file presence.
 
-| Pack/Scenario | Pack class | Registry posture | Taxonomy category |
-| --- | --- | --- | --- |
-| `generic_safety` | domain | active / public / canonical | `benign_control`, `direct_bypass`, `obfuscation`, `exfiltration`, `injection` |
-| `account_recovery_fraud` | domain | active / public / canonical | `benign_control`, `direct_bypass` |
-| `mental_health_clinical` | domain | active / encoded / canonical | `benign_control`, `direct_bypass` |
-| `support_operator_override` | domain | active / public / canonical | `benign_control`, `direct_bypass`, `exfiltration` |
-| `data_exfiltration_pressure` | domain | active / public / canonical | `benign_control`, `exfiltration` |
-| `eu_ai_act_compliance_pressure` | domain | active / public / canonical | `benign_control`, `direct_bypass` |
-| `scenario_injection_chain` | scenario | active / public / canonical | `benign_control`, `injection`, `exfiltration` |
-| `scenario_tool_injection` | scenario | active / public / canonical | `benign_control`, `injection` |
-| `healthcare_compliance` | domain | draft / internal / demo | `benign_control` |
-| `financial_services` | domain | draft / internal / demo | `benign_control` |
-| `pii_protection` | domain | draft / internal / demo | `benign_control` |
-| `code_generation_safety` | domain | draft / internal / demo | `benign_control` |
-| `educational_content` | domain | draft / internal / demo | `benign_control` |
-| `legal_contracts` | domain | draft / internal / demo | `benign_control` |
-| `insurance_underwriting` | domain | draft / internal / demo | `benign_control` |
+| Pack/Scenario | Pack class | Registry posture | Full-gate coverage | Runner evaluability | Taxonomy category |
+| --- | --- | --- | ---: | --- | --- |
+| `generic_safety` | domain | active / public / canonical | `100/100` | Runner-evaluable | `benign_control`, `direct_bypass`, `obfuscation`, `exfiltration`, `injection` |
+| `account_recovery_fraud` | domain | active / public / canonical | `0/5` | Not runner-evaluable | `benign_control`, `direct_bypass` |
+| `mental_health_clinical` | domain | active / encoded / canonical | `5/15` | Not runner-evaluable | `benign_control`, `direct_bypass` |
+| `support_operator_override` | domain | active / public / canonical | `26/26` | Runner-evaluable | `benign_control`, `direct_bypass`, `exfiltration` |
+| `data_exfiltration_pressure` | domain | active / public / canonical | `27/27` | Runner-evaluable | `benign_control`, `exfiltration` |
+| `eu_ai_act_compliance_pressure` | domain | active / public / canonical | `74/100` | Runner-evaluable | `benign_control`, `direct_bypass` |
+| `scenario_injection_chain` | scenario | active / public / canonical | `6/10` | Not runner-evaluable | `benign_control`, `injection`, `exfiltration` |
+| `scenario_tool_injection` | scenario | active / public / canonical | `1/2` | Not runner-evaluable | `benign_control`, `injection` |
+| `healthcare_compliance` | domain | draft / internal / demo | `0/0` | Not runner-evaluable | `benign_control` |
+| `financial_services` | domain | draft / internal / demo | `0/0` | Not runner-evaluable | `benign_control` |
+| `pii_protection` | domain | draft / internal / demo | `0/0` | Not runner-evaluable | `benign_control` |
+| `code_generation_safety` | domain | draft / internal / demo | `0/0` | Not runner-evaluable | `benign_control` |
+| `educational_content` | domain | draft / internal / demo | `0/0` | Not runner-evaluable | `benign_control` |
+| `legal_contracts` | domain | draft / internal / demo | `0/0` | Not runner-evaluable | `benign_control` |
+| `insurance_underwriting` | domain | draft / internal / demo | `0/0` | Not runner-evaluable | `benign_control` |
+| `canary_fail` | domain | draft / internal / demo | `0/1` | Not runner-evaluable | `direct_bypass` |
 
 ## Rule-to-suite explainability mapping (indicative only)
 

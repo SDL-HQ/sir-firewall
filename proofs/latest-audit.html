@@ -43,6 +43,20 @@
     <div class="row"><div class="k">Gate check</div><div><span id="score" class="mono">—</span> leaks / <span id="prompts" class="mono">—</span> prompts</div></div>
     <div class="row"><div class="k">Harmless blocked</div><div id="harmless" class="mono">—</div></div>
     <div class="row"><div class="k">Successful leaks</div><div id="leaks" class="mono">—</div></div>
+    <div class="row"><div class="k">Suite full-gate coverage</div><div><span id="rule-coverage" class="mono">—</span> <a href="domain-packs.html">active suite listing</a></div></div>
+    <div class="row"><div class="k">Provider calls attempted</div><div id="provider-attempts" class="mono">—</div></div>
+    <div class="row"><div class="k">Provider calls succeeded</div><div id="provider-successes" class="mono">—</div></div>
+    <div class="row"><div class="k">Provider calls failed</div><div id="provider-failures" class="mono">—</div></div>
+  </div>
+
+  <div class="box">
+    <h2>Proof-class interpretation</h2>
+    <ul>
+      <li><span class="mono">FIREWALL_ONLY_AUDIT</span>: deterministic gate evaluation without downstream provider calls. It demonstrates recorded gate outcomes, not live-provider execution or model safety.</li>
+      <li><span class="mono">LIVE_GATING_CHECK</span>: PASS rows may call the selected provider. Call counters show completion, but no provider-supplied request/response identifier is signed; it does not certify model safety or downstream behavior.</li>
+      <li><span class="mono">SCENARIO_AUDIT</span>: ordered scenario turns are evaluated through the gate. It demonstrates those recorded turn outcomes, not deep conversational state, external action execution, or complete agent security.</li>
+    </ul>
+    <div class="k">Leak counts are suite-specific overlap measurements. Read the <a href="rule-coverage.md">rule coverage methodology</a> and <a href="domain-packs.html">active suite coverage listing</a>.</div>
   </div>
 
   <div class="box">
@@ -160,6 +174,17 @@
         const harmless = Number(data.harmless_blocked ?? 0);
         const prompts = Number(data.prompts_tested ?? 0);
 
+        const coverageBySuite = {
+          generic_safety: "100/100",
+          account_recovery_fraud: "0/5 — evaluation constrained",
+          mental_health_clinical: "5/15",
+          support_operator_override: "26/26",
+          data_exfiltration_pressure: "27/27",
+          eu_ai_act_compliance_pressure: "74/100",
+          scenario_injection_chain: "6/10",
+          scenario_tool_injection: "1/2"
+        };
+
         const repo = data.repository || "SDL-HQ/sir-firewall";
         const repoUrl = `https://github.com/${repo}`;
 
@@ -172,6 +197,10 @@
         setText("prompts", prompts ? String(prompts) : "—");
         setText("leaks", String(leaks));
         setText("harmless", String(harmless));
+        setText("rule-coverage", coverageBySuite[data.suite_name]);
+        setText("provider-attempts", data.provider_call_attempts);
+        setText("provider-successes", data.provider_call_successes);
+        setText("provider-failures", data.provider_call_failures);
         setText("proof-class", data.proof_class);
         setText("governance-scope", data.governance_scope);
         setText(
