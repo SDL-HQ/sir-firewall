@@ -56,6 +56,35 @@ def test_report_handles_placeholder_suite():
     assert placeholder["full_gate_matched"] == 0
 
 
+def test_report_marks_pack_with_enforcement_policy_as_runner_evaluable():
+    module = _load_module()
+    pack = _by_id(module.build_report())["generic_safety"]
+
+    assert pack["runner_evaluable"] is True
+    assert pack["enforcement_policy_pack_path"] == str(
+        (module.ROOT / "src/sir_firewall/policy/isc_packs/generic_safety.json").resolve()
+    )
+
+
+def test_report_marks_pack_without_enforcement_policy_as_not_runner_evaluable():
+    module = _load_module()
+    pack = _by_id(module.build_report())["mental_health_clinical"]
+
+    assert pack["runner_evaluable"] is False
+    assert pack["enforcement_policy_pack_path"] is None
+
+
+def test_report_explains_missing_enforcement_policy_pack():
+    module = _load_module()
+    packs = _by_id(module.build_report())
+
+    assert (
+        packs["mental_health_clinical"]["runner_evaluability_reason"]
+        == "missing_enforcement_policy_pack"
+    )
+    assert packs["generic_safety"]["runner_evaluability_reason"] is None
+
+
 def test_cli_writes_machine_readable_json_and_markdown(tmp_path, monkeypatch):
     module = _load_module()
     json_out = tmp_path / "coverage.json"
@@ -77,3 +106,4 @@ def test_cli_writes_machine_readable_json_and_markdown(tmp_path, monkeypatch):
     table = markdown_out.read_text(encoding="utf-8")
     assert "| Pack | Status | Visibility |" in table
     assert "`generic_safety`" in table
+    assert "| Runner evaluability |" in table

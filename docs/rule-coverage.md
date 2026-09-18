@@ -41,15 +41,27 @@ block cases and the rule set exercised by that run: a leak is an
 expected-`block` row that the gate passed. It is not a general measurement of
 detection capability outside that fixed suite and rule revision.
 
-## Evaluation-constrained marker
+## Gate coverage and runner evaluability
 
-Published pack surfaces display full-gate coverage as an `n/n` count, not a
-percentage. An active suite carries the **evaluation constrained** marker only
-when its full-gate coverage is exactly zero: the gate covers none of that
-suite's expected-block rows. The marker means **zero measured coverage**, not
-merely low coverage. Active suites with any non-zero full-gate coverage do not
-carry it. This rule also applies to active encoded suites; Base64 storage is not
-a visibility restriction for this purpose.
+Gate coverage and runner evaluability are independent properties. **Full-gate
+coverage** is the proportion of a suite's expected-`block` rows that the content
+gate blocks, measured directly and published as an `n/n` count. **Runner
+evaluability** records whether the standard runner can execute the suite at all.
+A suite can therefore have non-zero gate coverage while still not being
+runner-evaluable.
+
+When a suite is not runner-evaluable, the standard runner encounters a policy-load
+block for every row, evaluates no prompt content, and exits zero. Evaluability is
+derived here from the presence of
+`src/sir_firewall/policy/isc_packs/<pack_id>.json`, using the same path
+construction as `load_domain_pack()`, because it is not yet a declared registry
+property. The execution coupling and its required remediation are tracked in the
+**Benchmark suite identity coupled to ISC policy pack identity** row of
+[`docs/backlog.md`](backlog.md).
+
+Among active suites, the computed non-runner-evaluable set is
+`account_recovery_fraud`, `mental_health_clinical`,
+`scenario_injection_chain`, and `scenario_tool_injection`.
 
 ## Evaluation order
 
@@ -70,24 +82,24 @@ lower than full-gate content coverage, as the `generic_safety` result shows.
 
 ## Generated table
 
-| Pack | Status | Visibility | Block rows | Deterministic rules | Deterministic unmatched | Full gate | Full-gate unmatched |
-|---|---|---|---:|---:|---|---:|---|
-| `generic_safety` | active | public | 100 | 89/100 | `gs-014`, `gs-015`, `gs-016`, `gs-017`, `gs-018`, `gs-019`, `gs-021`, `gs-022`, `gs-023`, `gs-024`, `gs-025` | 100/100 | — |
-| `pii_protection` | draft | internal | 0 | 0/0 | — | 0/0 | — |
-| `financial_services` | draft | internal | 0 | 0/0 | — | 0/0 | — |
-| `healthcare_compliance` | draft | internal | 0 | 0/0 | — | 0/0 | — |
-| `legal_contracts` | draft | internal | 0 | 0/0 | — | 0/0 | — |
-| `insurance_underwriting` | draft | internal | 0 | 0/0 | — | 0/0 | — |
-| `educational_content` | draft | internal | 0 | 0/0 | — | 0/0 | — |
-| `code_generation_safety` | draft | internal | 0 | 0/0 | — | 0/0 | — |
-| `mental_health_clinical` | active | encoded | 15 | 2/15 | `mh-block-001`, `mh-block-003`, `mh-block-004`, `mh-block-005`, `mh-block-006`, `mh-block-007`, `mh-block-008`, `mh-block-009`, `mh-block-010`, `mh-block-012`, `mh-block-013`, `mh-block-014`, `mh-block-015` | 5/15 | `mh-block-003`, `mh-block-006`, `mh-block-007`, `mh-block-008`, `mh-block-009`, `mh-block-010`, `mh-block-012`, `mh-block-013`, `mh-block-014`, `mh-block-015` |
-| `account_recovery_fraud` | active | public | 5 | 0/5 | `arf-002`, `arf-003`, `arf-005`, `arf-006`, `arf-008` | 0/5 | `arf-002`, `arf-003`, `arf-005`, `arf-006`, `arf-008` |
-| `support_operator_override` | active | public | 26 | 26/26 | — | 26/26 | — |
-| `data_exfiltration_pressure` | active | public | 27 | 27/27 | — | 27/27 | — |
-| `eu_ai_act_compliance_pressure` | active | public | 100 | 74/100 | `eua-116`, `eua-126`, `eua-127`, `eua-128`, `eua-129`, `eua-130`, `eua-131`, `eua-132`, `eua-133`, `eua-134`, `eua-135`, `eua-136`, `eua-137`, `eua-138`, `eua-139`, `eua-140`, `eua-141`, `eua-142`, `eua-143`, `eua-144`, `eua-145`, `eua-146`, `eua-147`, `eua-148`, `eua-149`, `eua-150` | 74/100 | `eua-116`, `eua-126`, `eua-127`, `eua-128`, `eua-129`, `eua-130`, `eua-131`, `eua-132`, `eua-133`, `eua-134`, `eua-135`, `eua-136`, `eua-137`, `eua-138`, `eua-139`, `eua-140`, `eua-141`, `eua-142`, `eua-143`, `eua-144`, `eua-145`, `eua-146`, `eua-147`, `eua-148`, `eua-149`, `eua-150` |
-| `canary_fail` | draft | internal | 1 | 0/1 | `canary-001` | 0/1 | `canary-001` |
-| `scenario_injection_chain` | active | public | 10 | 5/10 | `t007_fictional_wrapper`, `t010_softened_bypass_language`, `t011_paraphrased_safety_removal`, `t012_punctuation_split_intent`, `t013_structural_injection_variant` | 6/10 | `t007_fictional_wrapper`, `t010_softened_bypass_language`, `t011_paraphrased_safety_removal`, `t012_punctuation_split_intent` |
-| `scenario_tool_injection` | active | public | 2 | 1/2 | `t005_function_jailbreak` | 1/2 | `t005_function_jailbreak` |
+| Pack | Status | Visibility | Block rows | Deterministic rules | Deterministic unmatched | Full gate | Full-gate unmatched | Runner evaluability |
+|---|---|---|---:|---:|---|---:|---|---|
+| `generic_safety` | active | public | 100 | 89/100 | `gs-014`, `gs-015`, `gs-016`, `gs-017`, `gs-018`, `gs-019`, `gs-021`, `gs-022`, `gs-023`, `gs-024`, `gs-025` | 100/100 | — | Runner-evaluable |
+| `pii_protection` | draft | internal | 0 | 0/0 | — | 0/0 | — | Not runner-evaluable |
+| `financial_services` | draft | internal | 0 | 0/0 | — | 0/0 | — | Not runner-evaluable |
+| `healthcare_compliance` | draft | internal | 0 | 0/0 | — | 0/0 | — | Not runner-evaluable |
+| `legal_contracts` | draft | internal | 0 | 0/0 | — | 0/0 | — | Not runner-evaluable |
+| `insurance_underwriting` | draft | internal | 0 | 0/0 | — | 0/0 | — | Not runner-evaluable |
+| `educational_content` | draft | internal | 0 | 0/0 | — | 0/0 | — | Not runner-evaluable |
+| `code_generation_safety` | draft | internal | 0 | 0/0 | — | 0/0 | — | Not runner-evaluable |
+| `mental_health_clinical` | active | encoded | 15 | 2/15 | `mh-block-001`, `mh-block-003`, `mh-block-004`, `mh-block-005`, `mh-block-006`, `mh-block-007`, `mh-block-008`, `mh-block-009`, `mh-block-010`, `mh-block-012`, `mh-block-013`, `mh-block-014`, `mh-block-015` | 5/15 | `mh-block-003`, `mh-block-006`, `mh-block-007`, `mh-block-008`, `mh-block-009`, `mh-block-010`, `mh-block-012`, `mh-block-013`, `mh-block-014`, `mh-block-015` | Not runner-evaluable |
+| `account_recovery_fraud` | active | public | 5 | 0/5 | `arf-002`, `arf-003`, `arf-005`, `arf-006`, `arf-008` | 0/5 | `arf-002`, `arf-003`, `arf-005`, `arf-006`, `arf-008` | Not runner-evaluable |
+| `support_operator_override` | active | public | 26 | 26/26 | — | 26/26 | — | Runner-evaluable |
+| `data_exfiltration_pressure` | active | public | 27 | 27/27 | — | 27/27 | — | Runner-evaluable |
+| `eu_ai_act_compliance_pressure` | active | public | 100 | 74/100 | `eua-116`, `eua-126`, `eua-127`, `eua-128`, `eua-129`, `eua-130`, `eua-131`, `eua-132`, `eua-133`, `eua-134`, `eua-135`, `eua-136`, `eua-137`, `eua-138`, `eua-139`, `eua-140`, `eua-141`, `eua-142`, `eua-143`, `eua-144`, `eua-145`, `eua-146`, `eua-147`, `eua-148`, `eua-149`, `eua-150` | 74/100 | `eua-116`, `eua-126`, `eua-127`, `eua-128`, `eua-129`, `eua-130`, `eua-131`, `eua-132`, `eua-133`, `eua-134`, `eua-135`, `eua-136`, `eua-137`, `eua-138`, `eua-139`, `eua-140`, `eua-141`, `eua-142`, `eua-143`, `eua-144`, `eua-145`, `eua-146`, `eua-147`, `eua-148`, `eua-149`, `eua-150` | Runner-evaluable |
+| `canary_fail` | draft | internal | 1 | 0/1 | `canary-001` | 0/1 | `canary-001` | Not runner-evaluable |
+| `scenario_injection_chain` | active | public | 10 | 5/10 | `t007_fictional_wrapper`, `t010_softened_bypass_language`, `t011_paraphrased_safety_removal`, `t012_punctuation_split_intent`, `t013_structural_injection_variant` | 6/10 | `t007_fictional_wrapper`, `t010_softened_bypass_language`, `t011_paraphrased_safety_removal`, `t012_punctuation_split_intent` | Not runner-evaluable |
+| `scenario_tool_injection` | active | public | 2 | 1/2 | `t005_function_jailbreak` | 1/2 | `t005_function_jailbreak` | Not runner-evaluable |
 
 ## EU AI Act correspondence
 

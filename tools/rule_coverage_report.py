@@ -115,9 +115,14 @@ def build_report(*, registry_path: Path = DEFAULT_REGISTRY, root: Path = ROOT) -
         block_ids = [row["id"] for row in block_rows]
         deterministic_set = set(deterministic_matched)
         full_gate_set = set(full_gate_matched)
+        pack_id = str(pack.get("pack_id") or "")
+        enforcement_policy_pack_path = (
+            root / "src" / "sir_firewall" / "policy" / "isc_packs" / f"{pack_id}.json"
+        )
+        runner_evaluable = enforcement_policy_pack_path.exists()
         results.append(
             {
-                "pack_id": str(pack.get("pack_id") or ""),
+                "pack_id": pack_id,
                 "status": str(pack.get("status") or ""),
                 "visibility": str(pack.get("visibility") or ""),
                 "block_rows": len(block_rows),
@@ -125,6 +130,13 @@ def build_report(*, registry_path: Path = DEFAULT_REGISTRY, root: Path = ROOT) -
                 "deterministic_rule_unmatched_ids": [row_id for row_id in block_ids if row_id not in deterministic_set],
                 "full_gate_matched": len(full_gate_matched),
                 "full_gate_unmatched_ids": [row_id for row_id in block_ids if row_id not in full_gate_set],
+                "runner_evaluable": runner_evaluable,
+                "enforcement_policy_pack_path": str(enforcement_policy_pack_path.resolve())
+                if runner_evaluable
+                else None,
+                "runner_evaluability_reason": (
+                    None if runner_evaluable else "missing_enforcement_policy_pack"
+                ),
             }
         )
 
@@ -138,8 +150,8 @@ def _ids(values: Iterable[str]) -> str:
 
 def render_markdown(report: dict[str, Any]) -> str:
     lines = [
-        "| Pack | Status | Visibility | Block rows | Deterministic rules | Deterministic unmatched | Full gate | Full-gate unmatched |",
-        "|---|---|---|---:|---:|---|---:|---|",
+        "| Pack | Status | Visibility | Block rows | Deterministic rules | Deterministic unmatched | Full gate | Full-gate unmatched | Runner evaluability |",
+        "|---|---|---|---:|---:|---|---:|---|---|",
     ]
     for pack in report["packs"]:
         total = pack["block_rows"]
@@ -155,6 +167,7 @@ def render_markdown(report: dict[str, Any]) -> str:
                     _ids(pack["deterministic_rule_unmatched_ids"]),
                     f"{pack['full_gate_matched']}/{total}",
                     _ids(pack["full_gate_unmatched_ids"]),
+                    "Runner-evaluable" if pack["runner_evaluable"] else "Not runner-evaluable",
                 ]
             )
             + " |"
