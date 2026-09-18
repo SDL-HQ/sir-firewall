@@ -1,0 +1,40 @@
+{
+  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/35316527367",
+  "commit_sha": "d11b5722a315622afe7d009d632603ea808f9621",
+  "evidence_contract_version": "v1",
+  "extras": {
+    "pack_id": "generic_safety",
+    "pack_version": "1.0.0",
+    "proof_class": "LIVE_GATING_CHECK"
+  },
+  "files": [
+    {
+      "path": "audit.json",
+      "sha256": "sha256:242d4f595768ea628a5938596064e467fa3730337145823eaacdbe0f8179abeb",
+      "size_bytes": 2594
+    },
+    {
+      "path": "proofs/itgl_final_hash.txt",
+      "sha256": "sha256:2431642c7fb8c8e9152b7eadfbb5f0dffb83d01a7432eaba7c14cf34edda44bd",
+      "size_bytes": 72
+    },
+    {
+      "path": "proofs/itgl_ledger.jsonl",
+      "sha256": "sha256:981f8f056a983c72b822f37c17299925e882bed6a8325da4f5cbe46656e87584",
+      "size_bytes": 137141
+    },
+    {
+      "path": "proofs/latest-attempts.log",
+      "sha256": "sha256:20fc963bf2ab3297196b25819d85c8d90f320f7440802cf864fc0fb6c718f7fd",
+      "size_bytes": 5731
+    },
+    {
+      "path": "proofs/run_summary.json",
+      "sha256": "sha256:f1c13f50cddd60d963c7beaac95de05106c10c4954ef1bd1455ef279bc0a2b9e",
+      "size_bytes": 950
+    }
+  ],
+  "repository": "SDL-HQ/sir-firewall",
+  "run_id": "20260918-070240-000000-gh35316527367-bfb29ba63890",
+  "timestamp_utc": "2026-09-18T07:02:41Z"
+}
