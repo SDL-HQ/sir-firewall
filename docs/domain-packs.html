@@ -20,19 +20,19 @@
   <h1>Active suite coverage</h1>
   <p class="muted">Full-gate content coverage for active registry suites, published as covered expected-block rows / total expected-block rows.</p>
   <div class="note">
-    <strong>Marker rule:</strong> <span class="marker">Evaluation constrained</span> means full-gate coverage is exactly zero—the gate covers none of that suite's expected-block rows. It does not mean merely low coverage. Encoded suites use the same rule. See the <a href="rule-coverage.md">complete methodology and unmatched row IDs</a>.
+    <strong>Independent properties:</strong> Full-gate coverage is measured directly against expected-block rows. Runner evaluability indicates whether the standard runner can execute the suite, as derived from the generated report. See the <a href="rule-coverage.md">complete methodology and unmatched row IDs</a>.
   </div>
   <table>
-    <thead><tr><th>Suite</th><th>Registry visibility</th><th>Full-gate coverage</th><th>Evaluation marker</th></tr></thead>
+    <thead><tr><th>Suite</th><th>Registry visibility</th><th>Full-gate coverage</th><th>Runner evaluability</th></tr></thead>
     <tbody>
-      <tr><td><code>generic_safety</code></td><td>public</td><td><code>100/100</code></td><td>—</td></tr>
-      <tr><td><code>account_recovery_fraud</code></td><td>public</td><td><code>0/5</code></td><td><span class="marker">Evaluation constrained</span></td></tr>
-      <tr><td><code>mental_health_clinical</code></td><td>encoded</td><td><code>5/15</code></td><td>—</td></tr>
-      <tr><td><code>support_operator_override</code></td><td>public</td><td><code>26/26</code></td><td>—</td></tr>
-      <tr><td><code>data_exfiltration_pressure</code></td><td>public</td><td><code>27/27</code></td><td>—</td></tr>
-      <tr><td><code>eu_ai_act_compliance_pressure</code></td><td>public</td><td><code>74/100</code></td><td>—</td></tr>
-      <tr><td><code>scenario_injection_chain</code></td><td>public</td><td><code>6/10</code></td><td>—</td></tr>
-      <tr><td><code>scenario_tool_injection</code></td><td>public</td><td><code>1/2</code></td><td>—</td></tr>
+      <tr><td><code>generic_safety</code></td><td>public</td><td><code>100/100</code></td><td>Runner-evaluable</td></tr>
+      <tr><td><code>account_recovery_fraud</code></td><td>public</td><td><code>0/5</code></td><td><span class="marker">Not runner-evaluable</span></td></tr>
+      <tr><td><code>mental_health_clinical</code></td><td>encoded</td><td><code>5/15</code></td><td><span class="marker">Not runner-evaluable</span></td></tr>
+      <tr><td><code>support_operator_override</code></td><td>public</td><td><code>26/26</code></td><td>Runner-evaluable</td></tr>
+      <tr><td><code>data_exfiltration_pressure</code></td><td>public</td><td><code>27/27</code></td><td>Runner-evaluable</td></tr>
+      <tr><td><code>eu_ai_act_compliance_pressure</code></td><td>public</td><td><code>74/100</code></td><td>Runner-evaluable</td></tr>
+      <tr><td><code>scenario_injection_chain</code></td><td>public</td><td><code>6/10</code></td><td><span class="marker">Not runner-evaluable</span></td></tr>
+      <tr><td><code>scenario_tool_injection</code></td><td>public</td><td><code>1/2</code></td><td><span class="marker">Not runner-evaluable</span></td></tr>
     </tbody>
   </table>
   <p class="muted">Coverage measures overlap with the current content gate. It is not a percentage score, semantic-detection claim, or certification.</p>
