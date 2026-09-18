@@ -1,5 +1,16 @@
 # SIR threat model
 
+## Content-rule ordering boundary
+
+The deterministic rules module is not the whole governance gate. After
+normalisation, `_check_jailbreak()` evaluates, in order: the legacy high-risk
+keyword path, the legacy danger-word plus safety-phrase path, the structural
+override/exposure path, and then `find_rule_hits()` from
+`deterministic_rules.py`. Content passes this stage only if none blocks. This
+ordering explains why [full-gate coverage](rule-coverage.md) can exceed direct
+deterministic-rule coverage; neither measurement establishes semantic detection
+or protection outside the evaluated suite.
+
 Date (UTC): 2026-09-08
 
 ## Scope and adversary model

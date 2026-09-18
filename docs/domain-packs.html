@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SIR — Active Suite Coverage</title>
+  <style>
+    body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; max-width: 1100px; margin: 36px auto; padding: 0 18px; color: #1f2328; line-height: 1.5; }
+    h1 { margin-bottom: 4px; } .muted { color: #59636e; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    th, td { text-align: left; padding: 9px 7px; border-bottom: 1px solid #d0d7de; vertical-align: top; }
+    th { font-size: 12px; text-transform: uppercase; color: #59636e; }
+    code { font-family: ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .marker { display: inline-block; padding: 2px 8px; border: 1px solid #d1242f; border-radius: 999px; color: #a40e26; background: #ffebe9; font-weight: 600; }
+    .note { border: 1px solid #d0d7de; border-radius: 8px; padding: 12px; background: #f6f8fa; }
+    a { color: #0969da; }
+  </style>
+</head>
+<body>
+  <h1>Active suite coverage</h1>
+  <p class="muted">Full-gate content coverage for active registry suites, published as covered expected-block rows / total expected-block rows.</p>
+  <div class="note">
+    <strong>Marker rule:</strong> <span class="marker">Evaluation constrained</span> means full-gate coverage is exactly zero—the gate covers none of that suite's expected-block rows. It does not mean merely low coverage. Encoded suites use the same rule. See the <a href="rule-coverage.md">complete methodology and unmatched row IDs</a>.
+  </div>
+  <table>
+    <thead><tr><th>Suite</th><th>Registry visibility</th><th>Full-gate coverage</th><th>Evaluation marker</th></tr></thead>
+    <tbody>
+      <tr><td><code>generic_safety</code></td><td>public</td><td><code>100/100</code></td><td>—</td></tr>
+      <tr><td><code>account_recovery_fraud</code></td><td>public</td><td><code>0/5</code></td><td><span class="marker">Evaluation constrained</span></td></tr>
+      <tr><td><code>mental_health_clinical</code></td><td>encoded</td><td><code>5/15</code></td><td>—</td></tr>
+      <tr><td><code>support_operator_override</code></td><td>public</td><td><code>26/26</code></td><td>—</td></tr>
+      <tr><td><code>data_exfiltration_pressure</code></td><td>public</td><td><code>27/27</code></td><td>—</td></tr>
+      <tr><td><code>eu_ai_act_compliance_pressure</code></td><td>public</td><td><code>74/100</code></td><td>—</td></tr>
+      <tr><td><code>scenario_injection_chain</code></td><td>public</td><td><code>6/10</code></td><td>—</td></tr>
+      <tr><td><code>scenario_tool_injection</code></td><td>public</td><td><code>1/2</code></td><td>—</td></tr>
+    </tbody>
+  </table>
+  <p class="muted">Coverage measures overlap with the current content gate. It is not a percentage score, semantic-detection claim, or certification.</p>
+  <p><a href="latest-audit.html">Return to the latest proof</a> · <a href="runs/index.html">Run archive</a></p>
+</body>
+</html>

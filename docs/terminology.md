@@ -1,5 +1,16 @@
 # SIR Terminology Note
 
+## Rule coverage and gate ordering
+
+`deterministic_rules.py` is one component of the content gate, not the whole
+gate. After normalisation, `_check_jailbreak()` evaluates the legacy
+`_HIGH_RISK_KEYWORDS` path, the legacy danger-word plus safety-phrase
+conjunction, and the structural override/exposure path before evaluating
+`find_rule_hits()` from `deterministic_rules.py`. It passes content only when
+none of those paths blocks. Published full-gate coverage includes all four
+paths; deterministic-rule coverage includes only `find_rule_hits()`. See the
+[published rule coverage report](rule-coverage.md).
+
 Use **governance gate** in public/operator-facing descriptive text.
 
 Keep canonical technical identifiers unchanged, including repository/package/module names (`sir-firewall`, `sir_firewall`), file paths, URLs, commands, proof class names, schema keys, and historical artefact labels.

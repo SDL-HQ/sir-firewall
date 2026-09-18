@@ -67,25 +67,30 @@ Current categories in active use:
 - `exfiltration`
 - `injection`
 
-Current pack/scenario taxonomy mapping (active and draft registry suites):
+Current pack/scenario taxonomy mapping (active and draft registry suites).
+Full-gate coverage is the published `n/n` measurement in
+[`docs/rule-coverage.md`](../../docs/rule-coverage.md). **Evaluation
+constrained** means exactly `0/n`: the gate covers none of the suite's
+expected-block rows. It does not mean merely low coverage. Encoded active suites
+use the same rule.
 
-| Pack/Scenario | Pack class | Registry posture | Taxonomy category |
-| --- | --- | --- | --- |
-| `generic_safety` | domain | active / public / canonical | `benign_control`, `direct_bypass`, `obfuscation`, `exfiltration`, `injection` |
-| `account_recovery_fraud` | domain | active / public / canonical | `benign_control`, `direct_bypass` |
-| `mental_health_clinical` | domain | active / encoded / canonical | `benign_control`, `direct_bypass` |
-| `support_operator_override` | domain | active / public / canonical | `benign_control`, `direct_bypass`, `exfiltration` |
-| `data_exfiltration_pressure` | domain | active / public / canonical | `benign_control`, `exfiltration` |
-| `eu_ai_act_compliance_pressure` | domain | active / public / canonical | `benign_control`, `direct_bypass` |
-| `scenario_injection_chain` | scenario | active / public / canonical | `benign_control`, `injection`, `exfiltration` |
-| `scenario_tool_injection` | scenario | active / public / canonical | `benign_control`, `injection` |
-| `healthcare_compliance` | domain | draft / internal / demo | `benign_control` |
-| `financial_services` | domain | draft / internal / demo | `benign_control` |
-| `pii_protection` | domain | draft / internal / demo | `benign_control` |
-| `code_generation_safety` | domain | draft / internal / demo | `benign_control` |
-| `educational_content` | domain | draft / internal / demo | `benign_control` |
-| `legal_contracts` | domain | draft / internal / demo | `benign_control` |
-| `insurance_underwriting` | domain | draft / internal / demo | `benign_control` |
+| Pack/Scenario | Pack class | Registry posture | Full-gate coverage | Evaluation marker | Taxonomy category |
+| --- | --- | --- | ---: | --- | --- |
+| `generic_safety` | domain | active / public / canonical | `100/100` | — | `benign_control`, `direct_bypass`, `obfuscation`, `exfiltration`, `injection` |
+| `account_recovery_fraud` | domain | active / public / canonical | `0/5` | **Evaluation constrained** | `benign_control`, `direct_bypass` |
+| `mental_health_clinical` | domain | active / encoded / canonical | `5/15` | — | `benign_control`, `direct_bypass` |
+| `support_operator_override` | domain | active / public / canonical | `26/26` | — | `benign_control`, `direct_bypass`, `exfiltration` |
+| `data_exfiltration_pressure` | domain | active / public / canonical | `27/27` | — | `benign_control`, `exfiltration` |
+| `eu_ai_act_compliance_pressure` | domain | active / public / canonical | `74/100` | — | `benign_control`, `direct_bypass` |
+| `scenario_injection_chain` | scenario | active / public / canonical | `6/10` | — | `benign_control`, `injection`, `exfiltration` |
+| `scenario_tool_injection` | scenario | active / public / canonical | `1/2` | — | `benign_control`, `injection` |
+| `healthcare_compliance` | domain | draft / internal / demo | `0/0` | Not applicable | `benign_control` |
+| `financial_services` | domain | draft / internal / demo | `0/0` | Not applicable | `benign_control` |
+| `pii_protection` | domain | draft / internal / demo | `0/0` | Not applicable | `benign_control` |
+| `code_generation_safety` | domain | draft / internal / demo | `0/0` | Not applicable | `benign_control` |
+| `educational_content` | domain | draft / internal / demo | `0/0` | Not applicable | `benign_control` |
+| `legal_contracts` | domain | draft / internal / demo | `0/0` | Not applicable | `benign_control` |
+| `insurance_underwriting` | domain | draft / internal / demo | `0/0` | Not applicable | `benign_control` |
 
 ## Rule-to-suite explainability mapping (indicative only)
 
