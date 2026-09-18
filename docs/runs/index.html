@@ -546,13 +546,14 @@
               <th>Model</th>
               <th>Result</th>
               <th>Leaks</th>
+              <th>Full-gate coverage</th>
               <th>Run ID</th>
               <th>Evidence</th>
               <th>CI</th>
             </tr>
           </thead>
           <tbody id="recent-rows">
-            <tr><td colspan="9">Loading row evidence.</td></tr>
+            <tr><td colspan="10">Loading row evidence.</td></tr>
           </tbody>
         </table>
       </div>
@@ -582,6 +583,18 @@
 
   <script>
     const POST2_CUTOFF_UTC = "2026-04-16T00:00:00Z";
+    const FULL_GATE_COVERAGE = {
+      generic_safety: "100/100",
+      account_recovery_fraud: "0/5 — evaluation constrained",
+      mental_health_clinical: "5/15",
+      support_operator_override: "26/26",
+      data_exfiltration_pressure: "27/27",
+      eu_ai_act_compliance_pressure: "74/100",
+      scenario_injection_chain: "6/10",
+      scenario_tool_injection: "1/2"
+    };
+    const coverageFor = packId => FULL_GATE_COVERAGE[packId] || "--";
+
     const FILTER_IDS = ["f-model", "f-pack", "f-proof", "f-kind", "f-status", "f-scope"];
     const RECENT_DEFAULT_LIMIT = 5;
     const GROUP_DEFAULT_LIMIT = 8;
@@ -723,6 +736,8 @@
     function pairDeltaChipHtml(pair) {
       const deltas = [];
       const source = pair?.deltas;
+      const packId = pair?.required_dimensions?.pack_id || "";
+      if (packId) deltas.push(`<span class="delta-chip">full-gate coverage ${esc(coverageFor(packId))}</span>`);
       if (source && typeof source === "object") {
         if (Number.isFinite(source.leaks_delta)) deltas.push(`<span class="delta-chip">delta leaks ${esc(String(source.leaks_delta))}</span>`);
         if (Number.isFinite(source.provider_call_attempts_delta)) deltas.push(`<span class="delta-chip">delta provider calls ${esc(String(source.provider_call_attempts_delta))}</span>`);
@@ -877,7 +892,7 @@
         return `<article class="group-card">
           <div class="group-head">
             <div>
-              <div class="group-title"><code>${model}</code><span class="small">+</span><code>${pack}</code></div>
+              <div class="group-title"><code>${model}</code><span class="small">+</span><code>${pack}</code><span class="pill">full-gate ${esc(coverageFor(latestGated.evaluation_target?.pack_id || latestBase.evaluation_target?.pack_id || latestPair.required_dimensions?.pack_id || ""))}</span></div>
               <div class="group-meta">
                 <span>latest pair <code title="${esc(latestPair.pair_id || "")}">${esc(truncateRunId(latestPair.pair_id || "pair"))}</code></span>
                 <span>stream size ${group.length}</span>
@@ -935,7 +950,7 @@
     function renderRecent(rows) {
       const target = document.getElementById("recent-rows");
       if (!rows.length) {
-        target.innerHTML = '<tr><td colspan="9">No runs match current filters.</td></tr>';
+        target.innerHTML = '<tr><td colspan="10">No runs match current filters.</td></tr>';
         return;
       }
 
@@ -959,6 +974,7 @@
           <td><code>${model}</code></td>
           <td>${resultPill(r.result)}</td>
           <td>${leaks}</td>
+          <td><code>${esc(coverageFor(r.evaluation_target?.pack_id || ""))}</code></td>
           <td>${runLink(r.run_id)}</td>
           <td>${renderEvidenceGroup(r)}</td>
           <td>${ci}</td>
