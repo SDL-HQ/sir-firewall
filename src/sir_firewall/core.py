@@ -551,14 +551,19 @@ def normalize_obfuscation(text: str) -> str:
                             "social score",
                         ]
                     ):
-                        return candidate.strip()
+                        return candidate.translate(_HOMOGLYPH_ASCII_MAP).strip()
                 except Exception:
                     continue
 
     t = t.replace("never gonna give you up", "ignore previous instructions")
     t = t.replace("never gonna let you down", "disregard all ethics")
 
-    rot_match = re.search(r"rot13[^:]*:\s*([a-zA-Z0-9\s\+/=,]+)", t, re.IGNORECASE)
+    homoglyph_chars = "".join(chr(codepoint) for codepoint in _HOMOGLYPH_ASCII_MAP)
+    rot_match = re.search(
+        rf"rot13[^:]*:\s*([a-zA-Z0-9\s\+/=,{re.escape(homoglyph_chars)}]+)",
+        t,
+        re.IGNORECASE,
+    )
     if rot_match:
         payload = rot_match.group(1)
         decoded = codecs.decode(payload, "rot13")
@@ -586,6 +591,10 @@ def normalize_obfuscation(text: str) -> str:
                 t = t.replace(payload.lower(), decoded)
         except ValueError:
             pass
+
+    # Apply the bounded homoglyph translation to the text evaluated by every
+    # downstream content decision, including text introduced by decoders above.
+    t = t.translate(_HOMOGLYPH_ASCII_MAP)
 
     # Marker recovery for split punctuation / repeated-char / tight leet+homoglyph
     # obfuscation. We only recover a fixed marker list and do not rewrite content.

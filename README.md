@@ -1,4 +1,4 @@
-# SIR: Signal Integrity Resolver Version 2.2.1
+# SIR: Signal Integrity Resolver Version 2.3.0
 
 [![SIR Real Governance Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
@@ -64,7 +64,7 @@ python3 tools/validate_certificate_contract.py proofs/latest-audit.json
 
 ## Quickstart
 
-**Installation support boundary:** The `sir` console command in SIR 2.2 is supported only from an editable installation of a complete repository checkout (`python3 -m pip install -e .`). The CLI reads committed policy, registry, suite, tool, and proof-template files from repository-relative paths. A wheel or non-editable `pip install .` is not a supported relocatable runtime installation. Running `sir` after moving or deleting the checkout used by the editable installation is unsupported.
+**Installation support boundary:** The `sir` console command is supported only from an editable installation of a complete repository checkout (`python3 -m pip install -e .`). The CLI reads committed policy, registry, suite, tool, and proof-template files from repository-relative paths. A wheel or non-editable `pip install .` is not a supported relocatable runtime installation. Running `sir` after moving or deleting the checkout used by the editable installation is unsupported.
 
 Canonical install paths:
 
@@ -217,6 +217,7 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 * [Engineer guide](docs/engineer-guide.md) (local runs, signing, serving)
 * [Trial guide](docs/trial-guide.md) (auditors, insurers, evidence capture)
 * [Key governance readiness](docs/key-governance-readiness.md) (authority map and `CRYPTO_ENFORCED` checklist)
+* [SIR 2.3.0 release notes](docs/release-notes-2.3.0.md) (systemic-reset audit accounting)
 * [SIR 2.2.1 release notes](docs/release-notes-2.2.1.md) (generative validation tests and CI dependency hygiene)
 * [SIR 2.2.0 release notes](docs/release-notes-2.2.md) (2.2 closeout)
 * [Retention / Tier B export](RETENTION.md)
