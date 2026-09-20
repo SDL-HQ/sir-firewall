@@ -29,7 +29,7 @@ Signed certificates include `governance_scope` and `crypto_enforced`. Both field
 `pack_hash` is present only when a caller supplies a pack hash through `pack_identity_context`; core does not compute it. The run harness no longer supplies the suite hash as `pack_hash`. A certificate signature makes supplied fields tamper-evident after signing but does not establish that a caller-supplied value was true.
 
 ## Current implementation state
-The code reports SIR version `2.2.1` in package metadata and `sir_firewall.__version__`.
+The code reports SIR version `2.3.0` in package metadata and `sir_firewall.__version__`.
 
 Current controlled model selection has default provider `xai` and default model `grok-4.3`. The selectable xAI models are:
 - `grok-3-beta`
@@ -39,20 +39,20 @@ Current controlled model selection has default provider `xai` and default model 
 
 `grok-4-1-fast` is no longer selectable. Its archived results remain historical evidence.
 
-## Property checks and manually observed normalisation limits
-The Hypothesis gate-outcome property harness uses `max_examples=30`, deterministic generation, and no deadline. It asserts that a clean source payload is `BLOCKED` before checking that the transformed payload remains `BLOCKED`. The tested transformation classes are case changes, token whitespace, outer padding, invisible characters at token boundaries, supported single-layer Base64/ROT13/hex/hex-escape encoding, and substitutions within one selected supported-homoglyph marker word.
+## Property checks and characterised normalisation limits
+The Hypothesis gate-outcome property harness uses `max_examples=30`, deterministic generation, and no deadline. It asserts that a clean source payload is `BLOCKED` before checking that the transformed payload remains `BLOCKED`. The tested transformation classes are case changes, token whitespace, outer padding, invisible characters at token boundaries, supported single-layer Base64/ROT13/hex/hex-escape encoding, and substitutions within one selected supported-homoglyph marker word. Parametrized cases additionally cover mapped characters in other tokens required by multi-token rules and an accepted Base64-decoded candidate.
 
-Those bounded gate-outcome properties pass in the current test suite. Whole-payload homoglyph substitution is excluded from the claimed invariant pending the backlog item described below.
+Those bounded gate-outcome properties pass in the current test suite. They do not claim coverage of characters outside the nine-entry map or general Unicode-confusable handling.
 
-Two additional normaliser behaviours were reproduced manually and are recorded as limitations, not test failures:
+Two additional normaliser behaviors are recorded by characterisation tests as limitations, not test failures:
 
 - Non-idempotence for an already-present canonical marker: input `"obey"` normalises first to `"obey obey"` and a second time to `"obey obey obey"`.
-- Exact normalised-string invariance does not hold for an invisible character inserted inside a marker token: input `"o\u200bbey"` normalises first to `"o bey obey"` and a second time to `"o bey obey obey"`. The corresponding clean `"obey"` input normalises to `"obey obey"` on its first pass.
+- Exact normalised-string invariance does not hold for an invisible character inserted inside a marker token: input `"i\u200bgnore previous instructions"` normalises to `"i gnore previous instructions ignore previous instructions"`.
 
-No dedicated test currently records either limitation. They are not protected against regression. The missing coverage is recorded in [`docs/backlog.md`](backlog.md).
+The tests intentionally preserve visibility of both behaviors so a future change is explicit.
 
 ## Homoglyph normalisation limit
-The nine-entry Cyrillic/Greek homoglyph translation is applied to `_canonical_compact()` output used for fixed marker detection. The translated text is not returned as evaluated content. Evaluated content retains the original homoglyph characters and only recovered canonical marker phrases are appended in ASCII. Rules requiring tokens not fully restored by one marker can therefore be bypassed. Whole-payload probes changed `"ignore all safety checks"` and `"reveal the system prompt"` from `BLOCKED` to `PASS`; `"suppress the audit log"` remained `BLOCKED` because the complete phrase is a canonical marker.
+The nine-entry Cyrillic/Greek homoglyph translation is applied to evaluated text on every normalisation return path and continues to support fixed marker detection. It is deliberately bounded rather than general Unicode-confusable handling. The high-risk, danger-plus-safety, deterministic-rule, and obfuscation-signal paths receive translated text; structural override exposure continues to inspect the raw payload and remains homoglyph-blind by design.
 
 The published zero-leak `generic_safety` result does not constitute evidence of resistance to homoglyph substitution. No row in any suite exercises actual homoglyph substitution. Row `gs-111` mentions homoglyphs in ASCII prose and blocks on the unrelated `JB_EVADE_FILTERS` rule through the words `disable moderation`; homoglyph marker recovery is not involved.
 

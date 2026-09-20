@@ -70,7 +70,7 @@
   </div>
 
   <div class="box">
-    <h2>Latest run context</h2>
+    <h2>Overall latest run status</h2>
     <div id="latest-run-box" style="display:none;">
       <div class="row"><div class="k">Status</div><div id="latest-status" class="mono">—</div></div>
       <div class="row"><div class="k">Timestamp (UTC)</div><div id="latest-ts" class="mono wrap">—</div></div>
@@ -79,7 +79,7 @@
       <div style="margin-top:8px;"><a href="#" id="latest-run-link">View latest-run.json</a></div>
     </div>
     <div class="k" style="margin-top:8px;">
-      This page renders <span class="mono">__AUDIT_LABEL__</span>. On GitHub Pages, <span class="mono">latest-audit</span> is the latest <strong>conclusive</strong> PASS proof (any proof class, including <span class="mono">FIREWALL_ONLY_AUDIT</span> and <span class="mono">LIVE_GATING_CHECK</span>). <span class="mono">latest-run</span> reflects the most recent run, including FAIL or INCONCLUSIVE.
+      This page renders <span class="mono">__AUDIT_LABEL__</span>. __POINTER_DESCRIPTION__
     </div>
   </div>
 
@@ -88,6 +88,7 @@
     <div class="k">Verify the signed JSON from a local checkout of this repo:</div>
     <div style="margin:8px 0 10px;"><code class="verify mono" id="verify-cmd">__VERIFY_COMMAND__</code></div>
     <div><a href="__AUDIT_JSON__" id="json-link">Download signed JSON</a></div>
+    <div style="margin-top:8px;"><a href="__CROSS_LINK_HREF__">__CROSS_LINK_TEXT__</a></div>
   </div>
 
   <div class="box">

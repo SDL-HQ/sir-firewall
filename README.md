@@ -1,4 +1,4 @@
-# SIR: Signal Integrity Resolver Version 2.2.1
+# SIR: Signal Integrity Resolver Version 2.3.0
 
 [![SIR Real Governance Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
@@ -19,12 +19,14 @@ Terminology note: in public and operator wording we prefer **governance gate**. 
 These are the served pages (human trust surface). Use these links. Do not click the `.html` files in the repo browser because GitHub will show source instead of serving it.
 
 - Latest passing audit (human page): https://sdl-hq.github.io/sir-firewall/latest-audit.html
+- Latest live/model-in-loop audit (human page): https://sdl-hq.github.io/sir-firewall/latest-live-audit.html
 - Latest run status (PASS / FAIL / INCONCLUSIVE): https://sdl-hq.github.io/sir-firewall/latest-run.json
 - Run archive (passes + failures): https://sdl-hq.github.io/sir-firewall/runs/index.html
 
 Important semantics:
 
 - `latest-audit.*` means latest passing audit (last known good proof).
+- `latest-live-audit.*` means the latest attributable `LIVE_GATING_CHECK` with at least one successful provider call, regardless of result.
 - `latest-run.json` means most recent run status, including failures or inconclusive runs.
 - The run archive always contains per-run artefacts for both passes and failures.
 - Gate request status (`PASS` / `BLOCKED`) is distinct from run/publication status (`PASS` / `FAIL` / `INCONCLUSIVE`).
@@ -64,7 +66,7 @@ python3 tools/validate_certificate_contract.py proofs/latest-audit.json
 
 ## Quickstart
 
-**Installation support boundary:** The `sir` console command in SIR 2.2 is supported only from an editable installation of a complete repository checkout (`python3 -m pip install -e .`). The CLI reads committed policy, registry, suite, tool, and proof-template files from repository-relative paths. A wheel or non-editable `pip install .` is not a supported relocatable runtime installation. Running `sir` after moving or deleting the checkout used by the editable installation is unsupported.
+**Installation support boundary:** The `sir` console command is supported only from an editable installation of a complete repository checkout (`python3 -m pip install -e .`). The CLI reads committed policy, registry, suite, tool, and proof-template files from repository-relative paths. A wheel or non-editable `pip install .` is not a supported relocatable runtime installation. Running `sir` after moving or deleting the checkout used by the editable installation is unsupported.
 
 Canonical install paths:
 
@@ -193,6 +195,7 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 
   * Signed cert (latest pointer): `proofs/latest-audit.json`
   * Human page (backed by JSON): `proofs/latest-audit.html`
+  * Latest live certificate and human page: `proofs/latest-live-audit.json`, `proofs/latest-live-audit.html`
   * ITGL ledger and final hash: `proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`
   * Run archive (passes + failures): `proofs/runs/<run_id>/...`
 * Offline verification:
@@ -217,6 +220,7 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 * [Engineer guide](docs/engineer-guide.md) (local runs, signing, serving)
 * [Trial guide](docs/trial-guide.md) (auditors, insurers, evidence capture)
 * [Key governance readiness](docs/key-governance-readiness.md) (authority map and `CRYPTO_ENFORCED` checklist)
+* [SIR 2.3.0 release notes](docs/release-notes-2.3.0.md) (systemic-reset audit accounting)
 * [SIR 2.2.1 release notes](docs/release-notes-2.2.1.md) (generative validation tests and CI dependency hygiene)
 * [SIR 2.2.0 release notes](docs/release-notes-2.2.md) (2.2 closeout)
 * [Retention / Tier B export](RETENTION.md)

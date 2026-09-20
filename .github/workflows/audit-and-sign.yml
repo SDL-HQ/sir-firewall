@@ -330,6 +330,8 @@ jobs:
           fi
 
           echo "audit_json=$cert_path" >> "$GITHUB_OUTPUT"
+          live_updated="$(sed -n 's/^OUTPUT_LIVE_AUDIT_UPDATED=//p' "$output_file" | tail -n 1)"
+          echo "live_audit_updated=${live_updated:-false}" >> "$GITHUB_OUTPUT"
           echo "Current-run certificate: $cert_path"
 
       - name: Validate certificate contract
@@ -550,6 +552,15 @@ jobs:
           cp -f proofs/latest-audit.html docs/latest-audit.html
           cp -f proofs/latest-audit.json docs/latest-audit.json
 
+      - name: Publish latest live proof to docs/ (successful provider call)
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.generate_certificate.outputs.live_audit_updated == 'true'
+        run: |
+          set -euo pipefail
+          test -f proofs/latest-live-audit.html
+          test -f proofs/latest-live-audit.json
+          cp -f proofs/latest-live-audit.html docs/latest-live-audit.html
+          cp -f proofs/latest-live-audit.json docs/latest-live-audit.json
+
       - name: Upload proof artifact (always)
         if: always()
         uses: actions/upload-artifact@v7
@@ -559,6 +570,8 @@ jobs:
           path: |
             proofs/latest-audit.json
             proofs/latest-audit.html
+            proofs/latest-live-audit.json
+            proofs/latest-live-audit.html
             proofs/local-audit.json
             proofs/local-audit.html
             proofs/itgl_ledger.jsonl
@@ -579,6 +592,7 @@ jobs:
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
         env:
           AUDIT_JSON: ${{ steps.generate_certificate.outputs.audit_json }}
+          LIVE_AUDIT_UPDATED: ${{ steps.generate_certificate.outputs.live_audit_updated }}
         run: |
           set -euo pipefail
 
@@ -607,6 +621,10 @@ jobs:
               git add docs/latest-audit.json docs/latest-audit.html || true
               git add policy/isc_policy.signed.json || true
               git add proofs/itgl_ledger.jsonl proofs/itgl_final_hash.txt proofs/latest-attempts.log proofs/run_summary.json || true
+            fi
+            if [ "${LIVE_AUDIT_UPDATED:-false}" = "true" ]; then
+              git add proofs/latest-live-audit.json proofs/latest-live-audit.html
+              git add docs/latest-live-audit.json docs/latest-live-audit.html
             fi
 
             git commit -m "SIR Proof: ${CERT_RESULT_STATUS:-UNAVAILABLE} | ${leaks} leaks | ${harmless} harmless | ${stamp}" || echo "Nothing to commit"
@@ -802,9 +820,13 @@ jobs:
             sed -n 's/^GATED_RUN_ID=//p' "$output_file" |
               tail -n 1
           )"
+          baseline_run_id="$(
+            sed -n 's/^BASELINE_RUN_ID=//p' "$output_file" |
+              tail -n 1
+          )"
 
-          if [ -z "$gated_run_id" ]; then
-            echo "ERROR: benchmark did not emit GATED_RUN_ID."
+          if [ -z "$baseline_run_id" ] || [ -z "$gated_run_id" ]; then
+            echo "ERROR: benchmark did not emit both BASELINE_RUN_ID and GATED_RUN_ID."
             exit 1
           fi
 
@@ -816,6 +838,7 @@ jobs:
 
           echo "gated_run_id=$gated_run_id" >> "$GITHUB_OUTPUT"
           echo "gated_audit_json=$gated_cert" >> "$GITHUB_OUTPUT"
+          echo "baseline_audit_json=proofs/runs/$baseline_run_id/audit.json" >> "$GITHUB_OUTPUT"
 
       - name: Prepare docs/ for GitHub Pages
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
@@ -948,6 +971,50 @@ jobs:
           print(f"BENCHMARK_GATED_PASS={value}")
           PY
 
+      - name: Compute benchmark live-pointer truth from current paired proofs
+        id: compute_benchmark_live_pointer
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        env:
+          GATED_AUDIT_JSON: ${{ steps.run_benchmark.outputs.gated_audit_json }}
+          BASELINE_AUDIT_JSON: ${{ steps.run_benchmark.outputs.baseline_audit_json }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import importlib.util
+          import json
+          import os
+          from pathlib import Path
+
+          module_path = Path("tools/generate_certificate.py")
+          spec = importlib.util.spec_from_file_location("generate_certificate", module_path)
+          if spec is None or spec.loader is None:
+              raise SystemExit("ERROR: cannot load certificate generator")
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+
+          live_path = Path("proofs/latest-live-audit.json")
+          eligible = False
+          candidates = [
+              Path(os.environ.get("GATED_AUDIT_JSON", "")),
+              Path(os.environ.get("BASELINE_AUDIT_JSON", "")),
+          ]
+          expected_bytes = None
+          for candidate in candidates:
+              if candidate.is_file():
+                  candidate_bytes = candidate.read_bytes()
+                  certificate = json.loads(candidate_bytes)
+                  if module._is_publishable_latest_live(certificate):
+                      expected_bytes = candidate_bytes
+                      break
+          if expected_bytes is not None and live_path.is_file():
+              eligible = live_path.read_bytes() == expected_bytes
+
+          value = "true" if eligible else "false"
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output_file:
+              output_file.write(f"updated={value}\n")
+          print(f"BENCHMARK_LIVE_POINTER_UPDATED={value}")
+          PY
+
       - name: Publish latest PASS proof to docs/ (benchmark gated PASS only)
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.compute_benchmark_gated_pass.outputs.gated_pass == 'true'
         run: |
@@ -956,6 +1023,15 @@ jobs:
           test -f proofs/latest-audit.json
           cp -f proofs/latest-audit.html docs/latest-audit.html
           cp -f proofs/latest-audit.json docs/latest-audit.json
+
+      - name: Publish latest live proof to docs/ (benchmark gated live only)
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.compute_benchmark_live_pointer.outputs.updated == 'true'
+        run: |
+          set -euo pipefail
+          test -f proofs/latest-live-audit.html
+          test -f proofs/latest-live-audit.json
+          cp -f proofs/latest-live-audit.html docs/latest-live-audit.html
+          cp -f proofs/latest-live-audit.json docs/latest-live-audit.json
 
       - name: Upload benchmark artifact (always)
         if: always()
@@ -969,12 +1045,15 @@ jobs:
             proofs/runs/benchmark_index.v2.json
             proofs/runs/pairs/*.json
             proofs/run_id.txt
+            proofs/latest-live-audit.json
+            proofs/latest-live-audit.html
             proofs/runs/*-gh${{ github.run_id }}*/
 
       - name: Commit benchmark files back to repo (archive + benchmark index/pairs)
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
         env:
           BENCHMARK_GATED_PASS: ${{ steps.compute_benchmark_gated_pass.outputs.gated_pass }}
+          BENCHMARK_LIVE_POINTER_UPDATED: ${{ steps.compute_benchmark_live_pointer.outputs.updated }}
         run: |
           set -euo pipefail
           git config user.name "SIR Audit Bot"
@@ -995,6 +1074,10 @@ jobs:
             if [ "${BENCHMARK_GATED_PASS:-false}" = "true" ]; then
               git add proofs/latest-audit.json proofs/latest-audit.html
               git add docs/latest-audit.json docs/latest-audit.html
+            fi
+            if [ "${BENCHMARK_LIVE_POINTER_UPDATED:-false}" = "true" ]; then
+              git add proofs/latest-live-audit.json proofs/latest-live-audit.html
+              git add docs/latest-live-audit.json docs/latest-live-audit.html
             fi
             git commit -m "SIR Benchmark: paired benchmark dispatch $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "Nothing to commit"
 

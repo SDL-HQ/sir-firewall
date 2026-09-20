@@ -85,3 +85,104 @@ def test_template_styles_inconclusive_as_non_success():
     template = (Path(__file__).resolve().parents[1] / "proofs" / "template.html").read_text(encoding="utf-8")
     assert 'resolvedResult === "INCONCLUSIVE"' in template
     assert '? "warn"' in template or ' ? "warn"' in template
+
+
+def _attributable_certificate(**overrides):
+    certificate = {
+        "sir_firewall_version": "test-version",
+        "commit_sha": "a" * 40,
+        "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/1",
+        "proof_class": "LIVE_GATING_CHECK",
+        "provider_call_successes": 1,
+        "result": "AUDIT PASSED",
+        "date": "2026-09-20T00:00:00Z",
+        "payload_hash": "sha256:test",
+    }
+    certificate.update(overrides)
+    return certificate
+
+
+def _write_minimal_template(directory):
+    (directory / "template.html").write_text(
+        "__AUDIT_LABEL__ __AUDIT_JSON__ __VERIFY_COMMAND__ "
+        "__POINTER_DESCRIPTION__ __CROSS_LINK_HREF__ __CROSS_LINK_TEXT__",
+        encoding="utf-8",
+    )
+
+
+def test_passing_live_run_advances_live_pointer(tmp_path):
+    mod = _load_generate_certificate_module()
+    _write_minimal_template(tmp_path)
+    assert mod._publish_latest_live(_attributable_certificate(), tmp_path)
+    assert (tmp_path / "latest-live-audit.json").is_file()
+
+
+def test_failing_live_run_with_provider_success_advances_live_pointer(tmp_path):
+    mod = _load_generate_certificate_module()
+    cert = _attributable_certificate(result="AUDIT FAILED")
+    _write_minimal_template(tmp_path)
+
+    targets = mod._select_latest_output_targets(publishable_latest=True, result=cert["result"])
+    assert targets[:2] == ("proofs/local-audit.json", "proofs/local-audit.html")
+    assert mod._publish_latest_live(cert, tmp_path)
+    assert json.loads((tmp_path / "latest-live-audit.json").read_text(encoding="utf-8")) == cert
+    html = (tmp_path / "latest-live-audit.html").read_text(encoding="utf-8")
+    assert "latest-live-audit" in html
+    assert "regardless of result" in html
+    assert "may describe a different run" in html
+    assert "View latest passing audit" in html
+
+
+def test_firewall_only_run_does_not_advance_live_pointer(tmp_path):
+    mod = _load_generate_certificate_module()
+    cert = _attributable_certificate(proof_class="FIREWALL_ONLY_AUDIT")
+    assert not mod._publish_latest_live(cert, tmp_path)
+    assert not (tmp_path / "latest-live-audit.json").exists()
+
+
+def test_live_run_without_provider_success_does_not_advance_live_pointer(tmp_path):
+    mod = _load_generate_certificate_module()
+    cert = _attributable_certificate(provider_call_successes=0)
+    assert not mod._publish_latest_live(cert, tmp_path)
+    assert not (tmp_path / "latest-live-audit.json").exists()
+
+
+def test_live_pointer_reuses_attributable_provenance_bar():
+    mod = _load_generate_certificate_module()
+    cert = _attributable_certificate(ci_run_url="")
+    assert not mod._is_publishable_latest(cert)
+    assert not mod._is_publishable_latest_live(cert)
+
+
+def test_live_template_and_existing_pages_explain_distinct_pointer_semantics():
+    root = Path(__file__).resolve().parents[1]
+    template = (root / "proofs" / "template.html").read_text(encoding="utf-8")
+    assert "__POINTER_DESCRIPTION__" in template
+    assert "Overall latest run status" in template
+    assert "__CROSS_LINK_HREF__" in template
+    for path in (root / "proofs" / "latest-audit.html", root / "docs" / "latest-audit.html"):
+        html = path.read_text(encoding="utf-8")
+        assert "Overall latest run status" in html
+        assert 'href="latest-live-audit.html"' in html
+
+
+def test_latest_audit_html_exactly_matches_current_template_render(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    mod = _load_generate_certificate_module()
+    certificate = json.loads((root / "proofs" / "latest-audit.json").read_text(encoding="utf-8"))
+    rendered = tmp_path / "latest-audit.html"
+
+    mod._write_primary_audit_html(
+        certificate,
+        html_out=str(rendered),
+        target_json_name="latest-audit.json",
+        audit_label="latest-audit",
+        verify_command=(
+            "curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/"
+            "proofs/latest-audit.json | python tools/verify_certificate.py -"
+        ),
+    )
+
+    expected = rendered.read_bytes()
+    assert (root / "proofs" / "latest-audit.html").read_bytes() == expected
+    assert (root / "docs" / "latest-audit.html").read_bytes() == expected
