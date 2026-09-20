@@ -70,7 +70,7 @@
   </div>
 
   <div class="box">
-    <h2>Latest run context</h2>
+    <h2>Overall latest run status</h2>
     <div id="latest-run-box" style="display:none;">
       <div class="row"><div class="k">Status</div><div id="latest-status" class="mono">—</div></div>
       <div class="row"><div class="k">Timestamp (UTC)</div><div id="latest-ts" class="mono wrap">—</div></div>
@@ -88,6 +88,7 @@
     <div class="k">Verify the signed JSON from a local checkout of this repo:</div>
     <div style="margin:8px 0 10px;"><code class="verify mono" id="verify-cmd">curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python tools/verify_certificate.py -</code></div>
     <div><a href="latest-audit.json" id="json-link">Download signed JSON</a></div>
+    <div style="margin-top:8px;"><a href="latest-live-audit.html">View latest live/model-in-loop audit</a></div>
   </div>
 
   <div class="box">

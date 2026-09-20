@@ -4,6 +4,7 @@ This directory intentionally contains multiple artifact roles:
 
 1. **Current working pointers (mutable)**
    - `latest-audit.json`, `latest-audit.html`
+   - `latest-live-audit.json`, `latest-live-audit.html` (created by an eligible live run)
    - `run_summary.json`, `itgl_ledger.jsonl`, `itgl_final_hash.txt`, `latest-attempts.log`
    - `run_id.txt`
 
@@ -21,3 +22,4 @@ This directory intentionally contains multiple artifact roles:
 Notes:
 - Default current review should use current pointers and `runs/` indexes, not legacy leftovers.
 - Historical files are retained; this document does not reinterpret their semantics.
+- `latest-live-audit.*` advances for an attributable `LIVE_GATING_CHECK` with one or more successful provider calls, regardless of result.

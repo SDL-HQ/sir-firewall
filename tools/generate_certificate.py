@@ -4,6 +4,8 @@
 CI-side signer. Produces:
 - proofs/latest-audit.json
 - proofs/latest-audit.html (from proofs/template.html)
+- proofs/latest-live-audit.json (eligible live runs only)
+- proofs/latest-live-audit.html (from proofs/template.html; eligible live runs only)
 - proofs/archive/audit-certificate-<timestamp>.json (archival)
 
 Inputs (preferred):
@@ -192,6 +194,15 @@ def _is_publishable_latest(cert: Dict[str, Any]) -> bool:
     return bool(sir_version and sir_version != "unknown" and commit_sha and ci_run_url)
 
 
+def _is_publishable_latest_live(cert: Dict[str, Any]) -> bool:
+    """Live pointer requires canonical provenance and a successful provider call."""
+    return (
+        _is_publishable_latest(cert)
+        and cert.get("proof_class") == "LIVE_GATING_CHECK"
+        and int(cert.get("provider_call_successes") or 0) > 0
+    )
+
+
 def _write_html_from_template(
     *,
     template_path: str,
@@ -200,6 +211,9 @@ def _write_html_from_template(
     target_json_name: str,
     audit_label: str,
     verify_command: str,
+    pointer_description: str,
+    cross_link_href: str,
+    cross_link_text: str,
 ) -> None:
     """Render HTML from template with explicit placeholders for target + label."""
     with open(template_path, "r", encoding="utf-8") as t:
@@ -208,6 +222,9 @@ def _write_html_from_template(
     html = html.replace("__AUDIT_JSON__", target_json_name)
     html = html.replace("__AUDIT_LABEL__", audit_label)
     html = html.replace("__VERIFY_COMMAND__", verify_command)
+    html = html.replace("__POINTER_DESCRIPTION__", pointer_description)
+    html = html.replace("__CROSS_LINK_HREF__", cross_link_href)
+    html = html.replace("__CROSS_LINK_TEXT__", cross_link_text)
 
     if not html.endswith("\n"):
         html += "\n"
@@ -215,6 +232,72 @@ def _write_html_from_template(
 
     with open(out_path, "w", encoding="utf-8") as out:
         out.write(html)
+
+
+def _publish_latest_live(cert: Dict[str, Any], proofs_dir: Path = Path("proofs")) -> bool:
+    """Publish the signed live pointer without applying any result condition."""
+    if not _is_publishable_latest_live(cert):
+        return False
+
+    live_json_out = proofs_dir / "latest-live-audit.json"
+    live_html_out = proofs_dir / "latest-live-audit.html"
+    with live_json_out.open("w", encoding="utf-8") as f:
+        json.dump(cert, f, indent=2, ensure_ascii=False)
+
+    stamp = f"<!-- SIR_BUILD: date={cert.get('date','')} payload_hash={cert.get('payload_hash','')} -->\n"
+    _write_html_from_template(
+        template_path=str(proofs_dir / "template.html"),
+        out_path=str(live_html_out),
+        stamp=stamp,
+        target_json_name="latest-live-audit.json",
+        audit_label="latest-live-audit",
+        verify_command=(
+            "curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/"
+            "proofs/latest-live-audit.json | python tools/verify_certificate.py -"
+        ),
+        pointer_description=(
+            'This is the latest attributable live certificate with at least one successful '
+            'provider call, regardless of result. <span class="mono">latest-run</span> '
+            'reflects the most recent overall run and may describe a different run.'
+        ),
+        cross_link_href="latest-audit.html",
+        cross_link_text="View latest passing audit",
+    )
+    return True
+
+
+def _write_primary_audit_html(
+    cert: Dict[str, Any],
+    *,
+    html_out: str,
+    target_json_name: str,
+    audit_label: str,
+    verify_command: str,
+) -> None:
+    """Render the normal latest/local page using the canonical template context."""
+    publish_latest_pass = target_json_name == "latest-audit.json"
+    stamp = f"<!-- SIR_BUILD: date={cert.get('date','')} payload_hash={cert.get('payload_hash','')} -->\n"
+    _write_html_from_template(
+        template_path="proofs/template.html",
+        out_path=html_out,
+        stamp=stamp,
+        target_json_name=target_json_name,
+        audit_label=audit_label,
+        verify_command=verify_command,
+        pointer_description=(
+            'On GitHub Pages, <span class="mono">latest-audit</span> is the latest '
+            '<strong>conclusive</strong> PASS proof (any proof class, including '
+            '<span class="mono">FIREWALL_ONLY_AUDIT</span> and '
+            '<span class="mono">LIVE_GATING_CHECK</span>). '
+            '<span class="mono">latest-run</span> reflects the most recent run, including '
+            'FAIL or INCONCLUSIVE.'
+            if publish_latest_pass
+            else 'This local page is not a canonical published pointer. '
+            '<span class="mono">latest-run</span> reflects the most recent overall run.'
+        ),
+        cross_link_href="latest-live-audit.html",
+        cross_link_text="View latest live/model-in-loop audit",
+    )
 
 
 def _trust_fingerprint_v1(
@@ -443,11 +526,9 @@ def main() -> None:
         json.dump(cert, f, indent=2, ensure_ascii=False)
 
     try:
-        stamp = f"<!-- SIR_BUILD: date={cert.get('date','')} payload_hash={cert.get('payload_hash','')} -->\n"
-        _write_html_from_template(
-            template_path="proofs/template.html",
-            out_path=html_out,
-            stamp=stamp,
+        _write_primary_audit_html(
+            cert,
+            html_out=html_out,
             target_json_name=target_json_name,
             audit_label=audit_label,
             verify_command=verify_command,
@@ -455,6 +536,17 @@ def main() -> None:
         print(f"OK: HTML written from proofs/template.html (with build stamp) → {html_out}")
     except Exception as e:
         print(f"WARNING: HTML generation failed: {e}")
+
+    if _is_publishable_latest_live(cert):
+        try:
+            _publish_latest_live(cert)
+            print("OK: Latest live HTML written from proofs/template.html → proofs/latest-live-audit.html")
+        except Exception as e:
+            print(f"WARNING: latest live HTML generation failed: {e}")
+        print("OK: Latest live proof → proofs/latest-live-audit.json + proofs/latest-live-audit.html")
+        print("OUTPUT_LIVE_AUDIT_UPDATED=true")
+    else:
+        print("OUTPUT_LIVE_AUDIT_UPDATED=false")
 
     print(f"OK: Certificate → {archival}")
     if json_out.endswith("latest-audit.json"):

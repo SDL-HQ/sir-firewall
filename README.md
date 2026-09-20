@@ -19,12 +19,14 @@ Terminology note: in public and operator wording we prefer **governance gate**. 
 These are the served pages (human trust surface). Use these links. Do not click the `.html` files in the repo browser because GitHub will show source instead of serving it.
 
 - Latest passing audit (human page): https://sdl-hq.github.io/sir-firewall/latest-audit.html
+- Latest live/model-in-loop audit (human page): https://sdl-hq.github.io/sir-firewall/latest-live-audit.html
 - Latest run status (PASS / FAIL / INCONCLUSIVE): https://sdl-hq.github.io/sir-firewall/latest-run.json
 - Run archive (passes + failures): https://sdl-hq.github.io/sir-firewall/runs/index.html
 
 Important semantics:
 
 - `latest-audit.*` means latest passing audit (last known good proof).
+- `latest-live-audit.*` means the latest attributable `LIVE_GATING_CHECK` with at least one successful provider call, regardless of result.
 - `latest-run.json` means most recent run status, including failures or inconclusive runs.
 - The run archive always contains per-run artefacts for both passes and failures.
 - Gate request status (`PASS` / `BLOCKED`) is distinct from run/publication status (`PASS` / `FAIL` / `INCONCLUSIVE`).
@@ -193,6 +195,7 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 
   * Signed cert (latest pointer): `proofs/latest-audit.json`
   * Human page (backed by JSON): `proofs/latest-audit.html`
+  * Latest live certificate and human page: `proofs/latest-live-audit.json`, `proofs/latest-live-audit.html`
   * ITGL ledger and final hash: `proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`
   * Run archive (passes + failures): `proofs/runs/<run_id>/...`
 * Offline verification:
