@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pre-Inference Governance Gate Audit Certificate</title>
+  <meta name="description" content="Cryptographically verifiable pre-inference governance gate audit certificate." />
+  <style>
+    :root { --success: #56d364; --danger: #f85149; --warn: #d29922; --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --muted: #8b949e; --link: #58a6ff; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 940px; margin: 40px auto; padding: 20px; background: var(--bg); color: var(--text); line-height: 1.6; }
+    h1 { margin: 0; color: var(--text); font-size: 1.65rem; }
+    h2 { margin: 0 0 12px; color: var(--text); font-size: 1.05rem; }
+    .subtitle { margin: 4px 0 24px; color: var(--muted); }
+    .box { background: var(--card); padding: 18px; border-radius: 10px; border: 1px solid var(--border); margin: 14px 0; }
+    .row { display: grid; grid-template-columns: 210px 1fr; gap: 10px; }
+    .k { color: var(--muted); }
+    .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
+    .wrap { word-break: break-word; }
+    .status { display: inline-block; border: 1px solid var(--border); border-radius: 8px; padding: 2px 10px; font-weight: 700; }
+    .success { color: var(--success); }
+    .danger { color: var(--danger); }
+    .warn { color: var(--warn); }
+    .verify { background: #0d1117; padding: 10px 12px; border-radius: 6px; overflow-x: auto; display: inline-block; }
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    footer { margin-top: 44px; text-align: center; font-size: 0.9em; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <h1>Pre-Inference Governance Gate Audit Certificate</h1>
+  <p class="subtitle">Pre-inference governance gate proof for <span class="mono">latest-live-audit</span>.</p>
+
+  <div class="box">
+    <h2>Certificate summary</h2>
+    <div class="row"><div class="k">Result</div><div><span id="result" class="status">—</span></div></div>
+    <div class="row"><div class="k">Proof class</div><div id="proof-class" class="mono">—</div></div>
+    <div class="row"><div class="k">Governance scope</div><div id="governance-scope" class="mono">—</div></div>
+    <div class="row"><div class="k">Suite</div><div id="suite">—</div></div>
+    <div class="row"><div class="k">Model / provider</div><div><span id="model">—</span> / <span id="provider">—</span></div></div>
+    <div class="row"><div class="k">Audit timestamp (UTC)</div><div id="date" class="mono">—</div></div>
+    <div class="row"><div class="k">SIR version</div><div id="sir-version" class="mono">—</div></div>
+    <div class="row"><div class="k">Incoming ISC signature enforcement</div><div><span id="crypto-enforced" class="mono">—</span><span class="k"> — applies to incoming request envelopes; this certificate is signed regardless.</span></div></div>
+    <div class="row"><div class="k">Gate check</div><div><span id="score" class="mono">—</span> leaks / <span id="prompts" class="mono">—</span> prompts</div></div>
+    <div class="row"><div class="k">Harmless blocked</div><div id="harmless" class="mono">—</div></div>
+    <div class="row"><div class="k">Successful leaks</div><div id="leaks" class="mono">—</div></div>
+    <div class="row"><div class="k">Suite full-gate coverage</div><div><span id="rule-coverage" class="mono">—</span> <a href="domain-packs.html">active suite listing</a></div></div>
+    <div class="row"><div class="k">Provider calls attempted</div><div id="provider-attempts" class="mono">—</div></div>
+    <div class="row"><div class="k">Provider calls succeeded</div><div id="provider-successes" class="mono">—</div></div>
+    <div class="row"><div class="k">Provider calls failed</div><div id="provider-failures" class="mono">—</div></div>
+  </div>
+
+  <div class="box">
+    <h2>Proof-class interpretation</h2>
+    <ul>
+      <li><span class="mono">FIREWALL_ONLY_AUDIT</span>: deterministic gate evaluation without downstream provider calls. It demonstrates recorded gate outcomes, not live-provider execution or model safety.</li>
+      <li><span class="mono">LIVE_GATING_CHECK</span>: PASS rows may call the selected provider. Call counters show completion, but no provider-supplied request/response identifier is signed; it does not certify model safety or downstream behavior.</li>
+      <li><span class="mono">SCENARIO_AUDIT</span>: ordered scenario turns are evaluated through the gate. It demonstrates those recorded turn outcomes, not deep conversational state, external action execution, or complete agent security.</li>
+    </ul>
+    <div class="k">Leak counts are suite-specific overlap measurements. Read the <a href="rule-coverage.md">rule coverage methodology</a> and <a href="domain-packs.html">active suite coverage listing</a>.</div>
+  </div>
+
+  <div class="box">
+    <h2>Evidence hashes and identifiers</h2>
+    <div class="row"><div class="k">Commit SHA</div><div id="commit" class="mono wrap">—</div></div>
+    <div class="row"><div class="k">Payload hash</div><div id="payload-hash" class="mono wrap">—</div></div>
+    <div class="row"><div class="k">Policy hash</div><div id="policy-hash" class="mono wrap">—</div></div>
+    <div class="row"><div class="k">Suite hash</div><div id="suite-hash" class="mono wrap">—</div></div>
+    <div class="row"><div class="k">ITGL final hash</div><div id="itgl-final-hash" class="mono wrap">—</div></div>
+    <div class="row"><div class="k">Fingerprint</div><div id="safety-fingerprint" class="mono wrap">—</div></div>
+  </div>
+
+  <div class="box">
+    <h2>Overall latest run status</h2>
+    <div id="latest-run-box" style="display:none;">
+      <div class="row"><div class="k">Status</div><div id="latest-status" class="mono">—</div></div>
+      <div class="row"><div class="k">Timestamp (UTC)</div><div id="latest-ts" class="mono wrap">—</div></div>
+      <div class="row"><div class="k">Run ID</div><div id="latest-run" class="mono wrap">—</div></div>
+      <div class="row"><div class="k">SHA</div><div id="latest-sha" class="mono wrap">—</div></div>
+      <div style="margin-top:8px;"><a href="#" id="latest-run-link">View latest-run.json</a></div>
+    </div>
+    <div class="k" style="margin-top:8px;">
+      This page renders <span class="mono">latest-live-audit</span>. This is the latest attributable live certificate with at least one successful provider call, regardless of result. <span class="mono">latest-run</span> reflects the most recent overall run and may describe a different run.
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>Canonical verification path</h2>
+    <div class="k">Verify the signed JSON from a local checkout of this repo:</div>
+    <div style="margin:8px 0 10px;"><code class="verify mono" id="verify-cmd">curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-live-audit.json | python tools/verify_certificate.py -</code></div>
+    <div><a href="latest-live-audit.json" id="json-link">Download signed JSON</a></div>
+    <div style="margin-top:8px;"><a href="latest-audit.html">View latest passing audit</a></div>
+  </div>
+
+  <div class="box">
+    <h2>Run provenance</h2>
+    <div class="row"><div class="k">CI proof</div><div><a href="#" id="ci-link">GitHub Actions run</a></div></div>
+    <div class="row"><div class="k">Repository</div><div><a href="#" id="repo-link">—</a></div></div>
+  </div>
+
+  <footer>
+    Issued by SDL – Structural Design Labs<br>
+    Cryptographically signed proof · Offline verification · Evidence class scoped by proof_class
+  </footer>
+
+  <script>
+    function formatUtcTimestamp(iso) {
+      if (!iso) return "—";
+      const s = String(iso).trim();
+      if (s.includes("T") && s.endsWith("Z")) {
+        return s.replace("T", " ").replace("Z", " UTC");
+      }
+      try {
+        const d = new Date(s);
+        if (isNaN(d.getTime())) return s;
+        return d.toISOString().replace("T", " ").replace(".000Z", " UTC");
+      } catch {
+        return s;
+      }
+    }
+
+    function setText(id, val, fallback="—") {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const out = (val === undefined || val === null || String(val).trim() === "") ? fallback : String(val);
+      el.textContent = out;
+    }
+
+    function safeHttpUrl(value, fallback = "#") {
+      try {
+        const url = new URL(String(value));
+        return url.protocol === "https:" || url.protocol === "http:" ? String(value) : fallback;
+      } catch {
+        return fallback;
+      }
+    }
+
+    async function fetchJsonFirstOk(paths) {
+      for (const p of paths) {
+        try {
+          const r = await fetch(p, { cache: "no-store" });
+          if (!r.ok) continue;
+          const j = await r.json();
+          return { data: j, path: p };
+        } catch {}
+      }
+      return { data: null, path: null };
+    }
+
+    function setLatestRun(data) {
+      if (!data) return;
+      setText("latest-status", data.status);
+      setText("latest-ts", formatUtcTimestamp(data.timestamp_utc));
+      setText("latest-run", data.run_id);
+      setText("latest-sha", data.sha);
+    }
+
+    (async () => {
+      // Served (GitHub Pages): /latest-audit.html -> /latest-run.json (same dir)
+      // Local dev (http://localhost:8000/proofs/latest-audit.html): fallback -> ../docs/latest-run.json
+      const candidates = ["latest-run.json", "../docs/latest-run.json"];
+
+      const { data, path } = await fetchJsonFirstOk(candidates);
+      if (data && path) {
+        document.getElementById("latest-run-box").style.display = "block";
+        const link = document.getElementById("latest-run-link");
+        link.href = path;
+        setLatestRun(data);
+      }
+    })();
+
+    fetch('latest-live-audit.json')
+      .then(r => r.json())
+      .then(data => {
+        const leaks = Number(data.jailbreaks_leaked ?? 0);
+        const harmless = Number(data.harmless_blocked ?? 0);
+        const prompts = Number(data.prompts_tested ?? 0);
+
+        const coverageBySuite = {
+          generic_safety: "100/100",
+          account_recovery_fraud: "0/5",
+          mental_health_clinical: "5/15",
+          support_operator_override: "26/26",
+          data_exfiltration_pressure: "27/27",
+          eu_ai_act_compliance_pressure: "74/100",
+          scenario_injection_chain: "6/10",
+          scenario_tool_injection: "1/2"
+        };
+
+        const repo = data.repository || "SDL-HQ/sir-firewall";
+        const repoUrl = `https://github.com/${repo}`;
+
+        setText("sir-version", data.sir_firewall_version);
+        setText("suite", data.suite_name ? data.suite_name : (data.suite_path || "—"));
+        setText("model", data.model);
+        setText("provider", data.provider);
+        setText("date", formatUtcTimestamp(data.date));
+
+        setText("prompts", prompts ? String(prompts) : "—");
+        setText("leaks", String(leaks));
+        setText("harmless", String(harmless));
+        setText("rule-coverage", coverageBySuite[data.suite_name]);
+        setText("provider-attempts", data.provider_call_attempts);
+        setText("provider-successes", data.provider_call_successes);
+        setText("provider-failures", data.provider_call_failures);
+        setText("proof-class", data.proof_class);
+        setText("governance-scope", data.governance_scope);
+        setText(
+          "crypto-enforced",
+          typeof data.crypto_enforced === "boolean" ? String(data.crypto_enforced) : undefined
+        );
+
+        const ok = leaks === 0 && harmless === 0;
+        const scoreEl = document.getElementById("score");
+        scoreEl.textContent = `${leaks}`;
+        scoreEl.className = `mono ${ok ? "success" : "danger"}`;
+
+        const resultEl = document.getElementById("result");
+        const resolvedResult = String(data.result || (ok ? "AUDIT PASSED" : "AUDIT FAILED")).trim().toUpperCase();
+        resultEl.textContent = resolvedResult;
+        const resultClass = resolvedResult === "AUDIT PASSED"
+          ? "success"
+          : resolvedResult === "AUDIT FAILED"
+            ? "danger"
+            : resolvedResult === "INCONCLUSIVE"
+              ? "warn"
+              : "danger";
+        resultEl.className = `status ${resultClass}`;
+
+        setText("commit", data.commit_sha);
+        setText("payload-hash", data.payload_hash);
+        setText("policy-hash", data.policy_hash);
+        setText("suite-hash", data.suite_hash);
+        setText("itgl-final-hash", data.itgl_final_hash);
+
+        const runUrl = safeHttpUrl(data.ci_run_url);
+        const link = document.getElementById("ci-link");
+        link.href = runUrl;
+
+        if (runUrl && runUrl !== "#") {
+          const runId = runUrl.split("/").pop() || "";
+          if (runId && /^\d+$/.test(runId)) {
+            link.textContent = `GitHub Actions run #${runId}`;
+          } else if (runId) {
+            link.textContent = `GitHub Actions run (${runId})`;
+          } else {
+            link.textContent = "GitHub Actions run";
+          }
+        } else {
+          link.textContent = "GitHub Actions run";
+        }
+
+        const jsonLink = document.getElementById("json-link");
+        jsonLink.href = "latest-live-audit.json";
+
+        const repoLink = document.getElementById("repo-link");
+        repoLink.href = repoUrl;
+        repoLink.textContent = repoUrl.replace("https://", "");
+
+        setText("safety-fingerprint", data.trust_fingerprint ?? data.safety_fingerprint);
+      })
+      .catch(() => {
+        const resultEl = document.getElementById("result");
+        resultEl.textContent = "Failed to load audit data";
+        resultEl.className = "status danger";
+        document.getElementById("score").textContent = "—";
+      });
+  </script>
+</body>
+</html>
+<!-- SIR_BUILD: date=2026-09-20T09:24:56Z payload_hash=sha256:f6496562750bd5b12c20c56abdb1f762b9b34ac685d8169ded9671129be51b62 -->
