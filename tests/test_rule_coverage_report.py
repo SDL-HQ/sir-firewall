@@ -1,10 +1,16 @@
 import importlib.util
 import json
+import re
 from pathlib import Path
+
+import pytest
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_module():
-    module_path = Path(__file__).resolve().parents[1] / "tools" / "rule_coverage_report.py"
+    module_path = ROOT / "tools" / "rule_coverage_report.py"
     spec = importlib.util.spec_from_file_location("rule_coverage_report", module_path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
@@ -14,6 +20,40 @@ def _load_module():
 
 def _by_id(report):
     return {pack["pack_id"]: pack for pack in report["packs"]}
+
+
+def _coverage_lookup(path, variable_name):
+    page = path.read_text(encoding="utf-8")
+    match = re.search(
+        rf"const\s+{re.escape(variable_name)}\s*=\s*\{{(?P<body>.*?)\}};",
+        page,
+        flags=re.DOTALL,
+    )
+    assert match, f"coverage lookup {variable_name} not found in {path}"
+
+    entries = re.findall(r'^\s*([a-z0-9_]+):\s*"([^"]+)"\s*,?\s*$', match.group("body"), re.MULTILINE)
+    assert entries, f"coverage lookup {variable_name} is empty in {path}"
+    assert len(entries) == len(dict(entries)), f"duplicate pack in {path}"
+    return dict(entries)
+
+
+@pytest.mark.parametrize(
+    ("relative_path", "variable_name"),
+    [
+        ("docs/latest-run.html", "coverageByPack"),
+        ("proofs/template.html", "coverageBySuite"),
+        ("proofs/runs/index.html", "FULL_GATE_COVERAGE"),
+    ],
+)
+def test_published_coverage_lookups_match_generated_report(relative_path, variable_name):
+    report = _load_module().build_report()
+    expected = {
+        pack["pack_id"]: f'{pack["full_gate_matched"]}/{pack["block_rows"]}'
+        for pack in report["packs"]
+        if pack["status"] == "active"
+    }
+
+    assert _coverage_lookup(ROOT / relative_path, variable_name) == expected
 
 
 def test_report_covers_fully_matched_suite():
