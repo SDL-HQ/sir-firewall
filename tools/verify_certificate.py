@@ -29,9 +29,13 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 from key_registry import find_registry_key, public_key_pem_from_entry, revocation_allows_proof
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from itgl import LedgerVerificationError, load_and_verify_ledger
 
 DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
 DEFAULT_KEY_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
+LEDGER_BINDING_FAILURE = 7
 
 
 def _require_json_object(obj: Any, source: str) -> Dict[str, Any]:
@@ -155,9 +159,14 @@ def _parse_args() -> argparse.Namespace:
             "  cat proofs/latest-audit.json | python3 tools/verify_certificate.py -\n\n"
             "Key resolution:\n"
             "  If signing_key_id is present and key registry is readable, that key is used.\n"
-            "  Otherwise verifier falls back to --pubkey unless --require-registry is set."
+            "  Otherwise verifier falls back to --pubkey unless --require-registry is set.\n\n"
+            "Exit code 7 means --ledger chain or certificate-binding verification failed."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    ap.add_argument(
+        "--ledger",
+        help="Verify this ITGL ledger and bind its chain head and row count to the certificate.",
     )
     ap.add_argument(
         "cert",
@@ -222,6 +231,24 @@ def main() -> int:
     except Exception as e:
         print(f"ERROR: signature verification failed ({e})", file=sys.stderr)
         return 6
+
+    if args.ledger:
+        try:
+            ledger_hash, row_count = load_and_verify_ledger(Path(args.ledger))
+        except (LedgerVerificationError, OSError, UnicodeError) as exc:
+            print(f"ERROR: ledger binding verification failed: {exc}", file=sys.stderr)
+            return LEDGER_BINDING_FAILURE
+        cert_hash = cert.get("itgl_final_hash")
+        if ledger_hash != cert_hash:
+            print("ERROR: ledger binding verification failed: terminal hash mismatch", file=sys.stderr)
+            print(f"  cert: {cert_hash}", file=sys.stderr)
+            print(f"  ledger: {ledger_hash}", file=sys.stderr)
+            return LEDGER_BINDING_FAILURE
+        if row_count != cert.get("prompts_tested"):
+            print("ERROR: ledger binding verification failed: row count mismatch", file=sys.stderr)
+            print(f"  prompts_tested: {cert.get('prompts_tested')}", file=sys.stderr)
+            print(f"  ledger rows: {row_count}", file=sys.stderr)
+            return LEDGER_BINDING_FAILURE
 
     if not args.quiet:
         print(

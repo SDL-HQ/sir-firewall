@@ -18,7 +18,7 @@ Fallback inputs:
 Notes:
 - Adds sir_firewall_version (from installed package) to every cert.
 - Adds trust_fingerprint (deterministic hash over core governance anchors).
-- Prefers ITGL_FINAL_HASH from CI env, falls back to proofs/itgl_final_hash.txt.
+- Computes the ITGL chain head from the ledger identified by the run summary.
 
 Patch (P6+ clarity):
 - latest-audit.html includes a tiny build-stamp comment (date + payload_hash),
@@ -31,13 +31,18 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+from sir_firewall.evidence_paths import canonical_ledger_path
 from sir_firewall.model_selection import DEFAULT_MODEL, DEFAULT_PROVIDER
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from itgl import LedgerVerificationError, load_and_verify_ledger
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -374,7 +379,7 @@ def _select_latest_output_targets(*, publishable_latest: bool, result: str) -> t
     return json_out, html_out, target_json_name, audit_label, verify_command
 
 
-def main() -> None:
+def main(ledger_path: Optional[str] = None, allow_detached_ledger: bool = False) -> None:
     private_key_pem = os.environ.get("SDL_PRIVATE_KEY_PEM")
     if not private_key_pem:
         raise RuntimeError("SDL_PRIVATE_KEY_PEM secret missing")
@@ -431,8 +436,43 @@ def main() -> None:
     policy_meta = _canonical_policy_hash("policy/isc_policy.json") or {}
     policy_flags = _policy_flags("policy/isc_policy.json")
 
-    # SAFE PATCH: prefer CI-verified env var, fall back to file (local/offline)
-    itgl_final_hash = (os.getenv("ITGL_FINAL_HASH") or _read_text("proofs/itgl_final_hash.txt") or "").strip()
+    # Bind the certificate to this run's ledger. The summary is written by the
+    # same runner invocation; an explicit path is available to integrations.
+    summary_run_id = str(summary.get("run_id") or "").strip()
+    summary_ledger_path = str(summary.get("ledger_path") or "").strip()
+    if not summary_run_id:
+        raise RuntimeError("run_summary.json does not identify run_id")
+    if not summary_ledger_path:
+        raise RuntimeError("run_summary.json does not identify ledger_path")
+    expected = canonical_ledger_path(summary_run_id)
+    if Path(summary_ledger_path).resolve() != expected.resolve():
+        raise RuntimeError(
+            "ITGL ledger identity mismatch: "
+            f"run_id={summary_run_id}, ledger_path={summary_ledger_path}, expected={expected}"
+        )
+    selected_ledger_path = ledger_path or summary_ledger_path
+    detached_ledger = Path(selected_ledger_path).resolve() != expected.resolve()
+    if detached_ledger and not allow_detached_ledger:
+        raise RuntimeError(
+            "detached ITGL ledger refused: supplied --ledger does not match "
+            f"run_id={summary_run_id}; expected={expected}, supplied={selected_ledger_path}. "
+            "Use --allow-detached-ledger to sign an explicitly marked replay."
+        )
+    try:
+        itgl_final_hash, itgl_row_count = load_and_verify_ledger(Path(selected_ledger_path))
+    except (LedgerVerificationError, OSError, UnicodeError) as exc:
+        raise RuntimeError(f"ITGL ledger verification failed for {selected_ledger_path}: {exc}") from exc
+
+    expected_itgl_hash = (os.getenv("ITGL_FINAL_HASH") or "").strip()
+    if expected_itgl_hash and expected_itgl_hash != itgl_final_hash:
+        raise RuntimeError(
+            "ITGL_FINAL_HASH cross-check mismatch: "
+            f"environment={expected_itgl_hash}, computed={itgl_final_hash}"
+        )
+    if itgl_row_count != prompts_tested:
+        raise RuntimeError(
+            f"ITGL ledger row count mismatch: ledger={itgl_row_count}, prompts_tested={prompts_tested}"
+        )
 
     sir_version = _sir_firewall_version()
 
@@ -476,7 +516,10 @@ def main() -> None:
         "date": str(summary.get("date") or _utc_now_iso()),
         "timestamp_utc": str(summary.get("timestamp_utc") or summary.get("date") or _utc_now_iso()),
         "proof_class": proof_class,
+        "run_id": summary_run_id,
+        "detached_ledger": detached_ledger,
         "prompts_tested": prompts_tested,
+        "itgl_row_count": itgl_row_count,
         "jailbreaks_leaked": jailbreaks_leaked,
         "harmless_blocked": harmless_blocked,
         "provider_call_attempts": provider_call_attempts,
@@ -497,8 +540,7 @@ def main() -> None:
         cert["policy_version"] = policy_meta["policy_version"]
     if policy_meta.get("policy_hash"):
         cert["policy_hash"] = policy_meta["policy_hash"]
-    if itgl_final_hash:
-        cert["itgl_final_hash"] = itgl_final_hash
+    cert["itgl_final_hash"] = itgl_final_hash
 
     # Fingerprint fields
     cert["fingerprint_fields_version"] = "1"
@@ -566,4 +608,14 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Generate and sign a certificate for the current run.")
+    parser.add_argument("--ledger", help="ITGL ledger for this run (normally must equal run_summary.ledger_path).")
+    parser.add_argument(
+        "--allow-detached-ledger",
+        action="store_true",
+        help="Allow --ledger outside the run's canonical path and mark the signed payload as detached.",
+    )
+    args = parser.parse_args()
+    main(args.ledger, args.allow_detached_ledger)

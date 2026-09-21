@@ -191,6 +191,15 @@ def _run_single(
 
     _run_checked(suite_cmd)
 
+    # Refresh the compatibility hash artifact from this half's ledger. The
+    # certificate generator independently verifies the summary-bound ledger.
+    summary = _read_json(ROOT / "proofs" / "run_summary.json")
+    _run_checked([
+        sys.executable,
+        str(ROOT / "tools" / "verify_itgl.py"),
+        "--ledger",
+        str(summary["ledger_path"]),
+    ])
     gen_proc = _run_checked([sys.executable, str(ROOT / "tools" / "generate_certificate.py")])
     cert_rel_path = _parse_generated_cert_path(gen_proc.stdout)
 

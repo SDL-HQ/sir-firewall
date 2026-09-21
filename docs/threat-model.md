@@ -44,7 +44,7 @@ The certificate signs both derived and asserted fields. The signature makes both
 | Field | Derivation boundary |
 |---|---|
 | Payload hash | Computed over the reconstructed certificate payload before signing. |
-| ITGL final hash | Computed by the ITGL verifier from the run ledger, then supplied to certificate generation through `ITGL_FINAL_HASH` or `proofs/itgl_final_hash.txt`. Certificate verification does not recompute it from a ledger. |
+| Run ID, ITGL final hash, and row count | The runner assigns the run ID and writes its canonical ledger beneath `proofs/runs/<run_id>/`. Certificate generation requires the summary's run ID and identity-matched ledger path (or an explicit replay `--ledger` override), verifies its chain with the shared ITGL verifier, and signs the identity, terminal hash, and row count. `ITGL_FINAL_HASH` is only a fail-closed cross-check. |
 | Suite hash | Computed from decoded suite content by the run harness; certificate generation prefers the value in `run_summary.json`. |
 | Rule evaluation results | Computed by the gate for the declared ingress content and aggregated by the run harness. |
 | Policy hash | Computed from the canonical policy file by certificate generation. |
@@ -71,9 +71,9 @@ The integrator is responsible for ensuring that only the exact evaluated payload
 
 ### `tools/verify_certificate.py`
 
-The certificate verifier reconstructs the signed payload, checks its SHA-256 `payload_hash`, verifies the RSA signature, resolves registered key material when available, and applies the implemented revocation-time rule when registry verification is used.
+The certificate verifier reconstructs the signed payload, checks its SHA-256 `payload_hash`, verifies the RSA signature, resolves registered key material when available, and applies the implemented revocation-time rule when registry verification is used. With `--ledger`, it also verifies the ledger chain and requires its terminal hash and row count to match the signed certificate.
 
-It does not establish that a run occurred, that asserted fields are true, that the policy or rule result was correct, that a model is safe, that the certificate satisfies the evidence contract, or that a certificate's `itgl_final_hash` corresponds to a supplied ledger.
+Without `--ledger`, it does not establish that a run occurred, that asserted fields are true, that the policy or rule result was correct, that a model is safe, that the certificate satisfies the evidence contract, or that a certificate's `itgl_final_hash` corresponds to any particular ledger.
 
 ### `tools/verify_itgl.py`
 
@@ -81,7 +81,7 @@ The ITGL verifier establishes limited structure and chain linkage. It requires a
 
 It does not validate the semantic contents of an entry or establish authenticity. A fabricated ledger with valid hash arithmetic passes it. Timestamps and prompt indexes are required fields but are not covered by the ledger hash and are not checked for type, order, monotonicity, or truth.
 
-The terminal ledger hash must be compared with an `itgl_final_hash` covered by a valid signed certificate for the chain to be meaningful as certificate-linked evidence. That comparison is not automatic. Certificate generation can embed the output of an earlier ITGL verification step, but neither verifier independently opens and compares both artifacts.
+The terminal ledger hash must match an `itgl_final_hash` covered by a valid signed certificate for the chain to be meaningful as certificate-linked evidence. Certificate generation now performs that binding before signing, and `verify_certificate.py --ledger` independently verifies both artifacts and compares the terminal hash and row count.
 
 ### `tools/validate_certificate_contract.py`
 

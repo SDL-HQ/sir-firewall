@@ -1,4 +1,4 @@
-# SIR: Signal Integrity Resolver Version 2.3.3
+# SIR: Signal Integrity Resolver Version 2.3.4
 
 [![SIR Real Governance Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
@@ -36,7 +36,20 @@ Important semantics:
 
 ---
 
-## Quick verify (latest published proof)
+## Verify a published evidence package
+
+Verification answers three separate questions:
+
+1. **Were these bytes signed by this key?** Run `verify_certificate.py`
+   without `--ledger`. This proves only signed-payload integrity and is the
+   only available verification for certificates earlier than SIR 2.3.4.
+2. **Do these signed bytes name this log?** For SIR 2.3.4 and later, run
+   `verify_certificate.py --ledger` with that run archive's own ledger. This is
+   the documented default.
+3. **Did this run mean what its result says?** That requires separate run
+   accounting and semantic review; it is outside certificate/ledger binding.
+
+### Quick verify (SIR 2.3.4 or later run archive)
 
 Mac/Linux:
 
@@ -44,23 +57,48 @@ Mac/Linux:
 git clone https://github.com/SDL-HQ/sir-firewall.git && cd sir-firewall && \
 python3 -m venv .venv && source .venv/bin/activate && \
 python3 -m pip install -U pip && python3 -m pip install -e . && \
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
+RUN_ID=<2.3.4-or-later-run-id> && \
+python3 tools/verify_certificate.py "docs/runs/${RUN_ID}/audit.json" \
+  --ledger "docs/runs/${RUN_ID}/proofs/itgl_ledger.jsonl"
 ```
 
 Expected:
 
 `OK: payload_hash matches reconstructed signed payload and signature verifies against ...; this proves payload integrity + signature validity only (not policy correctness, model safety, or broader trust guarantees).`
 
-Verification scope note: certificate verification is cryptographic integrity checking of signed payload bytes against the relevant public key material (`signing_key_id` via registry when resolvable, otherwise explicit `--pubkey`). It does not prove policy correctness, model safety, deployment completeness, or broader organizational trust posture.
+Without `--ledger`, certificate verification is only cryptographic integrity
+checking of signed payload bytes against relevant public-key material. With
+`--ledger`, it additionally checks that the signed hash and prompt count name
+that chain-valid log. Neither form proves policy correctness, run-accounting
+correctness, model safety, deployment completeness, or organizational trust.
 
-Note on the trailing `-`: it explicitly means "read JSON from stdin" (the pipe). This is the explicit and portable form we standardise on here.
-
-If you downloaded the file instead of piping:
+For a pre-2.3.4 certificate, or when asking only the narrower signature
+question, omit `--ledger`:
 
 ```bash
 python3 tools/verify_certificate.py proofs/latest-audit.json
 python3 tools/validate_certificate_contract.py proofs/latest-audit.json
 ```
+
+Evidence contract v1 applies to `sir_firewall_version` 2.2.0 and later. The
+contract validator exits `8` with a `NOT APPLICABLE` message for older or
+unversioned certificates; this is distinct from exit `2`, which reports a
+genuine violation by an in-scope certificate.
+
+### Standalone verifier dependencies
+
+The verifier tools do not require installing `sir_firewall`. A minimal copied
+verification bundle needs `tools/verify_certificate.py`, `tools/verify_itgl.py`,
+`tools/itgl.py`, `tools/key_registry.py`, `spec/sdl.pub`,
+`spec/pubkeys/key_registry.v1.json`, and
+`spec/pubkeys/key_registry.v1.schema.json`, plus the certificate and ledger.
+Python's `cryptography` package is required. The key-registry module and schema
+are pre-existing dependencies of certificate verification.
+
+The root-level `proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`,
+`proofs/run_id.txt`, and `proofs/run_summary.json` are mutable compatibility
+copies for older tooling. They are not evidence; verify against the artifacts
+inside the identity-matched per-run archive.
 
 ### Positive and negative verification examples
 
@@ -68,6 +106,10 @@ python3 tools/validate_certificate_contract.py proofs/latest-audit.json
 |---|---|
 | `python3 tools/verify_certificate.py proofs/latest-audit.json` | `python3 tools/verify_certificate.py examples/verifier-negatives/tampered-leak-count.json` |
 | Prints `OK: payload_hash matches reconstructed signed payload and signature verifies ...` | Refuses with `ERROR: payload_hash mismatch` and exit code `3` |
+
+`verify_certificate.py` uses exit code `7` specifically when `--ledger` chain
+verification or the signed terminal-hash/row-count binding fails. Codes `2`–`6`
+retain their existing certificate and signature failure meanings.
 
 The same deliberately invalid certificate demonstrates why consumers must run both tools:
 
@@ -243,6 +285,7 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 * [Engineer guide](docs/engineer-guide.md) (local runs, signing, serving)
 * [Trial guide](docs/trial-guide.md) (auditors, insurers, evidence capture)
 * [Key governance readiness](docs/key-governance-readiness.md) (authority map and `CRYPTO_ENFORCED` checklist)
+* [SIR 2.3.4 release notes](docs/release-notes-2.3.4.md) (evidence-binding correction)
 * [SIR 2.3.3 release notes](docs/release-notes-2.3.3.md) (generic systemic-reset audit accounting)
 * [SIR 2.3.2 release notes](docs/release-notes-2.3.2.md) (parser symmetry and registry cleanup)
 * [SIR 2.3.1 release notes](docs/release-notes-2.3.1.md) (failure-mode hardening)

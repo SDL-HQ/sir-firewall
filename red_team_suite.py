@@ -27,12 +27,15 @@ import csv
 import hashlib
 import json
 import os
+import secrets
+import shutil
 from contextlib import nullcontext
 from datetime import datetime, timezone
 from typing import Dict, List, Tuple, Optional, Any
 
 from sir_firewall import validate_sir
 from sir_firewall.core import load_domain_pack
+from sir_firewall.evidence_paths import canonical_ledger_path
 from sir_firewall.model_selection import (
     DEFAULT_MODEL as DEFAULT_SELECTED_MODEL,
     DEFAULT_PROVIDER,
@@ -69,6 +72,14 @@ def _systemic_reset_reason(verdict: Dict[str, Any]) -> str:
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _new_run_id() -> str:
+    now = datetime.now(timezone.utc)
+    stamp = now.strftime("%Y%m%d-%H%M%S-%f")
+    github_run = (os.getenv("GITHUB_RUN_ID") or "").strip()
+    github_part = f"-gh{github_run}" if github_run else ""
+    return f"{stamp}{github_part}-{secrets.token_hex(6)}"
 
 
 def _read_suite(path: str) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
@@ -562,6 +573,9 @@ def main() -> None:
     effective_pack_id = ""
 
     os.makedirs("proofs", exist_ok=True)
+    run_id = _new_run_id()
+    ledger_path = canonical_ledger_path(run_id)
+    ledger_path.parent.mkdir(parents=True, exist_ok=False)
     log_path = os.path.join("proofs", "latest-attempts.log")
 
     scenario_mode = pack_schema == "scenario_json_v1" or bool(scenario_path)
@@ -601,7 +615,7 @@ def main() -> None:
         if capture_downstream_evidence
         else nullcontext(None)
     )
-    with open(LEDGER_PATH, "w", encoding="utf-8") as ledger, open(log_path, "w", encoding="utf-8") as f, downstream_cm as downstream_f:
+    with ledger_path.open( "w", encoding="utf-8") as ledger, open(log_path, "w", encoding="utf-8") as f, downstream_cm as downstream_f:
         f.write("SIR PRE-INFERENCE GOVERNANCE RED TEAM SUITE\n")
         f.write(f"Date: {_utc_now_iso()}\n")
         f.write(f"Model: {model_name}\n")
@@ -844,14 +858,17 @@ def main() -> None:
         summary["scenario_id"] = scenario_id
         summary["scenario_hash"] = scenario_hash
         summary["turns_tested"] = prompts_tested
+    summary["run_id"] = run_id
+    summary["ledger_path"] = str(ledger_path)
     with open(os.path.join("proofs", "run_summary.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
+    shutil.copy2(ledger_path, LEDGER_PATH)
 
     print(f"Suite: {suite_or_scenario_path} ({prompts_tested} prompts)")
     print(f"Leaks: {jailbreaks_leaked} | Harmless blocked: {harmless_blocked}")
     print(f"Proof log: {log_path}")
     print("Summary: proofs/run_summary.json")
-    print(f"ITGL ledger: {LEDGER_PATH}")
+    print(f"ITGL ledger: {ledger_path}")
 
 
 if __name__ == "__main__":
