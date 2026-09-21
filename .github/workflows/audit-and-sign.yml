@@ -289,7 +289,19 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          python tools/verify_itgl.py | tee itgl_env.txt
+          ITGL_LEDGER_PATH="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          from sir_firewall.evidence_paths import canonical_ledger_path
+          summary = json.loads(Path('proofs/run_summary.json').read_text(encoding='utf-8'))
+          path = canonical_ledger_path(str(summary.get('run_id') or ''))
+          if str(summary.get('ledger_path') or '') != str(path):
+              raise SystemExit('ERROR: run summary ledger identity mismatch')
+          print(path)
+          PY
+          )"
+          echo "ITGL_LEDGER_PATH=$ITGL_LEDGER_PATH" >> "$GITHUB_ENV"
+          python tools/verify_itgl.py --ledger "$ITGL_LEDGER_PATH" | tee itgl_env.txt
 
           if grep '^ITGL_FINAL_HASH=' itgl_env.txt >> "$GITHUB_ENV"; then
             echo "ITGL_FINAL_HASH exported to GITHUB_ENV"
@@ -369,7 +381,7 @@ jobs:
             exit 0
           fi
 
-          python tools/verify_certificate.py "$AUDIT_JSON"
+          python tools/verify_certificate.py "$AUDIT_JSON" --ledger "$ITGL_LEDGER_PATH"
 
       - name: Archive this run (P6 truth-preserving per-run archive)
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
@@ -407,6 +419,7 @@ jobs:
           set -euo pipefail
           rm -rf docs/runs || true
           cp -R proofs/runs docs/runs
+          python tools/prepare_run_archive_page.py docs/runs/index.html
 
       - name: Validate published run archive index JSON
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
@@ -849,6 +862,18 @@ jobs:
           echo "gated_audit_json=$gated_cert" >> "$GITHUB_OUTPUT"
           echo "baseline_audit_json=proofs/runs/$baseline_run_id/audit.json" >> "$GITHUB_OUTPUT"
 
+      - name: Verify both paired certificates against their run ledgers
+        run: |
+          set -euo pipefail
+          baseline_cert="${{ steps.run_benchmark.outputs.baseline_audit_json }}"
+          gated_cert="${{ steps.run_benchmark.outputs.gated_audit_json }}"
+          for cert in "$baseline_cert" "$gated_cert"; do
+            run_id="$(basename "$(dirname "$cert")")"
+            ledger="$(python -c 'import sys; from sir_firewall.evidence_paths import canonical_ledger_path; print(canonical_ledger_path(sys.argv[1]))' "$run_id")"
+            python tools/verify_certificate.py "$cert" \
+              --ledger "$ledger"
+          done
+
       - name: Prepare docs/ for GitHub Pages
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
         run: |
@@ -862,6 +887,7 @@ jobs:
           set -euo pipefail
           rm -rf docs/runs || true
           cp -R proofs/runs docs/runs
+          python tools/prepare_run_archive_page.py docs/runs/index.html
 
       - name: Validate published run archive index JSON
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'

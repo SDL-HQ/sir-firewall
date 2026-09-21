@@ -263,7 +263,11 @@ def main() -> int:
     _run(suite_cmd, env=env)
 
     # 3) Verify ITGL, export ITGL_FINAL_HASH, write itgl_env.txt
-    itgl_out = _capture([sys.executable, "tools/verify_itgl.py"], env=env)
+    current_summary = json.loads((REPO_ROOT / "proofs/run_summary.json").read_text(encoding="utf-8"))
+    current_ledger = str(current_summary.get("ledger_path") or "")
+    itgl_out = _capture(
+        [sys.executable, "tools/verify_itgl.py", "--ledger", current_ledger], env=env
+    )
     _write_text(REPO_ROOT / "itgl_env.txt", itgl_out)
 
     itgl_final_hash = ""

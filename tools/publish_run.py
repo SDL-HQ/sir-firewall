@@ -24,6 +24,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
+from sir_firewall.evidence_paths import canonical_ledger_path
+
 
 EVIDENCE_CONTRACT_VERSION = "v1"
 BENCHMARK_INDEX_V1_VERSION = "benchmark_index.v1"
@@ -172,7 +174,7 @@ def _benchmark_entry_from_run(runs_dir: Path, run: Dict[str, Any]) -> Dict[str, 
         "manifest": artifact_path("manifest.json"),
         "archive_receipt": artifact_path("archive_receipt.json"),
         "run_summary": artifact_path("proofs/run_summary.json"),
-        "itgl_ledger": artifact_path("proofs/itgl_ledger.jsonl"),
+        "itgl_ledger": canonical_ledger_path(run_id, runs_dir=Path("runs")).as_posix(),
         "itgl_final_hash": artifact_path("proofs/itgl_final_hash.txt"),
         "attempt_log": artifact_path("proofs/latest-attempts.log"),
     }
@@ -649,8 +651,17 @@ def main() -> int:
 
     cert = _read_json(cert_path)
 
-    base_run_id = _safe_run_id(cert)
-    run_id, run_dir = _unique_run_dir(runs_dir, base_run_id)
+    cert_run_id = cert.get("run_id")
+    if cert_run_id is not None:
+        run_id = _validated_run_id(cert_run_id)
+        run_dir = runs_dir / run_id
+        if not run_dir.is_dir():
+            raise SystemExit(f"ERROR: certificate run directory does not exist: {run_dir}")
+        if (run_dir / "audit.json").exists():
+            raise SystemExit(f"ERROR: run archive already contains a certificate: {run_dir}")
+    else:
+        base_run_id = _safe_run_id(cert)
+        run_id, run_dir = _unique_run_dir(runs_dir, base_run_id)
 
     archived_audit = run_dir / "audit.json"
     shutil.copy2(cert_path, archived_audit)

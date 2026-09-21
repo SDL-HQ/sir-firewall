@@ -717,7 +717,11 @@
       const extraHtml = extra.length
         ? `<details class="evidence-more"><summary>more files</summary><div class="link-group" style="margin-top:5px;">${extra.map(([k, p]) => `<a class="link-chip" href="../${esc(p)}">${esc(k)}</a>`).join("")}</div></details>`
         : "";
-      return `<div class="link-group">${primaryHtml}</div>${extraHtml}`;
+      const ev = entry?.evidence || {};
+      const verifyCommand = ev.audit && entry?.run_id
+        ? `<div class="verify-command"><code>python3 tools/verify_certificate.py docs/${esc(ev.audit)} --ledger docs/runs/${esc(entry.run_id)}/proofs/itgl_ledger.jsonl</code></div>`
+        : "";
+      return `<div class="link-group">${primaryHtml}</div>${extraHtml}${verifyCommand}`;
     }
 
     function pairEvidenceCell(base, gated) {

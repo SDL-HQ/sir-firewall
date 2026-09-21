@@ -14,10 +14,27 @@ DEFAULT_CERT = Path("proofs/latest-audit.json")
 DEFAULT_CONTRACT = Path("spec/evidence_contract.v1.json")
 DEFAULT_KEY_SCHEMA = Path("spec/pubkeys/key_registry.v1.schema.json")
 DEFAULT_KEY_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
+BELOW_APPLICABILITY_FLOOR = 8
+
+
+def _version_tuple(value: Any) -> Optional[tuple[int, int, int]]:
+    if not isinstance(value, str) or re.fullmatch(r"\d+\.\d+\.\d+", value) is None:
+        return None
+    return tuple(int(part) for part in value.split("."))  # type: ignore[return-value]
+
+
+def _applicability_floor(contract: Dict[str, Any]) -> str:
+    rules = contract.get("x_contract_rules")
+    applicability = rules.get("applicability") if isinstance(rules, dict) else None
+    floor = applicability.get("minimum_sir_firewall_version") if isinstance(applicability, dict) else None
+    return floor if isinstance(floor, str) else ""
 
 
 def _parse_args() -> argparse.Namespace:
-    ap = argparse.ArgumentParser(description="Validate SIR certificate against evidence contract v1.")
+    ap = argparse.ArgumentParser(
+        description="Validate SIR certificate against evidence contract v1.",
+        epilog="Exit code 8 means the certificate predates the contract applicability floor.",
+    )
     ap.add_argument("cert", nargs="?", default=str(DEFAULT_CERT), help="Path to certificate JSON.")
     ap.add_argument("--contract", default=str(DEFAULT_CONTRACT), help="Path to evidence contract JSON.")
     ap.add_argument(
@@ -200,6 +217,18 @@ def main() -> int:
         print(f"ERROR: {e}", file=sys.stderr)
         return 3
 
+    floor = _applicability_floor(contract)
+    certificate_version = cert.get("sir_firewall_version")
+    parsed_floor = _version_tuple(floor)
+    parsed_version = _version_tuple(certificate_version)
+    if parsed_floor is not None and (parsed_version is None or parsed_version < parsed_floor):
+        print(
+            "NOT APPLICABLE: evidence contract v1 governs sir_firewall_version "
+            f">= {floor}; certificate has {certificate_version!r}.",
+            file=sys.stderr,
+        )
+        return BELOW_APPLICABILITY_FLOOR
+
     errors: List[str] = []
     _validate_required(cert, contract, errors)
     _validate_properties(cert, contract, errors)
@@ -220,6 +249,12 @@ def main() -> int:
             print(f" - {e}", file=sys.stderr)
         return 2
 
+    if cert.get("detached_ledger") is True:
+        print(
+            "WARNING: certificate is explicitly marked detached_ledger=true; "
+            "contract validity does not make it canonically bound.",
+            file=sys.stderr,
+        )
     print("OK: certificate satisfies evidence contract v1.")
     return 0
 

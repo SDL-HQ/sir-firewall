@@ -1,6 +1,6 @@
 # Failure modes: when SIR itself fails
 
-This note describes SIR 2.3.3 as implemented, not an availability guarantee.
+This note describes SIR 2.3.4 as implemented, not an availability guarantee.
 SIR is a synchronous, deterministic pre-inference library gate: only a returned
 verdict is a SIR decision. The distinctions below matter operationally.
 
@@ -23,7 +23,7 @@ verdict is a SIR decision. The distinctions below matter operationally.
    integrator bypass, not a SIR `PASS`, and SIR cannot prevent or describe that
    downstream disposition from inside the failed call.
 
-## Current 2.3.3 behaviour
+## Current 2.3.4 behaviour
 
 | Failure | Actual outcome | Classification |
 |---|---|---|

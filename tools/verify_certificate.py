@@ -29,9 +29,13 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 from key_registry import find_registry_key, public_key_pem_from_entry, revocation_allows_proof
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from itgl import LedgerVerificationError, load_and_verify_ledger
 
 DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
 DEFAULT_KEY_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
+LEDGER_BINDING_FAILURE = 7
 
 
 def _require_json_object(obj: Any, source: str) -> Dict[str, Any]:
@@ -155,9 +159,14 @@ def _parse_args() -> argparse.Namespace:
             "  cat proofs/latest-audit.json | python3 tools/verify_certificate.py -\n\n"
             "Key resolution:\n"
             "  If signing_key_id is present and key registry is readable, that key is used.\n"
-            "  Otherwise verifier falls back to --pubkey unless --require-registry is set."
+            "  Otherwise verifier falls back to --pubkey unless --require-registry is set.\n\n"
+            "Exit code 7 means --ledger chain or certificate-binding verification failed."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    ap.add_argument(
+        "--ledger",
+        help="Verify this ITGL ledger and bind its chain head and row count to the certificate.",
     )
     ap.add_argument(
         "cert",
@@ -223,12 +232,48 @@ def main() -> int:
         print(f"ERROR: signature verification failed ({e})", file=sys.stderr)
         return 6
 
-    if not args.quiet:
+    if args.ledger:
+        try:
+            ledger_hash, row_count = load_and_verify_ledger(Path(args.ledger))
+        except (LedgerVerificationError, OSError, UnicodeError) as exc:
+            print(f"ERROR: ledger binding verification failed: {exc}", file=sys.stderr)
+            return LEDGER_BINDING_FAILURE
+        cert_hash = cert.get("itgl_final_hash")
+        if ledger_hash != cert_hash:
+            print("ERROR: ledger binding verification failed: terminal hash mismatch", file=sys.stderr)
+            print(f"  cert: {cert_hash}", file=sys.stderr)
+            print(f"  ledger: {ledger_hash}", file=sys.stderr)
+            return LEDGER_BINDING_FAILURE
+        prompts_tested = cert.get("prompts_tested")
+        signed_row_count = cert.get("itgl_row_count")
+        if row_count != prompts_tested or row_count != signed_row_count:
+            print("ERROR: ledger binding verification failed: row count mismatch", file=sys.stderr)
+            print(f"  prompts_tested: {prompts_tested}", file=sys.stderr)
+            print(f"  signed itgl_row_count: {signed_row_count}", file=sys.stderr)
+            print(f"  ledger rows: {row_count}", file=sys.stderr)
+            return LEDGER_BINDING_FAILURE
+
+    if cert.get("detached_ledger") is True:
         print(
-            "OK: payload_hash matches reconstructed signed payload and signature verifies "
-            f"against {key_source}; this proves payload integrity + signature validity only "
-            "(not policy correctness, model safety, or broader trust guarantees)."
+            "WARNING: certificate is explicitly marked detached_ledger=true; "
+            "its signed run_id does not assert the canonical location of this ledger.",
+            file=sys.stderr,
         )
+
+    if not args.quiet:
+        if args.ledger:
+            print(
+                "OK: payload_hash and signature verify "
+                f"against {key_source}; ledger binding verifies signed itgl_final_hash="
+                f"{ledger_hash} equals the supplied ledger terminal hash, and signed "
+                f"itgl_row_count={row_count} equals prompts_tested={prompts_tested}."
+            )
+        else:
+            print(
+                "OK: payload_hash matches reconstructed signed payload and signature verifies "
+                f"against {key_source}; this proves payload integrity + signature validity only "
+                "(not policy correctness, model safety, or broader trust guarantees)."
+            )
     return 0
 
 

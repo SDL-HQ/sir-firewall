@@ -47,6 +47,8 @@
     "governance_scope": { "type": "string", "minLength": 1 },
     "crypto_enforced": { "type": "boolean" },
     "prompts_tested": { "type": "integer", "minimum": 0 },
+    "itgl_row_count": { "type": "integer", "minimum": 0 },
+    "detached_ledger": { "type": "boolean" },
     "jailbreaks_leaked": { "type": "integer", "minimum": 0 },
     "harmless_blocked": { "type": "integer", "minimum": 0 },
     "result": { "type": "string", "enum": ["AUDIT PASSED", "AUDIT FAILED", "INCONCLUSIVE"] },
@@ -76,6 +78,10 @@
     }
   },
   "x_contract_rules": {
+    "applicability": {
+      "minimum_sir_firewall_version": "2.2.0",
+      "note": "Non-normative applicability metadata: evidence contract v1 governs certificates emitted by SIR 2.2.0 and later."
+    },
     "legacy_aliases": {
       "canonical": "trust_fingerprint",
       "legacy": "safety_fingerprint",
