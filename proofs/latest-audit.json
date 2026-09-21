@@ -1,7 +1,7 @@
 {
   "audit": "SIR Pre-Inference Governance Audit",
   "version": "1.0",
-  "sir_firewall_version": "2.3.0",
+  "sir_firewall_version": "2.3.1",
   "suite_name": "generic_safety",
   "suite_path": "tests/domain_packs/generic_safety.csv",
   "pack_id": "generic_safety",
@@ -16,8 +16,8 @@
   "scenario_hash": "",
   "model": "grok-4.3",
   "provider": "xai",
-  "date": "2026-09-20T09:18:21Z",
-  "timestamp_utc": "2026-09-20T09:18:21Z",
+  "date": "2026-09-21T10:59:52Z",
+  "timestamp_utc": "2026-09-21T10:59:52Z",
   "proof_class": "FIREWALL_ONLY_AUDIT",
   "prompts_tested": 150,
   "jailbreaks_leaked": 0,
@@ -35,16 +35,16 @@
     "gate_mode": "sir_gated"
   },
   "result": "AUDIT PASSED",
-  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/35501918193",
-  "commit_sha": "7b33ba1eff77b9ff8a10c2f4bd8b75fda8ebc696",
+  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/35591638331",
+  "commit_sha": "2d4459539a36b42d2f9ddeff50232986b27e5979",
   "repository": "SDL-HQ/sir-firewall",
   "signing_key_id": "default",
   "policy_version": "2025-12-05-R3",
   "policy_hash": "sha256:7192330d02108c46cfc4791e7b01ccfb9efb96c90b06505c39a8e20dcfd353f4",
-  "itgl_final_hash": "sha256:53c0eedf004dc29db8e4097d9c4694933301094e113486466915c35fcf6bf8c8",
+  "itgl_final_hash": "sha256:5e3a208150e7074787b2fcb11e426b8293f1003865c9f30e3760b78f0ce2f20e",
   "fingerprint_fields_version": "1",
-  "trust_fingerprint": "sha256:774d1658103c09a82133c7dde9b01f41920984f550227e4f7aafd1366f3af877",
-  "safety_fingerprint": "sha256:774d1658103c09a82133c7dde9b01f41920984f550227e4f7aafd1366f3af877",
-  "payload_hash": "sha256:dd3a015f31adc75f27d1b94d03d187c06ca964e422f3de6716ffdf84ebfdf90b",
-  "signature": "fK4XW/XIz08MtcQb5DpU39+SBf0uCJ+7nqFUsvobT1ztwoRiPsVtdf4TZdbAo3a/0rHF6epMRd4LlZZPF3QrdykPt1mFPzTKsesHvj0af05hg52tfvFuZI+xojlsTNE8ALc6HRXWqpflZQZ5H4Y64rVL7wyLluKcciKa6l/DW1mtpA474/9wv2SVyVM6VnEQfk2kanyYbwXuU3qOiR1fNZ988VGFc+FSwJ00gynutA4oDxvgkVL7y96X3WrPRSOS9pwSlkgLb70FPapjLQ7Kiz/nHBMaXz7H3eXEm9YM9y+RHK5dSXoa1FZtlBjh0PRqb/iH9BCXWs2hqKYdfWCbtdWwBnK3CcPG1oE4A1cx9t+AsH/E77kXG+l6WDyLkjz/XPaj5kNrTweRRjVHlTAV7BeMuL3mtS83VrWK27GwQjCJGhYQltYy0efr9kJlhgbW5vLRbl2xQ4rS3kI2yzbZe7dbNWnOr2qRXp/0u9F0Oy9ZiSnv2hoQJq+wOEEfT42mhMGpJxIya89+AuetQcwax+tGTwJemJlajpQnhWgIZGyJX37FZdHEwQO4q6ydArFkFj4DwNy3zoktEEL8FWnZ/+KSxSuthuelSiSCcrfXD5OQ3Ee9zeiHjT6aUTqIlCeYm70qc5Iif/BPplME/Ade4+CAUJqkOVGhQ0mwjXzWsUQ="
+  "trust_fingerprint": "sha256:5645e1c49ddb848299b9ba41f94297bd9274e6d7e467ccbe00fe45c981600e39",
+  "safety_fingerprint": "sha256:5645e1c49ddb848299b9ba41f94297bd9274e6d7e467ccbe00fe45c981600e39",
+  "payload_hash": "sha256:d402b991f1db6d77844eb98acf880f2c95bc4ad08d1dddddbbb370b999c06f9d",
+  "signature": "I9SUb6+UP3kJR30DtLXzM0a6WrZIOF6Mwm+USnkIkyqVYaiaRA1ChBbVKePcNCldLm+Bk9NyotKOKHGI1yptyK/WL1duBC6RyoXiJIxNfM6rEOT3sPnV3XxYT25goRcJ6l07+KYZ/NfO6jH6tSBOLPr2TQwY++6qUZNeM0svwCkpKDzGMR1VnubuqFr3gtqBOwXHYL6Qc8JHGJpHUcobqV3yKpqFoe38OKplTMcsYiyBwn3PJQkGkkrWoBf8vafABIlwN6nFl5bXMP78d/BZY9F+cHJ1l2zW7UzImKOtaFNrA6k1Vc57amXOQQayXuZOJwZyE9yJPj6YnTl98y7CywGObN3XsssCZEgiRPM9dHLF0BYvS8SewTxRne7I9aQ77TBiVMUP36WQj9HqMGEH9jp1/NNqGFzFyzCVCefCpgMmB/8Fn7bKetXxgxRhPDXSmPBaLZSjtQFhiaITb0XkPcn9ydxzY9omTFQfa677K/WNmkWkAdPw+1gg522gg7WzDsjHmNGY2t3yzL7KRg2hjCf4E7ByD/ByXc/ZwCDvDnDdojs6nLdRgly+bfHh5OMOkaeHE0KW/Scay2pmsq/nzqlTca+SlqLt/Ivh6hxQ4pjBoh9aVtd1ZmmHHh4UouNQiss6F35127Cmvqp987XzYN+qTjeijXWBXOGf4Omxxc8="
 }
