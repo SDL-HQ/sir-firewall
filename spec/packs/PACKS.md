@@ -95,13 +95,6 @@ property from same-named ISC enforcement-policy-pack file presence.
 | `eu_ai_act_compliance_pressure` | domain | active / public / canonical | `74/100` | Runner-evaluable | `benign_control`, `direct_bypass` |
 | `scenario_injection_chain` | scenario | active / public / canonical | `6/10` | Not runner-evaluable | `benign_control`, `injection`, `exfiltration` |
 | `scenario_tool_injection` | scenario | active / public / canonical | `1/2` | Not runner-evaluable | `benign_control`, `injection` |
-| `healthcare_compliance` | domain | draft / internal / demo | `0/0` | Not runner-evaluable | `benign_control` |
-| `financial_services` | domain | draft / internal / demo | `0/0` | Not runner-evaluable | `benign_control` |
-| `pii_protection` | domain | draft / internal / demo | `0/0` | Not runner-evaluable | `benign_control` |
-| `code_generation_safety` | domain | draft / internal / demo | `0/0` | Not runner-evaluable | `benign_control` |
-| `educational_content` | domain | draft / internal / demo | `0/0` | Not runner-evaluable | `benign_control` |
-| `legal_contracts` | domain | draft / internal / demo | `0/0` | Not runner-evaluable | `benign_control` |
-| `insurance_underwriting` | domain | draft / internal / demo | `0/0` | Not runner-evaluable | `benign_control` |
 | `canary_fail` | domain | draft / internal / demo | `0/1` | Not runner-evaluable | `direct_bypass` |
 
 ## Rule-to-suite explainability mapping (indicative only)

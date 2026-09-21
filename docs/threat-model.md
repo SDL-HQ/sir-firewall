@@ -19,6 +19,18 @@ SIR is a deterministic pre-inference gate for declared ingress content. It evalu
 
 The adversary may control the content presented to the gate, including formatting, encoding, Unicode characters, declared tool-result content, and fields accepted by an ingress schema. An adversary may adapt inputs after observing gate outcomes. SIR does not assume that input filtering remains effective against every adaptive transformation.
 
+### Enumerable-rules design constraint
+
+The rules-only architecture and the published rule-coverage report are one
+commitment: coverage is reproducible only while the complete decision rule set
+is enumerable and can be evaluated deterministically against every benchmark
+row. A proposal to introduce embedding similarity, a learned classifier,
+semantic scoring, or any other uncountable/non-enumerable decision mechanism
+would forfeit the current coverage artefact; it cannot retain the coverage
+claim merely because the mechanism appears plausible or useful. Any such
+proposal must therefore be evaluated as an explicit architecture and assurance
+trade-off, not adopted as an implementation detail.
+
 The adversary is not assumed to control the process executing SIR, its loaded policy and rule files, its signing key at signing time, or the evidence producer at capture time. **The evidence producer is trusted at capture time.** SIR does not independently establish that the producer executed the recorded run, supplied truthful metadata, or captured a real event. Its evidence guarantees are post-signing tamper-evidence and reproducibility from retained inputs and repository state, not authenticity of the recorded event.
 
 Compromise of the evidence producer, runtime, policy source, suite source, signing key, or integration path is outside this trust boundary.
