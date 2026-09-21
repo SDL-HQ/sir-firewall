@@ -16,6 +16,21 @@ Three categories of file carry the word "pack" in this project:
 
 `structured_account_recovery_benchmark.json` is an exploratory test fixture and is not a registry-managed pack discoverable via `sir packs list`.
 
+## ISC policy-pack minimum schema
+
+Every ISC policy pack is a JSON object with required `pack_id`, `templates`,
+and `flags` keys. `pack_id` is a non-empty string matching the selected pack.
+`templates` contains every identifier derived from the gate's built-in allowed
+template set, and each template object carries a positive native JSON integer
+`max_tokens`. `flags` contains native JSON booleans for
+`STRICT_ISC_ENFORCEMENT`, `CHECKSUM_ENFORCED`, and `CRYPTO_ENFORCED`.
+
+`STRICT_ISC_ENFORCEMENT` is required only for policy/pack schema compatibility.
+It is not currently consulted, and ISC structural rejection is unconditional.
+`description` and `structured_request_schema` are optional; when a structured
+schema is present, the structured-ingress validator enforces its detailed
+contract.
+
 ## Inventory
 
 ### Active public registry suites

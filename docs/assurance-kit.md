@@ -65,7 +65,9 @@ Plain-language outcomes:
 
 - If SIR blocks: the request path is stopped before model inference for that evaluated request.
 - If inputs are malformed: treat the outcome as non-passing and use run artefacts to inspect the failure state.
-- If registry or policy load paths fail: SIR returns an explicit non-passing blocked systemic-reset outcome with run evidence.
+- If the baseline policy or a domain ISC policy pack fails to load inside `validate_sir()`: SIR returns an explicit non-passing blocked systemic-reset outcome with run evidence.
+- If `spec/packs/pack_registry.v1.json` is absent or malformed: suite selection fails with a process error before request evaluation; this is not a request-level systemic-reset block.
+- If an otherwise-unhandled in-process validation exception occurs: SIR returns an internal-error systemic-reset block with exception diagnostics in the ITGL. A process-level out-of-memory kill cannot be caught in-process and remains outside this guarantee.
 - If a run is invalid or inconclusive: treat it as non-passing; use `latest-run.json` plus archived run artefacts to inspect failure state.
 - If SIR is bypassed: no governance claim applies to bypassed model-facing traffic.
 - If SIR is not actually in front of the model path: proof only attests to the exercised SIR path, not ungoverned alternate paths.
