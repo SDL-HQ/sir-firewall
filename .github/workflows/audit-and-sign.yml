@@ -212,6 +212,15 @@ jobs:
           raise SystemExit(subprocess.call(cmd))
           PY
 
+      - name: Run canary_fail systemic-reset accounting meta-test
+        run: |
+          set -euo pipefail
+          # This deliberately runs outside the benchmark allowlist. The test executes
+          # canary_fail through the runner, generates its certificate, and rejects
+          # AUDIT PASSED so a reset block can never earn expected-block credit.
+          pytest -q \
+            tests/test_systemic_reset_accounting.py::test_canary_fail_systemic_reset_is_inconclusive
+
       - name: Run selected SIR audit mode
         env:
           # Live reference target
