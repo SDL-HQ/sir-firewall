@@ -249,6 +249,12 @@ def main() -> int:
             print(f" - {e}", file=sys.stderr)
         return 2
 
+    if cert.get("detached_ledger") is True:
+        print(
+            "WARNING: certificate is explicitly marked detached_ledger=true; "
+            "contract validity does not make it canonically bound.",
+            file=sys.stderr,
+        )
     print("OK: certificate satisfies evidence contract v1.")
     return 0
 

@@ -89,7 +89,8 @@ def test_current_version_surfaces_match_runtime_authority():
         "pyproject.toml": Counter({authority: 1}),
         "spec/evidence_contract.v1.json": Counter({v_220: 2}),
         "src/sir_firewall/__init__.py": Counter({authority: 1}),
-        "tests/test_evidence_contract_applicability.py": Counter({v_220: 3}),
+        "tests/test_evidence_contract_applicability.py": Counter({v_220: 3, v_233: 1}),
+        "tests/test_standalone_verifiers.py": Counter({authority: 1}),
     }
     version_pattern = re.compile(
         rf"(?<![\d.])(?:{'|'.join(re.escape(version) for version in (authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233))})(?!\d)"

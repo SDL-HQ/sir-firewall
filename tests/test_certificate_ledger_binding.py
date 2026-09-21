@@ -1,4 +1,5 @@
 import ast
+import base64
 import hashlib
 import importlib.util
 import json
@@ -9,6 +10,8 @@ from pathlib import Path
 
 import pytest
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric import rsa
 from sir_firewall.evidence_paths import canonical_ledger_path
 
@@ -68,6 +71,26 @@ def _key(monkeypatch):
     return key
 
 
+def _generated_certificate(generator, capsys, *args, **kwargs) -> tuple[Path, dict]:
+    generator.main(*args, **kwargs)
+    output = capsys.readouterr().out
+    emitted = [line.split("=", 1)[1] for line in output.splitlines() if line.startswith("OUTPUT_AUDIT_JSON=")]
+    assert len(emitted) == 1, output
+    path = Path(emitted[0])
+    assert path.is_file(), f"generator reported {path}, but did not write it\n{output}"
+    return path.resolve(), json.loads(path.read_text(encoding="utf-8"))
+
+
+def _resign_certificate(path: Path, certificate: dict, key) -> None:
+    payload_obj = {k: v for k, v in certificate.items() if k not in ("signature", "payload_hash")}
+    payload = json.dumps(payload_obj, separators=(",", ":"), ensure_ascii=False).encode()
+    certificate["payload_hash"] = "sha256:" + hashlib.sha256(payload).hexdigest()
+    certificate["signature"] = base64.b64encode(
+        key.sign(payload, padding.PKCS1v15(), hashes.SHA256())
+    ).decode("ascii")
+    path.write_text(json.dumps(certificate), encoding="utf-8")
+
+
 def test_generator_hash_source_is_verified_ledger_not_environment_or_text_file():
     tree = ast.parse((ROOT / "tools/generate_certificate.py").read_text(encoding="utf-8"))
     assignments = [node for node in ast.walk(tree) if isinstance(node, (ast.Assign, ast.AnnAssign))]
@@ -89,7 +112,19 @@ def test_generator_hash_source_is_verified_ledger_not_environment_or_text_file()
     assert forbidden == []
 
 
-def test_two_ledgers_generate_distinct_bound_certificates(tmp_path, monkeypatch):
+def test_generator_output_path_line_names_the_file_actually_written(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    _key(monkeypatch)
+    ledger = canonical_ledger_path("output-contract", tmp_path / "proofs/runs")
+    _ledger(ledger, "0" * 64)
+    _setup_run(tmp_path, ledger, "output-contract")
+    generator = _load_generator("generator_output_contract")
+    output_path, certificate = _generated_certificate(generator, capsys)
+    assert output_path.name in {"local-audit.json", "latest-audit.json"}
+    assert certificate["run_id"] == "output-contract"
+
+
+def test_two_ledgers_generate_distinct_bound_certificates(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     _key(monkeypatch)
     generator = _load_generator("generator_two_ledgers")
@@ -98,11 +133,9 @@ def test_two_ledgers_generate_distinct_bound_certificates(tmp_path, monkeypatch)
     head_a, head_b = _ledger(ledger_a, "a" * 64), _ledger(ledger_b, "b" * 64)
 
     _setup_run(tmp_path, ledger_a, "run-a")
-    generator.main()
-    cert_a = json.loads((tmp_path / "proofs/local-audit.json").read_text())
+    _, cert_a = _generated_certificate(generator, capsys)
     _setup_run(tmp_path, ledger_b, "run-b")
-    generator.main()
-    cert_b = json.loads((tmp_path / "proofs/local-audit.json").read_text())
+    _, cert_b = _generated_certificate(generator, capsys)
 
     assert cert_a["itgl_final_hash"] == head_a
     assert cert_b["itgl_final_hash"] == head_b
@@ -122,7 +155,7 @@ def test_generation_fails_closed_when_ledger_missing(tmp_path, monkeypatch):
     assert not (tmp_path / "proofs/archive").exists()
 
 
-def test_certificate_verifier_ledger_binding_exit_code(tmp_path, monkeypatch):
+def test_certificate_verifier_ledger_binding_exit_code(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     key = _key(monkeypatch)
     matching = canonical_ledger_path("binding-run", tmp_path / "proofs/runs")
@@ -131,8 +164,7 @@ def test_certificate_verifier_ledger_binding_exit_code(tmp_path, monkeypatch):
     _ledger(other, "d" * 64)
     _setup_run(tmp_path, matching)
     generator = _load_generator("generator_verify_binding")
-    generator.main()
-    cert = tmp_path / "proofs/local-audit.json"
+    cert, _ = _generated_certificate(generator, capsys)
     pubkey = tmp_path / "public.pem"
     pubkey.write_bytes(key.public_key().public_bytes(
         serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo))
@@ -173,7 +205,7 @@ def test_generation_rejects_detached_ledger_override_without_explicit_allowance(
     assert not (tmp_path / "proofs/archive").exists()
 
 
-def test_generation_marks_explicitly_allowed_detached_ledger(tmp_path, monkeypatch):
+def test_generation_marks_explicitly_allowed_detached_ledger(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     _key(monkeypatch)
     canonical = canonical_ledger_path("binding-run", tmp_path / "proofs/runs")
@@ -182,26 +214,75 @@ def test_generation_marks_explicitly_allowed_detached_ledger(tmp_path, monkeypat
     detached_head = _ledger(detached, "8" * 64)
     _setup_run(tmp_path, canonical)
     generator = _load_generator("generator_detached_allowed")
-    generator.main(str(detached), allow_detached_ledger=True)
-    cert = json.loads((tmp_path / "proofs/local-audit.json").read_text())
+    _, cert = _generated_certificate(
+        generator, capsys, str(detached), allow_detached_ledger=True
+    )
     assert cert["detached_ledger"] is True
     assert cert["itgl_final_hash"] == detached_head
 
 
-def test_generation_marks_canonical_ledger_as_not_detached(tmp_path, monkeypatch):
+def test_verifier_prominently_reports_detached_certificate(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    key = _key(monkeypatch)
+    canonical = canonical_ledger_path("binding-run", tmp_path / "proofs/runs")
+    detached = tmp_path / "detached.jsonl"
+    _ledger(canonical, "a" * 64)
+    _ledger(detached, "b" * 64)
+    _setup_run(tmp_path, canonical)
+    generator = _load_generator("generator_detached_verified")
+    cert_path, _ = _generated_certificate(
+        generator, capsys, str(detached), allow_detached_ledger=True
+    )
+    pubkey = tmp_path / "public.pem"
+    pubkey.write_bytes(key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    ))
+    result = subprocess.run([
+        sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
+        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--ledger", str(detached),
+    ], cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode == 0
+    assert "detached_ledger=true" in result.stderr
+    assert "ledger binding verifies" in result.stdout
+
+
+def test_verifier_rejects_signed_itgl_row_count_disagreement(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    key = _key(monkeypatch)
+    ledger = canonical_ledger_path("binding-run", tmp_path / "proofs/runs")
+    _ledger(ledger, "c" * 64)
+    _setup_run(tmp_path, ledger)
+    generator = _load_generator("generator_bad_signed_row_count")
+    cert_path, certificate = _generated_certificate(generator, capsys)
+    certificate["itgl_row_count"] = 2
+    _resign_certificate(cert_path, certificate, key)
+    pubkey = tmp_path / "public.pem"
+    pubkey.write_bytes(key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    ))
+    result = subprocess.run([
+        sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
+        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--ledger", str(ledger),
+    ], cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode == 7
+    assert "signed itgl_row_count: 2" in result.stderr
+
+
+def test_generation_marks_canonical_ledger_as_not_detached(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     _key(monkeypatch)
     canonical = canonical_ledger_path("binding-run", tmp_path / "proofs/runs")
     _ledger(canonical, "9" * 64)
     _setup_run(tmp_path, canonical)
     generator = _load_generator("generator_attached_mark")
-    generator.main()
-    cert = json.loads((tmp_path / "proofs/local-audit.json").read_text())
+    _, cert = _generated_certificate(generator, capsys)
     assert cert["detached_ledger"] is False
 
 
 @pytest.mark.parametrize("variant", ["strict-prefix", "trailing-row-removed", "reordered", "different-rows"])
-def test_certificate_verifier_rejects_isolated_wrong_ledger(tmp_path, monkeypatch, variant):
+def test_certificate_verifier_rejects_isolated_wrong_ledger(tmp_path, monkeypatch, capsys, variant):
     monkeypatch.chdir(tmp_path)
     key = _key(monkeypatch)
     matching = canonical_ledger_path("binding-run", tmp_path / "proofs/runs")
@@ -213,7 +294,7 @@ def test_certificate_verifier_rejects_isolated_wrong_ledger(tmp_path, monkeypatc
     summary["prompts_tested"] = 3
     summary_path.write_text(json.dumps(summary), encoding="utf-8")
     generator = _load_generator(f"generator_isolation_{variant}")
-    generator.main()
+    cert_path, _ = _generated_certificate(generator, capsys)
 
     candidate = tmp_path / f"{variant}.jsonl"
     if variant == "strict-prefix":
@@ -232,7 +313,7 @@ def test_certificate_verifier_rejects_isolated_wrong_ledger(tmp_path, monkeypatc
     env = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
     result = subprocess.run([
         sys.executable, str(ROOT / "tools/verify_certificate.py"),
-        str(tmp_path / "proofs/local-audit.json"), "--pubkey", str(pubkey),
+        str(cert_path), "--pubkey", str(pubkey),
         "--key-registry", str(tmp_path / "absent.json"), "--ledger", str(candidate),
     ], cwd=ROOT, env=env, capture_output=True, text=True)
     assert result.returncode == 7

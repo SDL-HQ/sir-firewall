@@ -244,18 +244,36 @@ def main() -> int:
             print(f"  cert: {cert_hash}", file=sys.stderr)
             print(f"  ledger: {ledger_hash}", file=sys.stderr)
             return LEDGER_BINDING_FAILURE
-        if row_count != cert.get("prompts_tested"):
+        prompts_tested = cert.get("prompts_tested")
+        signed_row_count = cert.get("itgl_row_count")
+        if row_count != prompts_tested or row_count != signed_row_count:
             print("ERROR: ledger binding verification failed: row count mismatch", file=sys.stderr)
-            print(f"  prompts_tested: {cert.get('prompts_tested')}", file=sys.stderr)
+            print(f"  prompts_tested: {prompts_tested}", file=sys.stderr)
+            print(f"  signed itgl_row_count: {signed_row_count}", file=sys.stderr)
             print(f"  ledger rows: {row_count}", file=sys.stderr)
             return LEDGER_BINDING_FAILURE
 
-    if not args.quiet:
+    if cert.get("detached_ledger") is True:
         print(
-            "OK: payload_hash matches reconstructed signed payload and signature verifies "
-            f"against {key_source}; this proves payload integrity + signature validity only "
-            "(not policy correctness, model safety, or broader trust guarantees)."
+            "WARNING: certificate is explicitly marked detached_ledger=true; "
+            "its signed run_id does not assert the canonical location of this ledger.",
+            file=sys.stderr,
         )
+
+    if not args.quiet:
+        if args.ledger:
+            print(
+                "OK: payload_hash and signature verify "
+                f"against {key_source}; ledger binding verifies signed itgl_final_hash="
+                f"{ledger_hash} equals the supplied ledger terminal hash, and signed "
+                f"itgl_row_count={row_count} equals prompts_tested={prompts_tested}."
+            )
+        else:
+            print(
+                "OK: payload_hash matches reconstructed signed payload and signature verifies "
+                f"against {key_source}; this proves payload integrity + signature validity only "
+                "(not policy correctness, model safety, or broader trust guarantees)."
+            )
     return 0
 
 

@@ -56,7 +56,7 @@ Mac/Linux:
 ```bash
 git clone https://github.com/SDL-HQ/sir-firewall.git && cd sir-firewall && \
 python3 -m venv .venv && source .venv/bin/activate && \
-python3 -m pip install -U pip && python3 -m pip install -e . && \
+python3 -m pip install -U pip cryptography && \
 RUN_ID=<2.3.4-or-later-run-id> && \
 python3 tools/verify_certificate.py "docs/runs/${RUN_ID}/audit.json" \
   --ledger "docs/runs/${RUN_ID}/proofs/itgl_ledger.jsonl"
@@ -64,13 +64,22 @@ python3 tools/verify_certificate.py "docs/runs/${RUN_ID}/audit.json" \
 
 Expected:
 
-`OK: payload_hash matches reconstructed signed payload and signature verifies against ...; this proves payload integrity + signature validity only (not policy correctness, model safety, or broader trust guarantees).`
+`OK: payload_hash and signature verify against ...; ledger binding verifies signed itgl_final_hash=sha256:... equals the supplied ledger terminal hash, and signed itgl_row_count=N equals prompts_tested=N.`
+
+This is the standalone verifier path exercised by the regression suite: it
+installs `cryptography`, but does not install the `sir_firewall` package. An
+editable `pip install -e .` is needed for running SIR itself, not for these
+standalone verification tools.
 
 Without `--ledger`, certificate verification is only cryptographic integrity
 checking of signed payload bytes against relevant public-key material. With
 `--ledger`, it additionally checks that the signed hash and prompt count name
 that chain-valid log. Neither form proves policy correctness, run-accounting
 correctness, model safety, deployment completeness, or organizational trust.
+An explicitly detached certificate can still exit 0 when its signature and the
+supplied ledger agree, but the verifier prints a prominent
+`detached_ledger=true` warning: success establishes binding to that supplied
+ledger, not canonical run-location binding.
 
 For a pre-2.3.4 certificate, or when asking only the narrower signature
 question, omit `--ledger`:
@@ -99,6 +108,18 @@ The root-level `proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`,
 `proofs/run_id.txt`, and `proofs/run_summary.json` are mutable compatibility
 copies for older tooling. They are not evidence; verify against the artifacts
 inside the identity-matched per-run archive.
+
+### Generated certificate output path
+
+`generate_certificate.py` emits `OUTPUT_AUDIT_JSON=<path>` as the authoritative
+location of the certificate it wrote. A conclusive `AUDIT PASSED` result is
+written to `proofs/latest-audit.json` only when the certificate has attributable
+provenance: a known SIR version, a commit SHA (`GITHUB_SHA` or the checkout's
+Git SHA), and a CI run URL (normally driven by `GITHUB_RUN_ID`, with
+`GITHUB_REPOSITORY` identifying the repository). Otherwise—including failed or
+inconclusive results—it writes `proofs/local-audit.json`. Callers and tests must
+consume `OUTPUT_AUDIT_JSON`; they must not infer the filename from their ambient
+environment.
 
 ### Positive and negative verification examples
 

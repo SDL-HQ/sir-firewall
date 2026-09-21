@@ -24,6 +24,13 @@ On each of `docs/runs/index.json`, benchmark index v1, and benchmark index v2,
 all 200 comparison values are present: there are 87 distinct values, 32 values
 are shared by multiple runs, and 145 runs carry a shared value.
 
+The retained index spans 2026-04-04T06:40:30Z through
+2026-09-21T12:03:18Z. Runs carrying a colliding certificate hash span
+2026-04-04T12:48:34Z through 2026-09-21T12:03:18Z: the defect is visible from
+the first day represented in the published index through its most recent run.
+It was not introduced only by a recent change. The introducing version or
+commit was not determined from the retained artifacts.
+
 From SIR 2.3.4, certificate generation loads the identity-derived canonical
 ledger recorded by the current `run_summary.json`, verifies the chain, and
 signs the run ID, computed head, and row count. An explicit non-canonical
