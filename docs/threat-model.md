@@ -31,6 +31,24 @@ claim merely because the mechanism appears plausible or useful. Any such
 proposal must therefore be evaluated as an explicit architecture and assurance
 trade-off, not adopted as an implementation detail.
 
+### Evidence-optionality design constraint
+
+ITGL evidence generation is not optional, partial, or caller-controlled. Making
+it conditional on a caller flag, audit mode, sampling rate, or any other runtime
+switch would forfeit the property the chain exists to provide: an append-only
+hash chain demonstrates that the recorded decisions are all the decisions,
+whereas a chain with permissible gaps demonstrates only that some decisions
+were recorded, with the gaps wherever the caller chose. Caller-controlled
+evidence is the same defect class as caller-supplied evidence fields, which the
+2.3.4 correction removed from the ledger binding and which remains an open
+limitation for `pack_hash`.
+
+The measured trade-off is approximately 117 µs p50 for ITGL construction and
+hashing, against approximately 1.08–1.24 s per provider call on the 2026-09-21
+paired run. A proposal to make evidence generation conditional must therefore
+be evaluated as an explicit architecture and assurance trade-off, not adopted
+as an implementation detail or a performance optimisation.
+
 The adversary is not assumed to control the process executing SIR, its loaded policy and rule files, its signing key at signing time, or the evidence producer at capture time. **The evidence producer is trusted at capture time.** SIR does not independently establish that the producer executed the recorded run, supplied truthful metadata, or captured a real event. Its evidence guarantees are post-signing tamper-evidence and reproducibility from retained inputs and repository state, not authenticity of the recorded event.
 
 Compromise of the evidence producer, runtime, policy source, suite source, signing key, or integration path is outside this trust boundary.
@@ -47,7 +65,7 @@ The certificate signs both derived and asserted fields. The signature makes both
 | Run ID, ITGL final hash, and row count | The runner assigns the run ID and writes its canonical ledger beneath `proofs/runs/<run_id>/`. Certificate generation requires the summary's run ID and identity-matched ledger path (or an explicit replay `--ledger` override), verifies its chain with the shared ITGL verifier, and signs the identity, terminal hash, and row count. `ITGL_FINAL_HASH` is only a fail-closed cross-check. |
 | Suite hash | Computed from decoded suite content by the run harness; certificate generation prefers the value in `run_summary.json`. |
 | Rule evaluation results | Computed by the gate for the declared ingress content and aggregated by the run harness. |
-| Policy hash | Computed from the canonical policy file by certificate generation. |
+| Policy hash | Computed from the canonical policy file as read at certificate-generation time, not from the immutable policy state in force during the run. The certificate-time value and the gate's process-global policy state are not bound to each other. |
 
 ### Asserted fields
 
