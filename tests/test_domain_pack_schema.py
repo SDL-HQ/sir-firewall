@@ -137,3 +137,18 @@ def test_structured_parse_memory_error_fails_closed(monkeypatch):
     assert out["status"] == "BLOCKED"
     assert out["reason"] == "structured_validation_failed"
     assert out["type"] == "structured_invalid_json"
+
+
+def test_tool_result_parse_memory_error_fails_closed_with_ingress_reason(monkeypatch):
+    pack = core.load_domain_pack("generic_safety")
+
+    def exhaust_memory(*_args, **_kwargs):
+        raise MemoryError("injected parser exhaustion")
+
+    monkeypatch.setattr(core, "load_domain_pack", lambda pack_id=None: pack)
+    monkeypatch.setattr(core.json, "loads", exhaust_memory)
+    out = core.validate_sir({"tool_result": '{"tool_name":"browser","content":"safe"}'})
+
+    assert out["status"] == "BLOCKED"
+    assert out["reason"] == "tool_result_validation_failed"
+    assert out["type"] == "tool_result_invalid_json"

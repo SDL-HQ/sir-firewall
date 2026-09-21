@@ -47,13 +47,6 @@ contract.
 
 ### Draft/internal packs
 
-- [Healthcare Compliance](./healthcare_compliance.md) — draft/internal placeholder; taxonomy: `benign_control`
-- [Financial Services](./financial_services.md) — draft/internal placeholder; taxonomy: `benign_control`
-- [PII Protection](./pii_protection.md) — draft/internal placeholder; taxonomy: `benign_control`
-- [Code Generation Safety](./code_generation_safety.md) — draft/internal placeholder; taxonomy: `benign_control`
-- [Educational Content](./educational_content.md) — draft/internal placeholder; taxonomy: `benign_control`
-- [Legal & Contracts](./legal_contracts.md) — draft/internal placeholder; taxonomy: `benign_control`
-- [Insurance Underwriting](./insurance_underwriting.md) — draft/internal placeholder; taxonomy: `benign_control`
 - `canary_fail` — draft/internal benchmark infrastructure check; it has no companion document by design.
 
 ## Current execution constraint

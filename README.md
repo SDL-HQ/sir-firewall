@@ -1,4 +1,4 @@
-# SIR: Signal Integrity Resolver Version 2.3.1
+# SIR: Signal Integrity Resolver Version 2.3.2
 
 [![SIR Real Governance Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
@@ -180,7 +180,9 @@ Key fields:
 * `provider_call_attempts` counts attempted downstream calls, including retries and timeouts
 * `provider_call_successes` is informational
 * `model_calls_made` is a legacy alias equal to `provider_call_attempts`
-* `trust_fingerprint` is canonical; `safety_fingerprint` is retained as a legacy alias
+* `trust_fingerprint` is canonical. `safety_fingerprint` is a deprecated legacy
+  alias retained through the 2.x line and scheduled for removal in SIR 3.0.0;
+  consumers must migrate to `trust_fingerprint` before upgrading to 3.0.0.
 
 ---
 
@@ -233,12 +235,15 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 * [Compliance evidence map](docs/compliance-evidence-map.md) (reviewer-facing evidence packaging map)
 * [Evidence perimeter note](docs/evidence-perimeter.v5.md) (current bounded benchmark perimeter)
 * [Threat model](docs/threat-model.md) (trust, integration, verification, retention, and control boundaries)
+* [Failure modes](docs/failure-modes.md) (fail-closed verdicts, escaped exceptions, and process boundaries)
+* [Rule-coverage report](docs/rule-coverage.md) (deterministic and full-gate benchmark coverage)
 * [OWASP LLM Top 10 2026 mapping](docs/owasp-llm-top-10-2026.md) (version-stamped control mapping)
 * [Public backlog](docs/backlog.md) (known constraints and planned hardening)
 * [External technical review preparation](docs/external-technical-review-prep.md)
 * [Engineer guide](docs/engineer-guide.md) (local runs, signing, serving)
 * [Trial guide](docs/trial-guide.md) (auditors, insurers, evidence capture)
 * [Key governance readiness](docs/key-governance-readiness.md) (authority map and `CRYPTO_ENFORCED` checklist)
+* [SIR 2.3.2 release notes](docs/release-notes-2.3.2.md) (parser symmetry and registry cleanup)
 * [SIR 2.3.1 release notes](docs/release-notes-2.3.1.md) (failure-mode hardening)
 * [SIR 2.3.0 release notes](docs/release-notes-2.3.0.md) (systemic-reset audit accounting)
 * [SIR 2.2.1 release notes](docs/release-notes-2.2.1.md) (generative validation tests and CI dependency hygiene)

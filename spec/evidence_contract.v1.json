@@ -79,7 +79,7 @@
     "legacy_aliases": {
       "canonical": "trust_fingerprint",
       "legacy": "safety_fingerprint",
-      "rule": "trust_fingerprint is canonical. safety_fingerprint may be present for compatibility. If both exist they MUST be identical."
+      "rule": "trust_fingerprint is canonical. safety_fingerprint is deprecated, may be present for 2.x compatibility, and is scheduled for removal in SIR 3.0.0. Consumers MUST read trust_fingerprint. If both exist they MUST be identical."
     },
     "proof_class_conditionals": {
       "FIREWALL_ONLY_AUDIT": {

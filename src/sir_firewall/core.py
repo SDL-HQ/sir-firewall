@@ -1200,7 +1200,7 @@ def _load_tool_result_object(raw: Any) -> Tuple[Dict[str, Any] | None, str | Non
     if isinstance(raw, str):
         try:
             pairs = json.loads(raw, object_pairs_hook=list)
-        except (json.JSONDecodeError, RecursionError):
+        except (json.JSONDecodeError, RecursionError, MemoryError):
             return None, "tool_result_invalid_json"
         if not isinstance(pairs, list):
             return None, "tool_result_not_object"

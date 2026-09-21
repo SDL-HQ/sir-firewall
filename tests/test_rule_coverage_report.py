@@ -86,14 +86,14 @@ def test_report_decodes_encoded_suite():
     assert encoded["full_gate_matched"] == 5
 
 
-def test_report_handles_placeholder_suite():
+def test_report_retains_canary_infrastructure_suite():
     module = _load_module()
     packs = _by_id(module.build_report())
 
-    placeholder = packs["pii_protection"]
-    assert placeholder["block_rows"] == 0
-    assert placeholder["deterministic_rule_matched"] == 0
-    assert placeholder["full_gate_matched"] == 0
+    canary = packs["canary_fail"]
+    assert canary["block_rows"] == 1
+    assert canary["deterministic_rule_matched"] == 0
+    assert canary["full_gate_matched"] == 0
 
 
 def test_report_marks_pack_with_enforcement_policy_as_runner_evaluable():
@@ -142,7 +142,7 @@ def test_cli_writes_machine_readable_json_and_markdown(tmp_path, monkeypatch):
 
     assert module.main() == 0
     payload = json.loads(json_out.read_text(encoding="utf-8"))
-    assert len(payload["packs"]) == 16
+    assert len(payload["packs"]) == 9
     table = markdown_out.read_text(encoding="utf-8")
     assert "| Pack | Status | Visibility |" in table
     assert "`generic_safety`" in table
