@@ -51,6 +51,7 @@ def test_current_version_surfaces_match_runtime_authority():
     v_210 = ".".join(("2", "1", "0"))
     v_220 = ".".join(("2", "2", "0"))
     v_221 = ".".join(("2", "2", "1"))
+    v_230 = ".".join(("2", "3", "0"))
     archived_evidence_prefixes = ("proofs/runs/", "docs/runs/", "proofs/archive/")
     mutable_certificate_pointers = {
         "proofs/latest-audit.json",
@@ -60,20 +61,26 @@ def test_current_version_surfaces_match_runtime_authority():
         "docs/latest-live-audit.json",
     }
     expected_by_path = {
-        "README.md": Counter({authority: 3, v_221: 2, v_220: 1}),
+        "README.md": Counter({authority: 3, v_230: 2, v_221: 2, v_220: 1}),
+        "examples/verifier-negatives/tampered-leak-count.json": Counter({v_230: 1}),
+        "examples/verifier-negatives/tampered-leak-count-rehashed.json": Counter({v_230: 1}),
+        "examples/verifier-negatives/tampered-required-field-removed.json": Counter({v_230: 1}),
+        "examples/verifier-negatives/tampered-signature-swap.json": Counter({v_230: 1}),
+        "examples/verifier-negatives/tampered-unregistered-key.json": Counter({v_230: 1}),
         "docs/additional-phase-1-findings.md": Counter({v_221: 4, v_102: 1, v_200: 1}),
         "docs/assets/StructuralDesignLabs_Logo.svg": Counter({v_210: 1}),
-        "docs/backlog.md": Counter({authority: 1}),
+        "docs/backlog.md": Counter({v_230: 1}),
         "docs/evidence-perimeter.v5.md": Counter({authority: 1}),
         f"docs/release-notes-{v_221}.md": Counter({v_221: 2, v_220: 1}),
         "docs/release-notes-2.2.md": Counter({v_220: 1}),
-        f"docs/release-notes-{authority}.md": Counter({authority: 2}),
+        f"docs/release-notes-{v_230}.md": Counter({v_230: 2}),
+        f"docs/release-notes-{authority}.md": Counter({authority: 2, v_230: 1}),
         "docs/rule-coverage.md": Counter({authority: 1}),
         "pyproject.toml": Counter({authority: 1}),
         "src/sir_firewall/__init__.py": Counter({authority: 1}),
     }
     version_pattern = re.compile(
-        rf"(?<![\d.])(?:{'|'.join(re.escape(version) for version in (authority, v_102, v_200, v_210, v_220, v_221))})(?!\d)"
+        rf"(?<![\d.])(?:{'|'.join(re.escape(version) for version in (authority, v_102, v_200, v_210, v_220, v_221, v_230))})(?!\d)"
     )
     tracked_paths = subprocess.check_output(
         ["git", "ls-files", "-z"], cwd=ROOT
@@ -85,7 +92,7 @@ def test_current_version_surfaces_match_runtime_authority():
         if relative_path == "proofs/local-audit.json"
         or Path(relative_path).name == "latest-run.json"
     }
-    recognised_versions = {authority, v_102, v_200, v_210, v_220, v_221}
+    recognised_versions = {authority, v_102, v_200, v_210, v_220, v_221, v_230}
     observed_by_path = {}
 
     for relative_path in sorted(mutable_certificate_pointers | mutable_if_versioned):

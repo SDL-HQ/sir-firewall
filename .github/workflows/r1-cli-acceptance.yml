@@ -7,7 +7,7 @@ on:
 jobs:
   r1_cli_acceptance:
     name: R1 CLI acceptance (semantic-only, strict audit + scenario benchmark mode)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
 

@@ -1,4 +1,4 @@
-# SIR: Signal Integrity Resolver Version 2.3.0
+# SIR: Signal Integrity Resolver Version 2.3.1
 
 [![SIR Real Governance Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
@@ -61,6 +61,25 @@ If you downloaded the file instead of piping:
 python3 tools/verify_certificate.py proofs/latest-audit.json
 python3 tools/validate_certificate_contract.py proofs/latest-audit.json
 ```
+
+### Positive and negative verification examples
+
+| Valid signed certificate | Deliberately invalid certificate |
+|---|---|
+| `python3 tools/verify_certificate.py proofs/latest-audit.json` | `python3 tools/verify_certificate.py examples/verifier-negatives/tampered-leak-count.json` |
+| Prints `OK: payload_hash matches reconstructed signed payload and signature verifies ...` | Refuses with `ERROR: payload_hash mismatch` and exit code `3` |
+
+The same deliberately invalid certificate demonstrates why consumers must run both tools:
+
+```bash
+python3 tools/validate_certificate_contract.py examples/verifier-negatives/tampered-leak-count.json
+# OK: certificate satisfies evidence contract v1.
+
+python3 tools/verify_certificate.py examples/verifier-negatives/tampered-leak-count.json
+# ERROR: payload_hash mismatch
+```
+
+The contract validator establishes shape and required fields, while the verifier establishes integrity and authenticity. See [`examples/verifier-negatives/`](examples/verifier-negatives/) for all five deliberately invalid examples and their exact diagnostics.
 
 ---
 
@@ -220,6 +239,7 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 * [Engineer guide](docs/engineer-guide.md) (local runs, signing, serving)
 * [Trial guide](docs/trial-guide.md) (auditors, insurers, evidence capture)
 * [Key governance readiness](docs/key-governance-readiness.md) (authority map and `CRYPTO_ENFORCED` checklist)
+* [SIR 2.3.1 release notes](docs/release-notes-2.3.1.md) (failure-mode hardening)
 * [SIR 2.3.0 release notes](docs/release-notes-2.3.0.md) (systemic-reset audit accounting)
 * [SIR 2.2.1 release notes](docs/release-notes-2.2.1.md) (generative validation tests and CI dependency hygiene)
 * [SIR 2.2.0 release notes](docs/release-notes-2.2.md) (2.2 closeout)

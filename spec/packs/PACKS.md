@@ -27,6 +27,17 @@ See `tests/domain_packs/README.md` for the operator-facing distinction and fixtu
 
 Four registry suites currently have no same-named ISC policy pack: `account_recovery_fraud`, `mental_health_clinical`, `scenario_injection_chain`, and `scenario_tool_injection`. Selecting one through the `--pack` route produces systemic-reset blocks during policy load rather than meaningful suite evaluation. See `docs/backlog.md` for the execution-coupling and rule-coverage findings.
 
+### ISC policy-pack format
+
+Runtime ISC policy packs require a non-empty `pack_id`, a `templates` object
+covering every identifier in the gate's built-in allowed-template set with a
+positive native JSON integer `max_tokens`, and a `flags` object containing
+native JSON booleans for `STRICT_ISC_ENFORCEMENT`, `CHECKSUM_ENFORCED`, and
+`CRYPTO_ENFORCED`. `STRICT_ISC_ENFORCEMENT` is required for schema
+compatibility but is not currently consulted; ISC structural rejection is
+unconditional. The optional `structured_request_schema` is validated when a
+pack is used for structured ingress.
+
 ## Required metadata
 
 Each registry entry must include:

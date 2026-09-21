@@ -34,6 +34,15 @@ STRUCTURED_TEMPLATE_ID = "EU-AI-Act-ISC-v1"
 STRUCTURED_SCHEMA_DECLARATION_KEY = "structured_request_schema"
 STRUCTURED_SCHEMA_ID = "account_recovery_challenge_request_v1"
 
+# Domain-pack schema compatibility contract. STRICT_ISC_ENFORCEMENT remains
+# required because it is part of every supported pack, but it is not currently
+# consulted: ISC structural rejection is unconditional.
+DOMAIN_PACK_REQUIRED_FLAGS = {
+    "STRICT_ISC_ENFORCEMENT",
+    "CHECKSUM_ENFORCED",
+    "CRYPTO_ENFORCED",
+}
+
 _STRUCTURED_REQUIRED_FIELDS = {
     "schema_version",
     "request_class",
@@ -398,6 +407,89 @@ def _load_isc_policy() -> None:
 # Domain ISC pack loader
 # ---------------------------------------------------------------------------
 
+class DomainPackValidationError(ValueError):
+    """Raised when a domain-pack file exists but does not satisfy its minimum schema."""
+
+
+def _validate_domain_pack_schema(data: Any, effective_pack: str) -> Dict[str, Any]:
+    """Enforce the minimum schema shared by every supported domain pack.
+
+    Template identifiers come from ``_BUILTIN_ALLOWED_TEMPLATES`` rather than a
+    second duplicated list. ``STRICT_ISC_ENFORCEMENT`` is schema-required for
+    compatibility but is not a live control; ISC structural rejection is
+    unconditional.
+    """
+    if not isinstance(data, dict):
+        raise DomainPackValidationError("domain pack root must be a JSON object")
+
+    required_top_level = {"pack_id", "templates", "flags"}
+    missing_top_level = sorted(required_top_level - set(data))
+    if missing_top_level:
+        raise DomainPackValidationError(
+            f"domain pack missing required keys: {', '.join(missing_top_level)}"
+        )
+
+    pack_id = data["pack_id"]
+    if not isinstance(pack_id, str) or not pack_id:
+        raise DomainPackValidationError("domain pack pack_id must be a non-empty string")
+    if pack_id != effective_pack:
+        raise DomainPackValidationError(
+            f"domain pack pack_id {pack_id!r} does not match selected pack {effective_pack!r}"
+        )
+
+    templates = data["templates"]
+    if not isinstance(templates, dict):
+        raise DomainPackValidationError("domain pack templates must be an object")
+    required_templates = set(_BUILTIN_ALLOWED_TEMPLATES)
+    missing_templates = sorted(required_templates - set(templates))
+    if missing_templates:
+        raise DomainPackValidationError(
+            f"domain pack templates missing required identifiers: {', '.join(missing_templates)}"
+        )
+    for template_id in sorted(required_templates):
+        template_cfg = templates[template_id]
+        if not isinstance(template_cfg, dict):
+            raise DomainPackValidationError(
+                f"domain pack template {template_id} must be an object"
+            )
+        max_tokens = template_cfg.get("max_tokens")
+        if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
+            raise DomainPackValidationError(
+                f"domain pack template {template_id} max_tokens must be a positive integer"
+            )
+
+    flags = data["flags"]
+    if not isinstance(flags, dict):
+        raise DomainPackValidationError("domain pack flags must be an object")
+    missing_flags = sorted(DOMAIN_PACK_REQUIRED_FLAGS - set(flags))
+    if missing_flags:
+        raise DomainPackValidationError(
+            f"domain pack flags missing required keys: {', '.join(missing_flags)}"
+        )
+    for flag in sorted(DOMAIN_PACK_REQUIRED_FLAGS):
+        if not isinstance(flags[flag], bool):
+            raise DomainPackValidationError(f"domain pack flag {flag} must be boolean")
+
+    description = data.get("description")
+    if description is not None and not isinstance(description, str):
+        raise DomainPackValidationError("domain pack description must be a string when present")
+    structured_schema = data.get(STRUCTURED_SCHEMA_DECLARATION_KEY)
+    if structured_schema is not None and not isinstance(structured_schema, dict):
+        raise DomainPackValidationError(
+            f"domain pack {STRUCTURED_SCHEMA_DECLARATION_KEY} must be an object when present"
+        )
+    return data
+
+
+def _read_domain_pack(path: Path, effective_pack: str) -> Dict[str, Any]:
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError as exc:
+        raise DomainPackValidationError(f"domain pack contains malformed JSON: {exc}") from exc
+    return _validate_domain_pack_schema(data, effective_pack)
+
+
 def load_domain_pack(pack_id: str | None = None) -> Dict[str, Any]:
     """
     Load the Domain ISC pack configuration.
@@ -426,20 +518,13 @@ def load_domain_pack(pack_id: str | None = None) -> Dict[str, Any]:
             raise FileNotFoundError(f"Domain ISC pack '{effective_pack}' not found at {pack_path}.")
         fallback = base_dir / "policy" / "isc_packs" / "generic_safety.json"
         if fallback.exists():
-            with fallback.open("r", encoding="utf-8") as f:
-                data = json.load(f)
-            data["pack_id"] = "generic_safety"
-            return data
+            return _read_domain_pack(fallback, "generic_safety")
         raise FileNotFoundError(
             f"Domain ISC pack '{effective_pack}' not found at {pack_path} "
             "and generic_safety.json is missing."
         )
 
-    with pack_path.open("r", encoding="utf-8") as f:
-        data: Dict[str, Any] = json.load(f)
-
-    data.setdefault("pack_id", effective_pack)
-    return data
+    return _read_domain_pack(pack_path, effective_pack)
 
 
 # ---------------------------------------------------------------------------
@@ -1092,7 +1177,7 @@ def _load_structured_request_object(raw: Any) -> Tuple[Dict[str, Any] | None, st
     if isinstance(raw, str):
         try:
             pairs = json.loads(raw, object_pairs_hook=list)
-        except (json.JSONDecodeError, RecursionError):
+        except (json.JSONDecodeError, RecursionError, MemoryError):
             return None, "structured_invalid_json"
         if not isinstance(pairs, list):
             return None, "structured_not_object"
@@ -1406,7 +1491,7 @@ def validate_text(
 # Public entrypoint
 # ---------------------------------------------------------------------------
 
-def validate_sir(
+def _validate_sir_impl(
     input_dict: Dict[str, Any],
     enforcement_pack_id: str | None = None,
     pack_identity_context: Dict[str, Any] | None = None,
@@ -1467,6 +1552,29 @@ def validate_sir(
     try:
         domain_cfg = load_domain_pack(pack_id=enforcement_pack_id)
         domain_pack_id = str(domain_cfg.get("pack_id", "generic_safety"))
+    except DomainPackValidationError as exc:
+        itgl_log, prev_hash = _append_itgl(
+            "context",
+            "fail",
+            {"error": "domain_pack_invalid"},
+            {"exception_type": type(exc).__name__, "message": str(exc)},
+            itgl_log,
+            prev_hash,
+        )
+        itgl_log, prev_hash = _append_itgl(
+            "sr",
+            "triggered",
+            {"reason": "domain_pack_invalid", "scope": "deployment"},
+            {},
+            itgl_log,
+            prev_hash,
+        )
+        return _sr_block(
+            "systemic_reset_domain_pack_invalid",
+            itgl_log,
+            scope="deployment",
+            domain_pack=None,
+        )
     except Exception as exc:
         itgl_log, prev_hash = _append_itgl(
             "context",
@@ -1550,20 +1658,17 @@ def validate_sir(
             prev_hash,
         )
 
-    flags = domain_cfg.get("flags", {})
-    # Retained for policy and pack schema compatibility; ISC structure rejection is now unconditional.
-    strict_isc = bool(flags.get("STRICT_ISC_ENFORCEMENT", STRICT_ISC_ENFORCEMENT))
-    checksum_enforced = bool(flags.get("CHECKSUM_ENFORCED", CHECKSUM_ENFORCED))
-    crypto_enforced = bool(flags.get("CRYPTO_ENFORCED", CRYPTO_ENFORCED))
+    flags = domain_cfg["flags"]
+    # STRICT_ISC_ENFORCEMENT is schema-required for compatibility but is not
+    # consulted here; ISC structure rejection is unconditional.
+    checksum_enforced = flags["CHECKSUM_ENFORCED"]
+    crypto_enforced = flags["CRYPTO_ENFORCED"]
 
-    templates_cfg = domain_cfg.get("templates", {})
+    templates_cfg = domain_cfg["templates"]
     max_friction_by_template: Dict[str, int] = dict(MAX_FRICTION_BY_TEMPLATE)
     for template_id, cfg in templates_cfg.items():
         if isinstance(cfg, dict) and "max_tokens" in cfg:
-            try:
-                max_friction_by_template[template_id] = int(cfg["max_tokens"])
-            except Exception:
-                continue
+            max_friction_by_template[template_id] = cfg["max_tokens"]
 
     pack_identity = pack_identity_context if isinstance(pack_identity_context, dict) else {}
     pack_version = str(pack_identity.get("pack_version") or "").strip()
@@ -1742,3 +1847,36 @@ def validate_sir(
     if rule_hits:
         result["rule_hits"] = list(rule_hits)
     return result
+
+
+def validate_sir(
+    input_dict: Dict[str, Any],
+    enforcement_pack_id: str | None = None,
+    pack_identity_context: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    """Validate a request, failing closed on otherwise-unhandled in-process errors."""
+    try:
+        return _validate_sir_impl(
+            input_dict,
+            enforcement_pack_id=enforcement_pack_id,
+            pack_identity_context=pack_identity_context,
+        )
+    except Exception as exc:
+        try:
+            message = str(exc)
+        except Exception:
+            message = "<exception message unavailable>"
+        itgl_log, _ = _append_itgl(
+            "internal_error",
+            "fail",
+            {"reason": "unhandled_validation_exception"},
+            {"exception_type": type(exc).__name__, "message": message},
+            [],
+            GENESIS_HASH,
+        )
+        return _sr_block(
+            "systemic_reset_internal_error",
+            itgl_log,
+            scope="deployment",
+            domain_pack=None,
+        )
