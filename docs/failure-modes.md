@@ -33,11 +33,35 @@ verdict is a SIR decision. The distinctions below matter operationally.
 | `spec/packs/pack_registry.v1.json` is absent or malformed | This file is runner/CLI selection metadata, not input to `validate_sir()`. `red_team_suite.py` lets `FileNotFoundError` or `JSONDecodeError` escape and the process fails; the `sir` CLI's registry loader instead reports an error and exits `2`. No request-level reason code applies. | Process failure, not a block |
 | `deterministic_rules.py` raises while regexes are compiled | Patterns are compiled at module import, before `validate_sir()` exists or its boundary can run. Import/startup fails and no verdict or reason code exists. | Propagated import exception / process failure |
 | A deterministic rule raises while matching | Matching is invoked inside `_check_jailbreak()`, inside the public boundary. The gate returns `BLOCKED`, reason `systemic_reset_internal_error`, with the exception type in the ITGL. | Fail closed |
-| A string payload exceeds its selected template's size limit | `_check_payload_size()` runs before checksum and matching. It returns a `BLOCKED` verdict with reason `friction_limit_exceeded`. The limit is `max_tokens * 4` characters and reported token use is ceiling(characters / 4). | Fail closed |
+| A string payload exceeds its selected template's size limit | `_check_payload_size()` runs before checksum and matching. It does not truncate: the entire request is rejected with a `BLOCKED` verdict and reason `friction_limit_exceeded`, and content beyond the limit is not evaluated. The limit is the selected domain pack/template's configurable `max_tokens * 4` characters and reported token use is ceiling(characters / 4). The common check applies to direct ISC and to ISC payloads produced by structured and tool-result ingress; those two schemas also impose earlier 4,000-character content-field limits. This is an integration constraint for large prompts and retrieved context. | Fail closed |
 | A non-string payload has a `str()` method that raises | The early size check deliberately skips non-strings; `_check_crypto()` then coerces the payload. The public boundary catches that exception and returns `BLOCKED`, reason `systemic_reset_internal_error`, recording its type. | Fail closed |
 | Deeply nested string `structured_request` exhausts Python's recursion limit in `json.loads()` | The structured parser catches `RecursionError`, maps it to type `structured_invalid_json`, and the gate returns `BLOCKED`, reason `structured_validation_failed`. | Fail closed |
 | Parsing a string `structured_request` raises in-process `MemoryError` | The same structured parser catches `MemoryError`, maps it to type `structured_invalid_json`, and returns `BLOCKED`, reason `structured_validation_failed`. | Fail closed if Python raises the exception in-process |
 | Parsing a string `tool_result` raises in-process `MemoryError` | The tool-result parser catches `MemoryError`, maps it to type `tool_result_invalid_json`, and returns `BLOCKED`, reason `tool_result_validation_failed`. | Fail closed if Python raises the exception in-process |
+
+### Effective input ceilings by enforcement pack and template
+
+There is no single 8,000-character ceiling. The misleadingly named
+`max_tokens` field does not control model output; it controls input admission
+through an early `max_tokens * 4` character check and the later friction
+estimate. Current effective hard character ceilings are:
+
+| Enforcement pack | HIPAA-ISC-v1 | EU-AI-Act-ISC-v1 | PCI-DSS-ISC-v1 |
+|---|---:|---:|---:|
+| `data_exfiltration_pressure` | 6,000 | 8,000 | 4,800 |
+| `eu_ai_act_compliance_pressure` | 6,000 | 8,000 | 4,800 |
+| `generic_safety` | 6,000 | 8,000 | 4,800 |
+| `hipaa_mental_health` | 4,800 | 7,200 | 4,000 |
+| `pci_payments` | 4,800 | 6,400 | 3,600 |
+| `support_operator_override` | 6,000 | 8,000 | 4,800 |
+
+The multiplication assumes roughly four characters per token. That is an
+English-text heuristic, not a language-independent tokenizer result, and is
+not reliable for CJK or other scripts. Changing `max_tokens` for presumed
+output-cost control instead changes input enforcement. The recommended future
+correction is a separate explicit `max_input_chars` field, with the existing
+field accepted temporarily as a deprecated compatibility alias; this task does
+not implement that schema or runtime change.
 
 The determining code paths are small enough to quote:
 

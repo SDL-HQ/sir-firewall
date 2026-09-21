@@ -1,0 +1,425 @@
+{
+  "methodology": {
+    "machine": "Linux-6.18.44-x86_64-with-glibc2.39",
+    "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+    "python": "3.14.4",
+    "timer": "time.perf_counter_ns (monotonic)",
+    "warmup_calls": 25,
+    "iterations": 500,
+    "probe_iterations": 100,
+    "outliers": "retained",
+    "baseline_policy_load": "amortised by warmup",
+    "domain_policy_pack_load": "performed by validate_sir on every measured call"
+  },
+  "terminating_paths": [
+    {
+      "case": "high-risk keyword",
+      "chars": 25,
+      "n": 500,
+      "p50_us": 321.7,
+      "p95_us": 468.5,
+      "p99_us": 806.3,
+      "max_us": 6678.9,
+      "stdev_us": 363.0
+    },
+    {
+      "case": "danger + safety phrase",
+      "chars": 27,
+      "n": 500,
+      "p50_us": 355.2,
+      "p95_us": 487.4,
+      "p99_us": 2546.7,
+      "max_us": 6072.9,
+      "stdev_us": 440.6
+    },
+    {
+      "case": "structural override exposure",
+      "chars": 72,
+      "n": 500,
+      "p50_us": 421.4,
+      "p95_us": 602.2,
+      "p99_us": 1402.0,
+      "max_us": 4693.9,
+      "stdev_us": 306.9
+    },
+    {
+      "case": "deterministic rule match",
+      "chars": 26,
+      "n": 500,
+      "p50_us": 321.5,
+      "p95_us": 494.4,
+      "p99_us": 745.5,
+      "max_us": 1242.2,
+      "stdev_us": 94.6
+    },
+    {
+      "case": "pass",
+      "chars": 39,
+      "n": 500,
+      "p50_us": 355.3,
+      "p95_us": 464.9,
+      "p99_us": 608.4,
+      "max_us": 913.8,
+      "stdev_us": 55.2
+    }
+  ],
+  "decode_paths": [
+    {
+      "case": "decode: Base64",
+      "chars": 52,
+      "n": 500,
+      "p50_us": 311.1,
+      "p95_us": 388.0,
+      "p99_us": 514.2,
+      "max_us": 764.3,
+      "stdev_us": 43.8
+    },
+    {
+      "case": "decode: ROT13",
+      "chars": 35,
+      "n": 500,
+      "p50_us": 378.5,
+      "p95_us": 464.7,
+      "p99_us": 613.1,
+      "max_us": 1176.4,
+      "stdev_us": 61.4
+    },
+    {
+      "case": "decode: hex",
+      "chars": 61,
+      "n": 500,
+      "p50_us": 401.4,
+      "p95_us": 515.6,
+      "p99_us": 654.2,
+      "max_us": 3823.2,
+      "stdev_us": 161.8
+    },
+    {
+      "case": "decode: hex-escape",
+      "chars": 112,
+      "n": 500,
+      "p50_us": 387.7,
+      "p95_us": 487.0,
+      "p99_us": 630.1,
+      "max_us": 3757.2,
+      "stdev_us": 160.2
+    }
+  ],
+  "length_sweep": [
+    {
+      "case": "64 chars",
+      "chars": 64,
+      "n": 500,
+      "p50_us": 398.1,
+      "p95_us": 549.2,
+      "p99_us": 717.1,
+      "max_us": 17243.2,
+      "stdev_us": 759.5
+    },
+    {
+      "case": "256 chars",
+      "chars": 256,
+      "n": 500,
+      "p50_us": 610.2,
+      "p95_us": 800.8,
+      "p99_us": 960.0,
+      "max_us": 3420.4,
+      "stdev_us": 144.1
+    },
+    {
+      "case": "1024 chars",
+      "chars": 1024,
+      "n": 500,
+      "p50_us": 1468.0,
+      "p95_us": 1812.5,
+      "p99_us": 2130.1,
+      "max_us": 3949.0,
+      "stdev_us": 203.4
+    },
+    {
+      "case": "4096 chars",
+      "chars": 4096,
+      "n": 500,
+      "p50_us": 4686.1,
+      "p95_us": 5287.5,
+      "p99_us": 6883.9,
+      "max_us": 9462.7,
+      "stdev_us": 412.9
+    },
+    {
+      "case": "8000 chars",
+      "chars": 8000,
+      "n": 500,
+      "p50_us": 8989.4,
+      "p95_us": 9947.8,
+      "p99_us": 13796.2,
+      "max_us": 18029.2,
+      "stdev_us": 1024.1
+    }
+  ],
+  "linear_fit": {
+    "coefficient_us_per_char": 1.0789,
+    "intercept_us": 330.4,
+    "r_squared": 0.999889,
+    "residuals": [
+      {
+        "chars": 64,
+        "observed_p50_us": 398.1,
+        "fitted_p50_us": 399.4,
+        "residual_us": -1.3
+      },
+      {
+        "chars": 256,
+        "observed_p50_us": 610.2,
+        "fitted_p50_us": 606.6,
+        "residual_us": 3.6
+      },
+      {
+        "chars": 1024,
+        "observed_p50_us": 1468.0,
+        "fitted_p50_us": 1435.1,
+        "residual_us": 32.9
+      },
+      {
+        "chars": 4096,
+        "observed_p50_us": 4686.1,
+        "fitted_p50_us": 4749.4,
+        "residual_us": -63.3
+      },
+      {
+        "chars": 8000,
+        "observed_p50_us": 8989.4,
+        "fitted_p50_us": 8961.3,
+        "residual_us": 28.1
+      }
+    ]
+  },
+  "pathological_probes": [
+    {
+      "case": "all decoder markers",
+      "chars": 193,
+      "n": 100,
+      "p50_us": 532.4,
+      "p95_us": 595.9,
+      "p99_us": 608.3,
+      "max_us": 921.2,
+      "stdev_us": 46.3
+    },
+    {
+      "case": "nested/repeated Base64",
+      "chars": 1068,
+      "n": 100,
+      "p50_us": 1370.5,
+      "p95_us": 1509.5,
+      "p99_us": 3180.5,
+      "max_us": 3401.8,
+      "stdev_us": 275.1
+    },
+    {
+      "case": "regex near-match repetition",
+      "chars": 5877,
+      "n": 100,
+      "p50_us": 7988.9,
+      "p95_us": 8427.5,
+      "p99_us": 16630.7,
+      "max_us": 19259.7,
+      "stdev_us": 1422.9
+    },
+    {
+      "case": "many rule matches",
+      "chars": 6900,
+      "n": 100,
+      "p50_us": 8317.9,
+      "p95_us": 8764.3,
+      "p99_us": 8946.8,
+      "max_us": 9266.2,
+      "stdev_us": 198.7
+    },
+    {
+      "case": "at size limit (8,000 chars)",
+      "chars": 8000,
+      "n": 100,
+      "p50_us": 8592.2,
+      "p95_us": 9077.7,
+      "p99_us": 12482.1,
+      "max_us": 12548.4,
+      "stdev_us": 622.7
+    },
+    {
+      "case": "beyond size limit (8,001 chars)",
+      "chars": 8001,
+      "n": 100,
+      "p50_us": 179.8,
+      "p95_us": 223.7,
+      "p99_us": 252.9,
+      "max_us": 263.5,
+      "stdev_us": 18.6
+    },
+    {
+      "case": "very long (100,000 chars)",
+      "chars": 100000,
+      "n": 100,
+      "p50_us": 179.8,
+      "p95_us": 222.6,
+      "p99_us": 254.3,
+      "max_us": 326.9,
+      "stdev_us": 22.5
+    }
+  ],
+  "slowest": {
+    "case": "at size limit (8,000 chars)",
+    "p50_ratio_to_typical": 24.18
+  },
+  "safe_pass_decomposition": {
+    "n": 500,
+    "instrumented_total_p50_us": 386.9,
+    "uninstrumented_reference_p50_us": 352.9,
+    "components": [
+      {
+        "component": "normalisation",
+        "p50_us": 32.0,
+        "share_of_instrumented_total_pct": 8.3
+      },
+      {
+        "component": "rule evaluation after normalisation",
+        "p50_us": 45.6,
+        "share_of_instrumented_total_pct": 11.8
+      },
+      {
+        "component": "ITGL construction and hashing",
+        "p50_us": 117.2,
+        "share_of_instrumented_total_pct": 30.3
+      },
+      {
+        "component": "template and policy lookup",
+        "p50_us": 127.6,
+        "share_of_instrumented_total_pct": 33.0
+      },
+      {
+        "component": "ISC envelope handling",
+        "p50_us": 17.1,
+        "share_of_instrumented_total_pct": 4.4
+      },
+      {
+        "component": "result construction and orchestration",
+        "p50_us": 13.5,
+        "share_of_instrumented_total_pct": 3.5
+      },
+      {
+        "component": "instrumentation overhead",
+        "p50_us": 34.0,
+        "share_of_instrumented_total_pct": 8.8
+      }
+    ]
+  },
+  "effective_input_limits": [
+    {
+      "pack": "data_exfiltration_pressure",
+      "template": "HIPAA-ISC-v1",
+      "max_tokens": 1500,
+      "effective_character_limit": 6000
+    },
+    {
+      "pack": "data_exfiltration_pressure",
+      "template": "EU-AI-Act-ISC-v1",
+      "max_tokens": 2000,
+      "effective_character_limit": 8000
+    },
+    {
+      "pack": "data_exfiltration_pressure",
+      "template": "PCI-DSS-ISC-v1",
+      "max_tokens": 1200,
+      "effective_character_limit": 4800
+    },
+    {
+      "pack": "eu_ai_act_compliance_pressure",
+      "template": "HIPAA-ISC-v1",
+      "max_tokens": 1500,
+      "effective_character_limit": 6000
+    },
+    {
+      "pack": "eu_ai_act_compliance_pressure",
+      "template": "EU-AI-Act-ISC-v1",
+      "max_tokens": 2000,
+      "effective_character_limit": 8000
+    },
+    {
+      "pack": "eu_ai_act_compliance_pressure",
+      "template": "PCI-DSS-ISC-v1",
+      "max_tokens": 1200,
+      "effective_character_limit": 4800
+    },
+    {
+      "pack": "generic_safety",
+      "template": "HIPAA-ISC-v1",
+      "max_tokens": 1500,
+      "effective_character_limit": 6000
+    },
+    {
+      "pack": "generic_safety",
+      "template": "EU-AI-Act-ISC-v1",
+      "max_tokens": 2000,
+      "effective_character_limit": 8000
+    },
+    {
+      "pack": "generic_safety",
+      "template": "PCI-DSS-ISC-v1",
+      "max_tokens": 1200,
+      "effective_character_limit": 4800
+    },
+    {
+      "pack": "hipaa_mental_health",
+      "template": "HIPAA-ISC-v1",
+      "max_tokens": 1200,
+      "effective_character_limit": 4800
+    },
+    {
+      "pack": "hipaa_mental_health",
+      "template": "EU-AI-Act-ISC-v1",
+      "max_tokens": 1800,
+      "effective_character_limit": 7200
+    },
+    {
+      "pack": "hipaa_mental_health",
+      "template": "PCI-DSS-ISC-v1",
+      "max_tokens": 1000,
+      "effective_character_limit": 4000
+    },
+    {
+      "pack": "pci_payments",
+      "template": "PCI-DSS-ISC-v1",
+      "max_tokens": 900,
+      "effective_character_limit": 3600
+    },
+    {
+      "pack": "pci_payments",
+      "template": "EU-AI-Act-ISC-v1",
+      "max_tokens": 1600,
+      "effective_character_limit": 6400
+    },
+    {
+      "pack": "pci_payments",
+      "template": "HIPAA-ISC-v1",
+      "max_tokens": 1200,
+      "effective_character_limit": 4800
+    },
+    {
+      "pack": "support_operator_override",
+      "template": "HIPAA-ISC-v1",
+      "max_tokens": 1500,
+      "effective_character_limit": 6000
+    },
+    {
+      "pack": "support_operator_override",
+      "template": "EU-AI-Act-ISC-v1",
+      "max_tokens": 2000,
+      "effective_character_limit": 8000
+    },
+    {
+      "pack": "support_operator_override",
+      "template": "PCI-DSS-ISC-v1",
+      "max_tokens": 1200,
+      "effective_character_limit": 4800
+    }
+  ]
+}
