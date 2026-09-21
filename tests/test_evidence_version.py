@@ -86,6 +86,7 @@ def test_current_version_surfaces_match_runtime_authority():
         f"docs/release-notes-{authority}.md": Counter({authority: 2, v_220: 1}),
         "docs/failure-modes.md": Counter({v_230: 3, v_231: 3, authority: 2}),
         "docs/rule-coverage.md": Counter({authority: 1}),
+        "docs/threat-model.md": Counter({authority: 1}),
         "pyproject.toml": Counter({authority: 1}),
         "spec/evidence_contract.v1.json": Counter({v_220: 2}),
         "src/sir_firewall/__init__.py": Counter({authority: 1}),

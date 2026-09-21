@@ -256,3 +256,8 @@ These figures describe this machine, revision, policy pack, inputs, and warm
 measurement procedure. They do not establish a latency SLA, CI threshold, or a
 claim about all inputs. No latency field is added to a signed certificate and
 nothing under `proofs/` is modified by the generator.
+
+This latency report is a measurement, not evidence: it carries no `run_id`,
+signature, or certificate, was produced on a single machine, and is not part of
+the evidence chain. It should not be presented alongside signed artefacts such
+as `proofs/latest-audit.html`.
