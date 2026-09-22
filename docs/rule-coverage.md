@@ -16,12 +16,24 @@ PYTHONPATH=src python tools/rule_coverage_report.py \
   --markdown-out /tmp/sir-rule-coverage.md
 ```
 
-The JSON file is the machine-readable report. The Markdown file contains the
-generated table reproduced below.
+The JSON file is the complete machine-readable analysis report. The Markdown
+file contains the generated table reproduced below.
 
-Maintainers can also refresh the delimited full-gate coverage regions on the
-hand-maintained published HTML surfaces. The run archive is refreshed separately
-by `tools/prepare_run_archive_page.py` after CI copies it from `proofs/runs`.
+## Published JSON
+
+Consumers can use the public machine-readable coverage surface at
+<https://sdl-hq.github.io/sir-firewall/coverage.json>. It contains one record
+for every publicly included registry pack, including `pack_id` and
+`pack_version` join keys, coverage counts, named uncovered row IDs, registry
+status and visibility, and an explicit `is_public` value. Top-level metadata
+records its generation time, SIR Firewall version, and the inclusion policy:
+active packs with `public` or `encoded` visibility are included, while draft
+and internal packs are excluded.
+
+Maintainers can also refresh `docs/coverage.json` and the delimited full-gate
+coverage regions on the hand-maintained published HTML surfaces. The run
+archive is refreshed separately by `tools/prepare_run_archive_page.py` after CI
+copies it from `proofs/runs`.
 Those regions include active packs with `public` or `encoded` visibility; draft
 and internal packs are excluded:
 

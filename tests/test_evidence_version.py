@@ -73,6 +73,7 @@ def test_current_version_surfaces_match_runtime_authority():
         "docs/additional-phase-1-findings.md": Counter({v_221: 4, v_102: 1, v_200: 1}),
         "docs/assets/StructuralDesignLabs_Logo.svg": Counter({v_210: 1}),
         "docs/backlog.md": Counter({v_230: 1}),
+        "docs/coverage.json": Counter({authority: 1}),
         "docs/evidence-perimeter.v5.md": Counter({authority: 1}),
         "docs/assurance-kit.md": Counter({authority: 2}),
         "docs/evaluator-technical-explainer.md": Counter({authority: 2}),
