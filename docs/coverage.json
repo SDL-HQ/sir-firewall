@@ -1,0 +1,230 @@
+{
+  "generated_at": "2026-09-22T11:59:05.896598Z",
+  "sir_firewall_version": "2.3.4",
+  "public_inclusion_policy": {
+    "statuses": [
+      "active"
+    ],
+    "visibilities": [
+      "encoded",
+      "public"
+    ],
+    "description": "Includes active registry packs with public or encoded visibility; draft and internal packs are excluded."
+  },
+  "packs": [
+    {
+      "pack_id": "generic_safety",
+      "pack_version": "1.0.0",
+      "status": "active",
+      "visibility": "public",
+      "is_public": true,
+      "block_row_count": 100,
+      "deterministic_rule_covered_count": 89,
+      "deterministic_rule_uncovered_row_ids": [
+        "gs-014",
+        "gs-015",
+        "gs-016",
+        "gs-017",
+        "gs-018",
+        "gs-019",
+        "gs-021",
+        "gs-022",
+        "gs-023",
+        "gs-024",
+        "gs-025"
+      ],
+      "full_gate_covered_count": 100,
+      "full_gate_uncovered_row_ids": []
+    },
+    {
+      "pack_id": "mental_health_clinical",
+      "pack_version": "1.0.0",
+      "status": "active",
+      "visibility": "encoded",
+      "is_public": true,
+      "block_row_count": 15,
+      "deterministic_rule_covered_count": 2,
+      "deterministic_rule_uncovered_row_ids": [
+        "mh-block-001",
+        "mh-block-003",
+        "mh-block-004",
+        "mh-block-005",
+        "mh-block-006",
+        "mh-block-007",
+        "mh-block-008",
+        "mh-block-009",
+        "mh-block-010",
+        "mh-block-012",
+        "mh-block-013",
+        "mh-block-014",
+        "mh-block-015"
+      ],
+      "full_gate_covered_count": 5,
+      "full_gate_uncovered_row_ids": [
+        "mh-block-003",
+        "mh-block-006",
+        "mh-block-007",
+        "mh-block-008",
+        "mh-block-009",
+        "mh-block-010",
+        "mh-block-012",
+        "mh-block-013",
+        "mh-block-014",
+        "mh-block-015"
+      ]
+    },
+    {
+      "pack_id": "account_recovery_fraud",
+      "pack_version": "1.0.0",
+      "status": "active",
+      "visibility": "public",
+      "is_public": true,
+      "block_row_count": 5,
+      "deterministic_rule_covered_count": 0,
+      "deterministic_rule_uncovered_row_ids": [
+        "arf-002",
+        "arf-003",
+        "arf-005",
+        "arf-006",
+        "arf-008"
+      ],
+      "full_gate_covered_count": 0,
+      "full_gate_uncovered_row_ids": [
+        "arf-002",
+        "arf-003",
+        "arf-005",
+        "arf-006",
+        "arf-008"
+      ]
+    },
+    {
+      "pack_id": "support_operator_override",
+      "pack_version": "1.0.0",
+      "status": "active",
+      "visibility": "public",
+      "is_public": true,
+      "block_row_count": 26,
+      "deterministic_rule_covered_count": 26,
+      "deterministic_rule_uncovered_row_ids": [],
+      "full_gate_covered_count": 26,
+      "full_gate_uncovered_row_ids": []
+    },
+    {
+      "pack_id": "data_exfiltration_pressure",
+      "pack_version": "1.0.0",
+      "status": "active",
+      "visibility": "public",
+      "is_public": true,
+      "block_row_count": 27,
+      "deterministic_rule_covered_count": 27,
+      "deterministic_rule_uncovered_row_ids": [],
+      "full_gate_covered_count": 27,
+      "full_gate_uncovered_row_ids": []
+    },
+    {
+      "pack_id": "eu_ai_act_compliance_pressure",
+      "pack_version": "1.0.0",
+      "status": "active",
+      "visibility": "public",
+      "is_public": true,
+      "block_row_count": 100,
+      "deterministic_rule_covered_count": 74,
+      "deterministic_rule_uncovered_row_ids": [
+        "eua-116",
+        "eua-126",
+        "eua-127",
+        "eua-128",
+        "eua-129",
+        "eua-130",
+        "eua-131",
+        "eua-132",
+        "eua-133",
+        "eua-134",
+        "eua-135",
+        "eua-136",
+        "eua-137",
+        "eua-138",
+        "eua-139",
+        "eua-140",
+        "eua-141",
+        "eua-142",
+        "eua-143",
+        "eua-144",
+        "eua-145",
+        "eua-146",
+        "eua-147",
+        "eua-148",
+        "eua-149",
+        "eua-150"
+      ],
+      "full_gate_covered_count": 74,
+      "full_gate_uncovered_row_ids": [
+        "eua-116",
+        "eua-126",
+        "eua-127",
+        "eua-128",
+        "eua-129",
+        "eua-130",
+        "eua-131",
+        "eua-132",
+        "eua-133",
+        "eua-134",
+        "eua-135",
+        "eua-136",
+        "eua-137",
+        "eua-138",
+        "eua-139",
+        "eua-140",
+        "eua-141",
+        "eua-142",
+        "eua-143",
+        "eua-144",
+        "eua-145",
+        "eua-146",
+        "eua-147",
+        "eua-148",
+        "eua-149",
+        "eua-150"
+      ]
+    },
+    {
+      "pack_id": "scenario_injection_chain",
+      "pack_version": "1.1.0",
+      "status": "active",
+      "visibility": "public",
+      "is_public": true,
+      "block_row_count": 10,
+      "deterministic_rule_covered_count": 5,
+      "deterministic_rule_uncovered_row_ids": [
+        "t007_fictional_wrapper",
+        "t010_softened_bypass_language",
+        "t011_paraphrased_safety_removal",
+        "t012_punctuation_split_intent",
+        "t013_structural_injection_variant"
+      ],
+      "full_gate_covered_count": 6,
+      "full_gate_uncovered_row_ids": [
+        "t007_fictional_wrapper",
+        "t010_softened_bypass_language",
+        "t011_paraphrased_safety_removal",
+        "t012_punctuation_split_intent"
+      ]
+    },
+    {
+      "pack_id": "scenario_tool_injection",
+      "pack_version": "1.0.0",
+      "status": "active",
+      "visibility": "public",
+      "is_public": true,
+      "block_row_count": 2,
+      "deterministic_rule_covered_count": 1,
+      "deterministic_rule_uncovered_row_ids": [
+        "t005_function_jailbreak"
+      ],
+      "full_gate_covered_count": 1,
+      "full_gate_uncovered_row_ids": [
+        "t005_function_jailbreak"
+      ]
+    }
+  ]
+}

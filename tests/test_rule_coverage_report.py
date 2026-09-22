@@ -59,6 +59,31 @@ def test_published_coverage_regions_match_generator():
         assert document.count(module.BEGIN) == document.count(module.END) == 1
 
 
+def test_published_coverage_json_matches_generator_and_public_policy():
+    module = _load_module()
+    actual = json.loads(module.PUBLISHED_JSON.read_text(encoding="utf-8"))
+    # Generation time is intentionally refreshed on publication; every derived
+    # field must remain byte-for-byte equivalent to a fresh report.
+    expected = module.build_published_json(
+        module.build_report(), generated_at=actual["generated_at"]
+    )
+
+    assert actual == expected
+    assert actual["sir_firewall_version"] == module.__version__
+    assert len(actual["packs"]) == 8
+    assert all(pack["is_public"] is True for pack in actual["packs"])
+    assert all(pack["pack_version"] for pack in actual["packs"])
+    assert "canary_fail" not in {pack["pack_id"] for pack in actual["packs"]}
+
+
+def test_published_coverage_json_has_joinable_unique_pack_identity():
+    payload = json.loads((ROOT / "docs/coverage.json").read_text(encoding="utf-8"))
+    identities = [
+        (pack["pack_id"], pack["pack_version"]) for pack in payload["packs"]
+    ]
+    assert len(identities) == len(set(identities))
+
+
 def test_run_archive_publication_prepares_generated_coverage_region(tmp_path):
     module = _load_module()
     published_runs = tmp_path / "docs" / "runs"

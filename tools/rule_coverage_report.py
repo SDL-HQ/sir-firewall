@@ -2,8 +2,8 @@
 """Generate read-only rule coverage reports for every registered benchmark pack.
 
 This tool evaluates suite content in memory.  It does not write gate state,
-proofs, certificates, or run artefacts; only the two explicitly requested report
-files are written.
+proofs, certificates, or run artefacts. In publication-update mode it also
+writes the public machine-readable coverage report.
 """
 
 from __future__ import annotations
@@ -14,15 +14,18 @@ import csv
 import html
 import json
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+from sir_firewall import __version__
 from sir_firewall.core import GENESIS_HASH, _check_jailbreak, normalize_obfuscation
 from sir_firewall.deterministic_rules import find_rule_hits
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REGISTRY = ROOT / "spec" / "packs" / "pack_registry.v1.json"
+PUBLISHED_JSON = ROOT / "docs" / "coverage.json"
 PUBLIC_STATUSES = frozenset({"active"})
 PUBLIC_VISIBILITIES = frozenset({"public", "encoded"})
 BEGIN = "BEGIN GENERATED FULL-GATE COVERAGE"
@@ -136,6 +139,7 @@ def build_report(*, registry_path: Path = DEFAULT_REGISTRY, root: Path = ROOT) -
         results.append(
             {
                 "pack_id": pack_id,
+                "pack_version": str(pack.get("version") or ""),
                 "status": str(pack.get("status") or ""),
                 "visibility": str(pack.get("visibility") or ""),
                 "block_rows": len(block_rows),
@@ -201,6 +205,54 @@ def public_packs(report: dict[str, Any]) -> list[dict[str, Any]]:
         if pack["status"] in PUBLIC_STATUSES
         and pack["visibility"] in PUBLIC_VISIBILITIES
     ]
+
+
+def build_published_json(
+    report: dict[str, Any], *, generated_at: str | None = None
+) -> dict[str, Any]:
+    """Build the public, machine-readable coverage publication."""
+    timestamp = generated_at or datetime.now(timezone.utc).isoformat().replace(
+        "+00:00", "Z"
+    )
+    records = []
+    for pack in public_packs(report):
+        records.append(
+            {
+                "pack_id": pack["pack_id"],
+                "pack_version": pack["pack_version"],
+                "status": pack["status"],
+                "visibility": pack["visibility"],
+                "is_public": True,
+                "block_row_count": pack["block_rows"],
+                "deterministic_rule_covered_count": pack["deterministic_rule_matched"],
+                "deterministic_rule_uncovered_row_ids": pack[
+                    "deterministic_rule_unmatched_ids"
+                ],
+                "full_gate_covered_count": pack["full_gate_matched"],
+                "full_gate_uncovered_row_ids": pack["full_gate_unmatched_ids"],
+            }
+        )
+    return {
+        "generated_at": timestamp,
+        "sir_firewall_version": __version__,
+        "public_inclusion_policy": {
+            "statuses": sorted(PUBLIC_STATUSES),
+            "visibilities": sorted(PUBLIC_VISIBILITIES),
+            "description": (
+                "Includes active registry packs with public or encoded visibility; "
+                "draft and internal packs are excluded."
+            ),
+        },
+        "packs": records,
+    }
+
+
+def render_published_json(report: dict[str, Any], *, generated_at: str | None = None) -> str:
+    return json.dumps(
+        build_published_json(report, generated_at=generated_at),
+        indent=2,
+        ensure_ascii=False,
+    ) + "\n"
 
 
 def render_html_table_body(report: dict[str, Any]) -> str:
@@ -274,6 +326,7 @@ def inject_javascript_lookup(
 
 
 def update_published_surfaces(report: dict[str, Any]) -> None:
+    PUBLISHED_JSON.write_text(render_published_json(report), encoding="utf-8")
     domain_path = ROOT / "docs" / "domain-packs.html"
     domain_path.write_text(
         replace_generated(domain_path.read_text(encoding="utf-8"), render_html_table_body(report)),
