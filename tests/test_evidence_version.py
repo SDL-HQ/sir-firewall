@@ -74,6 +74,9 @@ def test_current_version_surfaces_match_runtime_authority():
         "docs/assets/StructuralDesignLabs_Logo.svg": Counter({v_210: 1}),
         "docs/backlog.md": Counter({v_230: 1}),
         "docs/evidence-perimeter.v5.md": Counter({authority: 1}),
+        "docs/assurance-kit.md": Counter({authority: 2}),
+        "docs/evaluator-technical-explainer.md": Counter({authority: 2}),
+        "docs/minimal-pilot-runbook.md": Counter({authority: 3}),
         "docs/evidence-binding-correction.md": Counter(
             {authority: 5, v_220: 4, v_221: 1, v_230: 1, v_233: 1}
         ),

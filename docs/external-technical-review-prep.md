@@ -7,7 +7,7 @@ It defines what should be reviewed, which artefacts are canonical, and which cla
 
 ## Purpose and scope of this preparation
 
-Use this document to give an external technical reviewer a clean, bounded path through the current SIR product state.
+This is a preparation record, not the current entry point. The single current review order is `README.md`, then `docs/evaluator-technical-explainer.md`, then `docs/minimal-pilot-runbook.md`.
 
 Reviewer objective for this round:
 
@@ -26,6 +26,8 @@ A reviewer should assess the following technical areas.
    - explicit boundaries (text-first, request-level) and non-claims
    - residual-risk semantics for bypassed or out-of-bound paths
 
+   SIR validates bounded structured request and tool-result inputs at the request boundary; it does not govern tool execution, multi-step action graphs, or post-inference behaviour.
+
 2. Proof and archive surfaces
    - latest-pass vs latest-run distinction
    - per-run archive completeness (pass and non-pass runs)
@@ -39,7 +41,7 @@ A reviewer should assess the following technical areas.
    - D5 first-cycle execution, including its blocked live sentinel row, as explicitly historical context rather than current execution status
 
 4. Verification flow quality
-   - offline verification path for certificates, archive receipts, and ITGL
+   - locally available verification path for certificates, archive receipts, and identity-matched ITGL ledgers
    - trust-source clarity (authoritative SDL/public vs local/dev)
 
 5. Trust semantics and key governance readiness
@@ -52,16 +54,16 @@ A reviewer should assess the following technical areas.
 
 ## Canonical reviewer artefact map
 
-Review in this order.
+Use the single current order first: `README.md`, `docs/evaluator-technical-explainer.md`, and `docs/minimal-pilot-runbook.md`. The remaining items are supporting references.
 
 1. Product and public trust-surface overview
    - `README.md`
 
-2. Canonical operator/reviewer cold-start execution
-   - `docs/minimal-pilot-runbook.md`
-
-3. Evaluator-facing boundary and residual-risk explainer
+2. Evaluator-facing boundary and residual-risk explainer
    - `docs/evaluator-technical-explainer.md`
+
+3. Canonical worked verification procedure
+   - `docs/minimal-pilot-runbook.md`
 
 4. Supporting compact walkthrough aligned to canonical surfaces
    - `docs/assurance-kit.md`
@@ -107,7 +109,7 @@ The reviewer is **not** being asked to validate any of the following:
 
 - independent validation merely because benchmark evidence is self-produced
 - model alignment or broad model safety
-- multimodal, deep conversational-state, native tool/function-call, or post-inference governance claims
+- multimodal or deep conversational-state governance claims
 - compliance certification, insurer approval, or regulatory certification
 - workflow redesign, benchmark redesign, or new proof-surface creation
 
@@ -124,7 +126,7 @@ A useful external technical review output should include:
 
 This preparation is complete when all are true:
 
-- reviewer path is single-entry and bounded (this doc)
+- reviewer path follows the single current order: README, evaluator overview, verification guide
 - canonical artefacts are listed and sufficient for technical scrutiny
 - in-scope and out-of-scope claims are explicit
 - no external-validation language is implied
