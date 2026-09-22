@@ -11,7 +11,9 @@ from __future__ import annotations
 import argparse
 import base64
 import csv
+import html
 import json
+import re
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -21,6 +23,17 @@ from sir_firewall.deterministic_rules import find_rule_hits
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REGISTRY = ROOT / "spec" / "packs" / "pack_registry.v1.json"
+PUBLIC_STATUSES = frozenset({"active"})
+PUBLIC_VISIBILITIES = frozenset({"public", "encoded"})
+BEGIN = "BEGIN GENERATED FULL-GATE COVERAGE"
+END = "END GENERATED FULL-GATE COVERAGE"
+
+PUBLISHED_LOOKUP_SURFACES = {
+    ROOT / "docs" / "latest-run.html": ("coverageByPack", 8),
+    ROOT / "docs" / "latest-audit.html": ("coverageBySuite", 8),
+    ROOT / "docs" / "latest-live-audit.html": ("coverageBySuite", 8),
+    ROOT / "proofs" / "template.html": ("coverageBySuite", 8),
+}
 
 
 def _decode_base64(value: Any, *, location: str) -> str:
@@ -175,16 +188,120 @@ def render_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def public_packs(report: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return packs eligible for public coverage surfaces.
+
+    Public surfaces contain active packs whose registry visibility is either
+    ``public`` or ``encoded``. Draft and internal packs are deliberately
+    excluded; encoded suite content may still have public aggregate results.
+    """
+    return [
+        pack
+        for pack in report["packs"]
+        if pack["status"] in PUBLIC_STATUSES
+        and pack["visibility"] in PUBLIC_VISIBILITIES
+    ]
+
+
+def render_html_table_body(report: dict[str, Any]) -> str:
+    lines = [f"    <!-- {BEGIN} -->"]
+    for pack in public_packs(report):
+        evaluability = (
+            "Runner-evaluable"
+            if pack["runner_evaluable"]
+            else '<span class="marker">Not runner-evaluable</span>'
+        )
+        lines.append(
+            "      <tr>"
+            f"<td><code>{html.escape(pack['pack_id'])}</code></td>"
+            f"<td>{html.escape(pack['visibility'])}</td>"
+            f"<td><code>{pack['full_gate_matched']}/{pack['block_rows']}</code></td>"
+            f"<td>{evaluability}</td>"
+            "</tr>"
+        )
+    lines.append(f"    <!-- {END} -->")
+    return "\n".join(lines)
+
+
+def render_javascript_lookup(report: dict[str, Any], variable_name: str, indent: int) -> str:
+    prefix = " " * indent
+    entry_prefix = " " * (indent + 2)
+    lines = [f"{prefix}// {BEGIN}", f"{prefix}const {variable_name} = {{"]
+    packs = public_packs(report)
+    for index, pack in enumerate(packs):
+        comma = "," if index < len(packs) - 1 else ""
+        coverage = f"{pack['full_gate_matched']}/{pack['block_rows']}"
+        lines.append(
+            f"{entry_prefix}{json.dumps(pack['pack_id'])}: {json.dumps(coverage)}{comma}"
+        )
+    lines.extend([f"{prefix}}};", f"{prefix}// {END}"])
+    return "\n".join(lines)
+
+
+def replace_generated(document: str, generated: str) -> str:
+    begin_candidates = (f"<!-- {BEGIN} -->", f"// {BEGIN}")
+    end_candidates = (f"<!-- {END} -->", f"// {END}")
+    begins = [marker for marker in begin_candidates if marker in document]
+    ends = [marker for marker in end_candidates if marker in document]
+    if len(begins) != 1 or len(ends) != 1:
+        raise ValueError("document must contain exactly one generated coverage region")
+    begin, end = begins[0], ends[0]
+    if document.count(begin) != 1 or document.count(end) != 1:
+        raise ValueError("document must contain exactly one generated coverage region")
+    start = document.rfind("\n", 0, document.index(begin)) + 1
+    return document[:start] + generated + document[document.index(end) + len(end) :]
+
+
+def inject_javascript_lookup(
+    document: str, report: dict[str, Any], variable_name: str, indent: int
+) -> str:
+    """Insert a generated lookup into a source page, or refresh an existing one."""
+    generated = render_javascript_lookup(report, variable_name, indent)
+    if BEGIN in document or END in document:
+        return replace_generated(document, generated)
+
+    pattern = re.compile(
+        rf"^(?P<indent>[ \t]*)const\s+{re.escape(variable_name)}\s*=\s*\{{.*?^\s*\}};",
+        flags=re.DOTALL | re.MULTILINE,
+    )
+    matches = list(pattern.finditer(document))
+    if len(matches) != 1:
+        raise ValueError(f"document must contain exactly one {variable_name} lookup")
+    match = matches[0]
+    if len(match.group("indent").expandtabs()) != indent:
+        raise ValueError(f"unexpected indentation for {variable_name} lookup")
+    return document[: match.start()] + generated + document[match.end() :]
+
+
+def update_published_surfaces(report: dict[str, Any]) -> None:
+    domain_path = ROOT / "docs" / "domain-packs.html"
+    domain_path.write_text(
+        replace_generated(domain_path.read_text(encoding="utf-8"), render_html_table_body(report)),
+        encoding="utf-8",
+    )
+    for path, (variable_name, indent) in PUBLISHED_LOOKUP_SURFACES.items():
+        path.write_text(
+            replace_generated(
+                path.read_text(encoding="utf-8"),
+                render_javascript_lookup(report, variable_name, indent),
+            ),
+            encoding="utf-8",
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
     parser.add_argument("--json-out", type=Path, required=True)
     parser.add_argument("--markdown-out", type=Path, required=True)
+    parser.add_argument("--update-published-surfaces", action="store_true")
     args = parser.parse_args()
 
     report = build_report(registry_path=args.registry.resolve(), root=ROOT)
     args.json_out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     args.markdown_out.write_text(render_markdown(report), encoding="utf-8")
+    if args.update_published_surfaces:
+        update_published_surfaces(report)
     return 0
 
 

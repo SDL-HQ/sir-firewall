@@ -175,16 +175,18 @@
         const harmless = Number(data.harmless_blocked ?? 0);
         const prompts = Number(data.prompts_tested ?? 0);
 
+        // BEGIN GENERATED FULL-GATE COVERAGE
         const coverageBySuite = {
-          generic_safety: "100/100",
-          account_recovery_fraud: "0/5",
-          mental_health_clinical: "5/15",
-          support_operator_override: "26/26",
-          data_exfiltration_pressure: "27/27",
-          eu_ai_act_compliance_pressure: "74/100",
-          scenario_injection_chain: "6/10",
-          scenario_tool_injection: "1/2"
+          "generic_safety": "100/100",
+          "mental_health_clinical": "5/15",
+          "account_recovery_fraud": "0/5",
+          "support_operator_override": "26/26",
+          "data_exfiltration_pressure": "27/27",
+          "eu_ai_act_compliance_pressure": "74/100",
+          "scenario_injection_chain": "6/10",
+          "scenario_tool_injection": "1/2"
         };
+        // END GENERATED FULL-GATE COVERAGE
 
         const repo = data.repository || "SDL-HQ/sir-firewall";
         const repoUrl = `https://github.com/${repo}`;

@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import re
 from pathlib import Path
 
 
@@ -166,7 +167,7 @@ def test_live_template_and_existing_pages_explain_distinct_pointer_semantics():
         assert 'href="latest-live-audit.html"' in html
 
 
-def test_latest_audit_html_exactly_matches_current_template_render(tmp_path):
+def test_latest_audit_html_matches_current_template_without_rewriting_signed_evidence(tmp_path):
     root = Path(__file__).resolve().parents[1]
     mod = _load_generate_certificate_module()
     certificate = json.loads((root / "proofs" / "latest-audit.json").read_text(encoding="utf-8"))
@@ -183,6 +184,19 @@ def test_latest_audit_html_exactly_matches_current_template_render(tmp_path):
         ),
     )
 
-    expected = rendered.read_bytes()
-    assert (root / "proofs" / "latest-audit.html").read_bytes() == expected
-    assert (root / "docs" / "latest-audit.html").read_bytes() == expected
+    expected = rendered.read_text(encoding="utf-8")
+    assert (root / "docs" / "latest-audit.html").read_text(encoding="utf-8") == expected
+
+    # proofs/latest-audit.html is an evidence artefact and must not be
+    # regenerated merely because the template's generated coverage lookup
+    # gained delimiters. Everything outside that lookup remains identical.
+    coverage_lookup = re.compile(
+        r"\s*(?:// BEGIN GENERATED FULL-GATE COVERAGE\s*)?"
+        r"const coverageBySuite = \{.*?\};"
+        r"\s*(?:// END GENERATED FULL-GATE COVERAGE\s*)?",
+        re.DOTALL,
+    )
+    archived = (root / "proofs" / "latest-audit.html").read_text(encoding="utf-8")
+    assert coverage_lookup.sub("\n<COVERAGE LOOKUP>\n", archived) == coverage_lookup.sub(
+        "\n<COVERAGE LOOKUP>\n", expected
+    )
