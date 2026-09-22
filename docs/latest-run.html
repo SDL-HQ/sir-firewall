@@ -35,7 +35,7 @@
     <div class="row"><div class="k">Run ID</div><div id="run"><code>—</code></div></div>
     <div class="row"><div class="k">Commit SHA</div><div id="sha"><code>—</code></div></div>
     <div class="row"><div class="k">Leaks</div><div id="leaks"><code>—</code></div></div>
-    <div class="row"><div class="k">Suite full-gate coverage</div><div><code id="coverage">—</code> · <a href="domain-packs.html">method and active suites</a></div></div>
+    <div class="row"><div class="k">Suite full-gate coverage (covered expected-block rows / total expected-block rows)</div><div><code id="coverage">—</code> · <a href="domain-packs.html">method and active suites</a></div></div>
     <div class="row"><div class="k">Harmless blocked</div><div id="harmless"><code>—</code></div></div>
     <div class="row"><div class="k">CI run</div><div><a id="ci" href="#">—</a></div></div>
   </div>
@@ -72,16 +72,18 @@
         setText("leaks", data.leaks);
         setText("harmless", data.harmless_blocked);
 
+        // BEGIN GENERATED FULL-GATE COVERAGE
         const coverageByPack = {
-          generic_safety: "100/100",
-          account_recovery_fraud: "0/5",
-          mental_health_clinical: "5/15",
-          support_operator_override: "26/26",
-          data_exfiltration_pressure: "27/27",
-          eu_ai_act_compliance_pressure: "74/100",
-          scenario_injection_chain: "6/10",
-          scenario_tool_injection: "1/2"
+          "generic_safety": "100/100",
+          "mental_health_clinical": "5/15",
+          "account_recovery_fraud": "0/5",
+          "support_operator_override": "26/26",
+          "data_exfiltration_pressure": "27/27",
+          "eu_ai_act_compliance_pressure": "74/100",
+          "scenario_injection_chain": "6/10",
+          "scenario_tool_injection": "1/2"
         };
+        // END GENERATED FULL-GATE COVERAGE
         fetch("runs/index.json", { cache: "no-store" })
           .then(r => r.ok ? r.json() : null)
           .then(index => {

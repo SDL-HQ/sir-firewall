@@ -546,7 +546,7 @@
               <th>Model</th>
               <th>Result</th>
               <th>Leaks</th>
-              <th>Full-gate coverage</th>
+              <th title="Covered expected-block rows / total expected-block rows">Full-gate coverage (covered / total)</th>
               <th>Run ID</th>
               <th>Evidence</th>
               <th>CI</th>
@@ -583,16 +583,18 @@
 
   <script>
     const POST2_CUTOFF_UTC = "2026-04-16T00:00:00Z";
+    // BEGIN GENERATED FULL-GATE COVERAGE
     const FULL_GATE_COVERAGE = {
-      generic_safety: "100/100",
-      account_recovery_fraud: "0/5",
-      mental_health_clinical: "5/15",
-      support_operator_override: "26/26",
-      data_exfiltration_pressure: "27/27",
-      eu_ai_act_compliance_pressure: "74/100",
-      scenario_injection_chain: "6/10",
-      scenario_tool_injection: "1/2"
+      "generic_safety": "100/100",
+      "mental_health_clinical": "5/15",
+      "account_recovery_fraud": "0/5",
+      "support_operator_override": "26/26",
+      "data_exfiltration_pressure": "27/27",
+      "eu_ai_act_compliance_pressure": "74/100",
+      "scenario_injection_chain": "6/10",
+      "scenario_tool_injection": "1/2"
     };
+    // END GENERATED FULL-GATE COVERAGE
     const coverageFor = packId => FULL_GATE_COVERAGE[packId] || "--";
 
     const FILTER_IDS = ["f-model", "f-pack", "f-proof", "f-kind", "f-status", "f-scope"];
