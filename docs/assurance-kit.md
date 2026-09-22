@@ -1,9 +1,9 @@
 # SIR Assurance Kit
 
-For evaluator review order, start with `docs/evaluator-technical-explainer.md` (primary evaluator entry point). This document is a compact supporting walkthrough.
+The single review order is `README.md`, then `docs/evaluator-technical-explainer.md`, then the worked verification procedure in `docs/minimal-pilot-runbook.md`. This document is a compact supporting reference, not another entry point.
 
 For the linear S4.3 pilot procedure (one minimal path), use `docs/minimal-pilot-runbook.md`.
-For explicit offline-capable operator steps based on existing behavior, see `docs/minimal-pilot-runbook.md#offline-capable-operator-path-existing-behavior`.
+For acquisition and locally available verification steps, see `docs/minimal-pilot-runbook.md#locally-available-evidence-and-network-requirements`.
 
 It is for operators, auditors, buyers, and reviewers who need a compact, evidence-first way to understand what SIR does and verify outputs without repo archaeology.
 
@@ -19,7 +19,7 @@ This assurance kit explains:
 - what artefacts SIR produces
 - what each proof class means
 - one canonical evaluation path
-- how to verify evidence offline
+- how to verify a locally available evidence bundle without network access
 - how to interpret latest pass, latest run, run archive, and benchmark index
 - how authoritative and non-authoritative signing trust is scoped
 - what must be true before `CRYPTO_ENFORCED` can be enabled safely
@@ -37,9 +37,10 @@ Current capability boundary (explicit):
 - text-first
 - request-level
 - deterministic pre-inference gating
-- structured envelope handling around that request path
 - pack/scenario evaluation against that path
 - proof and archive generation around gate behavior
+
+SIR validates bounded structured request and tool-result inputs at the request boundary; it does not govern tool execution, multi-step action graphs, or post-inference behaviour.
 
 ## What SIR does not prove
 
@@ -53,10 +54,7 @@ SIR currently does **not** provide:
 
 - native multimodal gating
 - deep stateful conversational governance across long-running sessions
-- native tool/function-call governance across external action graphs
-- full structured enterprise action-graph governance
 - internal model reasoning visibility
-- post-inference model behavior governance
 - full deployment-surface coverage
 
 ## Failure modes and residual risk (canonical)
@@ -68,30 +66,31 @@ Plain-language outcomes:
 - If the baseline policy or a domain ISC policy pack fails to load inside `validate_sir()`: SIR returns an explicit non-passing blocked systemic-reset outcome with run evidence.
 - If `spec/packs/pack_registry.v1.json` is absent or malformed: suite selection fails with a process error before request evaluation; this is not a request-level systemic-reset block.
 - If an otherwise-unhandled in-process validation exception occurs: SIR returns an internal-error systemic-reset block with exception diagnostics in the ITGL. A process-level out-of-memory kill cannot be caught in-process and remains outside this guarantee.
-- If a run is invalid or inconclusive: treat it as non-passing; use `latest-run.json` plus archived run artefacts to inspect failure state.
+- If a run is invalid or inconclusive: treat it as non-passing; use the `latest-run.json` current status pointer to locate the run, then inspect its archived bundle.
 - If SIR is bypassed: no governance claim applies to bypassed model-facing traffic.
 - If SIR is not actually in front of the model path: proof only attests to the exercised SIR path, not ungoverned alternate paths.
 
 Evidence durability under failure:
 
-- Failure/inconclusive runs are still represented in run-level evidence surfaces (`latest-run.json` and run archive entries).
-- Latest passing pointer (`latest-audit.*`) remains intentionally separate from latest run truth.
+- Failure/inconclusive runs are represented by per-run archive bundles; `latest-run.json` is only the current status pointer.
+- The mutable latest passing pointer (`latest-audit.*`) remains intentionally separate from the current-run pointer and is not an immutable claim-level record.
 
 Residual risk boundary:
 
-- Risk remains for any path, modality, tool/action chain, or post-inference behavior outside the exercised SIR request path.
+- Risk remains for any path or modality outside the exercised SIR request boundary.
 - SIR evidence attests to the recorded deterministic gate decision for the evaluated boundary; that decision—not any model response—is reproducible given the same inputs and repository configuration at the recorded `commit_sha`, while signature verification establishes payload integrity and signature validity, not independent execution correctness or global system safety.
 
 ## Evidence surfaces
 
 Public surfaces and semantics:
 
-- `latest-audit.json` / `latest-audit.html`: latest passing audit proof (last known good)
-- `latest-run.json`: most recent run outcome, including FAIL or INCONCLUSIVE
+- `latest-audit.json` / `latest-audit.html`: mutable pointer to the latest passing audit proof (last known good)
+- `latest-live-audit.json` / `latest-live-audit.html`: mutable pointer to the latest qualifying live audit
+- `latest-run.json`: current status pointer for the most recent run, including FAIL or INCONCLUSIVE
 - `runs/index.html`: archive index for pass and fail runs
 - `runs/<run_id>/...`: per-run evidence bundle (manifest, audit, receipt, copied artefacts)
 - `runs/benchmark_index.v2.json`: evidence map for side-by-side comparison only, with `latest_run`, `latest_passing_run`, and paired benchmark rows
-- Acceptance-oriented audit surfaces are `latest-audit.*`, `latest-run.json`, and run archives; benchmark rows remain exploratory comparison evidence.
+- The selected per-run bundle is the claim-level evidence source. Latest pointers help locate candidates; benchmark rows remain exploratory comparison evidence.
 
 ## Canonical benchmark cycle contract (v1)
 
@@ -151,46 +150,34 @@ python3 tools/verify_itgl.py
 
 After verification, review `proofs/itgl_final_hash.txt`.
 
-### 4) Verify certificate offline
+### 4) Verify one archived run from local files
 
-Use one of the two truthful paths below.
+Acquisition is separate: choose and retrieve one bundle from `docs/runs/` while online. After it is locally available, verification needs no network. Use a run whose `audit.json` records `sir_firewall_version` 2.3.4 or later, and use its certificate, ledger, and receipt from the same directory rather than a mutable root or `latest-*` pointer.
 
-Path A. Verify published SDL-signed certificate:
-
-```bash
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
-```
-
-Path B. Verify an SDL/public certificate from local disk using default trust anchors:
+The archive receipt check validates every file named by `manifest.json`, so it requires the complete run directory. This example's manifest lists five files: `audit.json`, `proofs/itgl_final_hash.txt`, `proofs/itgl_ledger.jsonl`, `proofs/latest-attempts.log`, and `proofs/run_summary.json`. A `file listed in manifest is missing` error means the downloaded bundle is incomplete; it does not by itself mean the archived evidence is broken.
 
 ```bash
-sir verify cert proofs/latest-audit.json
+RUN_ID=20260921-135018-029319-gh35607761858-f3dd66376a01
+python3 tools/verify_certificate.py "docs/runs/$RUN_ID/audit.json" --ledger "docs/runs/$RUN_ID/proofs/itgl_ledger.jsonl" --require-registry
+python3 tools/verify_archive_receipt.py "docs/runs/$RUN_ID" --require-registry
 ```
 
-Path C. Verify a local/non-authoritative certificate using its matching public key:
+Actual output:
 
-Local generation writes `proofs/local-audit.json` when attributable CI provenance is absent. This is expected; the generator prints `OUTPUT_AUDIT_JSON=proofs/local-audit.json` so the operator can confirm which file was written.
-
-```bash
-sir verify cert proofs/local-audit.json --key <pubkey.pem>
+```text
+OK: payload_hash and signature verify against key registry spec/pubkeys/key_registry.v1.json entry signing_key_id=default; ledger binding verifies signed itgl_final_hash=sha256:ae9233eec1ae44d9ca20661bc5f460979fd487d1498f79583413037e5200d7ba equals the supplied ledger terminal hash, and signed itgl_row_count=150 equals prompts_tested=150.
+OK: archive receipt verified for docs/runs/20260921-135018-029319-gh35607761858-f3dd66376a01
 ```
 
-Note: certificate generation is a separate step and is not automatic from `sir run`. Local/non-authoritative certificates may not validate against default trust anchors unless `--key` (or a matching key registry) is provided.
-Local generation aims to preserve attribution fields (for example `sir_firewall_version` and `commit_sha`) where possible, while leaving CI-only fields (for example `ci_run_url`) explicitly local/empty when CI context is absent.
-Certificate verification proves payload integrity + signature validity against resolved public key material only. It does not prove policy correctness, model safety, or broader trust guarantees.
+Record three separate results: **signature valid**; **ledger binding valid**; and **authoritative SDL trust established** because this example resolves `signing_key_id=default` through the approved `spec/pubkeys/key_registry.v1.json` under `--require-registry`. If a local/dev key verifies but approved registry resolution does not, record **authoritative SDL trust not established**.
 
-### 5) Verify archived run receipt offline
+This worked certificate's result is `AUDIT FAILED`: 26 of 150 prompts leaked. All three verification results passing while the audit result is failed is expected and intentional. Verification establishes the certificate's integrity, binding, and signing trust; it does not change or endorse whether the run met its audit pass criterion.
 
-If you have a run archive directory with `archive_receipt.json`:
+For pre-2.3.4 certificates, signature-only verification is the only available form. Treat that as a historical compatibility path, not the current default.
 
-```bash
-sir verify archive proofs/runs/<run_id>/
-```
+The root-level `proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`, `proofs/run_id.txt`, and `proofs/run_summary.json` are mutable compatibility copies. Inspecting or verifying them may help with current local execution, but it does not establish anything about a selected archived certificate. Files with the same basenames beneath `docs/runs/<run_id>/proofs/` or `proofs/runs/<run_id>/proofs/` are different, immutable per-run archive members covered by that run's manifest and receipt.
 
-Note: archive publication is a separate step (for example via `tools/publish_run.py`) and requires signing key material.
-If a local/dev archive was signed with an ephemeral key and its `signing_key_id` does not resolve in the default key registry, pass an explicit matching public key (`--key` / `--pubkey`) for local signature verification. This verifies signature integrity but does not upgrade the proof to SDL/public-authoritative trust semantics.
-
-### 6) Interpret benchmark index honestly
+### 5) Interpret benchmark index honestly
 
 Read `docs/runs/benchmark_index.v2.json` as an evidence index:
 
@@ -204,10 +191,9 @@ Read `docs/runs/benchmark_index.v2.json` as an evidence index:
 
 | Surface | What it answers | Verify with |
 | --- | --- | --- |
-| `proofs/run_summary.json` | What happened in this local run | direct file inspection |
-| `proofs/itgl_ledger.jsonl` + `proofs/itgl_final_hash.txt` | Integrity chain for run log | `python3 tools/verify_itgl.py` |
-| `proofs/latest-audit.json` | Signed certificate payload | `sir verify cert ...` or `python3 tools/verify_certificate.py ...` |
-| `proofs/runs/<run_id>/archive_receipt.json` | Run archive chain-of-custody receipt | `sir verify archive proofs/runs/<run_id>/` |
+| `docs/runs/<run_id>/audit.json` + that run's ledger | Whether signature and certificate-to-ledger binding validate | `tools/verify_certificate.py ... --ledger ... --require-registry` |
+| `docs/runs/<run_id>/archive_receipt.json` | Run archive chain-of-custody receipt | `tools/verify_archive_receipt.py ... --require-registry` |
+| Root `proofs/run_summary.json` and ITGL files | Mutable current-run compatibility state; not claim-level evidence | local diagnostics only |
 | `docs/runs/benchmark_index.v2.json` | Honest map of runs, pointers, and pair rows | schema + direct inspection |
 
 ## Key governance readiness reference
@@ -216,7 +202,7 @@ For key authority boundaries, trust-source semantics, and the `CRYPTO_ENFORCED` 
 
 ## Semantics to preserve
 
-- Latest pass and latest run are intentionally different concepts.
+- Latest pass and latest run are intentionally different mutable pointers; a selected per-run bundle is the claim-level evidence source.
 - Gate request status (`PASS`/`BLOCKED`) is distinct from run/publication status (`PASS`/`FAIL`/`INCONCLUSIVE`).
 - Archive includes both passes and failures.
 - Benchmark index comparison fields are observed metadata, not weighted metrics.
