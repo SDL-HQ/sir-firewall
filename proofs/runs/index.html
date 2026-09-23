@@ -126,13 +126,15 @@
 
     .filters-grid {
       display: grid;
-      grid-template-columns: repeat(6, minmax(120px, 1fr));
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
       gap: 8px;
     }
 
+    .search-filter { grid-column: span 2; }
+
     label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
 
-    select, button {
+    select, input, button {
       width: 100%;
       padding: 7px;
       border: 1px solid var(--line);
@@ -150,8 +152,11 @@
     }
     button:hover { background: #fff; }
 
+    input[type="search"] { width: 100%; }
+
     a:focus-visible,
     button:focus-visible,
+    input:focus-visible,
     select:focus-visible,
     summary:focus-visible {
       outline: 2px solid var(--focus-ring);
@@ -220,10 +225,28 @@
       background: var(--non-bg);
     }
 
-    .table-wrap { overflow-x: auto; margin-top: 8px; }
+    .table-wrap {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      margin-top: 8px;
+    }
     table { width: 100%; border-collapse: collapse; font-size: 0.89rem; }
     th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #d8dee4; vertical-align: top; }
     th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+    th, td, code { overflow-wrap: anywhere; }
+
+    @media (min-width: 701px) {
+      .run-table { table-layout: fixed; }
+      .run-table th:nth-child(1) { width: 18%; }
+      .run-table th:nth-child(2) { width: 16%; }
+      .run-table th:nth-child(3) { width: 19%; }
+      .run-table th:nth-child(4) { width: 16%; }
+      .run-table th:nth-child(5) { width: 13%; }
+      .run-table th:nth-child(6) { width: 8%; }
+      .run-table th:nth-child(7) { width: 10%; }
+    }
 
     .pair-groups {
       display: grid;
@@ -416,8 +439,37 @@
     }
 
     @media (max-width: 700px) {
-      table { font-size: 0.84rem; }
-      th, td { padding: 6px 5px; }
+      main { padding: 0 10px; }
+      .filters-grid, .counter-grid { grid-template-columns: 1fr; }
+      .search-filter { grid-column: auto; }
+      .run-table, .run-table tbody, .run-table tr, .run-table td { display: block; width: 100%; }
+      .run-table thead { display: none; }
+      .run-table tr {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 7px 10px;
+        margin-bottom: 10px;
+        background: #fff;
+      }
+      .run-table td {
+        display: grid;
+        grid-template-columns: minmax(88px, 32%) minmax(0, 1fr);
+        gap: 8px;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--line-soft);
+        overflow-wrap: anywhere;
+      }
+      .run-table td:last-child { border-bottom: 0; }
+      .run-table td::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: .05em;
+        text-transform: uppercase;
+      }
+      .run-table .empty-row { display: block; }
+      .run-table .empty-row::before { content: none; }
       .evidence-row { grid-template-columns: 1fr; }
       .evidence-role { padding-top: 0; }
     }
@@ -456,6 +508,10 @@
     <section class="panel" aria-label="Benchmark filters">
       <div class="section-label">Filters</div>
       <div class="filters-grid">
+        <div class="search-filter">
+          <label for="f-search">Find run, date or pack</label>
+          <input id="f-search" type="search" placeholder="Search archive" autocomplete="off" />
+        </div>
         <div>
           <label for="f-model">Model</label>
           <select id="f-model"><option value="">All</option></select>
@@ -537,23 +593,20 @@
         <button id="toggle-recent" class="inline-btn">Show all rows</button>
       </div>
       <div class="table-wrap">
-        <table>
+        <table class="run-table">
           <thead>
             <tr>
               <th>Timestamp</th>
-              <th>Pack</th>
+              <th>Pack / coverage</th>
               <th>Proof class</th>
               <th>Model</th>
-              <th>Result</th>
-              <th>Leaks</th>
-              <th>Full-gate coverage</th>
+              <th>Result / leaks</th>
               <th>Run ID</th>
-              <th>Evidence</th>
-              <th>CI</th>
+              <th>Evidence / CI</th>
             </tr>
           </thead>
           <tbody id="recent-rows">
-            <tr><td colspan="10">Loading row evidence.</td></tr>
+            <tr><td class="empty-row" colspan="7">Loading row evidence.</td></tr>
           </tbody>
         </table>
       </div>
@@ -664,8 +717,8 @@
 
     function runLink(runId) {
       const full = esc(runId || "");
-      const display = esc(truncateRunId(runId));
-      return `<a href="../runs/${full}/manifest.json" title="${full}"><code>${display}</code></a>`;
+      if (!full) return "--";
+      return `<a href="../runs/${full}/manifest.json" title="${full}">Open run</a>`;
     }
 
     function buildRowContextMap(pairs) {
@@ -754,6 +807,11 @@
       if (f.kind && ((e.evaluation_target?.target_kind) || "") !== f.kind) return false;
       if (f.status === "AUDIT PASSED" && !isPass(e.result)) return false;
       if (f.status === "NON_PASS" && isPass(e.result)) return false;
+      if (f.search) {
+        const haystack = [e.run_id, e.run_timestamp_utc, e.evaluation_target?.pack_id]
+          .filter(Boolean).join(" ").toLowerCase();
+        if (!haystack.includes(f.search)) return false;
+      }
       return true;
     }
 
@@ -765,6 +823,7 @@
         kind: document.getElementById("f-kind").value,
         status: document.getElementById("f-status").value,
         scope: document.getElementById("f-scope").value,
+        search: document.getElementById("f-search").value.trim().toLowerCase(),
       };
     }
 
@@ -786,6 +845,13 @@
         if (f.kind && ((gated.evaluation_target?.target_kind) || (base.evaluation_target?.target_kind) || "") !== f.kind) return false;
         if (f.status === "AUDIT PASSED" && !isPass(gated.result)) return false;
         if (f.status === "NON_PASS" && isPass(gated.result)) return false;
+        if (f.search) {
+          const haystack = [
+            base.run_id, gated.run_id, base.run_timestamp_utc, gated.run_timestamp_utc,
+            gated.evaluation_target?.pack_id, base.evaluation_target?.pack_id,
+          ].filter(Boolean).join(" ").toLowerCase();
+          if (!haystack.includes(f.search)) return false;
+        }
         return true;
       });
     }
@@ -950,7 +1016,7 @@
     function renderRecent(rows) {
       const target = document.getElementById("recent-rows");
       if (!rows.length) {
-        target.innerHTML = '<tr><td colspan="10">No runs match current filters.</td></tr>';
+        target.innerHTML = '<tr><td class="empty-row" colspan="7">No runs match current filters.</td></tr>';
         return;
       }
 
@@ -968,16 +1034,13 @@
         const ciUrl = esc(safeHttpUrl(r.ci_run_url));
         const ci = ciUrl ? `<a href="${ciUrl}">CI</a>` : "--";
         return `<tr>
-          <td><code>${ts}</code></td>
-          <td><code>${pack}</code></td>
-          <td><code>${proof}</code><div class="small">${context}</div></td>
-          <td><code>${model}</code></td>
-          <td>${resultPill(r.result)}</td>
-          <td>${leaks}</td>
-          <td><code>${esc(coverageFor(r.evaluation_target?.pack_id || ""))}</code></td>
-          <td>${runLink(r.run_id)}</td>
-          <td>${renderEvidenceGroup(r)}</td>
-          <td>${ci}</td>
+          <td data-label="Timestamp"><code>${ts}</code></td>
+          <td data-label="Pack / coverage"><code>${pack}</code><div class="small">full-gate coverage <code>${esc(coverageFor(r.evaluation_target?.pack_id || ""))}</code></div></td>
+          <td data-label="Proof class"><code>${proof}</code><div class="small">${context}</div></td>
+          <td data-label="Model"><code>${model}</code></td>
+          <td data-label="Result / leaks">${resultPill(r.result)}<div class="small">leaks ${leaks}</div></td>
+          <td data-label="Run">${runLink(r.run_id)}</td>
+          <td data-label="Evidence / CI">${renderEvidenceGroup(r)}<div class="small">${ci}</div></td>
         </tr>`;
       }).join("");
     }
@@ -1021,6 +1084,7 @@
       FILTER_IDS.forEach(id => {
         document.getElementById(id).addEventListener("change", apply);
       });
+      document.getElementById("f-search").addEventListener("input", apply);
 
       document.getElementById("toggle-recent").addEventListener("click", () => {
         recentExpanded = !recentExpanded;
@@ -1038,6 +1102,7 @@
         document.getElementById("f-proof").value = "";
         document.getElementById("f-kind").value = "";
         document.getElementById("f-status").value = "";
+        document.getElementById("f-search").value = "";
         document.getElementById("f-scope").value = "post2";
         recentExpanded = false;
         groupsExpanded = false;
@@ -1085,7 +1150,7 @@
         apply();
       } catch (e) {
         const reason = esc(e?.message || "unknown error");
-        targetRecent.innerHTML = `<tr><td colspan="9">Failed to load benchmark index ${reason}.</td></tr>`;
+        targetRecent.innerHTML = `<tr><td class="empty-row" colspan="7">Failed to load benchmark index ${reason}.</td></tr>`;
         document.getElementById("pattern-rows").innerHTML = `<tr><td colspan="5">Failed to load benchmark index ${reason}.</td></tr>`;
         targetPairs.innerHTML = `<div class="group-card">Failed to load paired benchmark index ${reason}.</div>`;
       }
