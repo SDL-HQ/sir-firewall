@@ -1,7 +1,11 @@
 # Patents
 
-Structural Design Labs holds provisional patent applications relating to cryptographic provenance in constraint-aligned AI systems, filed October 2025. A non-provisional United States application was filed in August 2026.
+The cryptographic provenance mechanisms in SIR are the subject of patent
+applications: provisional filings in 2025, and a non-provisional application
+in 2026.
 
-SIR is released under the MIT licence. See [LICENSE](LICENSE).
+SIR is released under the MIT licence. The patent position covers certain
+technical mechanisms and does not change the licence terms of the published
+source. See [LICENSE](LICENSE).
 
 Enquiries: info@structuraldesignlabs.com
