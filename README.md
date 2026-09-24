@@ -63,7 +63,7 @@ python3 tools/verify_certificate.py "docs/runs/${RUN_ID}/audit.json"
 
 Expected:
 
-`OK: payload_hash and signature verify against ...; ledger binding verifies signed itgl_final_hash=sha256:... equals the ledger terminal hash, and signed itgl_row_count=N equals prompts_tested=N.`
+`OK: payload_hash and signature verify against ...; ledger binding verifies signed itgl_final_hash=sha256:... equals the ledger terminal hash from docs/runs/<run_id>/proofs/itgl_ledger.jsonl, and signed itgl_row_count=N equals prompts_tested=N.`
 
 This is the standalone verifier path exercised by the regression suite: it
 installs `cryptography`, but does not install the `sir_firewall` package. An

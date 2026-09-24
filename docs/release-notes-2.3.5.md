@@ -17,8 +17,10 @@ Evidence contract v2 applies from `sir_firewall_version` 2.3.4 and requires
 `itgl_row_count` and `detached_ledger`. Contract v1 remains unchanged and governs
 2.2.0 through 2.3.3. Certificates below 2.2.0 continue to return the distinct
 not-applicable exit code 8 rather than failing validation. Published 2.3.4
-certificates already contain both v2-required fields, so the contract change
-makes no published certificate non-compliant.
+certificates contain both ledger-binding fields but predate the new required
+`enforced_policy_matches_signed_policy` assertion. Their signatures and ledger
+binding remain independently verifiable, but strict v2 contract validation
+reports the missing assertion rather than inferring it retroactively.
 
 The published historical census remains frozen: 29 in-scope certificates carry
 an `itgl_final_hash` shared with another in-scope run, and 295 certificates fall
@@ -56,3 +58,21 @@ mismatch and new certificates include the signed assertion
 The negative verifier fixtures in `examples/verifier-negatives/` are now a
 published conformance suite with expected rejection categories for third-party
 verifier implementations.
+
+## Published archive verification result
+
+The release was measured across all 200 runs in `docs/runs/index.json`, using
+the default certificate-verifier invocation with `--require-registry`:
+
+| Result | 2.3.4 verifier | 2.3.5 verifier |
+|---|---:|---:|
+| OK | 197 | 14 |
+| Binding failure (exit 7) | 0 | 183 |
+| Signature failure (exit 5) | 3 | 3 |
+
+The 183 binding failures comprise 105 terminal-hash mismatches and 78
+certificates with no signed row-count assertion. The version boundary is exact:
+all 14 certificates emitted by SIR 2.3.4 pass binding verification, while all
+186 certificates emitted earlier fail. Certificates predating 2.3.4 are not
+bindable by construction. Exit 7 for such a historical run is therefore the
+expected fail-closed result, not a regression in the archived evidence.

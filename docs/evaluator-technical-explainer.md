@@ -168,7 +168,7 @@ python3 tools/verify_archive_receipt.py "docs/runs/$RUN_ID" --require-registry
 Actual output:
 
 ```text
-OK: payload_hash and signature verify against key registry spec/pubkeys/key_registry.v1.json entry signing_key_id=default; ledger binding verifies signed itgl_final_hash=sha256:ae9233eec1ae44d9ca20661bc5f460979fd487d1498f79583413037e5200d7ba equals the supplied ledger terminal hash, and signed itgl_row_count=150 equals prompts_tested=150.
+OK: payload_hash and signature verify against key registry spec/pubkeys/key_registry.v1.json entry signing_key_id=default; ledger binding verifies signed itgl_final_hash=sha256:ae9233eec1ae44d9ca20661bc5f460979fd487d1498f79583413037e5200d7ba equals the ledger terminal hash from docs/runs/20260921-135018-029319-gh35607761858-f3dd66376a01/proofs/itgl_ledger.jsonl, and signed itgl_row_count=150 equals prompts_tested=150.
 OK: archive receipt verified for docs/runs/20260921-135018-029319-gh35607761858-f3dd66376a01
 ```
 

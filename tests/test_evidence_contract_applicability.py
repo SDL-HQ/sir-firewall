@@ -55,11 +55,14 @@ def test_v2_is_selected_for_234_and_requires_binding_fields(tmp_path):
         path for path in (ROOT / "proofs/runs").glob("*/audit.json")
         if json.loads(path.read_text(encoding="utf-8")).get("sir_firewall_version") == "2.3.4"
     )
-    result = _run(source)
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    payload["enforced_policy_matches_signed_policy"] = True
+    complete = tmp_path / "complete-v2.json"
+    complete.write_text(json.dumps(payload), encoding="utf-8")
+    result = _run(complete)
     assert result.returncode == 0
     assert result.stdout == "OK: certificate satisfies evidence contract v2.\n"
 
-    payload = json.loads(source.read_text(encoding="utf-8"))
     payload.pop("itgl_row_count")
     certificate = tmp_path / "missing-row-count.json"
     certificate.write_text(json.dumps(payload), encoding="utf-8")
@@ -67,11 +70,23 @@ def test_v2_is_selected_for_234_and_requires_binding_fields(tmp_path):
     assert result.returncode == 2
     assert "missing required field: itgl_row_count" in result.stderr
 
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    certificate = tmp_path / "missing-policy-correspondence.json"
+    certificate.write_text(json.dumps(payload), encoding="utf-8")
+    result = _run(certificate)
+    assert result.returncode == 2
+    assert "missing required field: enforced_policy_matches_signed_policy" in result.stderr
 
-def test_all_published_234_certificates_satisfy_v2():
+
+def test_published_234_certificates_precede_required_policy_correspondence():
     certificates = [
         path for path in (ROOT / "proofs/runs").glob("*/audit.json")
         if json.loads(path.read_text(encoding="utf-8")).get("sir_firewall_version") == "2.3.4"
     ]
     assert certificates
-    assert all(_run(path).returncode == 0 for path in certificates)
+    results = [_run(path) for path in certificates]
+    assert all(result.returncode == 2 for result in results)
+    assert all(
+        "missing required field: enforced_policy_matches_signed_policy" in result.stderr
+        for result in results
+    )

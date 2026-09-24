@@ -246,6 +246,7 @@ def test_contract_accepts_firewall_only_inconclusive_with_zero_provider_counters
     certificate = json.loads((ROOT / "proofs/latest-audit.json").read_text(encoding="utf-8"))
     certificate.update(
         result="INCONCLUSIVE",
+        enforced_policy_matches_signed_policy=True,
         proof_class="FIREWALL_ONLY_AUDIT",
         provider_call_attempts=0,
         provider_call_successes=0,

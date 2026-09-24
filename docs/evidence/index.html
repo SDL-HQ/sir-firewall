@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SIR evidence verification</title>
+  <style>
+    body { margin: 2rem auto; max-width: 58rem; padding: 0 1rem; font: 16px/1.55 system-ui, sans-serif; color: #172033; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #bac2d0; padding: .55rem; text-align: left; }
+    th:not(:first-child), td:not(:first-child) { text-align: right; }
+    .notice { border-left: .35rem solid #b45309; background: #fff7ed; padding: .8rem 1rem; }
+    code { background: #eef1f5; padding: .1rem .25rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Published archive verification in SIR 2.3.5</h1>
+    <p>The 2.3.5 verifier was measured across all 200 runs in <code>docs/runs/index.json</code>, using its default ledger-binding behavior with <code>--require-registry</code>.</p>
+    <table>
+      <thead><tr><th>Result</th><th>2.3.4 verifier</th><th>2.3.5 verifier</th></tr></thead>
+      <tbody>
+        <tr><td>OK</td><td>197</td><td>14</td></tr>
+        <tr><td>Binding failure (exit 7)</td><td>0</td><td>183</td></tr>
+        <tr><td>Signature failure (exit 5)</td><td>3</td><td>3</td></tr>
+      </tbody>
+    </table>
+    <p>The 183 binding failures are 105 terminal-hash mismatches and 78 certificates with no signed row-count assertion. All 14 certificates emitted by SIR 2.3.4 pass binding verification; all 186 earlier certificates fail.</p>
+    <p class="notice"><strong>Historical interpretation:</strong> certificates predating SIR 2.3.4 are not bindable by construction. Exit 7 for one of these historical runs is expected fail-closed behavior, not a regression in the archived evidence.</p>
+  </main>
+</body>
+</html>

@@ -6,6 +6,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC_PATH = ROOT / "spec" / "canonical_example_run.json"
+VERIFIER_OUTPUT_DOCS = (
+    ROOT / "docs/evaluator-technical-explainer.md",
+    ROOT / "docs/minimal-pilot-runbook.md",
+    ROOT / "docs/assurance-kit.md",
+)
 
 
 def _is_json_file(path: Path) -> bool:
@@ -71,3 +76,29 @@ def test_canonical_example_run_remains_verifiable_offline():
             f"{dependency_message}; verification against the {tree_name} exited "
             f"{result.returncode}\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
         )
+
+
+def test_canonical_verifier_stdout_matches_documented_output():
+    run_id = json.loads(SPEC_PATH.read_text(encoding="utf-8"))["run_id"]
+    audit = Path("docs/runs") / run_id / "audit.json"
+    ledger = Path("docs/runs") / run_id / "proofs/itgl_ledger.jsonl"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "tools/verify_certificate.py",
+            str(audit),
+            "--ledger",
+            str(ledger),
+            "--require-registry",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    verifier_line = result.stdout.strip()
+
+    for document in VERIFIER_OUTPUT_DOCS:
+        text = document.read_text(encoding="utf-8")
+        assert f"```text\n{verifier_line}\n" in text, document

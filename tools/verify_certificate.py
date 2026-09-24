@@ -158,7 +158,7 @@ def _parse_args() -> argparse.Namespace:
             "Examples:\n"
             "  python3 tools/verify_certificate.py proofs/latest-audit.json\n"
             "  python3 tools/verify_certificate.py proofs/latest-audit.json --no-ledger\n"
-            "  cat proofs/latest-audit.json | python3 tools/verify_certificate.py -\n\n"
+            "  cat proofs/latest-audit.json | python3 tools/verify_certificate.py - --no-ledger\n\n"
             "Key resolution:\n"
             "  If signing_key_id is present and key registry is readable, that key is used.\n"
             "  Otherwise verifier falls back to --pubkey unless --require-registry is set.\n\n"
@@ -275,6 +275,15 @@ def main() -> int:
             return LEDGER_BINDING_FAILURE
         prompts_tested = cert.get("prompts_tested")
         signed_row_count = cert.get("itgl_row_count")
+        if signed_row_count is None:
+            print(
+                "ERROR: ledger binding verification failed: certificate carries no itgl_row_count,\n"
+                "so the signed row count cannot be bound to this ledger "
+                f"(ledger rows: {row_count},\nprompts_tested: {prompts_tested}). "
+                "Certificates emitted before SIR 2.3.4 do not carry this field.",
+                file=sys.stderr,
+            )
+            return LEDGER_BINDING_FAILURE
         if row_count != prompts_tested or row_count != signed_row_count:
             print("ERROR: ledger binding verification failed: row count mismatch", file=sys.stderr)
             print(f"  prompts_tested: {prompts_tested}", file=sys.stderr)
@@ -289,6 +298,12 @@ def main() -> int:
             file=sys.stderr,
         )
 
+    if args.no_ledger:
+        print(
+            "NOT VERIFIED: certificate-to-ledger binding was skipped with --no-ledger.",
+            file=sys.stderr,
+        )
+
     if not args.quiet:
         if ledger_path is not None:
             print(
@@ -300,7 +315,7 @@ def main() -> int:
         else:
             print(
                 "OK: payload_hash and signature verify "
-                f"against {key_source}; ledger binding was explicitly skipped with --no-ledger."
+                f"against {key_source}; certificate integrity and signature are valid."
             )
     return 0
 

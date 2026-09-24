@@ -28,6 +28,7 @@
     "provider_call_successes",
     "model_calls_made",
     "flags",
+    "enforced_policy_matches_signed_policy",
     "payload_hash",
     "signature"
   ],
