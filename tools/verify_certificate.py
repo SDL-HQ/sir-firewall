@@ -36,6 +36,7 @@ from itgl import LedgerVerificationError, load_and_verify_ledger
 DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
 DEFAULT_KEY_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
 LEDGER_BINDING_FAILURE = 7
+LEDGER_BINDING_NOT_CHECKED = 9
 
 
 def _require_json_object(obj: Any, source: str) -> Dict[str, Any]:
@@ -156,17 +157,24 @@ def _parse_args() -> argparse.Namespace:
         epilog=(
             "Examples:\n"
             "  python3 tools/verify_certificate.py proofs/latest-audit.json\n"
+            "  python3 tools/verify_certificate.py proofs/latest-audit.json --no-ledger\n"
             "  cat proofs/latest-audit.json | python3 tools/verify_certificate.py -\n\n"
             "Key resolution:\n"
             "  If signing_key_id is present and key registry is readable, that key is used.\n"
             "  Otherwise verifier falls back to --pubkey unless --require-registry is set.\n\n"
-            "Exit code 7 means --ledger chain or certificate-binding verification failed."
+            "Exit code 7 means ledger chain or certificate-binding verification failed.\n"
+            "Exit code 9 means binding was not checked because no ledger was found."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     ap.add_argument(
         "--ledger",
         help="Verify this ITGL ledger and bind its chain head and row count to the certificate.",
+    )
+    ap.add_argument(
+        "--no-ledger",
+        action="store_true",
+        help="Explicitly skip ledger discovery and certificate-to-ledger binding verification.",
     )
     ap.add_argument(
         "cert",
@@ -188,7 +196,18 @@ def _parse_args() -> argparse.Namespace:
         help="Fail when signing_key_id is present but key registry is missing/unreadable (disables --pubkey fallback).",
     )
     ap.add_argument("--quiet", action="store_true", help="Only exit code, no success message.")
-    return ap.parse_args()
+    args = ap.parse_args()
+    if args.ledger and args.no_ledger:
+        ap.error("--ledger and --no-ledger are mutually exclusive")
+    return args
+
+
+def _discover_ledger(cert_arg: str) -> Path | None:
+    """Return the canonical sibling ledger for a path-based certificate, if present."""
+    if cert_arg == "-":
+        return None
+    candidate = Path(cert_arg).parent / "proofs" / "itgl_ledger.jsonl"
+    return candidate if candidate.is_file() else None
 
 
 def _rebuild_payload(cert: Dict[str, Any]) -> bytes:
@@ -232,9 +251,19 @@ def main() -> int:
         print(f"ERROR: signature verification failed ({e})", file=sys.stderr)
         return 6
 
-    if args.ledger:
+    ledger_path = Path(args.ledger) if args.ledger else (None if args.no_ledger else _discover_ledger(args.cert))
+    if not args.no_ledger and ledger_path is None:
+        print(
+            "NOT CHECKED: certificate-to-ledger binding was not checked because no ledger "
+            "was supplied or found at <certificate-directory>/proofs/itgl_ledger.jsonl. "
+            "Use --ledger PATH for replay or --no-ledger to skip explicitly.",
+            file=sys.stderr,
+        )
+        return LEDGER_BINDING_NOT_CHECKED
+
+    if ledger_path is not None:
         try:
-            ledger_hash, row_count = load_and_verify_ledger(Path(args.ledger))
+            ledger_hash, row_count = load_and_verify_ledger(ledger_path)
         except (LedgerVerificationError, OSError, UnicodeError) as exc:
             print(f"ERROR: ledger binding verification failed: {exc}", file=sys.stderr)
             return LEDGER_BINDING_FAILURE
@@ -261,18 +290,17 @@ def main() -> int:
         )
 
     if not args.quiet:
-        if args.ledger:
+        if ledger_path is not None:
             print(
                 "OK: payload_hash and signature verify "
                 f"against {key_source}; ledger binding verifies signed itgl_final_hash="
-                f"{ledger_hash} equals the supplied ledger terminal hash, and signed "
+                f"{ledger_hash} equals the ledger terminal hash from {ledger_path}, and signed "
                 f"itgl_row_count={row_count} equals prompts_tested={prompts_tested}."
             )
         else:
             print(
-                "OK: payload_hash matches reconstructed signed payload and signature verifies "
-                f"against {key_source}; this proves payload integrity + signature validity only "
-                "(not policy correctness, model safety, or broader trust guarantees)."
+                "OK: payload_hash and signature verify "
+                f"against {key_source}; ledger binding was explicitly skipped with --no-ledger."
             )
     return 0
 

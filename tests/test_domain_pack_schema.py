@@ -107,6 +107,31 @@ def test_existing_domain_packs_load_native_types_and_evaluate_normally(pack_id):
     assert out["domain_pack"] == pack_id
 
 
+def test_legacy_strict_flag_is_not_required_or_behavioral():
+    candidate = _generic_pack()
+    candidate["flags"].pop("STRICT_ISC_ENFORCEMENT")
+    validated = core._validate_domain_pack_schema(candidate, "generic_safety")
+    assert "STRICT_ISC_ENFORCEMENT" not in validated["flags"]
+
+
+def test_legacy_strict_flag_value_does_not_change_gate_decision(monkeypatch):
+    outcomes = []
+    for value in (False, True):
+        candidate = _generic_pack()
+        candidate["flags"]["STRICT_ISC_ENFORCEMENT"] = value
+        monkeypatch.setattr(
+            core,
+            "load_domain_pack",
+            lambda pack_id=None, pack=candidate: core._validate_domain_pack_schema(
+                pack, pack_id or "generic_safety"
+            ),
+        )
+        outcomes.append(core.validate_sir({"isc": _isc()}))
+
+    assert outcomes[0]["status"] == outcomes[1]["status"] == "PASS"
+    assert outcomes[0]["reason"] == outcomes[1]["reason"]
+
+
 def test_mid_evaluation_exception_fails_closed_with_diagnostic_itgl(monkeypatch):
     def fail_jailbreak(*_args, **_kwargs):
         raise RuntimeError("injected evaluation failure")

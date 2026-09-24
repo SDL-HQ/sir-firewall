@@ -264,7 +264,7 @@ def test_contract_accepts_firewall_only_inconclusive_with_zero_provider_counters
     )
 
     assert completed.returncode == 0, completed.stderr
-    assert "OK: certificate satisfies evidence contract v1." in completed.stdout
+    assert "OK: certificate satisfies evidence contract v2." in completed.stdout
 
 
 def test_scenario_summary_preserves_reset_count_and_is_inconclusive(tmp_path, monkeypatch):

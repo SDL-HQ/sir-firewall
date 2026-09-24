@@ -79,7 +79,6 @@ def _dev_mode_stub() -> Dict[str, Any]:
             }
         },
         "flags": {
-            "STRICT_ISC_ENFORCEMENT": False,
             "CHECKSUM_ENFORCED": False,
             "CRYPTO_ENFORCED": False,
         },

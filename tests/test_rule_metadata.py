@@ -201,7 +201,6 @@ def test_reset_policy_restores_builtins():
     core._POLICY_HASH = "sha256:mutated"
     core.ALLOWED_TEMPLATES = {"mutated"}
     core.MAX_FRICTION_BY_TEMPLATE = {"mutated": 1}
-    core.STRICT_ISC_ENFORCEMENT = False
     core.CHECKSUM_ENFORCED = False
     core.CRYPTO_ENFORCED = True
     core._DANGER_WORDS = ["mutated"]
@@ -215,7 +214,6 @@ def test_reset_policy_restores_builtins():
     assert core._POLICY_HASH is None
     assert core.ALLOWED_TEMPLATES == set(core._BUILTIN_ALLOWED_TEMPLATES)
     assert core.MAX_FRICTION_BY_TEMPLATE == dict(core._BUILTIN_MAX_FRICTION_BY_TEMPLATE)
-    assert core.STRICT_ISC_ENFORCEMENT is core._BUILTIN_STRICT_ISC_ENFORCEMENT
     assert core.CHECKSUM_ENFORCED is core._BUILTIN_CHECKSUM_ENFORCED
     assert core.CRYPTO_ENFORCED is core._BUILTIN_CRYPTO_ENFORCED
     assert core._DANGER_WORDS == list(core._BUILTIN_DANGER_WORDS)

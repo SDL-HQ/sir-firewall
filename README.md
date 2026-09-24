@@ -40,12 +40,12 @@ Important semantics:
 
 Verification answers three separate questions:
 
-1. **Were these bytes signed by this key?** Run `verify_certificate.py`
-   without `--ledger`. This proves only signed-payload integrity and is the
+1. **Were these bytes signed by this key?** Run `verify_certificate.py --no-ledger`
+   to make the deliberate omission explicit. This proves only signed-payload integrity and is the
    only available verification for certificates earlier than SIR 2.3.4.
 2. **Do these signed bytes name this log?** For SIR 2.3.4 and later, run
-   `verify_certificate.py --ledger` with that run archive's own ledger. This is
-   the documented default.
+   `verify_certificate.py` on the archived `audit.json`; it discovers and verifies
+   that run archive's own ledger by default. `--ledger` remains available for replay.
 3. **Did this run mean what its result says?** That requires separate run
    accounting and semantic review; it is outside certificate/ledger binding.
 
@@ -58,22 +58,20 @@ git clone https://github.com/SDL-HQ/sir-firewall.git && cd sir-firewall && \
 python3 -m venv .venv && source .venv/bin/activate && \
 python3 -m pip install -U pip cryptography && \
 RUN_ID=<2.3.4-or-later-run-id> && \
-python3 tools/verify_certificate.py "docs/runs/${RUN_ID}/audit.json" \
-  --ledger "docs/runs/${RUN_ID}/proofs/itgl_ledger.jsonl"
+python3 tools/verify_certificate.py "docs/runs/${RUN_ID}/audit.json"
 ```
 
 Expected:
 
-`OK: payload_hash and signature verify against ...; ledger binding verifies signed itgl_final_hash=sha256:... equals the supplied ledger terminal hash, and signed itgl_row_count=N equals prompts_tested=N.`
+`OK: payload_hash and signature verify against ...; ledger binding verifies signed itgl_final_hash=sha256:... equals the ledger terminal hash, and signed itgl_row_count=N equals prompts_tested=N.`
 
 This is the standalone verifier path exercised by the regression suite: it
 installs `cryptography`, but does not install the `sir_firewall` package. An
 editable `pip install -e .` is needed for running SIR itself, not for these
 standalone verification tools.
 
-Without `--ledger`, certificate verification is only cryptographic integrity
-checking of signed payload bytes against relevant public-key material. With
-`--ledger`, it additionally checks that the signed hash and prompt count name
+With `--no-ledger`, certificate verification is only cryptographic integrity
+checking of signed payload bytes against relevant public-key material. By default for an archived certificate, it checks that the signed hash and prompt count name
 that chain-valid log. Neither form proves policy correctness, run-accounting
 correctness, model safety, deployment completeness, or organizational trust.
 An explicitly detached certificate can still exit 0 when its signature and the
@@ -82,14 +80,14 @@ supplied ledger agree, but the verifier prints a prominent
 ledger, not canonical run-location binding.
 
 For a pre-2.3.4 certificate, or when asking only the narrower signature
-question, omit `--ledger`:
+question, use `--no-ledger`:
 
 ```bash
-python3 tools/verify_certificate.py proofs/latest-audit.json
+python3 tools/verify_certificate.py proofs/latest-audit.json --no-ledger
 python3 tools/validate_certificate_contract.py proofs/latest-audit.json
 ```
 
-Evidence contract v1 applies to `sir_firewall_version` 2.2.0 and later. The
+Evidence contract v1 applies from `sir_firewall_version` 2.2.0 through 2.3.3; v2 applies from 2.3.4 and requires the ledger row count and detachment marker. The
 contract validator exits `8` with a `NOT APPLICABLE` message for older or
 unversioned certificates; this is distinct from exit `2`, which reports a
 genuine violation by an in-scope certificate.
@@ -128,8 +126,7 @@ environment.
 | `python3 tools/verify_certificate.py proofs/latest-audit.json` | `python3 tools/verify_certificate.py examples/verifier-negatives/tampered-leak-count.json` |
 | Prints `OK: payload_hash matches reconstructed signed payload and signature verifies ...` | Refuses with `ERROR: payload_hash mismatch` and exit code `3` |
 
-`verify_certificate.py` uses exit code `7` specifically when `--ledger` chain
-verification or the signed terminal-hash/row-count binding fails. Codes `2`–`6`
+`verify_certificate.py` uses exit code `7` when ledger chain or signed terminal-hash/row-count binding fails, and exit code `9` when binding was not checked because no ledger was found. `--no-ledger` is the only successful explicit skip. Codes `2`–`6`
 retain their existing certificate and signature failure meanings.
 
 The same deliberately invalid certificate demonstrates why consumers must run both tools:

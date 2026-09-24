@@ -32,9 +32,9 @@ Four registry suites currently have no same-named ISC policy pack: `account_reco
 Runtime ISC policy packs require a non-empty `pack_id`, a `templates` object
 covering every identifier in the gate's built-in allowed-template set with a
 positive native JSON integer `max_tokens`, and a `flags` object containing
-native JSON booleans for `STRICT_ISC_ENFORCEMENT`, `CHECKSUM_ENFORCED`, and
-`CRYPTO_ENFORCED`. `STRICT_ISC_ENFORCEMENT` is required for schema
-compatibility but is not currently consulted; ISC structural rejection is
+native JSON booleans for `CHECKSUM_ENFORCED` and `CRYPTO_ENFORCED`. The legacy
+`STRICT_ISC_ENFORCEMENT` key is accepted when present but is not required; ISC structural
+rejection is unconditional but is not currently consulted; ISC structural rejection is
 unconditional. The optional `structured_request_schema` is validated when a
 pack is used for structured ingress.
 

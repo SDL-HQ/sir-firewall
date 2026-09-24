@@ -33,3 +33,6 @@ jobs:
 
       - name: Run tests
         run: pytest -q
+
+      - name: Verify signed policy matches enforced policy
+        run: python tools/verify_policy.py

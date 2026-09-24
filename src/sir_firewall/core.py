@@ -34,11 +34,7 @@ STRUCTURED_TEMPLATE_ID = "EU-AI-Act-ISC-v1"
 STRUCTURED_SCHEMA_DECLARATION_KEY = "structured_request_schema"
 STRUCTURED_SCHEMA_ID = "account_recovery_challenge_request_v1"
 
-# Domain-pack schema compatibility contract. STRICT_ISC_ENFORCEMENT remains
-# required because it is part of every supported pack, but it is not currently
-# consulted: ISC structural rejection is unconditional.
 DOMAIN_PACK_REQUIRED_FLAGS = {
-    "STRICT_ISC_ENFORCEMENT",
     "CHECKSUM_ENFORCED",
     "CRYPTO_ENFORCED",
 }
@@ -78,11 +74,9 @@ _BUILTIN_MAX_FRICTION_BY_TEMPLATE: Dict[str, int] = {
 }
 MAX_FRICTION_BY_TEMPLATE: Dict[str, int] = dict(_BUILTIN_MAX_FRICTION_BY_TEMPLATE)
 
-_BUILTIN_STRICT_ISC_ENFORCEMENT = True
 _BUILTIN_CHECKSUM_ENFORCED = True
 _BUILTIN_CRYPTO_ENFORCED = False
 
-STRICT_ISC_ENFORCEMENT = _BUILTIN_STRICT_ISC_ENFORCEMENT
 CHECKSUM_ENFORCED = _BUILTIN_CHECKSUM_ENFORCED
 CRYPTO_ENFORCED = _BUILTIN_CRYPTO_ENFORCED
 
@@ -288,7 +282,7 @@ _POLICY_LOAD_LOCK = threading.Lock()
 
 def reset_policy() -> None:
     global _POLICY_LOADED, _POLICY_VERSION, _POLICY_HASH
-    global ALLOWED_TEMPLATES, MAX_FRICTION_BY_TEMPLATE, STRICT_ISC_ENFORCEMENT, CHECKSUM_ENFORCED, CRYPTO_ENFORCED
+    global ALLOWED_TEMPLATES, MAX_FRICTION_BY_TEMPLATE, CHECKSUM_ENFORCED, CRYPTO_ENFORCED
     global _DANGER_WORDS, _SAFETY_PHRASES, _HIGH_RISK_KEYWORDS
 
     with _POLICY_LOAD_LOCK:
@@ -297,7 +291,6 @@ def reset_policy() -> None:
         _POLICY_HASH = None
         ALLOWED_TEMPLATES = set(_BUILTIN_ALLOWED_TEMPLATES)
         MAX_FRICTION_BY_TEMPLATE = dict(_BUILTIN_MAX_FRICTION_BY_TEMPLATE)
-        STRICT_ISC_ENFORCEMENT = _BUILTIN_STRICT_ISC_ENFORCEMENT
         CHECKSUM_ENFORCED = _BUILTIN_CHECKSUM_ENFORCED
         CRYPTO_ENFORCED = _BUILTIN_CRYPTO_ENFORCED
         _DANGER_WORDS = list(_BUILTIN_DANGER_WORDS)
@@ -317,7 +310,7 @@ def _load_isc_policy() -> None:
     In dev mode (SIR_DEV_MODE=1), policy-load failure keeps built-ins in place.
     """
     global _POLICY_LOADED, _POLICY_VERSION, _POLICY_HASH
-    global ALLOWED_TEMPLATES, MAX_FRICTION_BY_TEMPLATE, STRICT_ISC_ENFORCEMENT, CHECKSUM_ENFORCED, CRYPTO_ENFORCED
+    global ALLOWED_TEMPLATES, MAX_FRICTION_BY_TEMPLATE, CHECKSUM_ENFORCED, CRYPTO_ENFORCED
     global _DANGER_WORDS, _SAFETY_PHRASES, _HIGH_RISK_KEYWORDS
 
     if _POLICY_LOADED:
@@ -368,8 +361,6 @@ def _load_isc_policy() -> None:
 
             flags = policy.get("flags", {})
             if isinstance(flags, dict):
-                if "STRICT_ISC_ENFORCEMENT" in flags:
-                    STRICT_ISC_ENFORCEMENT = bool(flags["STRICT_ISC_ENFORCEMENT"])
                 if "CHECKSUM_ENFORCED" in flags:
                     CHECKSUM_ENFORCED = bool(flags["CHECKSUM_ENFORCED"])
                 if "CRYPTO_ENFORCED" in flags:
@@ -415,9 +406,7 @@ def _validate_domain_pack_schema(data: Any, effective_pack: str) -> Dict[str, An
     """Enforce the minimum schema shared by every supported domain pack.
 
     Template identifiers come from ``_BUILTIN_ALLOWED_TEMPLATES`` rather than a
-    second duplicated list. ``STRICT_ISC_ENFORCEMENT`` is schema-required for
-    compatibility but is not a live control; ISC structural rejection is
-    unconditional.
+    second duplicated list. ISC structural rejection is unconditional.
     """
     if not isinstance(data, dict):
         raise DomainPackValidationError("domain pack root must be a JSON object")
@@ -1659,8 +1648,6 @@ def _validate_sir_impl(
         )
 
     flags = domain_cfg["flags"]
-    # STRICT_ISC_ENFORCEMENT is schema-required for compatibility but is not
-    # consulted here; ISC structure rejection is unconditional.
     checksum_enforced = flags["CHECKSUM_ENFORCED"]
     crypto_enforced = flags["CRYPTO_ENFORCED"]
 

@@ -125,7 +125,7 @@ Review whether invisible characters should be removed without introducing separa
 | Structured schema extensibility | Known constraint | Adding new structured schema types requires multiple explicit change points. Intentional for v1. |
 | GitHub dependent dropdowns | Known constraint | GitHub Actions does not support dynamic dependent dropdowns. Invalid provider and model combinations fail closed in validation. |
 | Deterministic rule scope | Known constraint | SIR evaluates deterministic rules over declared ingress content. It does not infer hidden downstream agent state. |
-| strict_isc flag | Known constraint | STRICT_ISC_ENFORCEMENT is retained for policy and pack schema compatibility. ISC structure rejection is unconditional and no longer gated by this flag. |
+| strict_isc flag | Resolved in this release | `STRICT_ISC_ENFORCEMENT` was removed from required pack flags and generated certificate flags because ISC structure rejection is unconditional. Historical signed certificates and packs remain unchanged. |
 
 ## Future pack candidates
 

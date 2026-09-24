@@ -17,7 +17,8 @@ def _run(cert: Path):
 def test_pre_floor_certificate_is_reported_not_applicable():
     cert = next((ROOT / "proofs/archive").glob("audit-certificate-*.json"))
     payload = json.loads(cert.read_text(encoding="utf-8"))
-    assert payload.get("sir_firewall_version") is None or payload.get("sir_firewall_version") < "2.2.0"
+    version = payload.get("sir_firewall_version")
+    assert not isinstance(version, str) or not version[:1].isdigit() or tuple(map(int, version.split("."))) < (2, 2, 0)
     result = _run(cert)
     assert result.returncode == 8
     assert "NOT APPLICABLE" in result.stderr
@@ -47,3 +48,30 @@ def test_contract_validator_reports_explicit_detachment(tmp_path):
     result = _run(certificate)
     assert result.returncode == 0
     assert "detached_ledger=true" in result.stderr
+
+
+def test_v2_is_selected_for_234_and_requires_binding_fields(tmp_path):
+    source = next(
+        path for path in (ROOT / "proofs/runs").glob("*/audit.json")
+        if json.loads(path.read_text(encoding="utf-8")).get("sir_firewall_version") == "2.3.4"
+    )
+    result = _run(source)
+    assert result.returncode == 0
+    assert result.stdout == "OK: certificate satisfies evidence contract v2.\n"
+
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    payload.pop("itgl_row_count")
+    certificate = tmp_path / "missing-row-count.json"
+    certificate.write_text(json.dumps(payload), encoding="utf-8")
+    result = _run(certificate)
+    assert result.returncode == 2
+    assert "missing required field: itgl_row_count" in result.stderr
+
+
+def test_all_published_234_certificates_satisfy_v2():
+    certificates = [
+        path for path in (ROOT / "proofs/runs").glob("*/audit.json")
+        if json.loads(path.read_text(encoding="utf-8")).get("sir_firewall_version") == "2.3.4"
+    ]
+    assert certificates
+    assert all(_run(path).returncode == 0 for path in certificates)

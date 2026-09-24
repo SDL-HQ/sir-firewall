@@ -179,6 +179,53 @@ def test_certificate_verifier_ledger_binding_exit_code(tmp_path, monkeypatch, ca
     assert "terminal hash mismatch" in mismatch.stderr
 
 
+def test_certificate_verifier_discovers_archived_sibling_ledger(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    key = _key(monkeypatch)
+    ledger = tmp_path / "docs/runs/discovery/proofs/itgl_ledger.jsonl"
+    _ledger(ledger, "c" * 64)
+    _setup_run(tmp_path, canonical_ledger_path("discovery", tmp_path / "proofs/runs"), "discovery")
+    generator = _load_generator("generator_discovery")
+    cert_path, certificate = _generated_certificate(
+        generator, capsys, str(ledger), allow_detached_ledger=True
+    )
+    archive_cert = ledger.parent.parent / "audit.json"
+    archive_cert.write_text(json.dumps(certificate), encoding="utf-8")
+    pubkey = tmp_path / "public.pem"
+    pubkey.write_bytes(key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo))
+    base = [sys.executable, str(ROOT / "tools/verify_certificate.py"), str(archive_cert),
+            "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json")]
+    env = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
+    result = subprocess.run(base, cwd=ROOT, env=env, capture_output=True, text=True)
+    assert result.returncode == 0
+    assert str(ledger) in result.stdout
+
+
+def test_certificate_verifier_distinguishes_missing_binding_from_explicit_skip(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    key = _key(monkeypatch)
+    ledger = canonical_ledger_path("missing-near-cert", tmp_path / "proofs/runs")
+    _ledger(ledger, "c" * 64)
+    _setup_run(tmp_path, ledger, "missing-near-cert")
+    generator = _load_generator("generator_missing_near_cert")
+    cert_path, _ = _generated_certificate(generator, capsys)
+    pubkey = tmp_path / "public.pem"
+    pubkey.write_bytes(key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo))
+    base = [sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
+            "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json")]
+    env = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
+    unchecked = subprocess.run(base, cwd=ROOT, env=env, capture_output=True, text=True)
+    assert unchecked.returncode == 9
+    assert "NOT CHECKED" in unchecked.stderr
+    skipped = subprocess.run(base + ["--no-ledger"], cwd=ROOT, env=env, capture_output=True, text=True)
+    assert skipped.returncode == 0
+    assert "explicitly skipped" in skipped.stdout
+
+
 def test_generation_rejects_ledger_path_for_different_run_id(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _key(monkeypatch)
