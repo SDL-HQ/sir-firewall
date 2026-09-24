@@ -79,7 +79,7 @@ def test_current_version_surfaces_match_runtime_authority():
         "docs/evaluator-technical-explainer.md": Counter({authority: 2}),
         "docs/minimal-pilot-runbook.md": Counter({authority: 3}),
         "docs/evidence-binding-correction.md": Counter(
-            {authority: 5, v_220: 4, v_221: 1, v_230: 1, v_233: 1}
+            {authority: 6, v_220: 5, v_221: 1, v_230: 1, v_233: 1}
         ),
         f"docs/release-notes-{v_221}.md": Counter({v_221: 2, v_220: 1}),
         "docs/release-notes-2.2.md": Counter({v_220: 1}),
@@ -87,7 +87,7 @@ def test_current_version_surfaces_match_runtime_authority():
         f"docs/release-notes-{v_231}.md": Counter({v_231: 2, v_230: 1}),
         f"docs/release-notes-{v_232}.md": Counter({v_232: 2}),
         f"docs/release-notes-{v_233}.md": Counter({v_233: 2, v_230: 3, v_231: 1}),
-        f"docs/release-notes-{authority}.md": Counter({authority: 2, v_220: 1}),
+        f"docs/release-notes-{authority}.md": Counter({authority: 3, v_220: 1}),
         "docs/failure-modes.md": Counter({v_230: 3, v_231: 3, authority: 2}),
         "docs/rule-coverage.md": Counter({authority: 1}),
         "docs/threat-model.md": Counter({authority: 1}),

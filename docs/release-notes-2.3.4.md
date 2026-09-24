@@ -20,7 +20,8 @@ published historical certificates, ledgers, and index rows are not rewritten.
 See [Evidence-binding correction](evidence-binding-correction.md) for the defect,
 measured published scope, and archival interpretation.
 
-Of the 49 archived certificates at or above the evidence-contract 2.2.0 floor,
-all 49 pass contract-shape validation, while 29 carry a ledger-hash value shared
-with another in-scope run. These are different properties: contract validity
-does not establish that a certificate names its own ledger.
+At the 2.3.4 release, of the 49 archived certificates at or above the
+evidence-contract 2.2.0 floor, all 49 passed contract-shape validation, while 29
+carried a ledger-hash value shared with another in-scope run. These are
+different properties: contract validity does not establish that a certificate
+names its own ledger.
