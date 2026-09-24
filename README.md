@@ -157,7 +157,7 @@ python3 -m pip install -e .
 python3 -m pip install -e ".[live]"
 
 # verify-only (published certificate, no local run)
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py - --no-ledger
 ```
 
 Operator path (recommended):

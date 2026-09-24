@@ -101,7 +101,7 @@ jobs:
           set -euo pipefail
           test -f "$AUDIT_JSON"
           sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json "$AUDIT_JSON"
-          cat "$AUDIT_JSON" | sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json -
+          cat "$AUDIT_JSON" | sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json --no-ledger -
 
       - name: Run scenario mode (scenario_injection_chain)
         run: |
@@ -166,7 +166,7 @@ jobs:
           set -euo pipefail
           test -f "$AUDIT_JSON"
           sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json "$AUDIT_JSON"
-          cat "$AUDIT_JSON" | sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json -
+          cat "$AUDIT_JSON" | sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json --no-ledger -
 
       - name: Create archive and verify archive via CLI
         env:

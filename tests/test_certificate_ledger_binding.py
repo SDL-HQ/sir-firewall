@@ -191,6 +191,8 @@ def test_certificate_verifier_discovers_archived_sibling_ledger(tmp_path, monkey
     )
     archive_cert = ledger.parent.parent / "audit.json"
     archive_cert.write_text(json.dumps(certificate), encoding="utf-8")
+    # When both layouts exist, the published archive layout must win.
+    _ledger(archive_cert.parent / "itgl_ledger.jsonl", "d" * 64)
     pubkey = tmp_path / "public.pem"
     pubkey.write_bytes(key.public_key().public_bytes(
         serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo))
@@ -200,6 +202,29 @@ def test_certificate_verifier_discovers_archived_sibling_ledger(tmp_path, monkey
     result = subprocess.run(base, cwd=ROOT, env=env, capture_output=True, text=True)
     assert result.returncode == 0
     assert str(ledger) in result.stdout
+
+
+def test_certificate_verifier_discovers_working_tree_sibling_ledger(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    key = _key(monkeypatch)
+    canonical = canonical_ledger_path("working-tree", tmp_path / "proofs/runs")
+    _ledger(canonical, "c" * 64)
+    _setup_run(tmp_path, canonical, "working-tree")
+    generator = _load_generator("generator_working_tree_discovery")
+    cert_path, _ = _generated_certificate(generator, capsys)
+    sibling = cert_path.parent / "itgl_ledger.jsonl"
+    sibling.write_bytes(canonical.read_bytes())
+    pubkey = tmp_path / "public.pem"
+    pubkey.write_bytes(key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo))
+    result = subprocess.run([
+        sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
+        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+    ], cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode == 0
+    assert str(sibling) in result.stdout
 
 
 def test_certificate_verifier_distinguishes_missing_binding_from_explicit_skip(

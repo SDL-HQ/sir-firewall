@@ -203,11 +203,15 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _discover_ledger(cert_arg: str) -> Path | None:
-    """Return the canonical sibling ledger for a path-based certificate, if present."""
+    """Return the first archive-layout or working-tree ledger found for a certificate."""
     if cert_arg == "-":
         return None
-    candidate = Path(cert_arg).parent / "proofs" / "itgl_ledger.jsonl"
-    return candidate if candidate.is_file() else None
+    cert_dir = Path(cert_arg).parent
+    candidates = (
+        cert_dir / "proofs" / "itgl_ledger.jsonl",
+        cert_dir / "itgl_ledger.jsonl",
+    )
+    return next((candidate for candidate in candidates if candidate.is_file()), None)
 
 
 def _rebuild_payload(cert: Dict[str, Any]) -> bytes:
@@ -255,7 +259,7 @@ def main() -> int:
     if not args.no_ledger and ledger_path is None:
         print(
             "NOT CHECKED: certificate-to-ledger binding was not checked because no ledger "
-            "was supplied or found at <certificate-directory>/proofs/itgl_ledger.jsonl. "
+            "was supplied or found in either supported certificate-relative location. "
             "Use --ledger PATH for replay or --no-ledger to skip explicitly.",
             file=sys.stderr,
         )

@@ -176,7 +176,7 @@ Expected successful outputs include valid certificate signature/payload hash and
 For published certificate verification from upstream:
 
 ```bash
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py - --no-ledger
 ```
 
 ---

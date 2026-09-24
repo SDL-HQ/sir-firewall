@@ -259,7 +259,7 @@ def _publish_latest_live(cert: Dict[str, Any], proofs_dir: Path = Path("proofs")
         audit_label="latest-live-audit",
         verify_command=(
             "curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/"
-            "proofs/latest-live-audit.json | python tools/verify_certificate.py -"
+            "proofs/latest-live-audit.json | python tools/verify_certificate.py - --no-ledger"
         ),
         pointer_description=(
             'This is the latest attributable live certificate with at least one successful '
@@ -373,9 +373,9 @@ def _select_latest_output_targets(*, publishable_latest: bool, result: str) -> t
     audit_label = "latest-audit" if publish_latest_pass else "local-audit"
     verify_command = (
         "curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | "
-        "python tools/verify_certificate.py -"
+        "python tools/verify_certificate.py - --no-ledger"
         if publish_latest_pass
-        else "cat proofs/local-audit.json | python tools/verify_certificate.py -"
+        else "cat proofs/local-audit.json | python tools/verify_certificate.py - --no-ledger"
     )
     return json_out, html_out, target_json_name, audit_label, verify_command
 
