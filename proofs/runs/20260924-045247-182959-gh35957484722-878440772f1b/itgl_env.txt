@@ -1,0 +1,2 @@
+ITGL_FINAL_HASH=sha256:cbf6cfd453236122f4ce7bd7044358dc1e1fe172ba8a2ff64a53be4ee03816aa
+ITGL ledger verification OK: 150 entries, final_ledger_hash=cbf6cfd453236122f4ce7bd7044358dc1e1fe172ba8a2ff64a53be4ee03816aa
