@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://sdl.internal/sir/spec/evidence_contract.v2.json",
-  "title": "SIR Evidence Contract v2",
+  "$id": "https://sdl.internal/sir/spec/evidence_contract.v3.json",
+  "title": "SIR Evidence Contract v3",
   "type": "object",
   "additionalProperties": true,
   "required": [
@@ -28,6 +28,7 @@
     "provider_call_successes",
     "model_calls_made",
     "flags",
+    "enforced_policy_matches_signed_policy",
     "payload_hash",
     "signature"
   ],
@@ -166,8 +167,8 @@
   },
   "x_contract_rules": {
     "applicability": {
-      "minimum_sir_firewall_version": "2.3.4",
-      "note": "Non-normative applicability metadata: evidence contract v2 governs certificates emitted by SIR 2.3.4 and later; earlier certificates remain governed by v1."
+      "minimum_sir_firewall_version": "2.3.5",
+      "note": "Non-normative applicability metadata: evidence contract v3 governs certificates emitted by SIR 2.3.5 and later; earlier certificates remain governed by their version-applicable contract."
     },
     "legacy_aliases": {
       "canonical": "trust_fingerprint",

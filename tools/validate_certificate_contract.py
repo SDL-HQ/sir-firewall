@@ -13,6 +13,7 @@ from typing import Any, Dict, List
 DEFAULT_CERT = Path("proofs/latest-audit.json")
 CONTRACT_V1 = Path("spec/evidence_contract.v1.json")
 CONTRACT_V2 = Path("spec/evidence_contract.v2.json")
+CONTRACT_V3 = Path("spec/evidence_contract.v3.json")
 DEFAULT_KEY_SCHEMA = Path("spec/pubkeys/key_registry.v1.schema.json")
 DEFAULT_KEY_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
 BELOW_APPLICABILITY_FLOOR = 8
@@ -217,9 +218,14 @@ def main() -> int:
     try:
         cert = _load_json(Path(args.cert), "certificate")
         certificate_version = _version_tuple(cert.get("sir_firewall_version"))
-        contract_path = Path(args.contract) if args.contract else (
-            CONTRACT_V2 if certificate_version is not None and certificate_version >= (2, 3, 4) else CONTRACT_V1
-        )
+        if args.contract:
+            contract_path = Path(args.contract)
+        elif certificate_version is not None and certificate_version >= (2, 3, 5):
+            contract_path = CONTRACT_V3
+        elif certificate_version is not None and certificate_version >= (2, 3, 4):
+            contract_path = CONTRACT_V2
+        else:
+            contract_path = CONTRACT_V1
         contract = _load_json(contract_path, "evidence contract")
     except RuntimeError as e:
         print(f"ERROR: {e}", file=sys.stderr)

@@ -25,6 +25,7 @@ EXPLICIT_FILES: tuple[str, ...] = (
     "proofs/runs/index.html",
     "spec/evidence_contract.v1.json",
     "spec/evidence_contract.v2.json",
+    "spec/evidence_contract.v3.json",
     "tools/verify_certificate.py",
     "tools/verify_archive_receipt.py",
     "tools/verify_itgl.py",

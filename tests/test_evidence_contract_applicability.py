@@ -56,7 +56,6 @@ def test_v2_is_selected_for_234_and_requires_binding_fields(tmp_path):
         if json.loads(path.read_text(encoding="utf-8")).get("sir_firewall_version") == "2.3.4"
     )
     payload = json.loads(source.read_text(encoding="utf-8"))
-    payload["enforced_policy_matches_signed_policy"] = True
     complete = tmp_path / "complete-v2.json"
     complete.write_text(json.dumps(payload), encoding="utf-8")
     result = _run(complete)
@@ -70,23 +69,54 @@ def test_v2_is_selected_for_234_and_requires_binding_fields(tmp_path):
     assert result.returncode == 2
     assert "missing required field: itgl_row_count" in result.stderr
 
-    payload = json.loads(source.read_text(encoding="utf-8"))
-    certificate = tmp_path / "missing-policy-correspondence.json"
-    certificate.write_text(json.dumps(payload), encoding="utf-8")
-    result = _run(certificate)
-    assert result.returncode == 2
-    assert "missing required field: enforced_policy_matches_signed_policy" in result.stderr
 
-
-def test_published_234_certificates_precede_required_policy_correspondence():
+def test_published_234_certificates_satisfy_v2():
     certificates = [
         path for path in (ROOT / "proofs/runs").glob("*/audit.json")
         if json.loads(path.read_text(encoding="utf-8")).get("sir_firewall_version") == "2.3.4"
     ]
     assert certificates
-    results = [_run(path) for path in certificates]
-    assert all(result.returncode == 2 for result in results)
-    assert all(
-        "missing required field: enforced_policy_matches_signed_policy" in result.stderr
-        for result in results
+    assert all(_run(path).returncode == 0 for path in certificates)
+
+
+def test_v3_is_selected_for_235_and_requires_policy_correspondence(tmp_path):
+    source = next(
+        path for path in (ROOT / "proofs/runs").glob("*/audit.json")
+        if json.loads(path.read_text(encoding="utf-8")).get("sir_firewall_version") == "2.3.4"
     )
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    payload["sir_firewall_version"] = "2.3.5"
+    payload.pop("enforced_policy_matches_signed_policy", None)
+    certificate = tmp_path / "missing-policy-correspondence.json"
+    certificate.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = _run(certificate)
+    assert result.returncode == 2
+    assert "missing required field: enforced_policy_matches_signed_policy" in result.stderr
+
+    payload["enforced_policy_matches_signed_policy"] = True
+    certificate.write_text(json.dumps(payload), encoding="utf-8")
+    result = _run(certificate)
+    assert result.returncode == 0
+    assert result.stdout == "OK: certificate satisfies evidence contract v3.\n"
+
+
+def test_every_published_run_uses_its_applicable_contract():
+    certificates = sorted((ROOT / "docs/runs").glob("*/audit.json"))
+    assert certificates
+    for certificate in certificates:
+        version = json.loads(certificate.read_text(encoding="utf-8")).get(
+            "sir_firewall_version"
+        )
+        result = _run(certificate)
+        parsed = (
+            tuple(int(part) for part in version.split("."))
+            if isinstance(version, str) and version.count(".") == 2 and version[0].isdigit()
+            else None
+        )
+        expected = 0 if parsed is not None and parsed >= (2, 2, 0) else 8
+        assert result.returncode == expected, (
+            certificate,
+            result.stdout,
+            result.stderr,
+        )

@@ -9,7 +9,7 @@ It separates:
 - what current durability does and does not guarantee
 - what hardening options are planned but not yet guaranteed by repo-only retention
 
-The version-selected machine-readable certificate contracts are `spec/evidence_contract.v1.json` (2.2.0–2.3.3) and `spec/evidence_contract.v2.json` (2.3.4+).
+The version-selected machine-readable certificate contracts are `spec/evidence_contract.v1.json` (2.2.0–2.3.3), `spec/evidence_contract.v2.json` (2.3.4), and `spec/evidence_contract.v3.json` (2.3.5+).
 
 ---
 

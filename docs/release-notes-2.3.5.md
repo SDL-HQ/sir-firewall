@@ -13,14 +13,12 @@ an explicit path or replay, and `--no-ledger` is the explicit opt-out. If no
 ledger can be found and no opt-out was given, exit code 9 reports that binding
 was not checked; exit code 7 remains the binding-failure result.
 
-Evidence contract v2 applies from `sir_firewall_version` 2.3.4 and requires
-`itgl_row_count` and `detached_ledger`. Contract v1 remains unchanged and governs
-2.2.0 through 2.3.3. Certificates below 2.2.0 continue to return the distinct
-not-applicable exit code 8 rather than failing validation. Published 2.3.4
-certificates contain both ledger-binding fields but predate the new required
-`enforced_policy_matches_signed_policy` assertion. Their signatures and ledger
-binding remain independently verifiable, but strict v2 contract validation
-reports the missing assertion rather than inferring it retroactively.
+Evidence contract v2 applies to `sir_firewall_version` 2.3.4 and requires
+`itgl_row_count` and `detached_ledger`. Contract v3 applies from 2.3.5 and also
+requires `enforced_policy_matches_signed_policy`. Contract v1 remains unchanged
+and governs 2.2.0 through 2.3.3. Certificates below 2.2.0 continue to return the
+distinct not-applicable exit code 8 rather than failing validation. Published
+2.3.4 certificates therefore remain compliant with their applicable contract.
 
 The published historical census remains frozen: 29 in-scope certificates carry
 an `itgl_final_hash` shared with another in-scope run, and 295 certificates fall
@@ -61,18 +59,32 @@ verifier implementations.
 
 ## Published archive verification result
 
-The release was measured across all 200 runs in `docs/runs/index.json`, using
-the default certificate-verifier invocation with `--require-registry`:
+The release was measured across all 200 runs in `docs/runs/index.json` with
+`--require-registry`.
 
-| Result | 2.3.4 verifier | 2.3.5 verifier |
-|---|---:|---:|
-| OK | 197 | 14 |
-| Binding failure (exit 7) | 0 | 183 |
-| Signature failure (exit 5) | 3 | 3 |
+Default invocation:
 
-The 183 binding failures comprise 105 terminal-hash mismatches and 78
-certificates with no signed row-count assertion. The version boundary is exact:
-all 14 certificates emitted by SIR 2.3.4 pass binding verification, while all
-186 certificates emitted earlier fail. Certificates predating 2.3.4 are not
-bindable by construction. Exit 7 for such a historical run is therefore the
-expected fail-closed result, not a regression in the archived evidence.
+| Result | Count |
+|---|---:|
+| OK | 14 |
+| Binding not checked (exit 9) | 183 |
+| Signature failure (exit 5) | 3 |
+
+With the ledger supplied explicitly as
+`--ledger docs/runs/<id>/proofs/itgl_ledger.jsonl`:
+
+| Result | Count |
+|---|---:|
+| OK | 14 |
+| Terminal-hash mismatch (exit 7) | 105 |
+| No signed `itgl_row_count` (exit 7) | 78 |
+| Signature failure (exit 5) | 3 |
+
+No certificate emitted before 2.3.4 carries `run_id`, and `run_summary.json`
+does not supply a matching one, so binding cannot be established from the
+artefacts alone. Exit 9 is the correct fail-closed default for them. The hash
+mismatches are observable only when the caller supplies the connection that the
+certificate itself fails to assert.
+
+The version boundary is exact: all 14 certificates emitted by SIR 2.3.4 bind;
+all 186 earlier certificates do not.

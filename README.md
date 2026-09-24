@@ -87,7 +87,7 @@ python3 tools/verify_certificate.py proofs/latest-audit.json --no-ledger
 python3 tools/validate_certificate_contract.py proofs/latest-audit.json
 ```
 
-Evidence contract v1 applies from `sir_firewall_version` 2.2.0 through 2.3.3; v2 applies from 2.3.4 and requires the ledger row count and detachment marker. The
+Evidence contract v1 applies from `sir_firewall_version` 2.2.0 through 2.3.3; v2 applies to 2.3.4 and requires the ledger row count and detachment marker; v3 applies from 2.3.5 and additionally requires signed policy correspondence. The
 contract validator exits `8` with a `NOT APPLICABLE` message for older or
 unversioned certificates; this is distinct from exit `2`, which reports a
 genuine violation by an in-scope certificate.
