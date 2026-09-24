@@ -86,7 +86,7 @@
   <div class="box">
     <h2>Canonical verification path</h2>
     <div class="k">Verify the signed JSON from a local checkout of this repo:</div>
-    <div style="margin:8px 0 10px;"><code class="verify mono" id="verify-cmd">curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python tools/verify_certificate.py -</code></div>
+    <div style="margin:8px 0 10px;"><code class="verify mono" id="verify-cmd">curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python tools/verify_certificate.py - --no-ledger</code></div>
     <div><a href="latest-audit.json" id="json-link">Download signed JSON</a></div>
     <div style="margin-top:8px;"><a href="latest-live-audit.html">View latest live/model-in-loop audit</a></div>
   </div>

@@ -138,6 +138,10 @@ def _cmd_verify_cert(ns: argparse.Namespace) -> int:
         args.extend(["--pubkey", ns.key])
     if ns.key_registry:
         args.extend(["--key-registry", ns.key_registry])
+    if ns.ledger:
+        args.extend(["--ledger", ns.ledger])
+    if ns.no_ledger:
+        args.append("--no-ledger")
     return _run_py("tools/verify_certificate.py", args)
 
 
@@ -273,6 +277,13 @@ def build_parser() -> argparse.ArgumentParser:
     vcert.add_argument("path")
     vcert.add_argument("--key", default=None, help="Path to PEM public key for signature verification.")
     vcert.add_argument("--key-registry", default=None, help="Path to key registry JSON for signing_key_id lookup.")
+    ledger_mode = vcert.add_mutually_exclusive_group()
+    ledger_mode.add_argument("--ledger", default=None, help="Explicit ITGL ledger path for binding or replay.")
+    ledger_mode.add_argument(
+        "--no-ledger",
+        action="store_true",
+        help="Explicitly skip certificate-to-ledger binding verification.",
+    )
     vcert.set_defaults(fn=_cmd_verify_cert)
 
     varch = verify_sub.add_parser("archive")

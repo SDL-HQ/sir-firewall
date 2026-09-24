@@ -179,6 +179,95 @@ def test_certificate_verifier_ledger_binding_exit_code(tmp_path, monkeypatch, ca
     assert "terminal hash mismatch" in mismatch.stderr
 
 
+def test_certificate_verifier_discovers_archived_sibling_ledger(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    key = _key(monkeypatch)
+    ledger = tmp_path / "docs/runs/discovery/proofs/itgl_ledger.jsonl"
+    _ledger(ledger, "c" * 64)
+    _setup_run(tmp_path, canonical_ledger_path("discovery", tmp_path / "proofs/runs"), "discovery")
+    generator = _load_generator("generator_discovery")
+    cert_path, certificate = _generated_certificate(
+        generator, capsys, str(ledger), allow_detached_ledger=True
+    )
+    archive_cert = ledger.parent.parent / "audit.json"
+    archive_cert.write_text(json.dumps(certificate), encoding="utf-8")
+    # When both layouts exist, the published archive layout must win.
+    _ledger(archive_cert.parent / "itgl_ledger.jsonl", "d" * 64)
+    pubkey = tmp_path / "public.pem"
+    pubkey.write_bytes(key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo))
+    base = [sys.executable, str(ROOT / "tools/verify_certificate.py"), str(archive_cert),
+            "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json")]
+    env = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
+    result = subprocess.run(base, cwd=ROOT, env=env, capture_output=True, text=True)
+    assert result.returncode == 0
+    assert str(ledger) in result.stdout
+
+
+def test_certificate_verifier_refuses_unrelated_adjacent_ledger(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    key = _key(monkeypatch)
+    canonical = canonical_ledger_path("working-tree", tmp_path / "proofs/runs")
+    _ledger(canonical, "c" * 64)
+    _setup_run(tmp_path, canonical, "working-tree")
+    generator = _load_generator("generator_working_tree_discovery")
+    cert_path, _ = _generated_certificate(generator, capsys)
+    sibling = cert_path.parent / "itgl_ledger.jsonl"
+    sibling.write_bytes(canonical.read_bytes())
+    pubkey = tmp_path / "public.pem"
+    pubkey.write_bytes(key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo))
+    result = subprocess.run([
+        sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
+        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+    ], cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode == 9
+    assert "signed run_id='working-tree'" in result.stderr
+    assert "Pass --ledger PATH explicitly" in result.stderr
+    assert "terminal hash mismatch" not in result.stderr
+
+
+@pytest.mark.parametrize("certificate", ["latest-audit.json", "latest-live-audit.json"])
+def test_root_proof_pointers_discover_ledger_from_signed_run_id(certificate):
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "tools/verify_certificate.py"), f"proofs/{certificate}"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads((ROOT / "proofs" / certificate).read_text(encoding="utf-8"))
+    expected = canonical_ledger_path(payload["run_id"])
+    assert f"ledger terminal hash from {expected}" in result.stdout
+
+
+def test_certificate_verifier_distinguishes_missing_binding_from_explicit_skip(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.chdir(tmp_path)
+    key = _key(monkeypatch)
+    ledger = canonical_ledger_path("missing-near-cert", tmp_path / "proofs/runs")
+    _ledger(ledger, "c" * 64)
+    _setup_run(tmp_path, ledger, "missing-near-cert")
+    generator = _load_generator("generator_missing_near_cert")
+    cert_path, _ = _generated_certificate(generator, capsys)
+    pubkey = tmp_path / "public.pem"
+    pubkey.write_bytes(key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo))
+    base = [sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
+            "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json")]
+    env = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
+    unchecked = subprocess.run(base, cwd=ROOT, env=env, capture_output=True, text=True)
+    assert unchecked.returncode == 9
+    assert "NOT CHECKED" in unchecked.stderr
+    skipped = subprocess.run(base + ["--no-ledger"], cwd=ROOT, env=env, capture_output=True, text=True)
+    assert skipped.returncode == 0
+    assert "certificate integrity and signature are valid" in skipped.stdout
+    assert "NOT VERIFIED" in skipped.stderr
+
+
 def test_generation_rejects_ledger_path_for_different_run_id(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _key(monkeypatch)
@@ -268,6 +357,96 @@ def test_verifier_rejects_signed_itgl_row_count_disagreement(tmp_path, monkeypat
     ], cwd=ROOT, capture_output=True, text=True)
     assert result.returncode == 7
     assert "signed itgl_row_count: 2" in result.stderr
+
+
+def test_verifier_reports_absent_signed_itgl_row_count(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    key = _key(monkeypatch)
+    ledger = canonical_ledger_path("binding-run", tmp_path / "proofs/runs")
+    _ledger(ledger, "c" * 64)
+    _setup_run(tmp_path, ledger)
+    generator = _load_generator("generator_absent_signed_row_count")
+    cert_path, certificate = _generated_certificate(generator, capsys)
+    certificate.pop("itgl_row_count")
+    _resign_certificate(cert_path, certificate, key)
+    pubkey = tmp_path / "public.pem"
+    pubkey.write_bytes(key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    ))
+    result = subprocess.run([
+        sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
+        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--ledger", str(ledger),
+    ], cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode == 7
+    assert result.stderr.endswith(
+        "ERROR: ledger binding verification failed: certificate carries no itgl_row_count,\n"
+        "so the signed row count cannot be bound to this ledger (ledger rows: 1,\n"
+        "prompts_tested: 1). Certificates emitted before SIR 2.3.4 do not carry this field.\n"
+    )
+
+
+def test_verifier_accepts_correct_signed_itgl_row_count(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    key = _key(monkeypatch)
+    ledger = canonical_ledger_path("binding-run", tmp_path / "proofs/runs")
+    _ledger(ledger, "c" * 64)
+    _setup_run(tmp_path, ledger)
+    generator = _load_generator("generator_correct_signed_row_count")
+    cert_path, _ = _generated_certificate(generator, capsys)
+    pubkey = tmp_path / "public.pem"
+    pubkey.write_bytes(key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    ))
+    result = subprocess.run([
+        sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
+        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--ledger", str(ledger),
+    ], cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode == 0
+    assert "signed itgl_row_count=1 equals prompts_tested=1" in result.stdout
+
+
+def test_quiet_no_ledger_still_reports_binding_skip(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    key = _key(monkeypatch)
+    ledger = canonical_ledger_path("binding-run", tmp_path / "proofs/runs")
+    _ledger(ledger, "c" * 64)
+    _setup_run(tmp_path, ledger)
+    generator = _load_generator("generator_quiet_skip")
+    cert_path, _ = _generated_certificate(generator, capsys)
+    pubkey = tmp_path / "public.pem"
+    pubkey.write_bytes(key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    ))
+    result = subprocess.run([
+        sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
+        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--no-ledger", "--quiet",
+    ], cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr.endswith(
+        "NOT VERIFIED: certificate-to-ledger binding was skipped with --no-ledger.\n"
+    )
+
+
+def test_generation_refuses_when_signed_policy_does_not_match(
+    tmp_path, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+    _key(monkeypatch)
+    ledger = canonical_ledger_path("binding-run", tmp_path / "proofs/runs")
+    _ledger(ledger, "c" * 64)
+    _setup_run(tmp_path, ledger)
+    generator = _load_generator("generator_policy_mismatch")
+    monkeypatch.setattr(generator, "verify_policy", lambda: (False, "injected mismatch"))
+
+    with pytest.raises(
+        RuntimeError, match="refusing to sign certificate: injected mismatch"
+    ):
+        generator.main()
+    assert not (tmp_path / "proofs/archive").exists()
 
 
 def test_generation_marks_canonical_ledger_as_not_detached(tmp_path, monkeypatch, capsys):

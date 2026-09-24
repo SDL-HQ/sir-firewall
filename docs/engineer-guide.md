@@ -25,7 +25,7 @@ python3 -m pip install -e .
 python3 -m pip install -e ".[live]"
 
 # verify-only (published certificate, no local run)
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py - --no-ledger
 ```
 
 ## Local install (Mac/Linux)
@@ -291,7 +291,7 @@ sir verify cert latest-audit.json
 Low-level fallback (stdin). The trailing `-` means “read JSON from stdin”:
 
 ```bash
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py - --no-ledger
 ```
 
 Verification scope: this command proves payload integrity + signature validity against resolved public key material only (registry key when `signing_key_id` resolves, or explicit `--pubkey`). It does not prove policy correctness, model safety, or broader trust guarantees.

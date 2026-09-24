@@ -144,7 +144,7 @@ def _write_local_html_from_template(template_path: Path, out_path: Path) -> None
     html2 = (
         html.replace("__AUDIT_JSON__", "local-audit.json")
         .replace("__AUDIT_LABEL__", "local-audit")
-        .replace("__VERIFY_COMMAND__", "cat proofs/local-audit.json | python tools/verify_certificate.py -")
+        .replace("__VERIFY_COMMAND__", "cat proofs/local-audit.json | python tools/verify_certificate.py - --no-ledger")
     )
     out_path.write_text(html2, encoding="utf-8")
 

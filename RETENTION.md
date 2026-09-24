@@ -9,7 +9,7 @@ It separates:
 - what current durability does and does not guarantee
 - what hardening options are planned but not yet guaranteed by repo-only retention
 
-The machine-readable certificate contract is `spec/evidence_contract.v1.json`.
+The version-selected machine-readable certificate contracts are `spec/evidence_contract.v1.json` (2.2.0–2.3.3), `spec/evidence_contract.v2.json` (2.3.4), and `spec/evidence_contract.v3.json` (2.3.5+).
 
 ---
 
@@ -176,7 +176,7 @@ Expected successful outputs include valid certificate signature/payload hash and
 For published certificate verification from upstream:
 
 ```bash
-curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py -
+curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py - --no-ledger
 ```
 
 ---

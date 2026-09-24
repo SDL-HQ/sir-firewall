@@ -43,6 +43,7 @@ from sir_firewall.model_selection import DEFAULT_MODEL, DEFAULT_PROVIDER
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from itgl import LedgerVerificationError, load_and_verify_ledger
+from verify_policy import verify_policy
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -258,7 +259,7 @@ def _publish_latest_live(cert: Dict[str, Any], proofs_dir: Path = Path("proofs")
         audit_label="latest-live-audit",
         verify_command=(
             "curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/"
-            "proofs/latest-live-audit.json | python tools/verify_certificate.py -"
+            "proofs/latest-live-audit.json | python tools/verify_certificate.py - --no-ledger"
         ),
         pointer_description=(
             'This is the latest attributable live certificate with at least one successful '
@@ -372,9 +373,9 @@ def _select_latest_output_targets(*, publishable_latest: bool, result: str) -> t
     audit_label = "latest-audit" if publish_latest_pass else "local-audit"
     verify_command = (
         "curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | "
-        "python tools/verify_certificate.py -"
+        "python tools/verify_certificate.py - --no-ledger"
         if publish_latest_pass
-        else "cat proofs/local-audit.json | python tools/verify_certificate.py -"
+        else "cat proofs/local-audit.json | python tools/verify_certificate.py - --no-ledger"
     )
     return json_out, html_out, target_json_name, audit_label, verify_command
 
@@ -435,6 +436,10 @@ def main(ledger_path: Optional[str] = None, allow_detached_ledger: bool = False)
 
     policy_meta = _canonical_policy_hash("policy/isc_policy.json") or {}
     policy_flags = _policy_flags("policy/isc_policy.json")
+    policy_flags.pop("STRICT_ISC_ENFORCEMENT", None)
+    policy_matches, policy_match_detail = verify_policy()
+    if not policy_matches:
+        raise RuntimeError(f"refusing to sign certificate: {policy_match_detail}")
 
     # Bind the certificate to this run's ledger. The summary is written by the
     # same runner invocation; an explicit path is available to integrations.
@@ -527,6 +532,7 @@ def main(ledger_path: Optional[str] = None, allow_detached_ledger: bool = False)
         "provider_call_failures": provider_call_failures,
         "model_calls_made": provider_call_attempts,
         "flags": policy_flags,
+        "enforced_policy_matches_signed_policy": policy_matches,
         "benchmark_execution": summary.get("benchmark_execution") if isinstance(summary.get("benchmark_execution"), dict) else {},
         "result": result,
         "ci_run_url": ci_run_url,

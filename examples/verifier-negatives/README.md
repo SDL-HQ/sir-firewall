@@ -97,3 +97,9 @@ Contract-validator exit code: `2`
 ERROR: certificate contract validation failed:
  - missing required field: prompts_tested
 ```
+
+## Using this directory as a conformance suite
+
+This directory is a published, implementation-neutral negative conformance suite. A third-party verifier can run every JSON file and compare its rejection category with the cases above. It conforms when it rejects all five inputs, distinguishes payload-hash failure from signature failure, rejects an unknown signing key, and leaves required-field validation to the contract validator. Exit-code numbers are the reference CLI's interface; other implementations may map them differently, but must not accept a fixture.
+
+For binding-aware verifiers, pass `--no-ledger` (or the implementation's explicit equivalent) when isolating these cryptographic negatives: the fixtures intentionally have no accompanying ledger. Without an explicit skip, the reference verifier returns its earlier payload/signature error where applicable and otherwise must distinguish “binding not checked” from success.

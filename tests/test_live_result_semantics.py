@@ -180,7 +180,7 @@ def test_latest_audit_html_matches_current_template_without_rewriting_signed_evi
         audit_label="latest-audit",
         verify_command=(
             "curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/"
-            "proofs/latest-audit.json | python tools/verify_certificate.py -"
+            "proofs/latest-audit.json | python tools/verify_certificate.py - --no-ledger"
         ),
     )
 

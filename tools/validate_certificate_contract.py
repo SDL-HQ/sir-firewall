@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate SIR certificate JSON against evidence contract v1 (offline, deterministic)."""
+"""Validate SIR certificate JSON against its version-applicable evidence contract."""
 
 from __future__ import annotations
 
@@ -11,7 +11,9 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 DEFAULT_CERT = Path("proofs/latest-audit.json")
-DEFAULT_CONTRACT = Path("spec/evidence_contract.v1.json")
+CONTRACT_V1 = Path("spec/evidence_contract.v1.json")
+CONTRACT_V2 = Path("spec/evidence_contract.v2.json")
+CONTRACT_V3 = Path("spec/evidence_contract.v3.json")
 DEFAULT_KEY_SCHEMA = Path("spec/pubkeys/key_registry.v1.schema.json")
 DEFAULT_KEY_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
 BELOW_APPLICABILITY_FLOOR = 8
@@ -32,11 +34,11 @@ def _applicability_floor(contract: Dict[str, Any]) -> str:
 
 def _parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser(
-        description="Validate SIR certificate against evidence contract v1.",
+        description="Validate SIR certificate against its version-applicable evidence contract.",
         epilog="Exit code 8 means the certificate predates the contract applicability floor.",
     )
     ap.add_argument("cert", nargs="?", default=str(DEFAULT_CERT), help="Path to certificate JSON.")
-    ap.add_argument("--contract", default=str(DEFAULT_CONTRACT), help="Path to evidence contract JSON.")
+    ap.add_argument("--contract", help="Override automatic contract selection with this evidence contract JSON.")
     ap.add_argument(
         "--key-schema",
         default=str(DEFAULT_KEY_SCHEMA),
@@ -99,6 +101,9 @@ def _validate_properties(cert: Dict[str, Any], contract: Dict[str, Any], errors:
         enum = schema.get("enum")
         if isinstance(enum, list) and val not in enum:
             errors.append(f"field {field} must be one of {enum!r}, got {val!r}")
+
+        if "const" in schema and val != schema["const"]:
+            errors.append(f"field {field} must equal {schema['const']!r}, got {val!r}")
 
         minimum = schema.get("minimum")
         if isinstance(minimum, int) and isinstance(val, int) and val < minimum:
@@ -212,7 +217,16 @@ def main() -> int:
 
     try:
         cert = _load_json(Path(args.cert), "certificate")
-        contract = _load_json(Path(args.contract), "evidence contract")
+        certificate_version = _version_tuple(cert.get("sir_firewall_version"))
+        if args.contract:
+            contract_path = Path(args.contract)
+        elif certificate_version is not None and certificate_version >= (2, 3, 5):
+            contract_path = CONTRACT_V3
+        elif certificate_version is not None and certificate_version >= (2, 3, 4):
+            contract_path = CONTRACT_V2
+        else:
+            contract_path = CONTRACT_V1
+        contract = _load_json(contract_path, "evidence contract")
     except RuntimeError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 3
@@ -223,7 +237,7 @@ def main() -> int:
     parsed_version = _version_tuple(certificate_version)
     if parsed_floor is not None and (parsed_version is None or parsed_version < parsed_floor):
         print(
-            "NOT APPLICABLE: evidence contract v1 governs sir_firewall_version "
+            f"NOT APPLICABLE: evidence contract v{str(contract.get('title', '')).rsplit('v', 1)[-1]} governs sir_firewall_version "
             f">= {floor}; certificate has {certificate_version!r}.",
             file=sys.stderr,
         )
@@ -255,7 +269,8 @@ def main() -> int:
             "contract validity does not make it canonically bound.",
             file=sys.stderr,
         )
-    print("OK: certificate satisfies evidence contract v1.")
+    contract_version = str(contract.get("title", "")).rsplit("v", 1)[-1]
+    print(f"OK: certificate satisfies evidence contract v{contract_version}.")
     return 0
 
 
