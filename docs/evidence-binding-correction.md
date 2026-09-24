@@ -10,10 +10,10 @@ current verifier result, but the paired-benchmark path did not. Consequently,
 paired certificates could sign a hash left by an earlier run instead of the
 chain head of the ledger they certified.
 
-The published `docs/runs/index.json` contains 200 runs. Of those, 145 have an
-`itgl_final_hash` also used by another run. The largest group contains 13 runs
-across three packs whose leak counts include 0, 26, 27, and 100. In the paired
-run on 20 September 2026, baseline run
+As measured on 20 September 2026, 145 of the 200 runs indexed in
+`docs/runs/index.json` carried an `itgl_final_hash` also used by another run.
+The largest group contained 13 runs across three packs whose leak counts
+included 0, 26, 27, and 100. In the paired run on 20 September 2026, baseline run
 `20260920-092345-000000-gh35502041779-6b9fd67c75c0` has ledger head
 `sha256:8e16a1e487aa0bd5cf3fde7c416a3a33c1d0ef80dd59d9a86ff0035c3dc437c7`,
 and gated run `20260920-092456-000000-gh35502041779-ecfffeda49c8` has ledger
@@ -21,11 +21,14 @@ head `sha256:c769ec1e5d44185f11ca36bdaba4653ce9f6562d854194e8b1cf615ab5ebcd47`.
 Both published certificates instead assert
 `sha256:53c0eedf004dc29db8e4097d9c4694933301094e113486466915c35fcf6bf8c8`.
 On each of `docs/runs/index.json`, benchmark index v1, and benchmark index v2,
-all 200 comparison values are present: there are 87 distinct values, 32 values
-are shared by multiple runs, and 145 runs carry a shared value.
+all 200 comparison values were present: there were 87 distinct values, 32
+values were shared by multiple runs, and 145 runs carried a shared value. This
+count declines over time because affected runs age out of the rolling 200-run
+index window, not because any archived certificate has been corrected; the
+archived certificates remain exactly as originally signed.
 
-The retained index spans 2026-04-04T06:40:30Z through
-2026-09-21T12:03:18Z. Runs carrying a colliding certificate hash span
+In that measurement, the retained index spanned 2026-04-04T06:40:30Z through
+2026-09-21T12:03:18Z. Runs carrying a colliding certificate hash spanned
 2026-04-04T12:48:34Z through 2026-09-21T12:03:18Z: the defect is visible from
 the first day represented in the published index through its most recent run.
 It was not introduced only by a recent change. The introducing version or
@@ -74,17 +77,20 @@ applicable, rather than presenting their older shapes as current-contract
 violations. It does not relax the contract for certificates at or above 2.2.0.
 
 
-Across the 344 certificates under `proofs/runs/` and `proofs/archive/`, 49 are
-in scope for evidence contract v1 and pass, but 29 of those 49 carry an
-`itgl_final_hash` shared with another in-scope run (at versions 2.2.0, 2.2.1,
-2.3.0, and 2.3.3). Contract-shape validity and ledger binding are different
-properties: passing the contract says nothing about whether a certificate names
-its own ledger. The other 295 predate the 2.2.0
-applicability floor and are reported with the distinct not-applicable exit code;
-they are not current-contract failures. Their legacy shapes do not share only
-one diagnostic: 185 have exactly the two missing governance fields, while 110
-have additional missing or legacy fields and, in some cases, legacy result
-values.
+As at 24 September 2026, there are 357 certificates under `proofs/runs/` and
+`proofs/archive/`; 62 are in scope for evidence contract v1 and pass. A closed
+set of 29 in-scope certificates carry an `itgl_final_hash` shared with another
+in-scope run (at versions 2.2.0, 2.2.1, 2.3.0, and 2.3.3). Contract-shape
+validity and ledger binding are different properties: passing the contract says
+nothing about whether a certificate names its own ledger.
+
+A separate closed set of 295 certificates predates the 2.2.0 applicability
+floor and is reported with the distinct not-applicable exit code; these are not
+current-contract failures. Of that set, 185 have exactly the two missing
+governance fields, while 110 have additional missing or legacy fields and, in
+some cases, legacy result values. No new certificate can join either closed
+set: version 2.3.4 fixed certificate generation, and certificates below the
+2.2.0 applicability floor will not be created again.
 
 The root-level `proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`,
 `proofs/run_id.txt`, and `proofs/run_summary.json` files are mutable
