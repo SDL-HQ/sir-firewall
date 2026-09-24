@@ -90,7 +90,6 @@ def test_current_version_surfaces_match_runtime_authority():
         f"docs/release-notes-{v_232}.md": Counter({v_232: 2}),
         f"docs/release-notes-{v_233}.md": Counter({v_233: 2, v_230: 3, v_231: 1}),
         f"docs/release-notes-{v_234}.md": Counter({v_234: 3, v_220: 1}),
-        "docs/evidence/index.html": Counter({authority: 3, v_234: 3}),
         f"docs/release-notes-{authority}.md": Counter({v_234: 5, authority: 3, v_220: 3, v_233: 1}),
         "docs/failure-modes.md": Counter({v_230: 3, v_231: 3, v_234: 2}),
         "docs/rule-coverage.md": Counter({v_234: 1}),

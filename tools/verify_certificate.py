@@ -28,9 +28,11 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
-from key_registry import find_registry_key, public_key_pem_from_entry, revocation_allows_proof
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from key_registry import find_registry_key, public_key_pem_from_entry, revocation_allows_proof
 from itgl import LedgerVerificationError, load_and_verify_ledger
 
 DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
@@ -202,16 +204,29 @@ def _parse_args() -> argparse.Namespace:
     return args
 
 
-def _discover_ledger(cert_arg: str) -> Path | None:
-    """Return the first archive-layout or working-tree ledger found for a certificate."""
+def _discover_ledger(cert: Dict[str, Any], cert_arg: str) -> Path | None:
+    """Resolve a ledger from signed run identity, never unrelated adjacency."""
     if cert_arg == "-":
         return None
+
     cert_dir = Path(cert_arg).parent
-    candidates = (
-        cert_dir / "proofs" / "itgl_ledger.jsonl",
-        cert_dir / "itgl_ledger.jsonl",
-    )
-    return next((candidate for candidate in candidates if candidate.is_file()), None)
+    run_id = cert.get("run_id")
+    if isinstance(run_id, str) and run_id:
+        try:
+            from sir_firewall.evidence_paths import canonical_ledger_path
+
+            canonical = canonical_ledger_path(run_id)
+        except (ImportError, ValueError):
+            canonical = None
+        if canonical is not None and canonical.is_file():
+            return canonical
+
+        archive_candidate = cert_dir / "proofs" / "itgl_ledger.jsonl"
+        if cert_dir.name == run_id and archive_candidate.is_file():
+            return archive_candidate
+        return None
+
+    return None
 
 
 def _rebuild_payload(cert: Dict[str, Any]) -> bytes:
@@ -255,12 +270,16 @@ def main() -> int:
         print(f"ERROR: signature verification failed ({e})", file=sys.stderr)
         return 6
 
-    ledger_path = Path(args.ledger) if args.ledger else (None if args.no_ledger else _discover_ledger(args.cert))
+    ledger_path = Path(args.ledger) if args.ledger else (None if args.no_ledger else _discover_ledger(cert, args.cert))
     if not args.no_ledger and ledger_path is None:
+        run_id = cert.get("run_id")
+        identity_detail = (
+            f" for signed run_id={run_id!r}" if isinstance(run_id, str) and run_id else ""
+        )
         print(
             "NOT CHECKED: certificate-to-ledger binding was not checked because no ledger "
-            "was supplied or found in either supported certificate-relative location. "
-            "Use --ledger PATH for replay or --no-ledger to skip explicitly.",
+            f"corresponding to the signed identity{identity_detail} was found. "
+            "Pass --ledger PATH explicitly for replay or use --no-ledger to skip binding.",
             file=sys.stderr,
         )
         return LEDGER_BINDING_NOT_CHECKED

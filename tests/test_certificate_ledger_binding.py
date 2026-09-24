@@ -204,7 +204,7 @@ def test_certificate_verifier_discovers_archived_sibling_ledger(tmp_path, monkey
     assert str(ledger) in result.stdout
 
 
-def test_certificate_verifier_discovers_working_tree_sibling_ledger(
+def test_certificate_verifier_refuses_unrelated_adjacent_ledger(
     tmp_path, monkeypatch, capsys
 ):
     monkeypatch.chdir(tmp_path)
@@ -223,8 +223,24 @@ def test_certificate_verifier_discovers_working_tree_sibling_ledger(
         sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
         "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
     ], cwd=ROOT, capture_output=True, text=True)
-    assert result.returncode == 0
-    assert str(sibling) in result.stdout
+    assert result.returncode == 9
+    assert "signed run_id='working-tree'" in result.stderr
+    assert "Pass --ledger PATH explicitly" in result.stderr
+    assert "terminal hash mismatch" not in result.stderr
+
+
+@pytest.mark.parametrize("certificate", ["latest-audit.json", "latest-live-audit.json"])
+def test_root_proof_pointers_discover_ledger_from_signed_run_id(certificate):
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "tools/verify_certificate.py"), f"proofs/{certificate}"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads((ROOT / "proofs" / certificate).read_text(encoding="utf-8"))
+    expected = canonical_ledger_path(payload["run_id"])
+    assert f"ledger terminal hash from {expected}" in result.stdout
 
 
 def test_certificate_verifier_distinguishes_missing_binding_from_explicit_skip(
