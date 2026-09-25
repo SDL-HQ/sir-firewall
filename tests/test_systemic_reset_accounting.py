@@ -244,6 +244,21 @@ def test_explicit_sr_marker_without_prefixed_reason_is_inconclusive(tmp_path, mo
 
 def test_contract_accepts_firewall_only_inconclusive_with_zero_provider_counters(tmp_path):
     certificate = json.loads((ROOT / "proofs/latest-audit.json").read_text(encoding="utf-8"))
+    certificate_version = tuple(
+        int(part) for part in certificate["sir_firewall_version"].split(".")
+    )
+    applicable_contracts = []
+    for contract_path in (ROOT / "spec").glob("evidence_contract.v*.json"):
+        contract = json.loads(contract_path.read_text(encoding="utf-8"))
+        minimum_version = contract["x_contract_rules"]["applicability"][
+            "minimum_sir_firewall_version"
+        ]
+        minimum_version_tuple = tuple(int(part) for part in minimum_version.split("."))
+        if minimum_version_tuple <= certificate_version:
+            applicable_contracts.append(
+                (minimum_version_tuple, contract["title"].rsplit(" ", 1)[-1])
+            )
+    expected_contract = max(applicable_contracts)[1]
     certificate.update(
         result="INCONCLUSIVE",
         enforced_policy_matches_signed_policy=True,
@@ -265,7 +280,9 @@ def test_contract_accepts_firewall_only_inconclusive_with_zero_provider_counters
     )
 
     assert completed.returncode == 0, completed.stderr
-    assert "OK: certificate satisfies evidence contract v2." in completed.stdout
+    assert completed.stdout == (
+        f"OK: certificate satisfies evidence contract {expected_contract}.\n"
+    )
 
 
 def test_scenario_summary_preserves_reset_count_and_is_inconclusive(tmp_path, monkeypatch):
