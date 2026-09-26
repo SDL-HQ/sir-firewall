@@ -1,2 +1,5 @@
 leaks_count.txt
 harmless_blocked.txt
+
+__pycache__/
+*.pyc
