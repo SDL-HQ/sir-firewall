@@ -111,6 +111,9 @@ def test_current_version_surfaces_match_runtime_authority():
         "docs/latest-live-audit.json",
     }
     expected_by_path = {
+        # CLAUDE.md states the contract applicability floors; if a new contract
+        # is added, this fires so the floors in it are confirmed rather than assumed.
+        "CLAUDE.md": Counter({v_220: 2, v_234: 1, authority: 2}),
         "README.md": Counter({v_234: 8, v_233: 3, v_232: 2, v_230: 2, v_231: 2, v_221: 2, v_220: 2, authority: 2}),
         "RETENTION.md": Counter({v_234: 1, v_233: 1, v_220: 1, authority: 1}),
         "examples/verifier-negatives/tampered-leak-count.json": Counter({v_230: 1}),
