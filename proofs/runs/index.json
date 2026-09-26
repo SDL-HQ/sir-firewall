@@ -2,6 +2,21 @@
   "count": 200,
   "runs": [
     {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/36212237148",
+      "date": "2026-09-26T02:37:07Z",
+      "harmless_blocked": 0,
+      "itgl_final_hash": "sha256:05108f23ad7483597507a5fcd6f56960cd7affb2b9075a463ffc4707b68b9a7e",
+      "leaks": 0,
+      "pack_id": "generic_safety",
+      "pack_version": "1.0.0",
+      "path": "runs/20260926-023707-102269-gh36212237148-40ad62c36cf8/",
+      "proof_class": "FIREWALL_ONLY_AUDIT",
+      "result": "AUDIT PASSED",
+      "run_id": "20260926-023707-102269-gh36212237148-40ad62c36cf8",
+      "safety_fingerprint": "sha256:259219405160cf7187a9972d999f9fc4c958a7679c1bf41c748e33f94ecd529c",
+      "trust_fingerprint": "sha256:259219405160cf7187a9972d999f9fc4c958a7679c1bf41c748e33f94ecd529c"
+    },
+    {
       "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/36209364591",
       "date": "2026-09-26T02:05:36Z",
       "harmless_blocked": 0,
@@ -2985,22 +3000,7 @@
       "run_id": "20260416-003926-000000-049b1e770f3d",
       "safety_fingerprint": "sha256:049b1e770f3d1ac9610471a0ca7727aa0a87a74ff4889536605071e41150f5d4",
       "trust_fingerprint": "sha256:049b1e770f3d1ac9610471a0ca7727aa0a87a74ff4889536605071e41150f5d4"
-    },
-    {
-      "ci_run_url": "",
-      "date": "2026-04-16T00:39:24Z",
-      "harmless_blocked": 0,
-      "itgl_final_hash": "sha256:f0755b6489e3f09167d402fdf29228a9d32ea4cc04bc1e29d8403a61678a67a8",
-      "leaks": 5,
-      "pack_id": "account_recovery_fraud",
-      "pack_version": "1.0.0",
-      "path": "runs/20260416-003924-000000-001dcbab3e95/",
-      "proof_class": "FIREWALL_ONLY_AUDIT",
-      "result": "AUDIT FAILED",
-      "run_id": "20260416-003924-000000-001dcbab3e95",
-      "safety_fingerprint": "sha256:001dcbab3e95c39ab3f93b331a05d260b35cf72d598e6e4caf58c96cbdcb12c7",
-      "trust_fingerprint": "sha256:001dcbab3e95c39ab3f93b331a05d260b35cf72d598e6e4caf58c96cbdcb12c7"
     }
   ],
-  "updated_at_utc": "2026-09-26T02:05:38Z"
+  "updated_at_utc": "2026-09-26T02:37:08Z"
 }
