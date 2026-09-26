@@ -114,6 +114,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # CLAUDE.md states the contract applicability floors; if a new contract
         # is added, this fires so the floors in it are confirmed rather than assumed.
         "CLAUDE.md": Counter({v_220: 2, v_234: 1, authority: 2}),
+        "AGENTS.md": Counter({v_220: 2, v_234: 1, authority: 2}),
         "README.md": Counter({v_234: 8, v_233: 3, v_232: 2, v_230: 2, v_231: 2, v_221: 2, v_220: 2, authority: 2}),
         "RETENTION.md": Counter({v_234: 1, v_233: 1, v_220: 1, authority: 1}),
         "examples/verifier-negatives/tampered-leak-count.json": Counter({v_230: 1}),
@@ -139,7 +140,7 @@ def test_current_version_surfaces_match_runtime_authority():
         f"docs/release-notes-{v_232}.md": Counter({v_232: 2}),
         f"docs/release-notes-{v_233}.md": Counter({v_233: 2, v_230: 3, v_231: 1}),
         f"docs/release-notes-{v_234}.md": Counter({v_234: 3, v_220: 1}),
-        f"docs/release-notes-{authority}.md": Counter({v_234: 4, authority: 3, v_220: 3, v_233: 1}),
+        f"docs/release-notes-{authority}.md": Counter({v_234: 4, authority: 4, v_220: 3, v_233: 1}),
         "docs/failure-modes.md": Counter({v_230: 3, v_231: 3, authority: 2}),
         "docs/rule-coverage.md": Counter({authority: 1}),
         "docs/threat-model.md": Counter({v_234: 1}),

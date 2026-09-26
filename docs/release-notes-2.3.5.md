@@ -59,32 +59,35 @@ verifier implementations.
 
 ## Published archive verification result
 
-The release was measured across all 200 runs in `docs/runs/index.json` with
-`--require-registry`.
+Measured over every certificate published under `docs/runs/` at this release
+— 284 certificates — with `--require-registry`. Note that
+`docs/runs/index.json` lists only the newest 200 runs and is a display cap,
+not a manifest; measuring the index instead of the directories gives a
+smaller and different answer.
 
 Default invocation:
 
 | Result | Count |
 |---|---:|
-| OK | 14 |
-| Binding not checked (exit 9) | 183 |
-| Signature failure (exit 5) | 3 |
+| Binds | 16 |
+| Binding not checked, no signed run identity (exit 9) | 262 |
+| Signature failure (exit 5) | 6 |
 
 With the ledger supplied explicitly as
 `--ledger docs/runs/<id>/proofs/itgl_ledger.jsonl`:
 
 | Result | Count |
 |---|---:|
-| OK | 14 |
+| Binds | 16 |
 | Terminal-hash mismatch (exit 7) | 105 |
-| No signed `itgl_row_count` (exit 7) | 78 |
-| Signature failure (exit 5) | 3 |
+| No signed `itgl_row_count` (exit 7) | 118 |
+| No ledger published beside the certificate | 39 |
+| Signature failure (exit 5) | 6 |
 
-No certificate emitted before 2.3.4 carries `run_id`, and `run_summary.json`
-does not supply a matching one, so binding cannot be established from the
-artefacts alone. Exit 9 is the correct fail-closed default for them. The hash
-mismatches are observable only when the caller supplies the connection that the
-certificate itself fails to assert.
+No certificate emitted before 2.3.4 carries `run_id`, so binding cannot be
+established from the artefacts alone. Exit 9 is the correct fail-closed
+default for them. The hash mismatches are observable only when the caller
+supplies the connection that the certificate itself fails to assert.
 
-The version boundary is exact: all 14 certificates emitted by SIR 2.3.4 bind;
-all 186 earlier certificates do not.
+The version boundary is exact: all 16 certificates emitted by SIR 2.3.4 or
+2.3.5 bind; all 268 earlier certificates do not.
