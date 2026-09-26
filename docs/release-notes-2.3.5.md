@@ -59,8 +59,8 @@ verifier implementations.
 
 ## Published archive verification result
 
-Measured over every certificate published under `docs/runs/` at this release
-— 284 certificates — with `--require-registry`. Note that
+Measured over every certificate published under `docs/runs/` at this release,
+284 certificates, with `--require-registry`. Note that
 `docs/runs/index.json` lists only the newest 200 runs and is a display cap,
 not a manifest; measuring the index instead of the directories gives a
 smaller and different answer.

@@ -13,10 +13,10 @@ policy produces the same decision.
 
 Two planes, and they fail differently:
 
-- **Control plane** — the gate decides. Failures are silent and, as the system
+- **Control plane.** The gate decides. Failures are silent and, as the system
   is currently built, uncountable after the fact: the ledger records a hash per
   prompt, not the input that produced it.
-- **Evidence plane** — the ledger and certificate record what happened.
+- **Evidence plane.** The ledger and certificate record what happened.
   Failures are silent but countable afterwards, because the artefacts persist.
 
 Most of the hard-won rules below are about the evidence plane.
@@ -25,8 +25,8 @@ Most of the hard-won rules below are about the evidence plane.
 
 **An assertion must be derived from the artefact it names, at the moment of
 signing.** Every significant defect in this project's history has the same
-shape: a value was read from a second copy of an identity — an environment
-variable, a mutable file, a filename, a cached page — rather than computed from
+shape: a value was read from a second copy of an identity (an environment
+variable, a mutable file, a filename, a cached page) rather than computed from
 the thing it claimed to describe. Signature validity and chain integrity do not
 detect this. Nothing detects it except deriving the value from the referent.
 
@@ -42,8 +42,8 @@ days.
   (`publish_run.py --keep`, default 200), not a manifest. Run directories are
   never pruned. At the time of writing the archive holds 284 certificates and
   the index lists 200. **Any measurement over "the archive" must iterate the
-  directories.** Measuring the index gives a smaller, wrong answer — this has
-  happened and was published in a draft before being caught.
+  directories.** Measuring the index gives a smaller, wrong answer. This has
+  happened, and was published in a draft before being caught.
 - **`proofs/runs/<run_id>/` is the canonical ledger location.**
   `sir_firewall.evidence_paths.canonical_ledger_path()` derives it from a run
   identifier. Use it. Do not locate a ledger by directory adjacency: several
@@ -61,7 +61,7 @@ days.
 `validate_certificate_contract.py` selects by the certificate's own
 `sir_firewall_version`. Certificates below 2.2.0 return exit 8 (out of scope),
 not a failure. When adding a contract, raise the floor rather than adding a
-required field to an existing one — a field required at a floor that predates
+required field to an existing one. A field required at a floor that predates
 the field invalidates every certificate in between. This has happened.
 
 ## Exit codes
@@ -76,8 +76,8 @@ the field invalidates every certificate in between. This has happened.
 | 4 | malformed base64 |
 | 5 | signature does not verify |
 | 6 | signature verification error |
-| 7 | binding failure — chain invalid, terminal-hash mismatch, or row-count mismatch |
-| 9 | binding **not checked** — no ledger corresponding to the signed identity was found |
+| 7 | binding failure: chain invalid, terminal-hash mismatch, or row-count mismatch |
+| 9 | binding **not checked**: no ledger corresponding to the signed identity was found |
 
 `tools/validate_certificate_contract.py`: 0 pass, 2 contract violation, 3 load
 error, 8 below the applicability floor.
@@ -98,13 +98,13 @@ distinction between an attack and a defect.
 - **Documented output must match real output.** The verifier's success string
   is quoted in `README.md`, three evaluator documents under `docs/`, and the
   website bundle. Changing the wording without updating all of them has
-  happened twice. A test asserts the rendered blocks against actual stdout —
-  keep it.
+  happened twice. A test asserts the rendered blocks against actual stdout.
+  Keep it.
 
 ## Before you merge
 
-1. `PYTHONPATH=src pytest -q` — full suite, currently 304 tests.
-2. `python3 tools/verify_policy.py` — signed policy matches enforced policy.
+1. `PYTHONPATH=src pytest -q`. Full suite, currently 305 tests.
+2. `python3 tools/verify_policy.py`. Signed policy matches enforced policy.
 3. Run the published verification command from the website against the current
    release and diff its real stdout against what the site renders. Instance
    eight of the recurring defect was exactly this drift.
@@ -128,7 +128,7 @@ distinction between an attack and a defect.
 
 ## Working agreement
 
-Run it, do not trust the report — including your own. Every defect found in the
+Run it, do not trust the report, including your own. Every defect found in the
 2.3.5 cycle survived careful reading and died the moment something was
 executed. A prescription is a claim about what the code will do and deserves
 the same verification as any other claim; three fixes in that cycle each
