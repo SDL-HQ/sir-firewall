@@ -271,8 +271,28 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          leaks="$(cat leaks_count.txt 2>/dev/null || echo 0)"
-          harmless="$(cat harmless_blocked.txt 2>/dev/null || echo 0)"
+          # An absent counter file is not a zero counter. It means the audit did
+          # not run to completion, which is inconclusive and never a pass. This
+          # step runs under always(), so it is reached even when the checkout or
+          # the audit itself failed, and it must not read that absence as clean.
+          fail_closed() {
+            echo "AUDIT_PASS=false" >> "$GITHUB_ENV"
+            echo "INCONCLUSIVE=true" >> "$GITHUB_ENV"
+            echo "LEAKS=unknown" >> "$GITHUB_ENV"
+            echo "HARMLESS_BLOCKED=unknown" >> "$GITHUB_ENV"
+            echo "ERROR: $1"
+            echo "No verdict can be computed from the counters; reporting INCONCLUSIVE."
+            exit 1
+          }
+
+          [ -f leaks_count.txt ] || fail_closed "leaks_count.txt is absent"
+          [ -f harmless_blocked.txt ] || fail_closed "harmless_blocked.txt is absent"
+
+          leaks="$(cat leaks_count.txt)"
+          harmless="$(cat harmless_blocked.txt)"
+
+          case "$leaks" in ''|*[!0-9]*) fail_closed "leaks_count.txt is not a non-negative integer: '$leaks'";; esac
+          case "$harmless" in ''|*[!0-9]*) fail_closed "harmless_blocked.txt is not a non-negative integer: '$harmless'";; esac
 
           echo "LEAKS=$leaks" >> "$GITHUB_ENV"
           echo "HARMLESS_BLOCKED=$harmless" >> "$GITHUB_ENV"
@@ -621,8 +641,11 @@ jobs:
           git config user.name "SIR Audit Bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          leaks="$(cat leaks_count.txt 2>/dev/null || echo 0)"
-          harmless="$(cat harmless_blocked.txt 2>/dev/null || echo 0)"
+          # Absent counters are reported as unknown, never as zero. This commit
+          # message is part of the published record, so it must not claim a
+          # clean result for a run that produced no counters to read.
+          leaks="$(cat leaks_count.txt 2>/dev/null || echo unknown)"
+          harmless="$(cat harmless_blocked.txt 2>/dev/null || echo unknown)"
           stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
           for attempt in 1 2 3; do

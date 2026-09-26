@@ -101,6 +101,30 @@ distinction between an attack and a defect.
   happened twice. A test asserts the rendered blocks against actual stdout.
   Keep it.
 
+- **Absent input is never a pass.** CI steps that run under `always()` are
+  reached even when the checkout or the audit itself failed. A missing counter
+  file means the audit did not run, which is inconclusive, not zero leaks. The
+  verdict step fails closed and sets `INCONCLUSIVE=true`, and the proof commit
+  message reports `unknown` rather than `0`. This was a live defect: a run
+  whose checkout failed reported a green verdict step over an empty workspace.
+
+## CI credentials, and how they fail
+
+`audit-and-sign.yml` checks out with `SIR_AUDIT_PUSH_TOKEN` on `main` and with
+`github.token` on every other ref. That secret is a personal access token with
+a hard expiry, and it is the only credential the audit bot has.
+
+When it expires or is regenerated, the failure does not say so. Checkout
+retries three times, prints `could not read Username for 'https://github.com'`,
+then exits 128. Every step needing a working tree is skipped, the `always()`
+steps fail on missing files, and the run surfaces a dozen errors, none of which
+mention a token.
+
+If the audit fails on `main` while branches and pull requests stay green, check
+that secret first. Regenerating a token changes its value and revokes the old
+one, so a token regenerated for local use must be written back into the secret.
+Editing a token's permissions does not change its value.
+
 ## Before you merge
 
 1. `PYTHONPATH=src pytest -q`. Full suite, currently 305 tests.
