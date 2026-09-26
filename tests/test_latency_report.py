@@ -80,8 +80,8 @@ def test_archived_provider_wall_clock_inputs_match_report():
     for run_id, elapsed_seconds, calls in expected:
         run = ROOT / "docs" / "runs" / run_id
         header = (run / "proofs" / "latest-attempts.log").read_text().splitlines()[1]
-        started = datetime.fromisoformat(header.removeprefix("Date: "))
+        started = datetime.fromisoformat(header.removeprefix("Date: ").replace("Z", "+00:00"))
         audit = json.loads((run / "audit.json").read_text())
-        ended = datetime.fromisoformat(audit["timestamp_utc"])
+        ended = datetime.fromisoformat(audit["timestamp_utc"].replace("Z", "+00:00"))
         assert (ended - started).total_seconds() == elapsed_seconds
         assert audit["provider_call_attempts"] == calls
