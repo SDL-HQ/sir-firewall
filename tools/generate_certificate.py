@@ -441,14 +441,33 @@ def main(ledger_path: Optional[str] = None, allow_detached_ledger: bool = False)
     if not policy_matches:
         raise RuntimeError(f"refusing to sign certificate: {policy_match_detail}")
 
-    # Bind the certificate to this run's ledger. The summary is written by the
-    # same runner invocation; an explicit path is available to integrations.
+    # Bind the certificate to this run's ledger. That the summary belongs to this
+    # runner invocation is verified below rather than assumed; an explicit path is
+    # available to integrations.
     summary_run_id = str(summary.get("run_id") or "").strip()
     summary_ledger_path = str(summary.get("ledger_path") or "").strip()
     if not summary_run_id:
         raise RuntimeError("run_summary.json does not identify run_id")
     if not summary_ledger_path:
         raise RuntimeError("run_summary.json does not identify ledger_path")
+
+    # The summary must have been produced by THIS execution, not merely be present
+    # on disk. red_team_suite embeds the producing CI run in the identifier as
+    # -gh<GITHUB_RUN_ID>, so a summary committed by an earlier run is detectable
+    # rather than assumed away. Without this check a job whose audit died reuses the
+    # committed summary and signs a certificate for a run that did not happen here.
+    current_ci_run = (os.getenv("GITHUB_RUN_ID") or "").strip()
+    summary_ci_runs = [
+        segment[2:]
+        for segment in summary_run_id.split("-")
+        if segment.startswith("gh") and segment[2:].isdigit()
+    ]
+    if current_ci_run and summary_ci_runs and current_ci_run not in summary_ci_runs:
+        raise RuntimeError(
+            "refusing to sign certificate: run_summary.json was produced by CI run "
+            f"{summary_ci_runs[0]}, not by this execution ({current_ci_run}); "
+            "the audit for this run did not complete"
+        )
     expected = canonical_ledger_path(summary_run_id)
     if Path(summary_ledger_path).resolve() != expected.resolve():
         raise RuntimeError(
