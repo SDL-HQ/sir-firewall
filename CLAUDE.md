@@ -108,6 +108,14 @@ distinction between an attack and a defect.
   message reports `unknown` rather than `0`. This was a live defect: a run
   whose checkout failed reported a green verdict step over an empty workspace.
 
+- **A certificate is signed only for the run that produced its summary.**
+  `proofs/run_summary.json` is committed, so it sits on disk even in a job where the
+  audit never executed. The run identifier embeds the producing CI run, and the
+  generator refuses to sign when that does not match the current execution. Before
+  this check, a job whose audit died regenerated the previous run's certificate from
+  stale artefacts, computed it as passed, and was free to publish it as the canonical
+  latest proof.
+
 ## CI credentials, and how they fail
 
 `audit-and-sign.yml` checks out with `SIR_AUDIT_PUSH_TOKEN` on `main` and with

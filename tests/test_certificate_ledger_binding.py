@@ -124,6 +124,45 @@ def test_generator_output_path_line_names_the_file_actually_written(tmp_path, mo
     assert certificate["run_id"] == "output-contract"
 
 
+def test_generator_refuses_a_summary_produced_by_a_different_ci_run(tmp_path, monkeypatch, capsys):
+    """A job whose audit died must not sign the previous run's summary as its own.
+
+    run_summary.json is committed to the repository, so it is present on disk even in
+    a job where red_team_suite never executed. The identifier embeds the CI run that
+    produced it, which makes "this summary is mine" checkable instead of assumed.
+    """
+    monkeypatch.chdir(tmp_path)
+    _key(monkeypatch)
+    stale_run_id = "20260928-033445-334926-gh36374235904-054901b87dfe"
+    ledger = canonical_ledger_path(stale_run_id, tmp_path / "proofs/runs")
+    _ledger(ledger, "0" * 64)
+    _setup_run(tmp_path, ledger, stale_run_id)
+    generator = _load_generator("generator_foreign_ci_run")
+
+    monkeypatch.setenv("GITHUB_RUN_ID", "36516971487")
+    with pytest.raises(RuntimeError, match="not by this execution"):
+        generator.main()
+
+    # The same summary signs normally when this execution is the one that produced it.
+    monkeypatch.setenv("GITHUB_RUN_ID", "36374235904")
+    _, certificate = _generated_certificate(generator, capsys)
+    assert certificate["run_id"] == stale_run_id
+
+
+def test_generator_accepts_a_summary_with_no_ci_identity(tmp_path, monkeypatch, capsys):
+    """Local runs carry no CI segment, so the provenance check must not fire on them."""
+    monkeypatch.chdir(tmp_path)
+    _key(monkeypatch)
+    ledger = canonical_ledger_path("local-run", tmp_path / "proofs/runs")
+    _ledger(ledger, "0" * 64)
+    _setup_run(tmp_path, ledger, "local-run")
+    generator = _load_generator("generator_local_identity")
+
+    monkeypatch.setenv("GITHUB_RUN_ID", "36516971487")
+    _, certificate = _generated_certificate(generator, capsys)
+    assert certificate["run_id"] == "local-run"
+
+
 def test_two_ledgers_generate_distinct_bound_certificates(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     _key(monkeypatch)
