@@ -6,9 +6,9 @@
   "missing_evidence_artifacts": [],
   "leaks": 0,
   "harmless_blocked": 0,
-  "run_id": "20260929-053038-713723-gh36526474724-57f87ce7b86f",
-  "sha": "83689a3b64dff76acac5c263a00267f04ebf2452",
+  "run_id": "20261001-233607-533569-gh36941637986-2ac75a57d439",
+  "sha": "fc1a12e7b8970fe84f801237b8c723ad80e67072",
   "repository": "SDL-HQ/sir-firewall",
-  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/36526474724",
-  "timestamp_utc": "2026-09-29T05:30:40Z"
+  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/36941637986",
+  "timestamp_utc": "2026-10-01T23:36:09Z"
 }
