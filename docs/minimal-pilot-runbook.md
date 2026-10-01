@@ -94,7 +94,7 @@ Action/command:
 
 Select one bundle from the run archive rather than from a mutable latest pointer. The worked example is a SIR 2.3.4 bundle, and every path below remains inside that same run directory.
 
-The receipt verifier validates every file listed in the run's `manifest.json`, so download the complete directory rather than only `audit.json` and the ledger. For this example the five manifest-listed files are `audit.json`, `proofs/itgl_final_hash.txt`, `proofs/itgl_ledger.jsonl`, `proofs/latest-attempts.log`, and `proofs/run_summary.json`. If verification reports `file listed in manifest is missing`, the local bundle is incomplete; that message alone does not mean the archived evidence is broken.
+The receipt verifier validates every file listed in the run's `manifest.json`, so download the complete directory rather than only `audit.json` and the ledger. For this example the five manifest-listed files are `audit.json`, `proofs/itgl_final_hash.txt`, `proofs/itgl_ledger.jsonl`, `proofs/latest-attempts.log`, and `proofs/run_summary.json`. A `file listed in manifest is missing` error can identify an incomplete local download. It can also identify an archive that was published incomplete: 99 archives published between April and September 2026 name two files in their signed manifests that a repository-wide ignore rule kept out of the commit. Every affected run is listed in [`archive-errata.md`](archive-errata.md). Archives published from SIR 2.3.7 onward are checked against their signed manifest before the publishing commit.
 
 ```bash
 RUN_ID=20260921-135018-029319-gh35607761858-f3dd66376a01

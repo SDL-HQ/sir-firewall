@@ -157,7 +157,7 @@ Acquisition and verification are separate. Use the run archive to choose one loc
 
 The worked bundle is `20260921-135018-029319-gh35607761858-f3dd66376a01`. Both checks below use that one directory. `--require-registry` fails closed if its `signing_key_id` cannot be resolved in the repository key registry, rather than silently falling back to a default public key.
 
-The archive receipt verifier checks every file named by `manifest.json`, not only the certificate and ledger. This example therefore requires all five listed files: `audit.json`, `proofs/itgl_final_hash.txt`, `proofs/itgl_ledger.jsonl`, `proofs/latest-attempts.log`, and `proofs/run_summary.json`. A `file listed in manifest is missing` error identifies an incomplete local download; by itself, it does not identify broken archived evidence.
+The archive receipt verifier checks every file named by `manifest.json`, not only the certificate and ledger. This example therefore requires all five listed files: `audit.json`, `proofs/itgl_final_hash.txt`, `proofs/itgl_ledger.jsonl`, `proofs/latest-attempts.log`, and `proofs/run_summary.json`. A `file listed in manifest is missing` error can identify an incomplete local download. It can also identify an archive that was published incomplete: 99 archives published between April and September 2026 name two files in their signed manifests that a repository-wide ignore rule kept out of the commit. Every affected run is listed in [`archive-errata.md`](archive-errata.md). Archives published from SIR 2.3.7 onward are checked against their signed manifest before the publishing commit.
 
 ```bash
 RUN_ID=20260921-135018-029319-gh35607761858-f3dd66376a01

@@ -63,12 +63,37 @@ The mappings below are untested architectural relevance notes only. They identif
 - Final hash: `proofs/itgl_final_hash.txt`
 - Verifier: `tools/verify_itgl.py`
 
-Each run records a structured decision trace and a hash chain so the log history is tamper evident.
+Each run writes one ledger row per prompt, recording the governance decision,
+the expected outcome, a hash of the prompt, the domain pack and template in
+force, the suite path, and, for a pass, which rule families were evaluated and
+found clean. Each row carries the gate's terminal hash for that prompt, and the
+rows are chained.
+
+**What the chain establishes.** Order and completeness. The chain is computed as
+`ledger_hash = sha256(prev_hash + final_hash)`, starting from `GENESIS` and
+regenerated per run, so no row can be removed, inserted or reordered without
+the chain failing. `tools/verify_itgl.py` checks this offline.
+
+**What the chain does not establish.** The chain covers the per-prompt terminal
+hash and the link to the previous row. It does not cover the remaining row
+fields, so it is not by itself evidence that a row's recorded decision is the
+decision the gate made. Row contents are made tamper-evident by a different
+mechanism: each run archive's `manifest.json` carries a SHA-256 of the ledger
+file, and `archive_receipt.json` signs that manifest.
+`tools/verify_archive_receipt.py` is the check that establishes the ledger file
+is byte-identical to the one that was signed, and it must be run for that
+property to hold.
+
+**What is not published.** The gate's internal step trace is held in process and
+is not written to the archive. Only the terminal hash per prompt is published.
+That hash incorporates a capture timestamp, so it is a commitment rather than a
+value a third party can recompute. Reconstruction of a run's internal decision
+steps from published artefacts is therefore not possible.
 
 **Standards hooks:**
-- **EU AI Act relevance:** reviews of logging and auditability may consider the ITGL step trace and hash-chain evidence.
-- **NIST AI RMF relevance:** Measure-oriented reviews may consider the ITGL ledger as structured trace evidence for individual runs.
-- **Assurance and insurance:** supports reconstruction and independent verification that the recorded run matches the claimed outcome.
+- **EU AI Act relevance:** reviews of logging and auditability may consider the per-prompt ledger, its ordering and completeness property, and the signed archive receipt that covers the ledger file.
+- **NIST AI RMF relevance:** Measure-oriented reviews may consider the ITGL ledger as per-prompt outcome evidence for individual runs.
+- **Assurance and insurance:** supports independent offline verification that a published run's ledger is complete, correctly ordered, and unchanged since signing, and that the certificate's terminal hash and row count bind to it.
 
 ## 5. Signed audit certificates and proof surfaces (CI)
 
