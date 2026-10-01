@@ -11,6 +11,7 @@ the gate that would have caught it.
 """
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -24,8 +25,20 @@ def _git(cwd: Path, *args: str) -> subprocess.CompletedProcess:
 
 
 def _run_checker(cwd: Path, *args: str) -> subprocess.CompletedProcess:
+    """Run the checker with no ambient CI identity.
+
+    The checker falls back to GITHUB_RUN_ID to decide which archives it may
+    fail on. Inheriting the runner's value makes every fixture archive look
+    pre-existing, so these tests pass locally and silently stop testing
+    anything in CI. Each test states the CI identity it wants.
+    """
+    env = {k: v for k, v in os.environ.items() if k != "GITHUB_RUN_ID"}
     return subprocess.run(
-        [sys.executable, str(CHECKER), *args], cwd=cwd, capture_output=True, text=True
+        [sys.executable, str(CHECKER), *args],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        env=env,
     )
 
 
