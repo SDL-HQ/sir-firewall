@@ -1,6 +1,7 @@
 # Published archive errata
 
-Last updated 2 October 2026, at SIR 2.3.7.
+Last updated 2 October 2026, at SIR 2.3.7, after the first publishing run
+following the fix.
 
 This document records defects in SIR's own published evidence archive. It
 exists because the archive is offered for independent verification, and a
@@ -24,20 +25,23 @@ for the full per-run result. No network is required.
 
 ## Current figures
 
-Measured across all 289 published run archives:
+Measured across all 290 published run archives under `proofs/runs/`:
 
 | Check | Result | Count |
 |---|---|---|
-| `verify_certificate.py` | verified (exit 0) | 21 |
+| `verify_certificate.py` | verified (exit 0) | 22 |
 | `verify_certificate.py` | ledger binding not checked (exit 9) | 262 |
 | `verify_certificate.py` | signature verification failed (exit 5) | 6 |
-| `verify_archive_receipt.py` | verified (exit 0) | 145 |
+| `verify_archive_receipt.py` | verified (exit 0) | 146 |
 | `verify_archive_receipt.py` | incomplete archive or failed signature (exit 2) | 105 |
 | `verify_archive_receipt.py` | no receipt, legacy archive (exit 3) | 39 |
 
 Verification is three-valued. A record that cannot be checked and a record that
 fails are different outcomes, and earlier descriptions of this archive did not
 distinguish them.
+
+The exit 2 count is 105: 99 archives that are incomplete, described in E1, and
+6 whose receipt signature does not verify, described in E2.
 
 ## E1. Ninety-nine archives are incomplete against their own signed manifest
 
@@ -70,8 +74,9 @@ re-signing manifests for runs that already happened, which would replace
 published signed records with new ones carrying the same run identities. The
 records stay as published.
 
-Affected runs: 99, from 5 April 2026 to 29 September 2026. Listed in
-Appendix A.
+Affected runs: 99, from 5 April 2026 to 29 September 2026. Unchanged by the
+fix, because those files were never committed to either published tree. Listed
+in Appendix A.
 
 ## E2. Six certificates fail signature verification
 
@@ -137,6 +142,27 @@ reported success here would be asserting a check it did not perform.
 and the ledger binding is not. This is a property of the certificates, not a
 defect introduced later, and it is not repairable without re-signing historical
 evidence.
+
+## E5. Three April archives were completed as a side effect of the fix
+
+The first publishing run after the ignore patterns were anchored to the
+repository root added `leaks_count.txt` and `harmless_blocked.txt` to three
+April 2026 archives under `docs/runs/`:
+
+- `20260405-040319-000000-702b336916d3`
+- `20260405-040322-000000-aed41b22e195`
+- `20260405-040324-000000-2c99d5f16574`
+
+Those three carried both files under `proofs/runs/` from before the ignore
+patterns existed, and lacked them under `docs/runs/`. The publication step
+rebuilds `docs/runs` from `proofs/runs`, so once the files were no longer
+ignored they were staged into the second tree.
+
+This is recorded rather than left silent because it is a change to published
+evidence that arrived as a side effect of a fix. It is a strict improvement in
+completeness: both trees now hold every file their manifests name. It does not
+change what those archives establish, because their receipts fail on signature,
+for the reason given in E2, both before and after.
 
 ## What a reviewer should do
 
