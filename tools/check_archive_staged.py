@@ -9,18 +9,28 @@ names. `tools/publish_run.py` hashes whatever it finds in the run directory into
 archive is published incomplete and `tools/verify_archive_receipt.py` fails for
 every third party who tries to verify it, while CI stays green.
 
-This check runs after `git add` and before `git commit`. By default it inspects
-only the run archives this commit is publishing, found from the git index, so
-archives published by earlier runs cannot block a later one.
+This check runs after `git add` and before `git commit`. It inspects the run
+archives staged in the git index.
+
+A commit can legitimately touch an archive it did not produce. The publication
+step rebuilds `docs/runs` from `proofs/runs`, so a file that was committed to
+one tree and not the other is staged into the second one by a later run. Those
+archives are checked and reported, but a defect in one of them never fails the
+build: a historical archive that cannot verify is a matter for
+`docs/archive-errata.md`, and failing on it would stop the repository
+publishing evidence for good. Only the archives this CI run produced, named by
+`GITHUB_RUN_ID` embedded in the run identifier, are fatal.
 
 Exit codes:
-  0  every manifest file in every staged run archive is present and staged
-  1  at least one manifest file is absent from disk or from the git index
+  0  every archive this run produced is complete and staged
+  1  an archive this run produced is missing a manifest file, or its receipt
+     does not verify
   2  a manifest could not be read
 """
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -115,6 +125,11 @@ def _verify_receipt(run_id: str, tree: str) -> int:
 
 
 def main() -> int:
+    # Errors go to stderr and results to stdout. Without this, stdout buffering
+    # reorders them in a CI log and the failures appear to precede the run that
+    # produced them.
+    sys.stdout.reconfigure(line_buffering=True)
+
     parser = argparse.ArgumentParser(
         description="Verify that every file named by a run manifest is staged for commit."
     )
@@ -134,6 +149,15 @@ def main() -> int:
         action="store_true",
         help="Also run tools/verify_archive_receipt.py against each checked archive.",
     )
+    parser.add_argument(
+        "--ci-run-id",
+        default=None,
+        help=(
+            "Identifier of the CI run that produced this commit's archives. "
+            "Defaults to GITHUB_RUN_ID. Only archives whose run identifier embeds it "
+            "can fail this check. With no value, every staged archive is fatal."
+        ),
+    )
     args = parser.parse_args()
 
     trees = tuple(args.tree) if args.tree else DEFAULT_TREES
@@ -143,15 +167,39 @@ def main() -> int:
         print("OK: no run archive is staged in this commit; nothing to check.")
         return 0
 
+    ci_run_id = args.ci_run_id
+    if ci_run_id is None:
+        ci_run_id = os.getenv("GITHUB_RUN_ID", "")
+    ci_run_id = ci_run_id.strip()
+
     worst = 0
     staging_failed = False
+    pre_existing = []
     for run_id in run_ids:
+        produced_here = not ci_run_id or f"gh{ci_run_id}" in run_id
         staged_status = _check(run_id, trees)
+        receipt_status = _verify_receipt(run_id, trees[0]) if args.verify_receipt else 0
+        status = max(staged_status, receipt_status)
+        if not status:
+            continue
+        if not produced_here:
+            pre_existing.append(run_id)
+            continue
         if staged_status:
             staging_failed = True
-        worst = max(worst, staged_status)
-        if args.verify_receipt:
-            worst = max(worst, _verify_receipt(run_id, trees[0]))
+        worst = max(worst, status)
+
+    if pre_existing:
+        print(
+            "\nNOTE: the archives below were staged by this commit but were not produced "
+            "by this run, so they do not fail it:",
+        )
+        for run_id in pre_existing:
+            print(f"  {run_id}")
+        print(
+            "Known defects in published archives are recorded in docs/archive-errata.md "
+            "and can be re-derived with tools/archive_verification_report.py."
+        )
 
     if staging_failed:
         print(

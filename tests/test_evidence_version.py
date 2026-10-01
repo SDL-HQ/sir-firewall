@@ -157,7 +157,7 @@ def test_current_version_surfaces_match_runtime_authority():
         "tests/test_evidence_binding_correction.py": Counter({v_220: 1}),
         "tests/test_evidence_contract_applicability.py": Counter({v_234: 3, v_220: 2, v_233: 1, v_235: 1}),
         "tests/test_certificate_ledger_binding.py": Counter({v_234: 1}),
-        "tests/test_check_archive_staged.py": Counter({authority: 1}),
+        "tests/test_check_archive_staged.py": Counter({authority: 2}),
         "tests/test_standalone_verifiers.py": Counter({v_234: 1}),
         "tools/verify_certificate.py": Counter({v_234: 1}),
     }

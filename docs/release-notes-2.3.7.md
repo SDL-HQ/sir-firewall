@@ -37,6 +37,28 @@ re-signing manifests for runs that already happened, replacing published signed
 records with new ones carrying the same identities. They stay as published and
 are listed in `docs/archive-errata.md`.
 
+## What the gate caught on its first run, including itself
+
+The gate failed the first publishing commit after this change, and it was wrong
+to. The archive that run produced was complete and its receipt verified. What
+failed were three archives from April that the commit had merely touched.
+
+The publication step rebuilds `docs/runs` by deleting it and copying
+`proofs/runs` over it. Three April archives carry `leaks_count.txt` and
+`harmless_blocked.txt` in `proofs/runs` from before the ignore patterns were
+added, and lack them in `docs/runs`. Once the patterns were anchored to the
+root, those two files became stageable in the second tree, which pulled three
+historical run directories into the staged set. The gate verified their
+receipts, and those three are among the six that have failed signature
+verification since the day they were published.
+
+A gate that fails on a pre-existing defect in an archive it did not produce
+stops the repository publishing evidence for good, which is worse than the
+defect it was added to prevent. The gate now takes the archives this run
+produced from `GITHUB_RUN_ID` embedded in the run identifier. Only those can
+fail it. An archive the commit merely touched is still checked, and its result
+still printed, with a pointer to the errata, but it does not block publication.
+
 ## Six published certificates do not verify
 
 A sweep of every published archive found six certificates that fail signature
