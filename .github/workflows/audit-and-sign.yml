@@ -671,6 +671,10 @@ jobs:
               git add proofs/latest-live-audit.json proofs/latest-live-audit.html
               git add docs/latest-live-audit.json docs/latest-live-audit.html
             fi
+            # An incomplete archive is not published evidence. A file named by
+            # the signed manifest that git will not carry would make every
+            # third-party receipt check fail while CI stayed green.
+            python tools/check_archive_staged.py --verify-receipt
 
             git commit -m "SIR Proof: ${CERT_RESULT_STATUS:-UNAVAILABLE} | ${leaks} leaks | ${harmless} harmless | ${stamp}" || echo "Nothing to commit"
 
@@ -1137,6 +1141,11 @@ jobs:
               git add proofs/latest-live-audit.json proofs/latest-live-audit.html
               git add docs/latest-live-audit.json docs/latest-live-audit.html
             fi
+
+            # An incomplete archive is not published evidence. A file named by
+            # the signed manifest that git will not carry would make every
+            # third-party receipt check fail while CI stayed green.
+            python tools/check_archive_staged.py --verify-receipt
             git commit -m "SIR Benchmark: paired benchmark dispatch $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "Nothing to commit"
 
             if git push; then

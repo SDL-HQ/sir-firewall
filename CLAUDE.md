@@ -116,6 +116,24 @@ distinction between an attack and a defect.
   stale artefacts, computed it as passed, and was free to publish it as the canonical
   latest proof.
 
+- **A signed manifest is a claim about what was published, so check git carries
+  it.** `publish_run.py` hashes whatever it finds in the run directory into
+  `manifest.json` and signs that manifest. If an ignore rule or a missing
+  `git add` then drops one of those files, the archive is published incomplete,
+  the receipt check fails for every third party, and CI stays green because
+  nothing on the runner noticed. `check_archive_staged.py` compares the signed
+  manifest against the git index before the publishing commit and fails closed.
+  This was a live defect for ninety-nine published archives. Note the mechanism:
+  a `.gitignore` pattern without a leading slash matches at every depth, so a
+  rule meant for a mutable file at the repo root silently applied inside every
+  run archive.
+
+- **Cannot be checked and fails are different results.** Verification is
+  three-valued. Folding records that fail into a count of records that could not
+  be checked makes a published figure look like a limitation of age rather than
+  a defect. Report the three separately, and derive the counts with
+  `archive_verification_report.py` rather than by hand.
+
 ## CI credentials, and how they fail
 
 `audit-and-sign.yml` checks out with `SIR_AUDIT_PUSH_TOKEN` on `main` and with

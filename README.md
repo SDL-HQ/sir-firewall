@@ -1,4 +1,4 @@
-# SIR: Signal Integrity Resolver Version 2.3.6
+# SIR: Signal Integrity Resolver Version 2.3.7
 
 [![SIR Real Governance Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 
@@ -96,9 +96,12 @@ genuine violation by an in-scope certificate.
 
 The verifier tools do not require installing `sir_firewall`. A minimal copied
 verification bundle needs `tools/verify_certificate.py`, `tools/verify_itgl.py`,
-`tools/itgl.py`, `tools/key_registry.py`, `spec/sdl.pub`,
-`spec/pubkeys/key_registry.v1.json`, and
-`spec/pubkeys/key_registry.v1.schema.json`, plus the certificate and ledger.
+`tools/verify_archive_receipt.py`, `tools/itgl.py`, `tools/key_registry.py`,
+`spec/sdl.pub`, `spec/pubkeys/key_registry.v1.json`, and
+`spec/pubkeys/key_registry.v1.schema.json`, plus the complete run archive
+directory. The receipt verifier needs every file the run's `manifest.json`
+names, so copy the whole archive directory rather than the certificate and
+ledger alone.
 Python's `cryptography` package is required. The key-registry module and schema
 are pre-existing dependencies of certificate verification.
 
@@ -140,6 +143,32 @@ python3 tools/verify_certificate.py examples/verifier-negatives/tampered-leak-co
 ```
 
 The contract validator establishes shape and required fields, while the verifier establishes integrity and authenticity. See [`examples/verifier-negatives/`](examples/verifier-negatives/) for all five deliberately invalid examples and their exact diagnostics.
+
+### Three checks, three different properties
+
+Verifying an archived run takes three tools, and each establishes something the
+others do not.
+
+```bash
+RUN_ID=<a run whose audit.json records sir_firewall_version 2.3.4 or later>
+python3 tools/verify_certificate.py "docs/runs/$RUN_ID/audit.json" \
+  --ledger "docs/runs/$RUN_ID/proofs/itgl_ledger.jsonl" --require-registry
+python3 tools/verify_itgl.py --ledger "docs/runs/$RUN_ID/proofs/itgl_ledger.jsonl"
+python3 tools/verify_archive_receipt.py "docs/runs/$RUN_ID" --require-registry
+```
+
+- `verify_certificate.py` establishes that the certificate is intact, signed by
+  a registered key, and bound to a ledger with the signed terminal hash and row
+  count.
+- `verify_itgl.py` establishes that the ledger's rows are complete and in order,
+  with no row removed, inserted or reordered.
+- `verify_archive_receipt.py` establishes that every file in the archive, the
+  ledger included, is byte-identical to what was signed. The chain alone does
+  not cover the contents of a ledger row, so this check is required, not
+  optional.
+
+`docs/archive-errata.md` lists the published runs that do not pass these checks
+and why.
 
 ---
 

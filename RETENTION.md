@@ -55,6 +55,8 @@ For external reviewers, treat `proofs/runs/` as SIR's current **append-only publ
 
 This posture means the archive is designed to accumulate attributable run evidence over time for public technical review. It does **not** claim WORM/object-lock immutability from GitHub/Git alone.
 
+Known defects in the published archive, including runs whose receipts or certificates do not verify, are recorded in [`docs/archive-errata.md`](docs/archive-errata.md) and can be re-derived with `python3 tools/archive_verification_report.py`.
+
 ---
 
 ## 2) Public/shared vs local/internal surfaces
