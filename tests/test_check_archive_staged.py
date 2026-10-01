@@ -11,6 +11,7 @@ the gate that would have caught it.
 """
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -24,8 +25,20 @@ def _git(cwd: Path, *args: str) -> subprocess.CompletedProcess:
 
 
 def _run_checker(cwd: Path, *args: str) -> subprocess.CompletedProcess:
+    """Run the checker with no ambient CI identity.
+
+    The checker falls back to GITHUB_RUN_ID to decide which archives it may
+    fail on. Inheriting the runner's value makes every fixture archive look
+    pre-existing, so these tests pass locally and silently stop testing
+    anything in CI. Each test states the CI identity it wants.
+    """
+    env = {k: v for k, v in os.environ.items() if k != "GITHUB_RUN_ID"}
     return subprocess.run(
-        [sys.executable, str(CHECKER), *args], cwd=cwd, capture_output=True, text=True
+        [sys.executable, str(CHECKER), *args],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        env=env,
     )
 
 
@@ -105,6 +118,52 @@ def test_ignores_archives_not_staged_in_this_commit(tmp_path):
 
     assert result.returncode == 0, result.stderr
     assert "nothing to check" in result.stdout
+
+
+def test_a_pre_existing_archive_cannot_block_this_run(tmp_path):
+    """The failure that took the first 2.3.7 publish down.
+
+    Rebuilding docs/runs from proofs/runs stages files into archives this run
+    did not produce. Three April 2026 archives came in that way, and their
+    receipts have failed signature verification since the day they were
+    published. Failing the build on them would stop the repository publishing
+    evidence for good, so they are reported instead.
+    """
+    repo = _init_repo(tmp_path)
+    (repo / ".gitignore").write_text("leaks_count.txt\n", encoding="utf-8")
+    _write_archive(repo, "20260101-000000-000000-gh12345-historical", ["audit.json", "leaks_count.txt"])
+    _write_archive(repo, "20261002-000000-000000-gh99999-thisrun", ["audit.json"])
+    _git(repo, "add", "-A")
+
+    result = _run_checker(repo, "--ci-run-id", "99999")
+
+    assert result.returncode == 0, result.stderr
+    assert "do not fail it" in result.stdout
+    assert "20260101-000000-000000-gh12345-historical" in result.stdout
+
+
+def test_an_archive_produced_by_this_run_still_fails(tmp_path):
+    repo = _init_repo(tmp_path)
+    (repo / ".gitignore").write_text("leaks_count.txt\n", encoding="utf-8")
+    _write_archive(repo, "20261002-000000-000000-gh99999-thisrun", ["audit.json", "leaks_count.txt"])
+    _git(repo, "add", "-A")
+
+    result = _run_checker(repo, "--ci-run-id", "99999")
+
+    assert result.returncode == 1
+    assert "not staged in git" in result.stderr
+
+
+def test_without_a_ci_run_id_every_staged_archive_is_fatal(tmp_path):
+    """Run by hand, the tool has no way to tell whose archive is whose."""
+    repo = _init_repo(tmp_path)
+    (repo / ".gitignore").write_text("leaks_count.txt\n", encoding="utf-8")
+    _write_archive(repo, "20260101-000000-000000-gh12345-historical", ["audit.json", "leaks_count.txt"])
+    _git(repo, "add", "-A")
+
+    result = _run_checker(repo, "--ci-run-id", "")
+
+    assert result.returncode == 1
 
 
 def test_repo_gitignore_does_not_hide_run_archive_counter_files():

@@ -673,7 +673,10 @@ jobs:
             fi
             # An incomplete archive is not published evidence. A file named by
             # the signed manifest that git will not carry would make every
-            # third-party receipt check fail while CI stayed green.
+            # third-party receipt check fail while CI stayed green. Only the
+            # archives this run produced can fail this step; GITHUB_RUN_ID
+            # identifies them, and a pre-existing defect in an archive this
+            # commit merely touched is reported without blocking publication.
             python tools/check_archive_staged.py --verify-receipt
 
             git commit -m "SIR Proof: ${CERT_RESULT_STATUS:-UNAVAILABLE} | ${leaks} leaks | ${harmless} harmless | ${stamp}" || echo "Nothing to commit"
@@ -1144,7 +1147,10 @@ jobs:
 
             # An incomplete archive is not published evidence. A file named by
             # the signed manifest that git will not carry would make every
-            # third-party receipt check fail while CI stayed green.
+            # third-party receipt check fail while CI stayed green. Only the
+            # archives this run produced can fail this step; GITHUB_RUN_ID
+            # identifies them, and a pre-existing defect in an archive this
+            # commit merely touched is reported without blocking publication.
             python tools/check_archive_staged.py --verify-receipt
             git commit -m "SIR Benchmark: paired benchmark dispatch $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "Nothing to commit"
 
