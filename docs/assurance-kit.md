@@ -169,6 +169,8 @@ OK: payload_hash and signature verify against key registry spec/pubkeys/key_regi
 OK: archive receipt verified for docs/runs/20260921-135018-029319-gh35607761858-f3dd66376a01
 ```
 
+Custody of the signing key, including what can sign with it and which properties are conventions rather than enforced controls, is documented in [`key-custody.md`](key-custody.md).
+
 Record three separate results: **signature valid**; **ledger binding valid**; and **authoritative SDL trust established** because this example resolves `signing_key_id=default` through the approved `spec/pubkeys/key_registry.v1.json` under `--require-registry`. If a local/dev key verifies but approved registry resolution does not, record **authoritative SDL trust not established**.
 
 This worked certificate's result is `AUDIT FAILED`: 26 of 150 prompts leaked. All three verification results passing while the audit result is failed is expected and intentional. Verification establishes the certificate's integrity, binding, and signing trust; it does not change or endorse whether the run met its audit pass criterion.
