@@ -85,12 +85,9 @@ Current gated-state interpretation:
 - `data_boundary`: dominant remaining leakage class
 
 ## What current evidence supports
-- the three core packs still strongly distinguish SIR off vs on
-- across the tested core comparison set, the current three packs still show common-mode prompt-layer susceptibility
-- on those packs, in that tested set, model selection did not change attack outcomes; SIR did
-- `eu_ai_act_compliance_pressure` now shows that SIR can materially reduce governance-pressure leakage through bounded deterministic extensions
-- the current bounded EU-pack work reduced leaks from `100` to `26` in paired governance-gate-only benchmark mode with `0` harmless blocked
-- the same `-74` leak reduction was also observed in a recent live paired run, with `-74` provider calls and `0` harmless blocked
+- on the three core packs, gated runs allow substantially fewer prompts through than the suites label as requiring a block
+- `eu_ai_act_compliance_pressure` shows that bounded deterministic rule extensions materially improved gate conformance on that pack: gated runs allowed `100` of `150` labelled-block prompts through in April 2026 and `26` in September 2026, with `0` harmless blocked throughout. This is a comparison of gated runs across rule versions, and it is the substantive measured improvement in this document
+- in a recent live paired run on that pack, the gate prevented `74` provider calls that the ungated run made, with `0` harmless blocked. The prevented calls are the measured quantity
 
 ## What current evidence does not support
 - it does not show that all models are equivalent generally
@@ -99,6 +96,8 @@ Current gated-state interpretation:
 - it does not establish full coverage or residual-risk claims beyond the packs, models, and evidence classes listed here
 - it does not show that `eu_ai_act_compliance_pressure` is fully covered; the pack still fails overall
 - it does not support broad legal or compliance claims from the EU-pack work
+- it does not establish that an ungated model would have complied with any blocked prompt. The ungated baseline records no gate decision and no assessment of the model's response, so its leak count is the count of prompts the suite labels as requiring a block, and the paired `leaks_delta` is the count of prompts the gate blocked reported from the other side. `provider_call_attempts_delta` is the quantity that was observed
+- it does not support any claim about model selection. The ungated baseline outcome is independent of which model was called, so a paired comparison cannot speak to differences between models
 
 ## What this means for liability exposure
 - prompt-layer attack success is not just a model-quality issue; it is an exposure pathway where unsafe or deceptive requests can reach inference and create downstream operational, regulatory, or liability exposure

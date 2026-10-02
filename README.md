@@ -1,4 +1,4 @@
-# SIR: Signal Integrity Resolver Version 2.3.7
+# SIR: Signal Integrity Resolver Version 2.3.8
 
 [![SIR Real Governance Audit](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml/badge.svg)](https://github.com/SDL-HQ/sir-firewall/actions/workflows/audit-and-sign.yml)
 

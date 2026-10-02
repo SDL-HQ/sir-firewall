@@ -1,7 +1,6 @@
 # Published archive errata
 
-Last updated 2 October 2026, at SIR 2.3.7, after the first publishing run
-following the fix.
+Last updated 2 October 2026, at SIR 2.3.8.
 
 This document records defects in SIR's own published evidence archive. It
 exists because the archive is offered for independent verification, and a
@@ -163,6 +162,43 @@ evidence that arrived as a side effect of a fix. It is a strict improvement in
 completeness: both trees now hold every file their manifests name. It does not
 change what those archives establish, because their receipts fail on signature,
 for the reason given in E2, both before and after.
+
+## E6. Certificates name a model that was never invoked
+
+**Symptom.** A certificate records `model` and `provider` naming a specific
+commercial product while recording `model_calls_made: 0` and
+`provider_call_attempts: 0`.
+
+**Cause.** All three evidence contracts make `model` and `provider` required
+with a minimum length of one, so every certificate must name something. The
+publishing workflow supplies a default when no model was selected, so an
+ordinary push-triggered audit, in which nobody chose a model and none was
+called, records the default in the signed payload.
+
+**Counts.** 135 published certificates name a model and explicitly record zero
+model calls: 131 `FIREWALL_ONLY_AUDIT`, 2 `SCENARIO_AUDIT`, and 2
+`LIVE_GATING_CHECK`. A further 37 older certificates name a model and do not
+carry the counter at all. The products named are xAI's `grok-3-beta`,
+`grok-4.3` and `grok-4-1-fast`, and OpenAI's `gpt-5.4-mini`. None of those
+vendors took part in the runs concerned.
+
+**The two live-mode records are not defects.** `LIVE_GATING_CHECK` is defined as
+live mode where passing prompts may call the provider. A live run in which every
+prompt blocked legitimately makes no calls, the call counters are signed and
+visible, and the live pointer correctly refuses to advance without a successful
+call.
+
+**What a reader should rely on.** The call counters, which are signed and shown
+on the proof page. `proof_class: FIREWALL_ONLY_AUDIT` means the gate ran and no
+provider was contacted, whatever the model field says.
+
+**Partly addressed.** The proof page now states on the model row itself that no
+provider call was made when the counters are zero, rather than leaving a reader
+to reconcile that row with counters further down the table. The field semantics
+are not fixed: a certificate for a run that invoked no model should not name one
+at all, and changing that requires a new evidence contract, because the current
+contracts require a non-empty value. Historical certificates cannot be
+re-signed.
 
 ## What a reviewer should do
 

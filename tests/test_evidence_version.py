@@ -104,6 +104,7 @@ def test_current_version_surfaces_match_runtime_authority():
     v_234 = ".".join(("2", "3", "4"))
     v_235 = ".".join(("2", "3", "5"))
     v_236 = ".".join(("2", "3", "6"))
+    v_237 = ".".join(("2", "3", "7"))
     archived_evidence_prefixes = ("proofs/runs/", "docs/runs/", "proofs/archive/")
     mutable_certificate_pointers = {
         "proofs/latest-audit.json",
@@ -126,13 +127,13 @@ def test_current_version_surfaces_match_runtime_authority():
         "examples/verifier-negatives/tampered-unregistered-key.json": Counter({v_230: 1}),
         "docs/additional-phase-1-findings.md": Counter({v_221: 4, v_102: 1, v_200: 1}),
         "docs/assets/StructuralDesignLabs_Logo.svg": Counter({v_210: 1}),
-        "docs/archive-errata.md": Counter({authority: 2, v_234: 2, v_102: 1}),
+        "docs/archive-errata.md": Counter({authority: 1, v_237: 1, v_234: 2, v_102: 1}),
         "docs/backlog.md": Counter({v_230: 1}),
         "docs/coverage.json": Counter({authority: 1}),
         "docs/evidence-perimeter.v5.md": Counter({authority: 1}),
-        "docs/assurance-kit.md": Counter({v_234: 2, authority: 1}),
-        "docs/evaluator-technical-explainer.md": Counter({v_234: 2, authority: 1}),
-        "docs/minimal-pilot-runbook.md": Counter({v_234: 3, authority: 1}),
+        "docs/assurance-kit.md": Counter({v_234: 2, v_237: 1}),
+        "docs/evaluator-technical-explainer.md": Counter({v_234: 2, v_237: 1}),
+        "docs/minimal-pilot-runbook.md": Counter({v_234: 3, v_237: 1}),
         "docs/evidence-binding-correction.md": Counter(
             {v_234: 6, v_220: 5, v_221: 1, v_230: 1, v_233: 1}
         ),
@@ -145,9 +146,11 @@ def test_current_version_surfaces_match_runtime_authority():
         f"docs/release-notes-{v_234}.md": Counter({v_234: 3, v_220: 1}),
         f"docs/release-notes-{v_235}.md": Counter({v_234: 4, v_235: 4, v_220: 3, v_233: 1}),
         f"docs/release-notes-{v_236}.md": Counter({v_236: 3, v_235: 3}),
-        f"docs/release-notes-{authority}.md": Counter({authority: 3, v_236: 2, v_235: 1}),
+        f"docs/release-notes-{v_237}.md": Counter({v_237: 3, v_236: 2, v_235: 1}),
+        f"docs/release-notes-{authority}.md": Counter({authority: 3, v_235: 1}),
         "docs/failure-modes.md": Counter({v_230: 3, v_231: 3, authority: 2}),
         "docs/rule-coverage.md": Counter({authority: 1}),
+        "docs/terminology.md": Counter({v_235: 1, v_234: 1}),
         "docs/threat-model.md": Counter({v_234: 1}),
         "pyproject.toml": Counter({authority: 1}),
         "spec/evidence_contract.v1.json": Counter({v_220: 2}),
@@ -157,12 +160,12 @@ def test_current_version_surfaces_match_runtime_authority():
         "tests/test_evidence_binding_correction.py": Counter({v_220: 1}),
         "tests/test_evidence_contract_applicability.py": Counter({v_234: 3, v_220: 2, v_233: 1, v_235: 1}),
         "tests/test_certificate_ledger_binding.py": Counter({v_234: 1}),
-        "tests/test_check_archive_staged.py": Counter({authority: 2}),
+        "tests/test_check_archive_staged.py": Counter({v_237: 2}),
         "tests/test_standalone_verifiers.py": Counter({v_234: 1}),
         "tools/verify_certificate.py": Counter({v_234: 1}),
     }
     version_pattern = re.compile(
-        rf"(?<![\d.])(?:{'|'.join(re.escape(version) for version in (authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233, v_234, v_235, v_236))})(?!\d)"
+        rf"(?<![\d.])(?:{'|'.join(re.escape(version) for version in (authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233, v_234, v_235, v_236, v_237))})(?!\d)"
     )
     tracked_paths = subprocess.check_output(
         ["git", "ls-files", "-z"], cwd=ROOT
@@ -174,7 +177,7 @@ def test_current_version_surfaces_match_runtime_authority():
         if relative_path == "proofs/local-audit.json"
         or Path(relative_path).name == "latest-run.json"
     }
-    recognised_versions = {authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233, v_234, v_235, v_236}
+    recognised_versions = {authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233, v_234, v_235, v_236, v_237}
     observed_by_path = {}
 
     for relative_path in sorted(mutable_certificate_pointers | mutable_if_versioned):
