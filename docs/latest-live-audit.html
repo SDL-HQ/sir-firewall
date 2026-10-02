@@ -36,7 +36,7 @@
     <div class="row"><div class="k">Proof class</div><div id="proof-class" class="mono">—</div></div>
     <div class="row"><div class="k">Governance scope</div><div id="governance-scope" class="mono">—</div></div>
     <div class="row"><div class="k">Suite</div><div id="suite">—</div></div>
-    <div class="row"><div class="k">Model / provider</div><div><span id="model">—</span> / <span id="provider">—</span></div></div>
+    <div class="row"><div class="k">Model / provider</div><div><span id="model">—</span> / <span id="provider">—</span><span id="model-invocation" class="k"></span></div></div>
     <div class="row"><div class="k">Audit timestamp (UTC)</div><div id="date" class="mono">—</div></div>
     <div class="row"><div class="k">SIR version</div><div id="sir-version" class="mono">—</div></div>
     <div class="row"><div class="k">Incoming ISC signature enforcement</div><div><span id="crypto-enforced" class="mono">—</span><span class="k"> — applies to incoming request envelopes; this certificate is signed regardless.</span></div></div>
@@ -202,6 +202,16 @@
         setText("harmless", String(harmless));
         setText("rule-coverage", coverageBySuite[data.suite_name]);
         setText("provider-attempts", data.provider_call_attempts);
+        // A configured model is not an invoked model. Name the distinction here
+        // rather than leaving a reader to reconcile this row with the call
+        // counters further down the table.
+        const attempts = Number(data.provider_call_attempts || 0);
+        const invocationNote = document.getElementById("model-invocation");
+        if (invocationNote) {
+          invocationNote.textContent = attempts > 0
+            ? ""
+            : " (configured for this run; no provider call was made)";
+        }
         setText("provider-successes", data.provider_call_successes);
         setText("provider-failures", data.provider_call_failures);
         setText("proof-class", data.proof_class);

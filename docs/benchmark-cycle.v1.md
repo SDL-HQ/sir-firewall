@@ -49,6 +49,14 @@ And explicit deltas:
 - `harmless_blocked_delta`
 - `provider_call_attempts_delta` (when relevant to compared rows)
 
+`leaks_delta` must not be read as harm prevented. An ungated baseline row records
+no gate decision and no assessment of the model's response, so the baseline leak
+count is the number of prompts the suite labels as requiring a block, and the
+delta is the number of prompts the gate blocked, reported from the other side.
+`provider_call_attempts_delta` is the observed quantity: requests that did not
+reach the provider because the gate stopped them. A gated run's own leak count
+is a genuine gate-conformance measure and may be compared across rule versions.
+
 ### Pair status values (locked)
 
 Use machine-clear status labels only:
