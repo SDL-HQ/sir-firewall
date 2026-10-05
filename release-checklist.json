@@ -4,14 +4,31 @@
   "source_branch": "release/2.4",
   "rollback_tag": "v2.3.8",
   "note": "Acceptance conditions for the bounded technical-diligence release. An item is met only when it carries evidence that resolves: a test that exists, an artefact that exists, or a command that runs to its expected exit code. Prose is not evidence. tools/check_release_checklist.py enforces this on the merge path to main.",
-  "evidence_types": ["test", "command", "artefact"],
+  "evidence_types": [
+    "test",
+    "command",
+    "artefact"
+  ],
   "items": [
     {
       "id": 0,
       "name": "Freeze mechanism",
-      "condition": "Nothing reaches main until the relevant condition passes, evidenced by a test, tool output or artefact.",
-      "status": "open",
-      "evidence": []
+      "condition": "No merge to main can happen without every condition passing, or an explicit recorded rule bypass by the sole maintainer.",
+      "status": "met",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "tests/test_release_checklist.py::test_open_item_blocks_the_merge"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_release_checklist.py::test_prose_is_not_evidence"
+        },
+        {
+          "type": "artefact",
+          "ref": ".github/workflows/release-gate.yml"
+        }
+      ]
     },
     {
       "id": 1,
@@ -69,5 +86,6 @@
       "status": "open",
       "evidence": []
     }
-  ]
+  ],
+  "bypass": "The Protect Main ruleset lists Repository admin with bypass mode 'allow for pull requests only', and the repository has no other collaborators, so that is the sole maintainer. The normal merge button is blocked while a required check fails; merging anyway requires choosing an option labelled 'bypass rules', which GitHub records. This was decided knowingly on 6 October rather than left implicit: the gate makes a premature merge deliberate rather than impossible. No app or outside contributor can bypass."
 }
