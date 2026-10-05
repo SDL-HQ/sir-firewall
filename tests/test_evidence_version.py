@@ -120,6 +120,8 @@ def test_current_version_surfaces_match_runtime_authority():
         "AGENTS.md": Counter({v_220: 2, v_234: 1, v_235: 2}),
         "README.md": Counter({v_234: 9, v_233: 3, v_232: 2, v_230: 2, v_231: 2, v_221: 2, v_220: 2, v_235: 1, authority: 1}),
         "RETENTION.md": Counter({v_234: 1, v_233: 1, v_220: 1, v_235: 1}),
+        # The release checklist names the rollback tag for the release in flight.
+        "release-checklist.json": Counter({authority: 1}),
         "examples/verifier-negatives/tampered-leak-count.json": Counter({v_230: 1}),
         "examples/verifier-negatives/tampered-leak-count-rehashed.json": Counter({v_230: 1}),
         "examples/verifier-negatives/tampered-required-field-removed.json": Counter({v_230: 1}),

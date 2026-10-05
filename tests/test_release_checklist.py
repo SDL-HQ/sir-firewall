@@ -98,7 +98,7 @@ def test_command_must_reach_its_stated_exit_code(tmp_path):
                 "id": 0,
                 "name": "x",
                 "status": "met",
-                "evidence": [{"type": "command", "ref": "exit 3", "expect_exit": 0}],
+                "evidence": [{"type": "command", "ref": "python3 -c \"raise SystemExit(3)\"", "expect_exit": 0}],
             }
         ],
     )
@@ -118,7 +118,7 @@ def test_resolving_evidence_passes(tmp_path):
                 "evidence": [
                     {"type": "test", "ref": "tests/test_release_checklist.py::test_prose_is_not_evidence"},
                     {"type": "artefact", "ref": "tools/check_release_checklist.py"},
-                    {"type": "command", "ref": "exit 0", "expect_exit": 0},
+                    {"type": "command", "ref": "python3 -c \"pass\"", "expect_exit": 0},
                 ],
             }
         ],
@@ -136,3 +136,31 @@ def test_the_real_checklist_is_wellformed():
     result = _run(REPO / "release-checklist.json", REPO, "--summary-only")
     assert result.returncode == 0
     assert "Release checklist for 2.4.0" in result.stdout
+
+
+def test_command_evidence_never_reaches_a_shell(tmp_path):
+    """The checklist is editable by anyone who can open a pull request.
+
+    Command evidence is split into an executable and its arguments, so a shell
+    metacharacter in the checklist is an argument rather than a second command.
+    """
+    marker = tmp_path / "side-effect"
+    checklist = _write(
+        tmp_path,
+        [
+            {
+                "id": 0,
+                "name": "x",
+                "status": "met",
+                "evidence": [
+                    {
+                        "type": "command",
+                        "ref": f'python3 -c "pass" ; touch {marker}',
+                        "expect_exit": 0,
+                    }
+                ],
+            }
+        ],
+    )
+    _run(checklist, REPO, "--run-commands")
+    assert not marker.exists(), "a shell interpreted the checklist entry"

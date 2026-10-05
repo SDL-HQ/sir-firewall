@@ -13,7 +13,8 @@ rather than taken on trust:
 
   test      "tests/test_x.py::test_name" -- the file must exist and define it
   artefact  a repository path that must exist
-  command   a command that must run to its stated exit code (--run-commands)
+  command   an executable and its arguments, run without a shell, which must
+            reach its stated exit code (--run-commands)
 
 There is deliberately no prose or document evidence type. A paragraph explaining
 why something is acceptable is a scope statement, which belongs in the
@@ -32,6 +33,7 @@ Exit codes:
 
 import argparse
 import json
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -82,7 +84,20 @@ def _resolve_command(entry: dict, root: Path, run: bool) -> str | None:
         return "command evidence must state expect_exit"
     if not run:
         return None
-    result = subprocess.run(ref, shell=True, cwd=root, capture_output=True, text=True)
+    # Split rather than hand the string to a shell. This file gates the merge, so
+    # anyone able to open a pull request can edit it, and the gate runs command
+    # evidence in CI. A command here is one executable and its arguments; a step
+    # that needs a pipe or a conditional belongs in a script the repository owns.
+    try:
+        argv = shlex.split(ref)
+    except ValueError as exc:
+        return f"command could not be parsed: {ref} ({exc})"
+    if not argv:
+        return f"command is empty: {ref!r}"
+    try:
+        result = subprocess.run(argv, cwd=root, capture_output=True, text=True)
+    except OSError as exc:
+        return f"command could not be run: {ref} ({exc})"
     expected = int(entry["expect_exit"])
     if result.returncode != expected:
         return (
