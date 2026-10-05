@@ -1,0 +1,73 @@
+{
+  "checklist_version": "v1",
+  "target_version": "2.4.0",
+  "source_branch": "release/2.4",
+  "rollback_tag": "v2.3.8",
+  "note": "Acceptance conditions for the bounded technical-diligence release. An item is met only when it carries evidence that resolves: a test that exists, an artefact that exists, or a command that runs to its expected exit code. Prose is not evidence. tools/check_release_checklist.py enforces this on the merge path to main.",
+  "evidence_types": ["test", "command", "artefact"],
+  "items": [
+    {
+      "id": 0,
+      "name": "Freeze mechanism",
+      "condition": "Nothing reaches main until the relevant condition passes, evidenced by a test, tool output or artefact.",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": 1,
+      "name": "Execution accounting",
+      "condition": "A failed or unassessed execution cannot resemble a clean assessment, in stdout, exit code, summary counters or certificate.",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": 2,
+      "name": "Configuration identity",
+      "condition": "Changing a file or environment setting mid-run cannot silently change what the run claims it enforced. Signing cannot describe a configuration other than the one that executed.",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": 3,
+      "name": "Evidence correctness",
+      "condition": "The documented verification procedure rejects a row whose stated decision has been altered, and every pre-v4 archive still verifies under its own contract. An inconsistent run cannot receive a certificate asserting a conclusive pass.",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": 4,
+      "name": "Verification consolidation",
+      "condition": "The normal evaluator procedure rejects changed, missing, mismatched and incomplete evidence without the evaluator needing to know which extra command closes which gap.",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": 5,
+      "name": "Key custody",
+      "condition": "The question 'what happens if the signing key leaks' has a documented, tested answer.",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": 6,
+      "name": "Legitimate workload",
+      "condition": "Results published with failures, exclusions and denominators. No rate published without its sampling method.",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": 7,
+      "name": "Reference demonstration",
+      "condition": "All supported failure paths produce zero downstream calls; approved calls preserve the evaluated content. Another engineer reproduces it unaided.",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": 8,
+      "name": "Claims register",
+      "condition": "Each public technical claim remains true when the reader examines the failures.",
+      "status": "open",
+      "evidence": []
+    }
+  ]
+}
