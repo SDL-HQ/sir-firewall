@@ -11,8 +11,10 @@
     }
   ],
   "x_verifier_expectations": {
-    "revocation_behavior": "Do not retroactively invalidate proofs signed before revoked_utc. Fail verification only for proofs where timestamp_utc >= revoked_utc for that key.",
-    "timestamp_requirement": "If proof timestamp_utc is missing during revocation checks, fail closed.",
-    "timestamp_format": "UTC ISO-8601 with Z suffix required for comparisons."
+    "revocation_behavior": "Revocation is decided by the anchor, not by the signer's own timestamp. A revoked entry must carry last_trusted_run_id, naming the last run published before revocation. A proof counts as pre-revocation only if the CI run number embedded in its own run_id is at or below the anchor's. Run numbers are assigned by the forge, so a key holder cannot raise theirs; a timestamp, being inside the signed payload, can be set to anything by whoever holds the key, which is exactly the party revocation exists to stop.",
+    "anchor_requirement": "Fail closed when a revoked entry has no usable last_trusted_run_id, or when the proof carries no parseable run_id.",
+    "timestamp_requirement": "The proof timestamp_utc is still compared against revoked_utc and can only tighten the result. It is never sufficient on its own.",
+    "timestamp_format": "UTC ISO-8601 with Z suffix required for comparisons.",
+    "residual_risk": "A key holder can claim a run_id below the anchor. They cannot make that archive exist in the published repository at that identifier, so the claim is detectable by comparing against published history. That comparison needs the repository and is outside offline certificate verification."
   }
 }

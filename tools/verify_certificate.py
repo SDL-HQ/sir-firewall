@@ -39,6 +39,7 @@ DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
 DEFAULT_KEY_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
 LEDGER_BINDING_FAILURE = 7
 LEDGER_BINDING_NOT_CHECKED = 9
+REVOCATION_FAILURE = 10
 
 
 def _require_json_object(obj: Any, source: str) -> Dict[str, Any]:
@@ -127,9 +128,12 @@ def _load_pubkey_with_registry(
             entry = find_registry_key(registry_path, signing_key_id)
             if entry is None:
                 raise SystemExit(f"ERROR: signing_key_id not found in key registry: {signing_key_id}")
-            allowed, reason = revocation_allows_proof(entry, cert.get("timestamp_utc"))
+            allowed, reason = revocation_allows_proof(
+                entry, cert.get("timestamp_utc"), cert.get("run_id")
+            )
             if not allowed:
-                raise SystemExit(f"ERROR: revoked-key verification failure: {reason}")
+                print(f"ERROR: revoked-key verification failure: {reason}", file=sys.stderr)
+                raise SystemExit(REVOCATION_FAILURE)
             pem = public_key_pem_from_entry(entry)
             return (
                 serialization.load_pem_public_key(pem.encode("utf-8")),

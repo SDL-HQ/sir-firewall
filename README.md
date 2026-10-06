@@ -129,7 +129,7 @@ environment.
 | `python3 tools/verify_certificate.py proofs/latest-audit.json` | `python3 tools/verify_certificate.py examples/verifier-negatives/tampered-leak-count.json` |
 | Prints `OK: payload_hash matches reconstructed signed payload and signature verifies ...` | Refuses with `ERROR: payload_hash mismatch` and exit code `3` |
 
-`verify_certificate.py` uses exit code `7` when ledger chain or signed terminal-hash/row-count binding fails, and exit code `9` when binding was not checked because no ledger was found. `--no-ledger` is the only successful explicit skip. Codes `2`–`6`
+`verify_certificate.py` uses exit code `7` when ledger chain or signed terminal-hash/row-count binding fails, and exit code `9` when binding was not checked because no ledger was found. Exit code `10` means the signing key is revoked and the certificate is not covered by that key's pre-revocation anchor. Revocation is decided by `last_trusted_run_id` in the key registry rather than by the certificate's own `timestamp_utc`, because whoever holds a leaked key can sign any timestamp they choose; the timestamp can only tighten the result. A revoked entry without an anchor, or a certificate without a parseable `run_id`, fails closed. `--no-ledger` is the only successful explicit skip. Codes `2`–`6`
 retain their existing certificate and signature failure meanings.
 
 The same deliberately invalid certificate demonstrates why consumers must run both tools:

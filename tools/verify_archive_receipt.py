@@ -148,7 +148,9 @@ def main() -> int:
                     )
                     return 2
             else:
-                allowed, reason = revocation_allows_proof(entry, receipt.get("timestamp_utc"))
+                allowed, reason = revocation_allows_proof(
+                    entry, receipt.get("timestamp_utc"), receipt.get("run_id")
+                )
                 if not allowed:
                     print(f"ERROR: revoked-key verification failure: {reason}", file=sys.stderr)
                     return 2
