@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import argparse
 import base64
+import glob
 import json
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
@@ -17,6 +19,8 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 DEFAULT_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
 DEFAULT_CURRENT_PUB = Path("spec/sdl.pub")
 DEFAULT_PUBKEY_DIR = Path("spec/pubkeys")
+DEFAULT_ARCHIVE_ROOT = Path("proofs/runs")
+RUN_NUMBER_RE = re.compile(r"-gh(\d+)-")
 
 
 def _utc_now_z() -> str:
@@ -52,6 +56,31 @@ def _new_keypair() -> tuple[str, str]:
     return priv_pem, pub_pem
 
 
+def _last_trusted_run_id(archive_root: Path, key_id: str) -> str | None:
+    """Highest-numbered published run this key signed.
+
+    Recorded when the key is retired, not when it is revoked. During an incident
+    you will not know, or will not trust, which run was the last good one, and
+    the answer stops being derivable the moment anyone can sign. Writing it down
+    at rotation turns a later revocation into a one-field change.
+    """
+    best_number, best_run_id = -1, None
+    for path in glob.glob(str(archive_root / "*" / "audit.json")):
+        try:
+            cert = json.loads(Path(path).read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if cert.get("signing_key_id") != key_id:
+            continue
+        match = RUN_NUMBER_RE.search(str(cert.get("run_id") or ""))
+        if not match:
+            continue
+        number = int(match.group(1))
+        if number > best_number:
+            best_number, best_run_id = number, cert.get("run_id")
+    return best_run_id
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Rotate signing keys and update key registry.")
     ap.add_argument("--registry", default=str(DEFAULT_REGISTRY), help="Key registry JSON path.")
@@ -59,6 +88,10 @@ def main() -> int:
     ap.add_argument("--pubkey-dir", default=str(DEFAULT_PUBKEY_DIR), help="Directory for historical pubkeys.")
     ap.add_argument("--key-id", help="New key id (default: sdl-<UTC stamp>).")
     ap.add_argument("--private-out", help="Private key output path (required).")
+    ap.add_argument("--archive-root", default=str(DEFAULT_ARCHIVE_ROOT),
+                    help="Published run archive, used to derive the retired key's anchor.")
+    ap.add_argument("--last-trusted-run-id",
+                    help="Override the derived anchor for the key being retired.")
     args = ap.parse_args()
 
     now = _utc_now_z()
@@ -72,10 +105,21 @@ def main() -> int:
     priv_pem, pub_pem = _new_keypair()
 
     active_count = 0
+    anchors: List[str] = []
+    archive_root = Path(args.archive_root)
     for entry in keys:
         if isinstance(entry, dict) and entry.get("status") == "active":
             entry["status"] = "retired"
             entry.setdefault("valid_until_utc", now)
+            anchor = args.last_trusted_run_id or _last_trusted_run_id(archive_root, entry.get("key_id"))
+            if anchor:
+                entry.setdefault("last_trusted_run_id", anchor)
+                anchors.append(f"{entry.get('key_id')} -> {anchor}")
+            else:
+                anchors.append(
+                    f"{entry.get('key_id')} -> NONE DERIVABLE; set last_trusted_run_id by hand "
+                    f"before this key is ever revoked"
+                )
             active_count += 1
 
     keys.append(
@@ -110,6 +154,8 @@ def main() -> int:
     os.chmod(private_out, 0o600)
 
     print(f"OK: rotated keys; retired active keys: {active_count}")
+    for line in anchors:
+        print(f"OK: pre-revocation anchor {line}")
     print(f"OK: new key_id={new_key_id}")
     print(f"OK: registry updated -> {registry_path}")
     print(f"OK: current public key -> {current_pub_path}")

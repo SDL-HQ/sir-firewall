@@ -67,6 +67,11 @@ concurrency:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # The certificate records which key signed it. generate_certificate.py falls back to
+  # "default", so rotating the signing secret without setting this would stamp every
+  # certificate with the wrong key id and fail verification for everyone outside CI.
+  # Set the SDL_SIGNING_KEY_ID repository variable as part of a key rotation.
+  SDL_SIGNING_KEY_ID: ${{ vars.SDL_SIGNING_KEY_ID || 'default' }}
 
 jobs:
   audit-and-sign:
@@ -401,7 +406,11 @@ jobs:
             exit 0
           fi
 
-          python tools/verify_certificate.py "$AUDIT_JSON" --ledger "$ITGL_LEDGER_PATH"
+          # --require-registry so CI verifies the way a third party does. Without it the
+          # verifier falls back to spec/sdl.pub, which rotation rewrites, so a key id that
+          # disagreed with the registry would pass here and fail for everyone else.
+          python tools/verify_certificate.py "$AUDIT_JSON" --ledger "$ITGL_LEDGER_PATH" \
+            --require-registry
 
       - name: Archive this run (P6 truth-preserving per-run archive)
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
@@ -901,7 +910,8 @@ jobs:
             run_id="$(basename "$(dirname "$cert")")"
             ledger="$(python -c 'import sys; from sir_firewall.evidence_paths import canonical_ledger_path; print(canonical_ledger_path(sys.argv[1]))' "$run_id")"
             python tools/verify_certificate.py "$cert" \
-              --ledger "$ledger"
+              --ledger "$ledger" \
+              --require-registry
           done
 
       - name: Prepare docs/ for GitHub Pages
