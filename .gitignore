@@ -3,3 +3,11 @@
 
 __pycache__/
 *.pyc
+
+# Local development environment and build artefacts. The project installs
+# editable for local test runs; none of this is evidence.
+.venv/
+src/*.egg-info/
+
+# macOS
+.DS_Store

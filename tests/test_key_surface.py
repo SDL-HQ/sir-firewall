@@ -93,6 +93,8 @@ def test_spec_sdl_pub_matches_the_active_registry_entry() -> None:
 
     assert actual == expected, (
         "spec/sdl.pub is not the active registry key "
-        f"({active[0]['key_id']}). verify_policy() checks the signed policy "
-        "against spec/sdl.pub, so a mismatch stops certificate generation."
+        f"({active[0]['key_id']}). It is the default public key for the "
+        "certificate, receipt and export-bundle verifiers, so a mismatch "
+        "makes every published archive unverifiable with the documented "
+        "command."
     )
