@@ -63,7 +63,56 @@
       "name": "Key custody",
       "condition": "The question 'what happens if the signing key leaks' has a documented, tested answer.",
       "status": "open",
-      "evidence": []
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "tests/test_key_revocation_anchor.py::test_end_to_end_backdated_certificate_from_a_revoked_key_is_refused"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_key_revocation_anchor.py::test_end_to_end_genuine_pre_revocation_certificate_still_verifies"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_key_revocation_anchor.py::test_revoked_without_an_anchor_fails_closed"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_key_revocation_anchor.py::test_proof_without_a_run_id_fails_closed"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_key_revocation_anchor.py::test_no_rotation_may_weaken_the_signing_key"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_signing_surface.py::test_only_one_workflow_can_reach_the_production_signing_key"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_signing_surface.py::test_only_main_signs_on_push"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_signing_surface.py::test_the_signing_key_id_travels_with_the_secret"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_key_surface.py::test_no_public_key_material_outside_the_registry"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_policy_key_binding.py::test_a_retired_key_cannot_gate_certificate_generation"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_policy_key_binding.py::test_the_key_id_is_bound_even_when_the_same_key_is_claimed_twice"
+        },
+        {
+          "type": "artefact",
+          "ref": "docs/key-custody.md"
+        }
+      ]
     },
     {
       "id": 6,
