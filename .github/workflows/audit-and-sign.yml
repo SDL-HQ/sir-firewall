@@ -2,7 +2,7 @@ name: SIR Real Governance Audit
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ main ]
     paths-ignore:
       - 'proofs/**'
       - 'docs/**'
