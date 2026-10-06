@@ -182,3 +182,41 @@ def test_end_to_end_genuine_pre_revocation_certificate_still_verifies(keypair, t
     )
     genuine = _mint(priv, tmp_path, run_id=ANCHOR_RUN, timestamp_utc="2026-10-01T23:36:07Z")
     assert _verify(genuine, revoked).returncode == 0
+
+
+# --- the registry must not weaken over time --------------------------------
+
+
+def test_no_rotation_may_weaken_the_signing_key():
+    """A key ceremony is an improvement or it is not worth doing.
+
+    The first signing key was 4096-bit. rotate_keys.py originally hardcoded 2048,
+    so running it silently halved the strength of the thing the whole evidence
+    claim rests on. This refuses that, and refuses any future active key weaker
+    than one it replaced.
+    """
+    from cryptography.hazmat.primitives.serialization import load_pem_public_key
+
+    registry = json.loads(
+        (REPO / "spec" / "pubkeys" / "key_registry.v1.json").read_text(encoding="utf-8")
+    )
+    sizes = {
+        entry["key_id"]: (
+            entry.get("status"),
+            load_pem_public_key(entry["pubkey_pem"].encode()).key_size,
+        )
+        for entry in registry["keys"]
+    }
+    assert sizes, "key registry carries no keys"
+
+    strongest_retired = max(
+        (size for status, size in sizes.values() if status != "active"), default=0
+    )
+    for key_id, (status, size) in sizes.items():
+        if status != "active":
+            continue
+        assert size >= 4096, f"active key {key_id} is {size}-bit, below the 4096 minimum"
+        assert size >= strongest_retired, (
+            f"active key {key_id} is {size}-bit, weaker than a retired key "
+            f"at {strongest_retired}-bit"
+        )

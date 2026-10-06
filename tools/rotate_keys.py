@@ -20,6 +20,10 @@ DEFAULT_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
 DEFAULT_CURRENT_PUB = Path("spec/sdl.pub")
 DEFAULT_PUBKEY_DIR = Path("spec/pubkeys")
 DEFAULT_ARCHIVE_ROOT = Path("proofs/runs")
+# A rotation must never weaken the signature. The first key was 4096-bit and this
+# default matches it; the registry test refuses an active key below MIN_KEY_SIZE.
+DEFAULT_KEY_SIZE = 4096
+MIN_KEY_SIZE = 4096
 RUN_NUMBER_RE = re.compile(r"-gh(\d+)-")
 
 
@@ -42,8 +46,13 @@ def _write_json(path: Path, data: Dict[str, Any]) -> None:
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-def _new_keypair() -> tuple[str, str]:
-    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+def _new_keypair(key_size: int = DEFAULT_KEY_SIZE) -> tuple[str, str]:
+    if key_size < MIN_KEY_SIZE:
+        raise SystemExit(
+            f"ERROR: refusing to rotate to a {key_size}-bit key; minimum is {MIN_KEY_SIZE}. "
+            "A rotation must not weaken the signature."
+        )
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=key_size)
     priv_pem = private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
@@ -90,6 +99,8 @@ def main() -> int:
     ap.add_argument("--private-out", help="Private key output path (required).")
     ap.add_argument("--archive-root", default=str(DEFAULT_ARCHIVE_ROOT),
                     help="Published run archive, used to derive the retired key's anchor.")
+    ap.add_argument("--key-size", type=int, default=DEFAULT_KEY_SIZE,
+                    help="RSA modulus size for the new key (minimum {}).".format(MIN_KEY_SIZE))
     ap.add_argument("--last-trusted-run-id",
                     help="Override the derived anchor for the key being retired.")
     args = ap.parse_args()
@@ -102,7 +113,7 @@ def main() -> int:
     if not isinstance(keys, list):
         raise SystemExit("ERROR: key registry keys must be a list")
 
-    priv_pem, pub_pem = _new_keypair()
+    priv_pem, pub_pem = _new_keypair(args.key_size)
 
     active_count = 0
     anchors: List[str] = []
@@ -156,7 +167,7 @@ def main() -> int:
     print(f"OK: rotated keys; retired active keys: {active_count}")
     for line in anchors:
         print(f"OK: pre-revocation anchor {line}")
-    print(f"OK: new key_id={new_key_id}")
+    print(f"OK: new key_id={new_key_id} ({args.key_size}-bit)")
     print(f"OK: registry updated -> {registry_path}")
     print(f"OK: current public key -> {current_pub_path}")
     print(f"OK: historical public key -> {key_pub_path}")
