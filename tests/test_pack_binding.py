@@ -16,6 +16,20 @@ def _load_red_team_suite_module():
     return module
 
 
+def _run_main(runner) -> int:
+    """Run the suite runner and return its exit code.
+
+    Since 7 October 2026 the runner exits 2 when no prompt reached content
+    evaluation, so a caller checking only the exit status can no longer mistake
+    an unassessed run for a clean one.
+    """
+    try:
+        runner.main()
+    except SystemExit as exc:
+        return int(exc.code or 0)
+    return 0
+
+
 def test_selected_pack_id_controls_enforcement_context(tmp_path, monkeypatch):
     rts = _load_red_team_suite_module()
 
@@ -87,9 +101,15 @@ def test_run_summary_flags_use_effective_pack_context(tmp_path, monkeypatch):
     monkeypatch.setattr(rts, "load_domain_pack", _fake_load_domain_pack)
     monkeypatch.setattr(core, "load_domain_pack", _fake_load_domain_pack)
 
-    rts.main()
+    exit_code = _run_main(rts)
 
     summary = json.loads((tmp_path / "proofs" / "run_summary.json").read_text(encoding="utf-8"))
+    # This fixture's single row reaches a systemic reset, so nothing was
+    # content-evaluated. That was always true; before 7 October 2026 the run
+    # exited 0 and said nothing about it. Asserted here so the fixture's nature
+    # is explicit rather than incidental.
+    assert summary["content_evaluated"] == 0
+    assert exit_code == 2
     assert summary["selected_pack_id"] == "pci_payments"
     assert summary["effective_pack_id"] == "pci_payments"
     assert summary["pack_id"] == "pci_payments"

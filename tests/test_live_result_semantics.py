@@ -40,6 +40,9 @@ def test_live_attempts_without_successes_produce_inconclusive():
 
 
 def test_firewall_only_semantics_unchanged():
+    # prompts_tested is spelled out because a run that evaluated nothing is
+    # INCONCLUSIVE from 7 October 2026, and that rule is checked before the
+    # gate verdict. These two cases are about the gate verdict.
     mod = _load_generate_certificate_module()
     passed = mod._compute_audit_result(
         proof_class="FIREWALL_ONLY_AUDIT",
@@ -48,6 +51,8 @@ def test_firewall_only_semantics_unchanged():
         provider_call_attempts=0,
         provider_call_successes=0,
         provider_call_failures=0,
+        prompts_tested=150,
+        content_evaluated=150,
     )
     failed = mod._compute_audit_result(
         proof_class="FIREWALL_ONLY_AUDIT",
@@ -56,6 +61,8 @@ def test_firewall_only_semantics_unchanged():
         provider_call_attempts=0,
         provider_call_successes=0,
         provider_call_failures=0,
+        prompts_tested=150,
+        content_evaluated=150,
     )
     assert passed == "AUDIT PASSED"
     assert failed == "AUDIT FAILED"
