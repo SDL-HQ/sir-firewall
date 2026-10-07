@@ -27,10 +27,8 @@ import json
 import os
 import sys
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
-
-import sys
 from pathlib import Path as _Path
+from typing import Any, Dict, List, Optional
 
 # Run directly from a clone without an editable install. The four verifiers in
 # this directory already do this; a tool that only works once the package is
@@ -140,7 +138,18 @@ def aggregate_quorum(results: List[Dict[str, Any]]) -> Dict[str, Any]:
                 }
             )
 
-    if sr_events:
+    if not results:
+        # A quorum of nobody is not a quorum that agreed. Until 8 October 2026
+        # this returned PASS with reason all_firewalls_passed, so a run in which
+        # no firewall was consulted was reported identically to one in which
+        # every firewall allowed the request, and the reason string asserted
+        # something that had not happened. That is the same defect the execution
+        # accounting work removed from the runner, in a file offered to readers
+        # as a reference implementation. A gate that was not consulted must not
+        # resemble a gate that allowed.
+        global_status = "BLOCKED"
+        global_reason = "no_firewalls_consulted"
+    elif sr_events:
         global_status = "BLOCKED"
         global_reason = "systemic_reset_triggered"
     elif blocked_events:

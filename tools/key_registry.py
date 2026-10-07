@@ -30,6 +30,25 @@ def load_registry(path: Path) -> Dict[str, Any]:
     return obj
 
 
+# The key id a certificate with no signing_key_id was signed by.
+#
+# 43 of the 292 certificates published before SIR 2.4.0 carry no
+# signing_key_id, because the field did not exist yet. All 43 verify against
+# the registry entry "default" and none verify against spec/sdl.pub, which has
+# held the rotated key since 6 October 2026. Until 8 October a verifier with
+# nothing to resolve fell through to that file, so those 43 archives reported
+# "signature verification failed" under the documented procedure: not invalid
+# evidence, a verifier with no rule for them.
+#
+# Treating an absent field as "default" records what the field's absence
+# already meant. It is strictly stronger than the fallback it replaces, because
+# the entry's status and revocation rules then apply where a bare public key
+# file enforces neither. It is not a new trust path: "default" is in the
+# approved registry, retired, and a revoked "default" refuses these archives
+# exactly as it refuses the 249 that name it.
+IMPLICIT_KEY_ID = "default"
+
+
 def find_registry_key(path: Path, key_id: str) -> Optional[Dict[str, Any]]:
     reg = load_registry(path)
     keys = reg.get("keys")

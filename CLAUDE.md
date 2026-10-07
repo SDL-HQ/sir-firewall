@@ -88,14 +88,41 @@ minimal bundle needs no spec file;
 | 5 | signature does not verify |
 | 6 | signature verification error |
 | 7 | binding failure: chain invalid, terminal-hash mismatch, or row-count mismatch |
-| 9 | binding **not checked**: no ledger corresponding to the signed identity was found |
+| 9 | binding **not checked**: no ledger was found, or the certificate predates `itgl_row_count` |
+| 10 | the signing key is revoked for this archive |
+| 11 | counter binding failure: the signed counters are not supported by the bound ledger |
 
 `tools/validate_certificate_contract.py`: 0 pass, 2 contract violation, 3 load
 error, 8 below the applicability floor.
 
+`tools/verify_evidence.py`, the consolidated command and the documented
+evaluator procedure: 0 established, 1 **not established**, 2 failed, 3 the run
+directory could not be read. It reports five properties separately and its
+verdict is the worst state present.
+
 7 and 9 are deliberately distinct. 7 means the binding was checked and is
 wrong. 9 means it could not be checked at all. Collapsing them loses the
-distinction between an attack and a defect.
+distinction between an attack and a defect. The same distinction is what
+separates exit 1 from exit 2 in `verify_evidence.py`, and it is why a
+certificate from before `itgl_row_count` existed reports 9 rather than 7: 219
+published archives never carried that field, and reporting a format change as a
+binding failure manufactures a catastrophe.
+
+**Unknown is not a pass and not a failure.** A property nobody could check is
+not a property that holds. This is the same rule as
+`content_false_positive_rate` being null rather than zero and
+`counters_checked_against_ledger: false` not meaning agreement.
+
+## The evaluator procedure
+
+`docs/assurance-kit.md` documents one command over one run directory. Prefer it
+over the individual tools when reaching a verdict: it passes explicit paths
+rather than letting `verify_certificate.py` discover a ledger, which resolves
+against the working directory and can find a copy elsewhere on disk, and it
+reports signing trust as a property of its own rather than leaving it to be
+inferred from which flags were typed. Registry resolution is its default and
+there is no flag that asks for it; `--allow-unregistered-key` opts out and
+changes the verdict.
 
 ## Invariants that must not quietly break
 
@@ -164,7 +191,10 @@ Editing a token's permissions does not change its value.
 
 ## Before you merge
 
-1. `PYTHONPATH=src pytest -q`. Full suite, currently 305 tests.
+1. `pytest -q`. Full suite, with no `PYTHONPATH` and no editable install:
+   every entry point finds the package for itself, and a suite whose result
+   depends on the ambient environment is not evidence. No test count is stated
+   here on purpose, because a number in a document rots between commits.
 2. `python3 tools/verify_policy.py`. Signed policy matches enforced policy.
 3. Run the published verification command from the website against the current
    release and diff its real stdout against what the site renders. Instance

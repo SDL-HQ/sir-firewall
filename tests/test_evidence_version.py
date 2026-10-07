@@ -141,7 +141,7 @@ def test_current_version_surfaces_match_runtime_authority():
         "docs/backlog.md": Counter({v_230: 1}),
         "docs/coverage.json": Counter({authority: 1}),
         "docs/evidence-perimeter.v5.md": Counter({authority: 1}),
-        "docs/assurance-kit.md": Counter({v_234: 2, v_237: 1}),
+        "docs/assurance-kit.md": Counter({v_234: 4, v_237: 1, v_240: 4, v_220: 3, v_102: 1, v_200: 1}),
         "docs/evaluator-technical-explainer.md": Counter({v_234: 2, v_237: 1}),
         "docs/minimal-pilot-runbook.md": Counter({v_234: 3, v_237: 1}),
         "docs/evidence-binding-correction.md": Counter(
@@ -170,13 +170,16 @@ def test_current_version_surfaces_match_runtime_authority():
         "src/sir_firewall/__init__.py": Counter({authority: 1}),
         "tests/test_evidence_binding_correction.py": Counter({v_220: 1}),
         "tests/test_evidence_contract_applicability.py": Counter({v_234: 3, v_220: 2, v_233: 1, v_235: 1}),
-        "tests/test_certificate_ledger_binding.py": Counter({v_234: 1}),
+        "tests/test_certificate_ledger_binding.py": Counter({v_234: 4}),
         "tests/test_contract_floor_is_not_self_asserted.py": Counter({v_240: 2, v_235: 5}),
         "tests/test_counters_derive_from_the_ledger.py": Counter({authority: 1}),
         "tests/test_release_checklist.py": Counter({v_240: 1}),
         "tests/test_check_archive_staged.py": Counter({v_237: 2}),
         "tests/test_standalone_verifiers.py": Counter({v_234: 1}),
-        "tools/verify_certificate.py": Counter({v_234: 1}),
+        "tools/verify_certificate.py": Counter({v_234: 4}),
+        "tools/verify_evidence.py": Counter({v_220: 1, v_240: 1}),
+        "tools/key_registry.py": Counter({v_240: 1}),
+        "tests/test_one_command_verification.py": Counter({authority: 1, v_240: 1}),
     }
     version_pattern = re.compile(
         rf"(?<![\d.])(?:{'|'.join(re.escape(version) for version in (authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233, v_234, v_235, v_236, v_237, v_240))})(?!\d)"
