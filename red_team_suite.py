@@ -39,7 +39,11 @@ from typing import Dict, List, Tuple, Optional, Any
 # imported rather than reimplemented. tools/ is not a package, so it is added
 # to the path the same way tools/verify_certificate.py does it.
 sys.path.insert(0, str(Path(__file__).resolve().parent / "tools"))
-from itgl import CURRENT_CHAIN_VERSION, compute_ledger_hash  # noqa: E402
+from itgl import (  # noqa: E402
+    CURRENT_CHAIN_VERSION,
+    compute_ledger_hash,
+    derive_counters,
+)
 
 from sir_firewall import validate_sir
 from sir_firewall.core import load_domain_pack
@@ -612,6 +616,9 @@ def main() -> None:
     # SIR_ISC_PACK is read inside load_domain_pack at call time, so changing
     # it between rows switches packs. A run that enforced two configurations
     # cannot honestly name one in its certificate.
+    # Every row as written, so the published counters can be derived from the
+    # evidence rather than counted beside it.
+    written_rows: List[Dict[str, Any]] = []
     configuration_hashes: set[str] = set()
     rows_without_configuration = 0
     content_evaluated = 0
@@ -881,7 +888,54 @@ def main() -> None:
             entry["ledger_hash"] = ledger_hash
 
             ledger.write(json.dumps(entry, separators=(",", ":"), ensure_ascii=False) + "\n")
+            written_rows.append(entry)
             prev_ledger_hash = ledger_hash
+
+    # The ledger is the source of the published counters; the counts
+    # accumulated during the loop are a cross-check on the writer. They must
+    # agree, because they describe the same rows. If they ever do not, one of
+    # the two is wrong and there is no way to tell which from here, so the run
+    # fails rather than publishing a number the evidence does not support.
+    _derived = derive_counters(written_rows)
+    if _derived is not None:
+        _claimed = {
+            "prompts_tested": prompts_tested,
+            "content_evaluated": content_evaluated,
+            "systemic_reset_count": systemic_reset_count,
+            "systemic_reset_counts_by_reason": systemic_reset_counts_by_reason,
+            "jailbreaks_leaked": jailbreaks_leaked,
+            "harmless_blocked": harmless_blocked,
+            "legitimate_requests_denied_by_system_failure": (
+                legitimate_requests_denied_by_system_failure
+            ),
+            "provider_call_attempts": provider_call_attempts,
+            "provider_call_successes": provider_call_successes,
+            "provider_call_failures": provider_call_failures,
+        }
+        _disagreements = {
+            key: {"counted": _claimed[key], "ledger": value}
+            for key, value in _derived.items()
+            if _claimed.get(key) != value
+        }
+        if _disagreements:
+            print(
+                "RUN RESULT: REFUSED - the counters do not match the ledger: "
+                f"{json.dumps(_disagreements, sort_keys=True)}",
+                file=sys.stderr,
+            )
+            raise SystemExit(3)
+        prompts_tested = _derived["prompts_tested"]
+        content_evaluated = _derived["content_evaluated"]
+        systemic_reset_count = _derived["systemic_reset_count"]
+        systemic_reset_counts_by_reason = _derived["systemic_reset_counts_by_reason"]
+        jailbreaks_leaked = _derived["jailbreaks_leaked"]
+        harmless_blocked = _derived["harmless_blocked"]
+        legitimate_requests_denied_by_system_failure = _derived[
+            "legitimate_requests_denied_by_system_failure"
+        ]
+        provider_call_attempts = _derived["provider_call_attempts"]
+        provider_call_successes = _derived["provider_call_successes"]
+        provider_call_failures = _derived["provider_call_failures"]
 
     # Back-compat counters for CI scripts that expect these files
     with open("leaks_count.txt", "w", encoding="utf-8") as f:

@@ -42,7 +42,12 @@ from sir_firewall.evidence_paths import canonical_ledger_path
 from sir_firewall.model_selection import DEFAULT_MODEL, DEFAULT_PROVIDER
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from itgl import LedgerVerificationError, load_and_verify_ledger
+from itgl import (
+    LedgerVerificationError,
+    counter_disagreements,
+    load_and_verify_ledger,
+    load_ledger,
+)
 from verify_policy import verify_policy
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -535,6 +540,39 @@ def main(ledger_path: Optional[str] = None, allow_detached_ledger: bool = False)
     except (LedgerVerificationError, OSError, UnicodeError) as exc:
         raise RuntimeError(f"ITGL ledger verification failed for {selected_ledger_path}: {exc}") from exc
 
+    # Every counter about to be signed is checked against the ledger this
+    # certificate binds. The summary asserts them; the ledger is the evidence
+    # a reader actually has. Signing a number the evidence does not support is
+    # the thing the whole release is about, so this refuses rather than
+    # downgrading the result: an INCONCLUSIVE certificate would still carry
+    # the unsupported counters.
+    #
+    # None means the ledger predates the fields needed to recompute them,
+    # which is not agreement and is not reported as such.
+    _ledger_entries = load_ledger(Path(selected_ledger_path))
+    _counter_claims = {
+        "prompts_tested": prompts_tested,
+        "content_evaluated": content_evaluated,
+        "systemic_reset_count": systemic_reset_count,
+        "jailbreaks_leaked": jailbreaks_leaked,
+        "harmless_blocked": harmless_blocked,
+        "provider_call_attempts": provider_call_attempts,
+        "provider_call_successes": provider_call_successes,
+        "provider_call_failures": provider_call_failures,
+    }
+    if denied_by_system_failure is not None:
+        _counter_claims["legitimate_requests_denied_by_system_failure"] = (
+            denied_by_system_failure
+        )
+    _disagreements = counter_disagreements(_counter_claims, _ledger_entries)
+    if _disagreements:
+        raise RuntimeError(
+            "refusing to sign certificate: the summary's counters are not "
+            "supported by the ledger it binds: "
+            f"{json.dumps(_disagreements, sort_keys=True)}"
+        )
+    counters_checked_against_ledger = _disagreements is not None
+
     expected_itgl_hash = (os.getenv("ITGL_FINAL_HASH") or "").strip()
     if expected_itgl_hash and expected_itgl_hash != itgl_final_hash:
         raise RuntimeError(
@@ -602,6 +640,10 @@ def main(ledger_path: Optional[str] = None, allow_detached_ledger: bool = False)
         # The difference between prompts_tested and content_evaluated, signed
         # rather than left to be inferred by subtraction.
         "systemic_reset_count": systemic_reset_count,
+        # Whether the counters above were checked against the ledger. False
+        # means the ledger predates the fields needed to recompute them, not
+        # that the check passed.
+        "counters_checked_against_ledger": counters_checked_against_ledger,
         # Signed, so a reader can tell which rules decided, not only which
         # policy file was present. policy_hash does not cover
         # deterministic_rules.py, which produces most block decisions.

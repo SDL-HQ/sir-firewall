@@ -38,7 +38,9 @@ from itgl import (
     CHAIN_VERSION_V1,
     CHAIN_VERSION_V2,
     LedgerVerificationError,
+    counter_disagreements,
     load_and_verify_ledger,
+    load_ledger,
 )
 
 DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
@@ -84,6 +86,10 @@ def minimum_chain_version_for(sir_firewall_version: Any) -> int:
 
 
 LEDGER_BINDING_FAILURE = 7
+# A signed counter the ledger does not support. Distinct from 7 because the
+# chain and the terminal hash can both be intact while the numbers on the
+# certificate describe a different run than the rows do.
+COUNTER_BINDING_FAILURE = 11
 LEDGER_BINDING_NOT_CHECKED = 9
 REVOCATION_FAILURE = 10
 
@@ -365,6 +371,30 @@ def main() -> int:
             print(f"  signed itgl_row_count: {signed_row_count}", file=sys.stderr)
             print(f"  ledger rows: {row_count}", file=sys.stderr)
             return LEDGER_BINDING_FAILURE
+
+        # Recompute the certificate's own counters from the rows it binds.
+        # The chain can be intact and the terminal hash can match while the
+        # numbers on the certificate describe a different run than the rows
+        # do, because until 8 October 2026 nothing connected the two.
+        disagreements = counter_disagreements(cert, load_ledger(ledger_path))
+        if disagreements:
+            print(
+                "ERROR: counter binding verification failed: the certificate's "
+                "counters are not supported by the ledger it binds",
+                file=sys.stderr,
+            )
+            for field, values in sorted(disagreements.items()):
+                print(
+                    f"  {field}: certificate={values['claimed']}, ledger={values['ledger']}",
+                    file=sys.stderr,
+                )
+            return COUNTER_BINDING_FAILURE
+        if disagreements is None:
+            print(
+                "NOTE: this ledger predates the fields needed to recompute the "
+                "certificate's counters, so they were not checked against it.",
+                file=sys.stderr,
+            )
 
     if cert.get("detached_ledger") is True:
         print(
