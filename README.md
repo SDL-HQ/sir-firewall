@@ -226,6 +226,19 @@ Current supported provider and model selection is documented in `docs/model-sele
 
 Low-level `python3 tools/...` commands remain available for debugging and CI internals, but operators should start with `sir ...`.
 
+### Run the tests
+
+```bash
+python3 -m pip install -e .
+python3 -m pytest
+```
+
+The suite requires no network, no API key and no signing key. Everything it
+needs is committed, including the published evidence it verifies, so the result
+should not differ between one machine and another. If it does, that is a defect
+in the suite rather than in your environment; `tests/test_tools_run_from_a_clone.py`
+and `tests/test_declared_dependencies.py` exist to keep it that way.
+
 `sir packs list` reports public registry entries. It does not guarantee that a same-named ISC policy pack exists; see `tests/domain_packs/README.md` for the current execution constraint.
 
 ---

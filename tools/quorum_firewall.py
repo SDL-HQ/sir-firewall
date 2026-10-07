@@ -29,7 +29,23 @@ import sys
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from sir_firewall.sir_firewall import validate_sir  # type: ignore
+import sys
+from pathlib import Path as _Path
+
+# Run directly from a clone without an editable install. The four verifiers in
+# this directory already do this; a tool that only works once the package is
+# installed makes a test's outcome depend on the ambient environment, which is
+# how test_rule_coverage_report came to pass or fail according to whether
+# PYTHONPATH happened to be set. tests/test_tools_run_from_a_clone.py holds the
+# property for every tool here that imports sir_firewall.
+_REPO_ROOT = _Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_REPO_ROOT / "src"))
+sys.path.insert(0, str(_Path(__file__).resolve().parent))
+
+# sir_firewall.sir_firewall has not existed since the move to core.py, so this
+# import raised ImportError on every invocation of this tool, in every
+# environment, until 8 October 2026. validate_sir is exported from the package.
+from sir_firewall import validate_sir
 
 
 @dataclass

@@ -3,11 +3,20 @@ name = "sir-firewall"
 version = "2.3.8"
 requires-python = ">=3.10"
 
+# pytest and hypothesis sit here rather than in a test extra because the README
+# documents `pip install -e .` as the install, and every workflow but tests.yml
+# uses exactly that. hypothesis was in requirements.txt only, which the README
+# never mentions, so tests.yml was green on a file a reader is never told to
+# install and anyone following the README got a collection error on
+# tests/test_gate_outcome_invariance.py.
+# tests/test_declared_dependencies.py fails if a package the code or the tests
+# import at module scope is missing from this list.
 dependencies = [
   "cryptography",
   "pydantic",
   "requests",
   "pytest",
+  "hypothesis",
   "PyYAML",
   "pandas"
 ]

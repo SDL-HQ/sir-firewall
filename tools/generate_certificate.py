@@ -38,9 +38,17 @@ from typing import Any, Dict, Optional
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+
+# Run directly from a clone without an editable install. These inserts must
+# precede the package imports below; previously only the tools directory was
+# added, and only after them, so this tool required the ambient environment to
+# make sir_firewall importable. tests/test_tools_run_from_a_clone.py holds it.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_REPO_ROOT / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 from sir_firewall.evidence_paths import canonical_ledger_path
 from sir_firewall.model_selection import DEFAULT_MODEL, DEFAULT_PROVIDER
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from itgl import (
     LedgerVerificationError,
