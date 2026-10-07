@@ -60,33 +60,44 @@ def test_the_runner_does_not_reimplement_the_chain():
     )
 
 
-def test_what_the_writer_writes_is_what_the_verifier_accepts(tmp_path):
-    """The round trip, over the one rule both sides now share."""
-    itgl = _load("itgl_round_trip", "tools/itgl.py")
-
+def _chained_ledger(itgl, tmp_path, chain_version):
+    """Build a ledger the way the writer does: complete row, then hash, then
+    attach the two chain fields."""
+    tmp_path.mkdir(parents=True, exist_ok=True)
     prev = "GENESIS"
     rows = []
     for index in range(1, 4):
-        final_hash = hashlib.sha256(f"row-{index}".encode()).hexdigest()
-        ledger_hash = itgl.compute_ledger_hash(prev, final_hash)
-        rows.append({
+        row = {
             "ts": f"2026-10-07T00:00:0{index}Z",
             "prompt_index": index,
             "status": "PASS",
-            "final_hash": final_hash,
-            "prev_hash": prev,
-            "ledger_hash": ledger_hash,
-        })
-        prev = ledger_hash
+            "final_hash": hashlib.sha256(f"row-{index}".encode()).hexdigest(),
+        }
+        if chain_version is not None:
+            row["chain_version"] = chain_version
+        row["prev_hash"] = prev
+        row["ledger_hash"] = itgl.compute_ledger_hash(prev, row)
+        prev = row["ledger_hash"]
+        rows.append(row)
 
     path = tmp_path / "itgl_ledger.jsonl"
     path.write_text(
         "".join(json.dumps(r, separators=(",", ":")) + "\n" for r in rows),
         encoding="utf-8",
     )
-    head, count = itgl.load_and_verify_ledger(path)
-    assert count == 3
-    assert head == f"sha256:{rows[-1]['ledger_hash']}"
+    return path, rows
+
+
+def test_what_the_writer_writes_is_what_the_verifier_accepts(tmp_path):
+    """The round trip, over the one rule both sides now share, in both
+    versions. A v1 ledger is what all 292 published archives are."""
+    itgl = _load("itgl_round_trip", "tools/itgl.py")
+
+    for label, version in (("legacy, no field", None), ("v1", 1), ("v2", 2)):
+        path, rows = _chained_ledger(itgl, tmp_path / label.replace(", ", "-").replace(" ", "-"), version)
+        head, count = itgl.load_and_verify_ledger(path)
+        assert count == 3, label
+        assert head == f"sha256:{rows[-1]['ledger_hash']}", label
 
 
 def test_the_shipped_verifier_stays_standalone():

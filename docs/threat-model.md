@@ -95,9 +95,15 @@ Without `--ledger`, it does not establish that a run occurred, that asserted fie
 
 ### `tools/verify_itgl.py`
 
-The ITGL verifier establishes limited structure and chain linkage. It requires a non-empty JSONL ledger, required linkage fields, a non-empty per-prompt final hash, `GENESIS` on the first entry, continuous `prev_hash` values, and `ledger_hash == sha256(prev_hash + final_hash_raw)` for every entry.
+The ITGL verifier establishes structure and chain linkage. It requires a non-empty JSONL ledger, required linkage fields, a non-empty per-prompt final hash, `GENESIS` on the first entry, continuous `prev_hash` values, and a valid `ledger_hash` for every entry. What that hash covers depends on the chain version the ledger was written with, and the verifier reports which version it checked under.
 
-It does not validate the semantic contents of an entry or establish authenticity. A fabricated ledger with valid hash arithmetic passes it. Timestamps and prompt indexes are required fields but are not covered by the ledger hash and are not checked for type, order, monotonicity, or truth.
+**`chain_version` 1**, which is every archive published before 8 October 2026: `ledger_hash == sha256(prev_hash + final_hash_raw)`. No descriptive field of a row enters any hash. The chain binds the order of rows, not their contents, so a row's decision, prompt identifier, prompt hash, leak flag, provider-call flag and timestamp can all be altered and the chain still verifies. This was reproduced on a published archive on 2 October 2026 and detected only by the archive receipt, which hashes whole files.
+
+**`chain_version` 2**: `ledger_hash == sha256(prev_hash + canonical(row))`, where `canonical(row)` is the row with `prev_hash` and `ledger_hash` removed, serialised with sorted keys and compact separators. Every other field is covered, including fields added to the row in future, because the rule is expressed as an exclusion rather than a list. Hashing the parsed row rather than the bytes on disk means re-serialising a ledger does not break it, while altering any value does.
+
+A minimum chain version can be required. `verify_certificate.py` derives it from the certificate's signed `sir_firewall_version`; `verify_itgl.py` takes `--min-chain-version` and defaults to 1 so that existing archives verify under the rule they were written with. A row's own `chain_version` selects which rule computes its hash and never decides what is acceptable.
+
+It does not establish authenticity. **A wholly fabricated ledger with valid hash arithmetic still passes the chain verifier on its own**, under either version; what rules that out is the terminal hash matching an `itgl_final_hash` inside a valid signed certificate. Under `chain_version` 2 a row's contents are bound to that terminal hash, so altering one row in a published archive is detected without the receipt. Prompt indexes and timestamps are covered by the version 2 hash but are still not checked for type, order, monotonicity, or truth.
 
 The terminal ledger hash must match an `itgl_final_hash` covered by a valid signed certificate for the chain to be meaningful as certificate-linked evidence. Certificate generation now performs that binding before signing, and `verify_certificate.py --ledger` independently verifies both artifacts and compares the terminal hash and row count.
 

@@ -39,7 +39,7 @@ from typing import Dict, List, Tuple, Optional, Any
 # imported rather than reimplemented. tools/ is not a package, so it is added
 # to the path the same way tools/verify_certificate.py does it.
 sys.path.insert(0, str(Path(__file__).resolve().parent / "tools"))
-from itgl import compute_ledger_hash  # noqa: E402
+from itgl import CURRENT_CHAIN_VERSION, compute_ledger_hash  # noqa: E402
 
 from sir_firewall import validate_sir
 from sir_firewall.core import load_domain_pack
@@ -796,9 +796,14 @@ def main() -> None:
             if expected == "block" and status == "PASS":
                 leak_flag = "LEAK"
 
-            ledger_hash = compute_ledger_hash(prev_ledger_hash, final_hash_raw)
-
+            # The row is built complete before it is hashed. Under
+            # chain_version 2 the hash covers every field except prev_hash and
+            # ledger_hash, and pass_rule_explainability and the scenario
+            # fields are attached below rather than in this literal. Computing
+            # the hash first would leave them uncovered, which is the drift the
+            # exclusion-based rule exists to prevent.
             entry = {
+                "chain_version": CURRENT_CHAIN_VERSION,
                 "ts": _utc_now_iso(),
                 "prompt_index": i,
                 "prompt_id": rid or "",
@@ -816,8 +821,6 @@ def main() -> None:
                 # Both fields included for compatibility
                 "final_hash": final_hash_raw,
                 "itgl_prompt_final_hash": f"sha256:{final_hash_raw}" if final_hash_raw else "",
-                "prev_hash": prev_ledger_hash,
-                "ledger_hash": ledger_hash,
             }
             pass_rule_explainability = verdict.get("pass_rule_explainability")
             if status == "PASS" and isinstance(pass_rule_explainability, dict):
@@ -834,6 +837,13 @@ def main() -> None:
                 entry["turn_index"] = i
                 entry["turn_id"] = rid or ""
                 entry["role"] = role
+
+            # Every descriptive field is present, so the chain now covers all
+            # of them. The two chain fields are attached afterwards because
+            # they are the hash and its predecessor.
+            ledger_hash = compute_ledger_hash(prev_ledger_hash, entry)
+            entry["prev_hash"] = prev_ledger_hash
+            entry["ledger_hash"] = ledger_hash
 
             ledger.write(json.dumps(entry, separators=(",", ":"), ensure_ascii=False) + "\n")
             prev_ledger_hash = ledger_hash

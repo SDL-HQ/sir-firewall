@@ -20,9 +20,10 @@ import argparse
 import base64
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Tuple
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
@@ -33,10 +34,55 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from key_registry import find_registry_key, public_key_pem_from_entry, revocation_allows_proof
-from itgl import LedgerVerificationError, load_and_verify_ledger
+from itgl import (
+    CHAIN_VERSION_V1,
+    CHAIN_VERSION_V2,
+    LedgerVerificationError,
+    load_and_verify_ledger,
+)
 
 DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
 DEFAULT_KEY_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
+# The chain version a certificate's own release is required to have written.
+# Taken from sir_firewall_version, which is inside the signed payload, so a
+# holder of the archive cannot lower the bar without breaking the signature.
+#
+# This is a policy control, not the anti-tampering mechanism. Tampering is
+# defeated by chain_version 2 putting the row's contents into its own hash and
+# by the signed terminal hash pinning the chain; a row downgraded inside a v2
+# ledger breaks linkage whether or not a minimum is set. What the bar adds is
+# that a reader requiring v2 evidence does not silently accept a v1 archive,
+# which matters most where no signed terminal hash is present to pin anything.
+MINIMUM_CHAIN_VERSION_FLOORS = (
+    ((2, 4, 0), CHAIN_VERSION_V2),
+)
+
+
+def _parse_semver(value: Any) -> Optional[Tuple[int, int, int]]:
+    if not isinstance(value, str) or re.fullmatch(r"\d+\.\d+\.\d+", value) is None:
+        return None
+    major, minor, patch = (int(part) for part in value.split("."))
+    return (major, minor, patch)
+
+
+def minimum_chain_version_for(sir_firewall_version: Any) -> int:
+    """The chain version this certificate's release was required to write.
+
+    An unparseable or absent version floors at v1 rather than raising. Three
+    published certificates carry no version at all, and refusing them here
+    would be a verification failure reported as a tampering failure, which is
+    worse than reporting what the weaker rule established.
+    """
+    parsed = _parse_semver(sir_firewall_version)
+    if parsed is None:
+        return CHAIN_VERSION_V1
+    required = CHAIN_VERSION_V1
+    for floor, version in MINIMUM_CHAIN_VERSION_FLOORS:
+        if parsed >= floor:
+            required = max(required, version)
+    return required
+
+
 LEDGER_BINDING_FAILURE = 7
 LEDGER_BINDING_NOT_CHECKED = 9
 REVOCATION_FAILURE = 10
@@ -290,7 +336,9 @@ def main() -> int:
 
     if ledger_path is not None:
         try:
-            ledger_hash, row_count = load_and_verify_ledger(ledger_path)
+            ledger_hash, row_count = load_and_verify_ledger(
+                ledger_path, minimum_chain_version_for(cert.get("sir_firewall_version"))
+            )
         except (LedgerVerificationError, OSError, UnicodeError) as exc:
             print(f"ERROR: ledger binding verification failed: {exc}", file=sys.stderr)
             return LEDGER_BINDING_FAILURE
