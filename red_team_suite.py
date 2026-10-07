@@ -715,6 +715,7 @@ def main() -> None:
 
             # Prove we are actually gating a real call (optional)
             provider_call_attempted = False
+            provider_call_outcome = ""
             if status == "PASS" and do_model_calls:
                 # Counting rule (deterministic): increment once per attempted downstream call.
                 # Retries/timeouts are separate attempts and must each increment this counter.
@@ -733,6 +734,7 @@ def main() -> None:
                         provider=provider_name,
                     )
                     provider_call_successes += 1
+                    provider_call_outcome = "success"
                     if downstream_f is not None:
                         downstream_record: Dict[str, Any] = {
                             "ts": _utc_now_iso(),
@@ -752,6 +754,7 @@ def main() -> None:
                         downstream_f.write(json.dumps(downstream_record, separators=(",", ":"), ensure_ascii=False) + "\n")
                 except Exception as e:
                     provider_call_failures += 1
+                    provider_call_outcome = "failure"
                     # Never persist model response content. Only record call error metadata.
                     f.write(f"  model_call_error: {type(e).__name__}: {e}\n")
                     if downstream_f is not None:
@@ -816,12 +819,44 @@ def main() -> None:
                 "domain_pack": domain_pack,
                 "status": status,
                 "expected": expected,
+                # Added 8 October 2026. A published row carried status and
+                # expected but nothing distinguishing a content block from a
+                # system failure, so a reader could not tell them apart and
+                # could not recompute content_evaluated, systemic_reset_count
+                # or legitimate_requests_denied_by_system_failure. Those
+                # counters were asserted by the runner and recorded nowhere
+                # that could check them. Empty string means this row was
+                # judged on its content.
+                "systemic_reset_reason": systemic_reset_reason or "",
                 "provider_call_attempted": bool(provider_call_attempted),
+                # Attempted says a call was made; this says how it ended. Both
+                # are needed to recompute the provider counters from rows.
+                "provider_call_outcome": provider_call_outcome,
+                # Ties the row to the configuration that decided it. The
+                # configuration itself is in the summary and the certificate;
+                # this is the short reference, and under chain_version 2 it is
+                # covered by the row's own hash.
+                "configuration_hash": row_configuration or "",
                 "leak_flag": leak_flag,
                 # Both fields included for compatibility
                 "final_hash": final_hash_raw,
                 "itgl_prompt_final_hash": f"sha256:{final_hash_raw}" if final_hash_raw else "",
             }
+            # The gate computes a stable rule identity for every block reason
+            # in _RULE_GROUPS and attaches it to the verdict as triggered_rule.
+            # Until 8 October 2026 the harness wrote none of it, so a pass row
+            # explained itself and a blocked row did not.
+            triggered_rule = verdict.get("triggered_rule")
+            if status == "BLOCKED" and isinstance(triggered_rule, dict):
+                entry["triggered_rule"] = {
+                    "rule_id": str(triggered_rule.get("rule_id") or ""),
+                    "rule_category": str(triggered_rule.get("rule_category") or ""),
+                    "rule_outcome_class": str(triggered_rule.get("rule_outcome_class") or ""),
+                }
+            rule_hits = verdict.get("rule_hits")
+            if status == "BLOCKED" and isinstance(rule_hits, list) and rule_hits:
+                entry["rule_hits"] = [str(hit) for hit in rule_hits]
+
             pass_rule_explainability = verdict.get("pass_rule_explainability")
             if status == "PASS" and isinstance(pass_rule_explainability, dict):
                 entry["pass_rule_explainability"] = {

@@ -122,6 +122,10 @@ def test_current_version_surfaces_match_runtime_authority():
         "RETENTION.md": Counter({v_234: 1, v_233: 1, v_220: 1, v_235: 1}),
         # The release checklist names the rollback tag for the release in flight.
         "release-checklist.json": Counter({authority: 1}),
+        # The chain-version floor table is version-keyed, so that test names
+        # the released versions either side of the floor as boundary cases.
+        # This entry fires if the floor moves without the test moving with it.
+        "tests/test_ledger_binds_row_contents.py": Counter({v_102: 1, authority: 1}),
         "examples/verifier-negatives/tampered-leak-count.json": Counter({v_230: 1}),
         "examples/verifier-negatives/tampered-leak-count-rehashed.json": Counter({v_230: 1}),
         "examples/verifier-negatives/tampered-required-field-removed.json": Counter({v_230: 1}),
