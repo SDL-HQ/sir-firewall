@@ -33,9 +33,9 @@ END = "END GENERATED FULL-GATE COVERAGE"
 
 PUBLISHED_LOOKUP_SURFACES = {
     ROOT / "docs" / "latest-run.html": ("coverageByPack", 8),
-    ROOT / "docs" / "latest-audit.html": ("coverageBySuite", 8),
-    ROOT / "docs" / "latest-live-audit.html": ("coverageBySuite", 8),
-    ROOT / "proofs" / "template.html": ("coverageBySuite", 8),
+    ROOT / "docs" / "latest-audit.html": ("coverageByPack", 8),
+    ROOT / "docs" / "latest-live-audit.html": ("coverageByPack", 8),
+    ROOT / "proofs" / "template.html": ("coverageByPack", 8),
 }
 
 

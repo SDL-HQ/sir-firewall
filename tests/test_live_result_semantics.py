@@ -199,7 +199,7 @@ def test_latest_audit_html_matches_current_template_without_rewriting_signed_evi
     # gained delimiters. Everything outside that lookup remains identical.
     coverage_lookup = re.compile(
         r"\s*(?:// BEGIN GENERATED FULL-GATE COVERAGE\s*)?"
-        r"const coverageBySuite = \{.*?\};"
+        r"const coverageByPack = \{.*?\};"
         r"\s*(?:// END GENERATED FULL-GATE COVERAGE\s*)?",
         re.DOTALL,
     )

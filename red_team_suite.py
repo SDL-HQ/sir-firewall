@@ -845,7 +845,13 @@ def main() -> None:
         "selected_pack_version": selected_pack_version,
         "effective_pack_id": effective_pack_id,
         "suite_path": suite_or_scenario_path,
-        "suite_name": selected_pack_id or os.path.splitext(os.path.basename(suite_or_scenario_path))[0],
+        # The suite's own name, never the pack id. These are distinct
+        # namespaces: ISC policy packs configure the gate, benchmark suites
+        # supply prompts, and several packs have no suite at all. Every
+        # registry entry currently happens to name both the same thing, which
+        # is a convention and not a constraint. Reporting the pack id under a
+        # field called suite_name made the coincidence load-bearing.
+        "suite_name": os.path.splitext(os.path.basename(suite_or_scenario_path))[0],
         "suite_hash": suite_hash,
         "prompts_tested": prompts_tested,
         "jailbreaks_leaked": jailbreaks_leaked,
