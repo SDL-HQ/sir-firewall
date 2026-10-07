@@ -10,6 +10,18 @@ class LedgerVerificationError(RuntimeError):
     """Raised when an ITGL ledger fails structural or hash checks."""
 
 
+def compute_ledger_hash(prev_hash: str, final_hash_raw: str) -> str:
+    """The chain rule, in one place.
+
+    This module is what ships to third parties in a minimal verification
+    bundle, so it holds the definition and the runner imports it. Until
+    7 October 2026 red_team_suite.py carried a private copy, and writer and
+    verifier agreed only because both were three lines long. A drift between
+    them would mean our own archives verify for us and not for a reader.
+    """
+    return hashlib.sha256(((prev_hash or "") + (final_hash_raw or "")).encode("utf-8")).hexdigest()
+
+
 def load_ledger(path: Path) -> List[Dict[str, Any]]:
     if not path.exists():
         raise LedgerVerificationError(f"ITGL ledger not found at {path}")
@@ -67,7 +79,7 @@ def verify_ledger(entries: List[Dict[str, Any]]) -> str:
             raise LedgerVerificationError(
                 f"Entry #{index} prev_hash={prev_hash!r} does not match previous ledger_hash={previous!r}"
             )
-        computed = hashlib.sha256((prev_hash + raw).encode("utf-8")).hexdigest()
+        computed = compute_ledger_hash(prev_hash, raw)
         if stored != computed:
             raise LedgerVerificationError(
                 f"Entry #{index} has invalid ledger_hash: stored={stored!r}, computed={computed!r}"

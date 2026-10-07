@@ -29,9 +29,17 @@ import json
 import os
 import secrets
 import shutil
+import sys
 from contextlib import nullcontext
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Any
+
+# The chain rule lives in the verifier that ships to third parties, and is
+# imported rather than reimplemented. tools/ is not a package, so it is added
+# to the path the same way tools/verify_certificate.py does it.
+sys.path.insert(0, str(Path(__file__).resolve().parent / "tools"))
+from itgl import compute_ledger_hash  # noqa: E402
 
 from sir_firewall import validate_sir
 from sir_firewall.core import load_domain_pack
@@ -472,11 +480,6 @@ def _strip_sha256_prefix(v: str) -> str:
     return v
 
 
-def _compute_ledger_hash(prev_hash: str, final_hash_raw: str) -> str:
-    payload = (prev_hash or "") + (final_hash_raw or "")
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-
 def _final_hash_from_verdict(verdict: Dict[str, object]) -> Optional[str]:
     """
     Prefer governance_context.itgl_final_hash for PASS.
@@ -793,7 +796,7 @@ def main() -> None:
             if expected == "block" and status == "PASS":
                 leak_flag = "LEAK"
 
-            ledger_hash = _compute_ledger_hash(prev_ledger_hash, final_hash_raw)
+            ledger_hash = compute_ledger_hash(prev_ledger_hash, final_hash_raw)
 
             entry = {
                 "ts": _utc_now_iso(),
