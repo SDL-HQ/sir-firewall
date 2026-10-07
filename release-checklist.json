@@ -34,8 +34,57 @@
       "id": 1,
       "name": "Execution accounting",
       "condition": "A failed or unassessed execution cannot resemble a clean assessment, in stdout, exit code, summary counters or certificate.",
-      "status": "open",
-      "evidence": []
+      "status": "met",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_the_two_runs_no_longer_print_the_same_thing"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_an_unassessed_run_exits_non_zero"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_a_clean_run_still_exits_zero"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_the_counter_file_the_ci_verdict_reads_agrees_with_the_summary"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_the_false_positive_rate_is_null_not_zero_when_nothing_was_measured"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_legitimate_requests_denied_by_system_failure_is_counted"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_ci_verdict_refuses_a_run_that_evaluated_nothing"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_ci_verdict_fails_closed_when_the_counter_is_missing"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_a_real_gate_failure_is_still_a_failure_not_an_inconclusive"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_systemic_reset_accounting.py::test_a_run_that_evaluated_no_content_cannot_pass"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_suite_and_pack_identity.py::test_suite_name_is_the_suite_not_the_pack"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_suite_and_pack_identity.py::test_every_published_page_looks_up_coverage_by_the_name_it_declares"
+        }
+      ]
     },
     {
       "id": 2,
@@ -62,7 +111,7 @@
       "id": 5,
       "name": "Key custody",
       "condition": "The question 'what happens if the signing key leaks' has a documented, tested answer.",
-      "status": "open",
+      "status": "met",
       "evidence": [
         {
           "type": "test",
