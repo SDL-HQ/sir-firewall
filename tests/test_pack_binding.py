@@ -221,11 +221,44 @@ def test_validate_sir_binds_pack_identity_into_itgl_context_and_governance_conte
     context_entry = verdict["itgl_log"][0]
     assert context_entry["component"] == "context"
     assert context_entry["input"]["pack_version"] == "1.0.0"
-    assert context_entry["input"]["pack_hash"] == "sha256:testpackhash"
     assert verdict["governance_context"]["pack_version"] == "1.0.0"
-    assert verdict["governance_context"]["pack_hash"] == "sha256:testpackhash"
     assert verdict["governance_context"]["governance_scope"] == "deployment"
     assert verdict["governance_context"]["crypto_enforced"] is False
+
+    # From 7 October 2026 the gate hashes the pack it loaded, so a
+    # caller-supplied pack_hash no longer reaches the record. A caller cannot
+    # know the identity of an artefact the gate read for itself, and before
+    # this nothing supplied the field at all, so it travelled empty.
+    assert verdict["governance_context"]["pack_hash"] != "sha256:testpackhash"
+    assert context_entry["input"]["pack_hash"] != "sha256:testpackhash"
+
+
+def test_the_caller_cannot_assert_the_identity_of_the_pack_the_gate_loaded():
+    """pack_hash is computed from the loaded pack, not accepted from the
+    caller. Two calls differing only in the claimed hash must agree."""
+    payload = "hello world"
+    checksum = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    isc = {
+        "version": "1.0",
+        "template_id": "EU-AI-Act-ISC-v1",
+        "payload": payload,
+        "checksum": checksum,
+        "signature": "",
+        "key_id": "default",
+    }
+
+    honest = validate_sir({"isc": dict(isc)}, pack_identity_context={"pack_version": "1.0.0"})
+    claimed = validate_sir(
+        {"isc": dict(isc)},
+        pack_identity_context={"pack_version": "1.0.0", "pack_hash": "sha256:" + "f" * 64},
+    )
+
+    assert honest["governance_context"]["pack_hash"].startswith("sha256:")
+    assert honest["governance_context"]["pack_hash"] == claimed["governance_context"]["pack_hash"]
+    assert (
+        honest["governance_context"]["execution_configuration"]["configuration_hash"]
+        == claimed["governance_context"]["execution_configuration"]["configuration_hash"]
+    )
 
 
 def test_red_team_suite_passes_selected_pack_identity_context_to_validate_sir(tmp_path, monkeypatch):

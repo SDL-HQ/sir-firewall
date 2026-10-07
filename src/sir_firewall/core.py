@@ -1,6 +1,7 @@
 import base64
 import codecs
 import hashlib
+import inspect
 import json
 import os
 import re
@@ -476,7 +477,18 @@ def _read_domain_pack(path: Path, effective_pack: str) -> Dict[str, Any]:
             data = json.load(f)
     except json.JSONDecodeError as exc:
         raise DomainPackValidationError(f"domain pack contains malformed JSON: {exc}") from exc
-    return _validate_domain_pack_schema(data, effective_pack)
+    config = _validate_domain_pack_schema(data, effective_pack)
+    # The gate hashes the pack it actually loaded. Until 7 October 2026
+    # pack_hash arrived in pack_identity_context from the caller, which meant
+    # the caller asserted the identity of an artefact the gate had read for
+    # itself, and in practice nothing ever supplied it, so the field was
+    # plumbed through five places carrying nothing. Canonical JSON rather than
+    # raw bytes, matching how _POLICY_HASH treats the policy file: a pack is
+    # data, and reformatting it does not change what it enforces.
+    config["pack_hash"] = "sha256:" + hashlib.sha256(
+        json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return config
 
 
 def load_domain_pack(pack_id: str | None = None) -> Dict[str, Any]:
@@ -712,6 +724,115 @@ def _append_itgl(
     entry["prev_hash"] = prev_hash
     log = log + [entry]
     return log, step_hash
+
+
+# ---------------------------------------------------------------------------
+# Execution configuration identity
+#
+# _POLICY_HASH covers policy/isc_policy.json and nothing else. The pattern
+# rules in deterministic_rules.py produce 165 of the 179 blocks across the
+# three measured packs and are outside it, so before 7 October 2026 two builds
+# carrying an identical policy_hash could decide differently and no artefact
+# showed it. These identities close that.
+# ---------------------------------------------------------------------------
+
+# Every function that normalises text before a rule sees it. A rule decision
+# depends on this set as much as on the rules themselves, so it is named
+# explicitly rather than inferred. tests/test_configuration_identity.py fails
+# if a normalisation function exists in this module and is missing here.
+_NORMALISATION_FUNCTIONS = ("normalize_obfuscation", "_normalize_structural_assignment_value")
+
+_CONFIGURATION_SOURCE_HASHES: Dict[str, str] | None = None
+
+
+def _source_hashes() -> Dict[str, str]:
+    """Hashes of the deciding code, computed once from source text.
+
+    Deliberately over-sensitive: editing a comment in deterministic_rules.py
+    changes the identity even though behaviour has not changed. That is the
+    safe direction. A false difference is noise; a false match is the defect
+    being fixed here, where two artefacts claimed one identity and decided
+    differently. Do not make this cleverer without an argument that survives
+    that sentence.
+
+    Raises if the source cannot be read. The README already states that the
+    only supported installation is an editable one from a complete repository
+    checkout, because the runtime reads committed policy, registry, suite and
+    template files from repository-relative paths. A configuration identity
+    that cannot be computed is the same constraint, not a new one, and failing
+    closed here is consistent with it.
+    """
+    global _CONFIGURATION_SOURCE_HASHES
+    if _CONFIGURATION_SOURCE_HASHES is not None:
+        return _CONFIGURATION_SOURCE_HASHES
+
+    rules_source = Path(__file__).with_name("deterministic_rules.py").read_bytes()
+    normalisation_source = "".join(
+        inspect.getsource(globals()[name]) for name in _NORMALISATION_FUNCTIONS
+    ).encode("utf-8")
+
+    _CONFIGURATION_SOURCE_HASHES = {
+        "rules_hash": "sha256:" + hashlib.sha256(rules_source).hexdigest(),
+        "normalisation_hash": "sha256:" + hashlib.sha256(normalisation_source).hexdigest(),
+    }
+    return _CONFIGURATION_SOURCE_HASHES
+
+
+def _execution_configuration(
+    domain_pack_id: str | None,
+    pack_version: str,
+    pack_hash: str,
+    crypto_enforced: bool,
+    checksum_enforced: bool,
+) -> Dict[str, Any]:
+    """What enforced this run, as one object with its own recomputable hash.
+
+    Separate from the per-verdict facts in governance_context (isc_template,
+    itgl_final_hash) because those differ row by row while this does not. A
+    hash over a mixed object would have no clear domain.
+    """
+    configuration: Dict[str, Any] = {
+        "policy_version": _POLICY_VERSION or "",
+        "policy_hash": _POLICY_HASH or "",
+        "domain_pack": domain_pack_id or "",
+        "pack_version": pack_version or "",
+        "pack_hash": pack_hash or "",
+        "crypto_enforced": bool(crypto_enforced),
+        "checksum_enforced": bool(checksum_enforced),
+    }
+    configuration.update(_source_hashes())
+    configuration["configuration_hash"] = "sha256:" + hashlib.sha256(
+        json.dumps(configuration, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return configuration
+
+
+def _attach_execution_configuration(
+    result: Dict[str, Any], configuration: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Put the configuration on a verdict, whatever path produced it.
+
+    Attached at the boundary rather than at each exit. _validate_sir_impl has
+    eighteen verdict-producing returns, and threading a parameter through all
+    of them works until someone adds the nineteenth. The same drift took three
+    published pages onto one coverage variable name and a fourth onto another.
+
+    A verdict reached before the configuration was established carries
+    configuration_established: false rather than a silently partial object, so
+    a reader can tell "no pack was loaded" from "the pack had no hash".
+    """
+    if not isinstance(result, dict):
+        return result
+    context = result.get("governance_context")
+    if not isinstance(context, dict):
+        context = {}
+        result["governance_context"] = context
+    if configuration:
+        context["execution_configuration"] = dict(configuration)
+        context.setdefault("configuration_established", True)
+    else:
+        context["configuration_established"] = False
+    return result
 
 
 def _build_block(
@@ -1484,7 +1605,11 @@ def _validate_sir_impl(
     input_dict: Dict[str, Any],
     enforcement_pack_id: str | None = None,
     pack_identity_context: Dict[str, Any] | None = None,
+    configuration_out: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
+    # configuration_out is filled the moment the execution configuration is
+    # established, so validate_sir can attach it to whatever verdict comes
+    # back, including one thrown from a path that never returns normally.
     itgl_log: List[Dict[str, Any]] = []
     prev_hash: str = GENESIS_HASH
     structured_mode = STRUCTURED_REQUEST_FIELD in input_dict
@@ -1659,7 +1784,22 @@ def _validate_sir_impl(
 
     pack_identity = pack_identity_context if isinstance(pack_identity_context, dict) else {}
     pack_version = str(pack_identity.get("pack_version") or "").strip()
-    pack_hash = str(pack_identity.get("pack_hash") or "").strip()
+    # What the gate loaded wins over what the caller claims. A caller-supplied
+    # hash is only consulted when the gate has none of its own.
+    pack_hash = str(
+        domain_cfg.get("pack_hash") or pack_identity.get("pack_hash") or ""
+    ).strip()
+
+    # Everything the configuration identity needs is now known. Compute it once
+    # here, not at the point of use: computing it again later could produce a
+    # different answer, and a configuration that can change between its use and
+    # its record is the defect this item exists to close.
+    execution_configuration = _execution_configuration(
+        domain_pack_id, pack_version, pack_hash, crypto_enforced, checksum_enforced
+    )
+    if configuration_out is not None:
+        configuration_out.clear()
+        configuration_out.update(execution_configuration)
 
     context_input: Dict[str, Any] = {"domain_pack": domain_pack_id}
     if pack_version:
@@ -1841,12 +1981,22 @@ def validate_sir(
     enforcement_pack_id: str | None = None,
     pack_identity_context: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
-    """Validate a request, failing closed on otherwise-unhandled in-process errors."""
+    """Validate a request, failing closed on otherwise-unhandled in-process errors.
+
+    Every verdict leaves through here, so this is where the execution
+    configuration is attached. Doing it at the eighteen individual exits inside
+    the implementation would work until the nineteenth was added without it.
+    """
+    established: Dict[str, Any] = {}
     try:
-        return _validate_sir_impl(
-            input_dict,
-            enforcement_pack_id=enforcement_pack_id,
-            pack_identity_context=pack_identity_context,
+        return _attach_execution_configuration(
+            _validate_sir_impl(
+                input_dict,
+                enforcement_pack_id=enforcement_pack_id,
+                pack_identity_context=pack_identity_context,
+                configuration_out=established,
+            ),
+            established,
         )
     except Exception as exc:
         try:
@@ -1861,9 +2011,12 @@ def validate_sir(
             [],
             GENESIS_HASH,
         )
-        return _sr_block(
-            "systemic_reset_internal_error",
-            itgl_log,
-            scope="deployment",
-            domain_pack=None,
+        return _attach_execution_configuration(
+            _sr_block(
+                "systemic_reset_internal_error",
+                itgl_log,
+                scope="deployment",
+                domain_pack=None,
+            ),
+            established,
         )

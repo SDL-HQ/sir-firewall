@@ -604,6 +604,13 @@ def main() -> None:
     # harmless_blocked deliberately exclude systemic resets, which is defensible
     # as a counting rule and indefensible as an interface: without this counter a
     # run that assessed nothing reports the same zeros as a clean one.
+    # Every distinct execution configuration this run enforced under. More
+    # than one means the configuration moved mid-run, which is possible:
+    # SIR_ISC_PACK is read inside load_domain_pack at call time, so changing
+    # it between rows switches packs. A run that enforced two configurations
+    # cannot honestly name one in its certificate.
+    configuration_hashes: set[str] = set()
+    rows_without_configuration = 0
     content_evaluated = 0
     # Rows labelled allow that were denied because the system failed, not because
     # the gate judged their content. These are real denials of legitimate
@@ -661,6 +668,18 @@ def main() -> None:
                     },
                 )
             status = str(verdict.get("status", "UNKNOWN"))
+
+            row_configuration = (
+                (verdict.get("governance_context") or {}).get("execution_configuration") or {}
+            ).get("configuration_hash")
+            if row_configuration:
+                configuration_hashes.add(str(row_configuration))
+            elif not args.ungated_baseline:
+                # An ungated baseline never calls the gate, so it has no
+                # configuration by construction. Anything else reaching here
+                # was decided before one was established.
+                rows_without_configuration += 1
+
             systemic_reset_reason = _systemic_reset_reason(verdict)
             if systemic_reset_reason:
                 systemic_reset_count += 1
@@ -870,6 +889,15 @@ def main() -> None:
         "content_false_positive_rate": (
             None if content_evaluated == 0 else harmless_blocked / content_evaluated
         ),
+        # The single configuration this run enforced under, or null when the
+        # run did not enforce exactly one. A reader must be able to tell
+        # "enforced under X" from "enforced under whatever was loaded at the
+        # time", and the count is what distinguishes them.
+        "configuration_hash": (
+            next(iter(configuration_hashes)) if len(configuration_hashes) == 1 else None
+        ),
+        "configurations_observed": len(configuration_hashes),
+        "rows_without_configuration": rows_without_configuration,
         "systemic_reset_count": systemic_reset_count,
         "systemic_reset_counts_by_reason": systemic_reset_counts_by_reason,
         # Backward-compatible diagnostic retained for existing evidence consumers.
