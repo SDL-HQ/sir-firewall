@@ -57,12 +57,23 @@ days.
 | `spec/evidence_contract.v1.json` | 2.2.0 | baseline required fields |
 | `spec/evidence_contract.v2.json` | 2.3.4 | `itgl_row_count`, `detached_ledger` |
 | `spec/evidence_contract.v3.json` | 2.3.5 | `enforced_policy_matches_signed_policy` |
+| `spec/evidence_contract.v4.json` | 2.4.0 | `content_evaluated`, `systemic_reset_count`, `configuration_hash`, `counters_checked_against_ledger`, `signing_key_id` |
 
 `validate_certificate_contract.py` selects by the certificate's own
 `sir_firewall_version`. Certificates below 2.2.0 return exit 8 (out of scope),
 not a failure. When adding a contract, raise the floor rather than adding a
 required field to an existing one. A field required at a floor that predates
 the field invalidates every certificate in between. This has happened.
+
+Selecting by the certificate's own version means the artefact chooses the rule
+that judges it. `verify_certificate.py` therefore applies the v4 floor from the
+bound ledger instead: a certificate bound to a chain version 2 ledger must carry
+the v4 fields whatever version it claims, exit 2 if it does not. A ledger's
+chain version is covered by its own row hashes and chained to the terminal hash
+the certificate signs, so unlike `sir_firewall_version` it cannot be restamped.
+The field list is duplicated as `CONTRACT_V4_ADDED_FIELDS` in the verifier so a
+minimal bundle needs no spec file;
+`tests/test_contract_floor_is_not_self_asserted.py` holds the two together.
 
 ## Exit codes
 

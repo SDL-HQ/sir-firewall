@@ -113,6 +113,12 @@ The contract validator checks required fields, defined field types and constrain
 
 It does not verify a signature, authenticate field values, recompute source-artifact hashes, validate a ledger, replay gate decisions, or establish that the asserted run occurred.
 
+It selects which contract to apply from the certificate's own `sir_firewall_version`. That field is inside the signed payload and so cannot be edited after signing, but it is written by the producer before signing. A producer could stamp an older version onto a certificate emitted by a newer release, sign it, and the weaker contract would be applied with no signature anomaly, because nothing was altered. This is the same shape as a row's own `chain_version` selecting the rule that hashes it, and as the revocation check reading a self-asserted timestamp: in each case the artifact chooses the rule that judges it.
+
+The bound ledger is the non-asserted substitute. Under `chain_version` 2 a row's `chain_version` is inside that row's hash, each row hash is chained into the next, and the terminal hash is signed on the certificate, so a ledger cannot be restamped to an earlier era without breaking linkage. `verify_certificate.py` therefore requires the evidence contract v4 fields of any certificate bound to a `chain_version` 2 ledger, whatever version that certificate claims, and reports a missing field as missing required fields rather than as tampering. Certificates bound to version 1 ledgers do not acquire the requirement, so the archives published before 8 October 2026 are unaffected.
+
+The contract validator itself is unchanged in this respect: run on its own against a certificate, it still applies the contract that certificate names. The floor taken from the ledger exists only where a ledger is present to take it from, which means `--no-ledger` and an unfound ledger both leave it unapplied. An unchecked binding establishes nothing, including this.
+
 ### `tools/verify_archive_receipt.py`
 
 The archive verifier checks required manifest and receipt structures, key resolution and applicable revocation rules, the canonical manifest hash, the existence, size, and SHA-256 of every manifest-listed file, the run-folder hash, the receipt payload hash, and the receipt signature.

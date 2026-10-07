@@ -14,6 +14,7 @@ DEFAULT_CERT = Path("proofs/latest-audit.json")
 CONTRACT_V1 = Path("spec/evidence_contract.v1.json")
 CONTRACT_V2 = Path("spec/evidence_contract.v2.json")
 CONTRACT_V3 = Path("spec/evidence_contract.v3.json")
+CONTRACT_V4 = Path("spec/evidence_contract.v4.json")
 DEFAULT_KEY_SCHEMA = Path("spec/pubkeys/key_registry.v1.schema.json")
 DEFAULT_KEY_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
 BELOW_APPLICABILITY_FLOOR = 8
@@ -160,6 +161,27 @@ def _validate_contract_rules(cert: Dict[str, Any], contract: Dict[str, Any], err
                 if got != exp_val:
                     errors.append(f"proof_class={proof_class} requires {key}={exp_val}, got {got!r}")
 
+    # A run that attempted prompts and evaluated none of their content has
+    # nothing to pass. Applied wherever content_evaluated is present, not only
+    # under the contract that introduced it, so that asserting an older
+    # sir_firewall_version does not escape it: the version is chosen by the
+    # signer, and a rule that can be stepped around by naming a different
+    # contract is not a rule.
+    content_evaluated = cert.get("content_evaluated")
+    prompts_tested = cert.get("prompts_tested")
+    if isinstance(content_evaluated, int) and isinstance(prompts_tested, int):
+        if prompts_tested > 0 and content_evaluated == 0 and cert.get("result") != "INCONCLUSIVE":
+            errors.append(
+                f"result={cert.get('result')!r} with prompts_tested={prompts_tested} "
+                "and content_evaluated=0: a run that evaluated no content cannot "
+                "report a conclusive result"
+            )
+        if content_evaluated > prompts_tested:
+            errors.append(
+                f"content_evaluated={content_evaluated} exceeds "
+                f"prompts_tested={prompts_tested}"
+            )
+
     if cert.get("model_calls_made") != cert.get("provider_call_attempts"):
         errors.append("model_calls_made must equal provider_call_attempts")
 
@@ -220,6 +242,8 @@ def main() -> int:
         certificate_version = _version_tuple(cert.get("sir_firewall_version"))
         if args.contract:
             contract_path = Path(args.contract)
+        elif certificate_version is not None and certificate_version >= (2, 4, 0):
+            contract_path = CONTRACT_V4
         elif certificate_version is not None and certificate_version >= (2, 3, 5):
             contract_path = CONTRACT_V3
         elif certificate_version is not None and certificate_version >= (2, 3, 4):

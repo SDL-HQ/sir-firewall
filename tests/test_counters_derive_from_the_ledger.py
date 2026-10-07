@@ -22,6 +22,7 @@ from pathlib import Path
 import pytest
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from sir_firewall.evidence_paths import canonical_ledger_path
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -155,6 +156,12 @@ def signed_world(tmp_path_factory):
         "itgl_final_hash": f"sha256:{rows[-1]['ledger_hash']}",
         "itgl_row_count": len(rows),
         "signing_key_id": "ephemeral",
+        # The ledger below is chain version 2, so the verifier requires the
+        # contract v4 fields of any certificate bound to it. See
+        # tests/test_contract_floor_is_not_self_asserted.py for why the
+        # version claimed above does not decide that.
+        "configuration_hash": "sha256:" + "0" * 64,
+        "counters_checked_against_ledger": True,
         **{k: v for k, v in derived.items() if k != "systemic_reset_counts_by_reason"},
     }
     return tmp, key, ledger, base
@@ -208,3 +215,90 @@ def test_claiming_content_was_evaluated_when_it_was_not_is_refused(signed_world)
     result = _verify(tmp, _sign(forged, key), ledger, "evaluated.json")
     assert result.returncode == 11
     assert "content_evaluated" in result.stderr
+
+
+# --- the refusal at the point of issue, not only at the point of reading -----
+#
+# The verifier refusals above catch a disagreeing certificate when someone
+# checks it. That is the last line, not the first. A certificate that should
+# never have existed should not be signed, because once signed it is in an
+# archive and a reader has to be relied upon to run the check.
+
+
+def _generator_world(tmp_path, monkeypatch, *, summary_overrides):
+    """A run whose ledger is chain version 2, so the counters are derivable."""
+    monkeypatch.chdir(tmp_path)
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    monkeypatch.setenv("SDL_PRIVATE_KEY_PEM", key.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption()).decode())
+
+    prev = "GENESIS"
+    rows = []
+    for row in MIXED:
+        row = dict(row)
+        row["prev_hash"] = prev
+        row["ledger_hash"] = ITGL.compute_ledger_hash(prev, row)
+        prev = row["ledger_hash"]
+        rows.append(row)
+    ledger = canonical_ledger_path("generator-run", tmp_path / "proofs/runs")
+    ledger.parent.mkdir(parents=True, exist_ok=True)
+    ledger.write_text(
+        "".join(json.dumps(r, separators=(",", ":"), ensure_ascii=False) + "\n" for r in rows),
+        encoding="utf-8",
+    )
+
+    derived = ITGL.derive_counters(rows)
+    summary = {
+        "suite_name": "counters-test",
+        "suite_path": "missing.csv",
+        "suite_hash": "sha256:" + "1" * 64,
+        "run_id": "generator-run",
+        "ledger_path": str(ledger.relative_to(tmp_path)),
+        "proof_class": "FIREWALL_ONLY_AUDIT",
+        **{k: v for k, v in derived.items() if k != "systemic_reset_counts_by_reason"},
+    }
+    summary.update(summary_overrides)
+    (tmp_path / "proofs").mkdir(exist_ok=True)
+    (tmp_path / "proofs/run_summary.json").write_text(json.dumps(summary), encoding="utf-8")
+
+    spec = importlib.util.spec_from_file_location(
+        f"generator_{abs(hash(str(tmp_path)))}", ROOT / "tools/generate_certificate.py"
+    )
+    assert spec and spec.loader
+    generator = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(generator)
+    return generator
+
+
+def test_the_generator_refuses_to_sign_a_summary_the_ledger_does_not_support(
+    tmp_path, monkeypatch
+):
+    generator = _generator_world(
+        tmp_path, monkeypatch, summary_overrides={"jailbreaks_leaked": 0}
+    )
+
+    with pytest.raises(RuntimeError, match="refusing to sign certificate"):
+        generator.main()
+
+    assert not list(tmp_path.glob("proofs/archive/*.json")), (
+        "a certificate was written despite the refusal"
+    )
+    assert not (tmp_path / "proofs/local-audit.json").exists()
+
+
+def test_the_generator_signs_a_summary_the_ledger_does_support(tmp_path, monkeypatch):
+    """The refusal above has to be the disagreement, not the fixture failing."""
+    generator = _generator_world(tmp_path, monkeypatch, summary_overrides={})
+
+    generator.main()
+
+    certificates = list(tmp_path.glob("proofs/archive/audit-certificate-*.json"))
+    assert len(certificates) == 1, certificates
+    cert = json.loads(certificates[0].read_text(encoding="utf-8"))
+    assert cert["counters_checked_against_ledger"] is True
+    # The ledger is chain version 2, so this certificate is in the era that
+    # requires the contract v4 fields however it is read.
+    assert cert["content_evaluated"] == ITGL.derive_counters(
+        ITGL.load_ledger(canonical_ledger_path("generator-run", tmp_path / "proofs/runs"))
+    )["content_evaluated"]

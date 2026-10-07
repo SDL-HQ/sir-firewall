@@ -142,8 +142,69 @@
       "id": 3,
       "name": "Evidence correctness",
       "condition": "The documented verification procedure rejects a row whose stated decision has been altered, and every pre-v4 archive still verifies under its own contract. An inconsistent run cannot receive a certificate asserting a conclusive pass.",
-      "status": "open",
-      "evidence": []
+      "status": "met",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "tests/test_ledger_binds_row_contents.py::test_altering_a_published_row_now_breaks_its_own_hash"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_ledger_binds_row_contents.py::test_fields_attached_after_the_row_literal_are_covered_too"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_ledger_binds_row_contents.py::test_downgrading_a_row_inside_a_v2_ledger_cannot_be_repaired"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_ledger_binds_row_contents.py::test_a_mixed_version_ledger_is_refused"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_row_is_self_describing.py::test_every_row_distinguishes_a_content_decision_from_a_system_failure"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evidence_contract_applicability.py::test_every_published_run_uses_its_applicable_contract"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_ledger_binds_row_contents.py::test_legacy_rows_without_the_field_still_verify"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_contract_floor_is_not_self_asserted.py::test_a_v1_ledger_does_not_acquire_the_requirement"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_counters_derive_from_the_ledger.py::test_a_signed_counter_the_ledger_does_not_support_is_refused"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_counters_derive_from_the_ledger.py::test_hiding_a_leak_is_refused"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_counters_derive_from_the_ledger.py::test_the_generator_refuses_to_sign_a_summary_the_ledger_does_not_support"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_contract_floor_is_not_self_asserted.py::test_claiming_an_older_version_does_not_escape_the_fields"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_contract_floor_is_not_self_asserted.py::test_the_verifier_requires_exactly_what_contract_v4_adds"
+        },
+        {
+          "type": "artefact",
+          "ref": "spec/evidence_contract.v4.json"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_counters_derive_from_the_ledger.py::test_claiming_content_was_evaluated_when_it_was_not_is_refused"
+        }
+      ]
     },
     {
       "id": 4,

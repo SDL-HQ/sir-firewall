@@ -39,6 +39,7 @@ from itgl import (
     CHAIN_VERSION_V2,
     LedgerVerificationError,
     counter_disagreements,
+    ledger_chain_version,
     load_and_verify_ledger,
     load_ledger,
 )
@@ -84,6 +85,30 @@ def minimum_chain_version_for(sir_firewall_version: Any) -> int:
             required = max(required, version)
     return required
 
+
+# The fields evidence contract v4 adds over v3. A certificate selects its
+# contract from its own sir_firewall_version, which the signer writes, so a
+# certificate can claim an older version and be judged by an older contract.
+# The bound ledger cannot be restamped the same way: chain_version is covered
+# by each row's own hash under chain version 2 and chained to the terminal
+# hash the certificate signs. So the ledger, not the certificate, says which
+# era this evidence is from, and these fields are required of any certificate
+# bound to a chain version 2 ledger whatever version it claims.
+#
+# This constant is the shipped copy of a rule whose authority is
+# spec/evidence_contract.v4.json, so that a minimal verification bundle needs
+# no spec file to apply it. tests/test_contract_floor_is_not_self_asserted.py
+# asserts the two agree; if the contract changes, that test fails rather than
+# this copy drifting.
+CONTRACT_V4_ADDED_FIELDS = (
+    "configuration_hash",
+    "content_evaluated",
+    "counters_checked_against_ledger",
+    "signing_key_id",
+    "systemic_reset_count",
+)
+
+MISSING_REQUIRED_FIELDS = 2
 
 LEDGER_BINDING_FAILURE = 7
 # A signed counter the ledger does not support. Distinct from 7 because the
@@ -372,11 +397,35 @@ def main() -> int:
             print(f"  ledger rows: {row_count}", file=sys.stderr)
             return LEDGER_BINDING_FAILURE
 
+        entries = load_ledger(ledger_path)
+
+        # The era the evidence is actually from, taken from the ledger rather
+        # than from the certificate's own version claim.
+        if ledger_chain_version(entries) >= CHAIN_VERSION_V2:
+            absent = [
+                field
+                for field in CONTRACT_V4_ADDED_FIELDS
+                if cert.get(field) is None
+            ]
+            if absent:
+                print(
+                    "ERROR: missing required fields: this certificate is bound to a "
+                    f"chain version {CHAIN_VERSION_V2} ledger, which evidence contract v4 "
+                    "governs, but it does not carry "
+                    + ", ".join(absent)
+                    + f".\n  certificate claims sir_firewall_version="
+                    f"{cert.get('sir_firewall_version')!r}, which does not lower this "
+                    "requirement because the bound ledger's chain version is covered by "
+                    "its own row hashes.",
+                    file=sys.stderr,
+                )
+                return MISSING_REQUIRED_FIELDS
+
         # Recompute the certificate's own counters from the rows it binds.
         # The chain can be intact and the terminal hash can match while the
         # numbers on the certificate describe a different run than the rows
         # do, because until 8 October 2026 nothing connected the two.
-        disagreements = counter_disagreements(cert, load_ledger(ledger_path))
+        disagreements = counter_disagreements(cert, entries)
         if disagreements:
             print(
                 "ERROR: counter binding verification failed: the certificate's "
