@@ -90,8 +90,53 @@
       "id": 2,
       "name": "Configuration identity",
       "condition": "Changing a file or environment setting mid-run cannot silently change what the run claims it enforced. Signing cannot describe a configuration other than the one that executed.",
-      "status": "open",
-      "evidence": []
+      "status": "met",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_a_blocked_verdict_names_the_same_configuration_as_a_clean_one"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_a_verdict_reached_before_configuration_exists_says_so"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_the_configuration_hash_covers_the_rule_source"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_the_configuration_hash_covers_the_normalisation_source"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_the_rules_hash_is_the_hash_of_the_rules_file"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_no_normalisation_function_is_missing_from_the_identity"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_the_configuration_hash_is_recomputable_by_a_reader"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_a_configuration_change_mid_run_is_detected"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_a_run_that_enforced_two_configurations_cannot_pass"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_a_summary_predating_the_field_is_judged_exactly_as_before"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_pack_binding.py::test_the_caller_cannot_assert_the_identity_of_the_pack_the_gate_loaded"
+        }
+      ]
     },
     {
       "id": 3,
