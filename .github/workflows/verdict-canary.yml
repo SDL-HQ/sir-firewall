@@ -130,8 +130,30 @@ jobs:
           set -euo pipefail
           # A canary must leave no evidence behind. This job signs nothing and
           # has no key, but say so mechanically rather than by convention.
-          if [ -d proofs/archive ] && [ -n "$(ls -A proofs/archive 2>/dev/null)" ]; then
-            echo "ERROR: this job produced archive contents"; ls -la proofs/archive; exit 1
+          #
+          # The assertion is that this job ADDED nothing to the archive, not
+          # that the archive is empty. The first version of this step tested for
+          # emptiness, and proofs/archive holds 77 committed historical
+          # certificates, so the canary failed on its first real run having
+          # passed every step that mattered. Comparing against the committed
+          # state is both correct and stronger: it catches a modified archive
+          # file as well as a new one.
+          # No glob: an unmatched pathspec is an error under set -e, and the two
+          # published trees plus the certificate check below cover it. The
+          # runner's own ledger lands under proofs/runs/<run_id>/, which is a
+          # run artefact rather than a published one and is deliberately not
+          # asserted on.
+          dirty="$(git status --porcelain -- proofs/archive docs/runs)"
+          if [ -n "$dirty" ]; then
+            echo "ERROR: this job added to or changed the published archive:"
+            echo "$dirty"
+            exit 1
+          fi
+          # The runner writes a ledger under proofs/runs/<run_id>/, which is a
+          # run artefact and not a published one. What must not exist is a
+          # certificate: this job never invokes generate_certificate.py.
+          if [ -f proofs/local-audit.json ]; then
+            echo "ERROR: a certificate was generated"; exit 1
           fi
           test -z "${SDL_PRIVATE_KEY_PEM:-}" || { echo "ERROR: a signing key is present"; exit 1; }
-          echo "OK: no certificate, no archive, no key."
+          echo "OK: nothing added to the archive, no certificate, no key."
