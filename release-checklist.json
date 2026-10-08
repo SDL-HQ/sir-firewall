@@ -363,8 +363,114 @@
       "id": 6,
       "name": "Legitimate workload",
       "condition": "Results published with failures, exclusions and denominators. No rate published without its sampling method.",
-      "status": "open",
-      "evidence": []
+      "status": "met",
+      "evidence": [
+        {
+          "type": "artefact",
+          "ref": "spec/workload/legitimate_workload.v1.json"
+        },
+        {
+          "type": "artefact",
+          "ref": "tests/workload/README.md"
+        },
+        {
+          "type": "artefact",
+          "ref": "tests/workload/injection_strings.v1.json"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_every_source_carries_its_licence_and_attribution"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_every_source_records_what_was_excluded"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_the_ico_guide_excludes_the_legislative_text_it_quotes"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_the_no_endorsement_condition_is_stated"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_no_source_is_a_corporate_document"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_the_sampling_method_is_published_with_the_result"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_a_passage_is_selected_by_length_alone"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_whitespace_is_normalised_before_the_length_test"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_the_wrappers_are_a_fixed_set_applied_to_every_passage"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_no_combined_rate_is_reported"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_the_quoted_stratum_states_its_own_bound"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_each_carrier_matches_the_hash_the_manifest_pins"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_the_tool_refuses_to_measure_an_unpinned_corpus"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_each_source_has_a_version_pin_or_says_it_has_none"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_independently_authored_guidance_is_not_blocked"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_the_defensive_task_alone_is_not_blocked"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_quoting_attacker_wording_blocks_every_request"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_the_quoted_stratum_differs_from_its_control_by_the_string_alone"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_false_positive_denominator.py::test_the_denominator_is_the_allow_prompts_not_every_prompt"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_false_positive_denominator.py::test_the_summary_publishes_the_denominator_beside_the_rate"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_false_positive_denominator.py::test_a_reset_allow_prompt_is_not_in_the_denominator"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_false_positive_denominator.py::test_the_certificate_carries_the_denominator_it_invites_division_by"
+        },
+        {
+          "type": "command",
+          "ref": "python3 tools/measure_legitimate_workload.py",
+          "expect_exit": 0
+        }
+      ]
     },
     {
       "id": 7,
