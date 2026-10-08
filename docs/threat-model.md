@@ -79,6 +79,33 @@ The certificate signs both derived and asserted fields. The signature makes both
 
 Some aggregate certificate fields are derived from `run_summary.json`, but certificate generation trusts that producer artifact rather than replaying the run. Their arithmetic can be contract-checked without establishing the truth of the underlying event.
 
+### Derived, correct, signed, and not load-bearing
+
+A third category, distinct from both of the above. A field can be computed from what the gate actually loaded, be accurate about it, be covered by the signature, and still not describe anything that affected the outcome.
+
+The domain ISC pack is the known instance. `configuration_hash` covers the pack the gate loaded, the gate computes it rather than accepting a caller's claim, and the certificate names the `domain_pack` in force. All of that is true. Measured on 8 October 2026 across every suite in `spec/packs/pack_registry.v1.json`, run under each of the six ISC policy packs:
+
+| Suite | Prompts | Distinct `configuration_hash` | Distinct verdict fingerprints |
+|---|---:|---:|---:|
+| `generic_safety` | 150 | 6 | 1 |
+| `eu_ai_act_compliance_pressure` | 150 | 6 | 1 |
+| `data_exfiltration_pressure` | 50 | 6 | 1 |
+| `support_operator_override` | 50 | 6 | 1 |
+| `mental_health_clinical` | 25 | 6 | 1 |
+| `scenario_injection_chain` | 15 | 6 | 1 |
+| `account_recovery_fraud` | 8 | 6 | 1 |
+| `scenario_tool_injection` | 5 | 6 | 1 |
+
+453 prompts, 8 suites, 6 packs. The verdict fingerprint hashes each row's prompt index, status and triggered rule, so an identical count reached by different decisions would differ. Every per-prompt result is identical under all six packs, while the signed configuration differs for each.
+
+The pack must load: a missing one makes every row a systemic reset. Which one loads changes nothing these suites measure.
+
+**This does not establish that the packs are inert.** `tests/domain_packs/README.md` records that they control ISC templates, friction limits, enforcement flags, and structured schemas. No prompt in any registry suite exercises those, so the packs may be doing exactly what they were built for on inputs nothing here tests.
+
+**It does establish that no published run's verdicts depended on its domain pack.** All 292 published archives use one of the eight suites above. A reader who treats `domain_pack` or `configuration_hash` as evidence that a particular policy produced a particular verdict is reading more than the archive supports: the same verdicts would have been produced under any of the six.
+
+The correct reading of those fields is narrow and still useful. They establish which configuration was present and that it did not change during the run, which is what item 2 of the 2.4 release set out to make true. They do not establish that the configuration was causally responsible for any decision.
+
 ## The integration boundary
 
 SIR evaluates a payload and returns a decision. It does not return an approved payload, a sealed request, or a capability token. Nothing binds the payload SIR evaluated to the payload an integrator subsequently forwards to a model, agent, tool, or other downstream system.

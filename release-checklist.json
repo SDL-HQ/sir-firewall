@@ -379,6 +379,71 @@
       "condition": "Each public technical claim remains true when the reader examines the failures.",
       "status": "open",
       "evidence": []
+    },
+    {
+      "id": 9,
+      "name": "Runnable suites",
+      "condition": "Every registry suite can be executed, or explicitly declares why its enforcement cannot be satisfied, and selecting one whose enforcement pack does not exist fails at selection rather than producing a run in which every row is a systemic reset.",
+      "status": "met",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_every_entry_names_its_enforcement_pack"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_every_declared_enforcement_pack_exists_or_is_declared_to_fail"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_a_pairing_that_differs_from_the_suite_name_states_its_reason"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_exactly_one_entry_is_deliberately_unenforceable"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_resolution_returns_the_suite_and_the_enforcement_pack_separately"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_the_path_route_resolves_the_same_way_as_the_pack_route"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_the_path_the_runner_checks_is_the_path_the_gate_loads_from"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_a_missing_enforcement_pack_fails_at_selection"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_the_deliberate_failure_is_not_refused_at_selection"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_every_registry_entry_runs_or_refuses_for_its_stated_reason"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_the_suites_that_stopped_running_reproduce_their_published_result"
+        },
+        {
+          "type": "artefact",
+          "ref": "spec/packs/pack_registry.v1.json"
+        },
+        {
+          "type": "command",
+          "ref": "python3 tools/validate_pack_registry.py --file spec/packs/pack_registry.v1.json",
+          "expect_exit": 0
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_the_summary_reports_the_suite_and_the_enforcement_pack_separately"
+        }
+      ]
     }
   ],
   "bypass": "The Protect Main ruleset lists Repository admin with bypass mode 'allow for pull requests only', and the repository has no other collaborators, so that is the sole maintainer. The normal merge button is blocked while a required check fails; merging anyway requires choosing an option labelled 'bypass rules', which GitHub records. This was decided knowingly on 6 October rather than left implicit: the gate makes a premature merge deliberate rather than impossible. No app or outside contributor can bypass."

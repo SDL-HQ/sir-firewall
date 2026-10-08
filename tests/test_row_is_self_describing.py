@@ -57,7 +57,7 @@ def run(tmp_path_factory):
     try:
         original_resolve = runner._resolve_suite_and_pack
         runner._resolve_suite_and_pack = (
-            lambda **_k: (str(suite), "", "generic_safety", "1.0.0", "csv_single_turn_v1")
+            lambda **_k: (str(suite), "", "generic_safety", "1.0.0", "csv_single_turn_v1", "generic_safety")
         )
         original_parse = argparse.ArgumentParser.parse_args
         argparse.ArgumentParser.parse_args = lambda _s: argparse.Namespace(

@@ -111,7 +111,7 @@ def test_canary_fail_systemic_reset_is_inconclusive(tmp_path, monkeypatch):
     monkeypatch.setattr(
         runner,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite), "", "canary_fail", "1.0.0", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite), "", "canary_fail", "1.0.0", "csv_single_turn_v1", "canary_fail"),
     )
     monkeypatch.setattr(argparse.ArgumentParser, "parse_args", lambda _self: _runner_args(pack="canary_fail"))
     exit_code = _run_main(runner)
@@ -161,7 +161,7 @@ def test_mixed_suite_systemic_reset_rows_are_not_scored(tmp_path, monkeypatch):
     monkeypatch.setattr(
         runner,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite), "", "missing_pack", "1.0.0", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite), "", "missing_pack", "1.0.0", "csv_single_turn_v1", "missing_pack"),
     )
     monkeypatch.setattr(argparse.ArgumentParser, "parse_args", lambda _self: _runner_args(pack="missing_pack"))
     exit_code = _run_main(runner)
@@ -234,7 +234,7 @@ def _assert_all_expected_block_reset_is_inconclusive(
     monkeypatch.setattr(
         runner,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite), "", "generic_safety", "1.0.0", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite), "", "generic_safety", "1.0.0", "csv_single_turn_v1", "generic_safety"),
     )
     monkeypatch.setattr(argparse.ArgumentParser, "parse_args", lambda _self: _runner_args())
     monkeypatch.setattr(
@@ -353,7 +353,7 @@ def test_scenario_summary_preserves_reset_count_and_is_inconclusive(tmp_path, mo
     monkeypatch.setattr(
         runner,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: ("", str(scenario), "missing_policy", "1.0.0", "scenario_json_v1"),
+        lambda **_kwargs: ("", str(scenario), "missing_policy", "1.0.0", "scenario_json_v1", "missing_policy"),
     )
     monkeypatch.setattr(
         argparse.ArgumentParser,

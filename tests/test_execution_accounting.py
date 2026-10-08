@@ -67,7 +67,7 @@ def _run(name, tmp_path, monkeypatch, suite_text, verdict):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(
         runner, "_resolve_suite_and_pack",
-        lambda **_k: (str(suite), "", "generic_safety", "1.0.0", "csv_single_turn_v1"),
+        lambda **_k: (str(suite), "", "generic_safety", "1.0.0", "csv_single_turn_v1", "generic_safety"),
     )
     monkeypatch.setattr(argparse.ArgumentParser, "parse_args", lambda _s: _args())
     monkeypatch.setattr(runner, "validate_sir", lambda *_a, **_k: dict(verdict))

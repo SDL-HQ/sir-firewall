@@ -1,6 +1,7 @@
 """The release checklist gate must fail closed, and must not accept prose as evidence."""
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -164,3 +165,57 @@ def test_command_evidence_never_reaches_a_shell(tmp_path):
     )
     _run(checklist, REPO, "--run-commands")
     assert not marker.exists(), "a shell interpreted the checklist entry"
+
+
+def test_a_tick_means_the_evidence_resolved_not_that_the_status_says_met(tmp_path):
+    """The checkbox list and the count above it must not disagree.
+
+    The mark was read from the status field alone, so an item claiming 'met'
+    with evidence that did not resolve printed as [x] while the count said
+    otherwise, and nothing in the list said which item was at fault. A tick that
+    can be wrong is precisely what this file exists to prevent, and this one was
+    wrong on item 9 on 8 October 2026 after a test was renamed.
+    """
+    checklist = _write(tmp_path, [
+        {"id": 0, "name": "resolves", "status": "met",
+         "evidence": [{"type": "artefact", "ref": "present.txt"}]},
+        {"id": 1, "name": "claims met, does not resolve", "status": "met",
+         "evidence": [{"type": "artefact", "ref": "absent.txt"}]},
+        {"id": 2, "name": "open", "status": "open", "evidence": []},
+    ])
+    (tmp_path / "present.txt").write_text("x", encoding="utf-8")
+
+    result = _run(checklist, tmp_path)
+    # The mark is one character which may be a space, so the line is parsed by
+    # shape rather than split on whitespace.
+    marks = dict(
+        (match.group(2), match.group(1))
+        for match in (
+            re.match(r"^  \[(.)\] (\S+)  ", line) for line in result.stdout.splitlines()
+        )
+        if match
+    )
+
+    assert "1 of 3 items met" in result.stdout
+    assert marks == {"0": "x", "1": "!", "2": " "}, marks
+    assert "marked met, but its evidence does not resolve" in result.stdout
+    assert result.returncode != 0
+
+
+def test_the_marks_and_the_count_always_agree(tmp_path):
+    """Derived rather than asserted: the number of ticks is the number counted."""
+    checklist = _write(tmp_path, [
+        {"id": 0, "name": "a", "status": "met",
+         "evidence": [{"type": "artefact", "ref": "present.txt"}]},
+        {"id": 1, "name": "b", "status": "met",
+         "evidence": [{"type": "artefact", "ref": "absent.txt"}]},
+        {"id": 2, "name": "c", "status": "met", "evidence": []},
+        {"id": 3, "name": "d", "status": "open", "evidence": []},
+    ])
+    (tmp_path / "present.txt").write_text("x", encoding="utf-8")
+
+    result = _run(checklist, tmp_path)
+    ticks = sum(1 for line in result.stdout.splitlines() if line.startswith("  [x]"))
+    counted = int(result.stdout.split("items met")[0].split(":")[-1].strip().split(" of ")[0])
+
+    assert ticks == counted == 1

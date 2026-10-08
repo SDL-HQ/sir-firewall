@@ -210,8 +210,36 @@ def _load_pack_registry(path: str = PACK_REGISTRY_PATH) -> Dict[str, Dict[str, s
             "pack_version": str(p.get("pack_version") or p.get("version") or "").strip(),
             "suite_path": str(p.get("suite_path") or "").strip(),
             "schema": str(p.get("schema") or "").strip(),
+            # The ISC policy pack this suite is enforced under, named separately
+            # from the suite itself. Until 8 October 2026 pack_id served as both,
+            # so selecting a suite demanded a policy pack of the same name. Four
+            # entries had none, every row of those runs became a systemic reset,
+            # and that had been true since e0ee45d on 16 April 2026 made an
+            # explicit missing pack a hard failure. Defaults to pack_id, which is
+            # correct for the four entries where the two genuinely coincide.
+            "enforcement_pack": str(p.get("enforcement_pack") or "").strip() or pack_id,
+            # True for canary_fail alone: the pack-load failure is that suite's
+            # fixture, so selection must not refuse it.
+            "enforcement_expected_to_fail": bool(p.get("enforcement_expected_to_fail")),
+            "enforcement_pack_reason": str(p.get("enforcement_pack_reason") or "").strip(),
         }
     return out
+
+
+def _isc_pack_path(pack_id: str) -> Path:
+    """Where load_domain_pack will look for an ISC policy pack.
+
+    Resolution lives in sir_firewall.core.load_domain_pack; this mirrors only
+    the path so selection can fail before a run starts.
+    tests/test_runnable_suites.py asserts the two agree.
+    """
+    import sir_firewall.core as _core
+
+    return Path(_core.__file__).resolve().parent / "policy" / "isc_packs" / f"{pack_id}.json"
+
+
+def _isc_pack_exists(pack_id: str) -> bool:
+    return _isc_pack_path(pack_id).is_file()
 
 
 def _resolve_suite_and_pack(
@@ -257,9 +285,11 @@ def _resolve_suite_and_pack(
 
     resolved_pack_id = ""
     resolved_pack_version = ""
+    resolved_entry: Dict[str, Any] = {}
     if pack_arg:
         pack = registry.get(pack_arg)
         if pack:
+            resolved_entry = pack
             resolved_pack_id = pack.get("pack_id", "")
             resolved_pack_version = pack.get("pack_version", "")
             resolved_schema = pack.get("schema", resolved_schema)
@@ -268,12 +298,51 @@ def _resolve_suite_and_pack(
         suite_norm = os.path.normpath(selected_path)
         for pack in registry.values():
             if os.path.normpath(pack.get("suite_path", "")) == suite_norm:
+                resolved_entry = pack
                 resolved_pack_id = pack.get("pack_id", "")
                 resolved_pack_version = pack.get("pack_version", "")
                 resolved_schema = pack.get("schema", resolved_schema)
                 break
 
-    return suite_path, scenario_path, resolved_pack_id, resolved_pack_version, resolved_schema
+    # Fail here, not one row at a time.
+    #
+    # Until 8 October 2026 a suite whose enforcement pack did not exist produced
+    # a complete run in which every row was a systemic reset, and before item 1
+    # that run printed and exited exactly like a clean one. Four of the nine
+    # registry entries were in that state for nearly six months. A selection
+    # that cannot be enforced is a selection error, and it is reported as one.
+    if resolved_entry and not resolved_entry.get("enforcement_expected_to_fail"):
+        # enforcement_expected_to_fail is canary_fail and nothing else. That suite
+        # must run and must reset every row, because the pack-load failure is the
+        # fixture that proves an unassessed run cannot resemble a clean one. An
+        # earlier version of this check refused it, which broke the verdict canary
+        # landed the same day.
+        enforcement_pack = resolved_entry.get("enforcement_pack") or resolved_entry.get("pack_id", "")
+        if enforcement_pack and not _isc_pack_exists(enforcement_pack):
+            raise ValueError(
+                f"Suite '{resolved_entry.get('pack_id')}' declares enforcement pack "
+                f"'{enforcement_pack}', which does not exist at "
+                f"{_isc_pack_path(enforcement_pack)}. Running it would make every row a "
+                "systemic reset. Declare an enforcement pack that exists, or set "
+                "enforcement_expected_to_fail with a reason if the failure is the point."
+            )
+
+    # Two values, deliberately. Collapsing them into one is the defect being
+    # fixed here: pack_id is the suite identity, which 292 published
+    # certificates already mean by that name and which R1 CLI acceptance
+    # asserts, and enforcement_pack is the ISC policy pack the gate loads.
+    resolved_enforcement_pack = (
+        resolved_entry.get("enforcement_pack") or resolved_pack_id
+    ) if resolved_entry else resolved_pack_id
+
+    return (
+        suite_path,
+        scenario_path,
+        resolved_pack_id,
+        resolved_pack_version,
+        resolved_schema,
+        resolved_enforcement_pack,
+    )
 
 
 def _suite_hash(rows_decoded: List[Dict[str, str]]) -> str:
@@ -568,7 +637,14 @@ def main() -> None:
         except ImportError as exc:
             raise SystemExit("ERROR: LIVE mode requires litellm installed.") from exc
 
-    suite_path, scenario_path, pack_id, pack_version, pack_schema = _resolve_suite_and_pack(
+    (
+        suite_path,
+        scenario_path,
+        pack_id,
+        pack_version,
+        pack_schema,
+        enforcement_pack,
+    ) = _resolve_suite_and_pack(
         suite_arg=args.suite,
         scenario_arg=args.scenario,
         pack_arg=args.pack,
@@ -677,7 +753,7 @@ def main() -> None:
             else:
                 verdict = validate_sir(
                     {"isc": isc},
-                    enforcement_pack_id=(pack_id or None),
+                    enforcement_pack_id=(enforcement_pack or None),
                     pack_identity_context={
                         "pack_version": selected_pack_version,
                     },
@@ -956,9 +1032,15 @@ def main() -> None:
 
     # Preferred machine-readable summary for certificate generation
     summary_ts = _utc_now_iso()
-    effective_pack_id = effective_pack_id or selected_pack_id
-    runtime_pack_id = effective_pack_id or selected_pack_id
-    summary_flags = _policy_flags(pack_id=pack_id)
+    effective_pack_id = effective_pack_id or enforcement_pack or selected_pack_id
+    # pack_id is the suite that was selected, not the policy pack that enforced
+    # it. 292 published certificates mean the suite by this name and R1 CLI
+    # acceptance asserts it, so widening it to the enforcement pack would
+    # silently redefine a published field. The enforcement pack has its own
+    # fields below. For the four entries where the two coincide this is
+    # unchanged.
+    runtime_pack_id = selected_pack_id or effective_pack_id
+    summary_flags = _policy_flags(pack_id=enforcement_pack)
     summary = {
         "date": summary_ts,
         "timestamp_utc": summary_ts,
@@ -969,6 +1051,11 @@ def main() -> None:
         "pack_version": selected_pack_version,
         "selected_pack_id": selected_pack_id,
         "selected_pack_version": selected_pack_version,
+        # The ISC policy pack this suite declares it is enforced under, from the
+        # registry, beside the one the gate reports actually loading. A
+        # divergence between the two is meaningful: it is what item 2's mid-run
+        # configuration change would look like.
+        "enforcement_pack": enforcement_pack,
         "effective_pack_id": effective_pack_id,
         "suite_path": suite_or_scenario_path,
         # The suite's own name, never the pack id. These are distinct

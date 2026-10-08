@@ -40,7 +40,7 @@ def test_selected_pack_id_controls_enforcement_context(tmp_path, monkeypatch):
     monkeypatch.setattr(
         rts,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite_path), "", "pci_payments", "1.0.0", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite_path), "", "pci_payments", "1.0.0", "csv_single_turn_v1", "pci_payments"),
     )
     monkeypatch.setattr(
         argparse.ArgumentParser,
@@ -75,7 +75,7 @@ def test_run_summary_flags_use_effective_pack_context(tmp_path, monkeypatch):
     monkeypatch.setattr(
         rts,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite_path), "", "pci_payments", "1.0.0", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite_path), "", "pci_payments", "1.0.0", "csv_single_turn_v1", "pci_payments"),
     )
     monkeypatch.setattr(
         argparse.ArgumentParser,
@@ -129,7 +129,7 @@ def test_run_summary_separates_selected_and_effective_pack_when_selection_is_imp
     monkeypatch.setattr(
         rts,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite_path), "", "", "", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite_path), "", "", "", "csv_single_turn_v1", ""),
     )
     monkeypatch.setattr(
         argparse.ArgumentParser,
@@ -165,7 +165,7 @@ def test_run_summary_effective_pack_falls_back_to_selected_pack_when_verdict_omi
     monkeypatch.setattr(
         rts,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite_path), "", "support_operator_override", "1.0.0", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite_path), "", "support_operator_override", "1.0.0", "csv_single_turn_v1", "support_operator_override"),
     )
     monkeypatch.setattr(
         argparse.ArgumentParser,
@@ -271,7 +271,7 @@ def test_red_team_suite_passes_selected_pack_identity_context_to_validate_sir(tm
     monkeypatch.setattr(
         rts,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite_path), "", "pci_payments", "1.0.0", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite_path), "", "pci_payments", "1.0.0", "csv_single_turn_v1", "pci_payments"),
     )
     monkeypatch.setattr(
         argparse.ArgumentParser,

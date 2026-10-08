@@ -37,6 +37,7 @@ import shlex
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 PERMITTED_TYPES = ("test", "command", "artefact")
 DEFAULT_CHECKLIST = "release-checklist.json"
@@ -164,8 +165,10 @@ def main() -> int:
     worst = 0
     problems: list[str] = []
     met = 0
+    resolved: dict[Any, int] = {}
     for item in items:
         status, found = _check_item(item, root, args.run_commands)
+        resolved[item.get("id")] = status
         if status == 0:
             met += 1
         worst = max(worst, status)
@@ -174,8 +177,24 @@ def main() -> int:
     target = data.get("target_version", "unknown")
     print(f"Release checklist for {target}: {met} of {len(items)} items met.")
     for item in items:
-        mark = "x" if item.get("status") == "met" else " "
+        # The mark reflects whether the evidence resolved, not only what the
+        # status field claims. Reading the field alone printed [x] beside an
+        # item whose evidence did not resolve, so the checkbox list and the
+        # count above it disagreed and nothing said which item was at fault.
+        # A tick that can be wrong is the thing this file exists to prevent.
+        state = resolved.get(item.get("id"))
+        if state == 0:
+            mark = "x"
+        elif item.get("status") == "met":
+            mark = "!"
+        else:
+            mark = " "
         print(f"  [{mark}] {item.get('id')}  {item.get('name')}")
+    if any(
+        resolved.get(item.get("id")) != 0 and item.get("status") == "met"
+        for item in items
+    ):
+        print("  [!] marked met, but its evidence does not resolve; see below.")
 
     if problems:
         print("", file=sys.stderr)
