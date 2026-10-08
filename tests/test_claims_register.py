@@ -305,8 +305,12 @@ def test_the_superseded_about_text_is_not_presented_as_current():
     assert "Rules-only, no model in the decision path" in about, (
         "the replacement wording must be recorded verbatim"
     )
-    assert "regulated/insurable AI. MIT." not in about.split("Replaced", 1)[1], (
+    replacement = about.split("Replaced", 1)[1]
+    assert "regulated/insurable AI. MIT." not in replacement, (
         "the defective wording must not appear in the replacement"
+    )
+    assert "Signed, offline-verifiable audit records" in replacement, (
+        "the replacement must use the unquantified form"
     )
 
 
@@ -331,6 +335,51 @@ def test_the_website_row_stays_open_until_the_deploy():
         assert verification.get(field), (
             f"item 8 ends on a human check, so {field!r} must be stated rather than "
             "left to look automated"
+        )
+
+
+def _incomplete_archives():
+    """The archives whose signed manifest names a file that is not present."""
+    errata = (ROOT / "docs/archive-errata.md").read_text(encoding="utf-8")
+    block = errata.split(
+        "## Appendix A. Archives incomplete against their manifest", 1
+    )[1].split("\n## ", 1)[0]
+    return re.findall(r"^- `([^`]+)`", block, flags=re.MULTILINE)
+
+
+def test_no_surface_claims_that_every_run_verifies():
+    """A universal claim the archive refuses, and the way it got published.
+
+    The About description was replaced on 8 October with wording ending "signs
+    an offline-verifiable record of every run". The description it replaced said
+    "Signed, offline-verifiable audits" with no quantifier, which survives
+    inspection. The universal does not: running tools/verify_evidence.py on any
+    archive in Appendix A of docs/archive-errata.md prints VERDICT: FAILED and
+    exits 2, because the signed manifest names two files a repository ignore
+    rule kept from ever being committed.
+
+    It reached two public surfaces before anyone noticed, so it is held here
+    rather than by attention. The assertion is tied to the errata list, so if
+    those archives are ever completed this test fails and says that the stronger
+    claim has become available.
+    """
+    incomplete = _incomplete_archives()
+    assert incomplete, (
+        "the errata lists no incomplete archives. If that gap has been closed, a "
+        "surface may now claim that every run verifies, and this test and the "
+        "About description row should both be revisited"
+    )
+
+    surfaces = {
+        "README.md": (ROOT / "README.md").read_text(encoding="utf-8"),
+        "docs/claims-register.md": TEXT,
+    }
+    for name, text in surfaces.items():
+        flat = re.sub(r"\s+", " ", text)
+        assert "record of every run" not in flat, (
+            f"{name} claims a verifiable record of every run while "
+            f"{len(incomplete)} published archives fail the documented "
+            "verification; see docs/archive-errata.md"
         )
 
 

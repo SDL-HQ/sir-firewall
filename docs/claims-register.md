@@ -271,18 +271,47 @@ reasons:
 Replaced 8 October 2026 with:
 
 > Building SIR: deterministic pre-inference governance gate. Rules-only, no
-> model in the decision path. Blocks requests matching its published rules and
-> signs an offline-verifiable record of every run. MIT.
+> model in the decision path. Blocks requests matching its published rules.
+> Signed, offline-verifiable audit records. MIT.
 
 Every clause there is checkable, and "no model in the decision path" became a
 tested claim rather than an argued one on the same day, in
 `tests/test_no_model_in_the_decision_path.py`. The insurability argument stays
 on `/insurable-ai/`, labelled as preconditions, which is what it is.
 
-**An earlier version of this row said "Nothing supports the insurance half."**
-That overstated it and was written without reading the publication. The register
-correcting itself is the register working; it is recorded rather than quietly
-amended.
+The same claim, shortened to 148 characters, is on X, where the limit is 160:
+
+> Building SIR: deterministic pre-inference governance gate. Rules-only, no
+> model in the decision path. Signed, offline-verifiable audit records. MIT.
+
+#### Two corrections to this row, both made on 8 October
+
+Recorded rather than quietly amended, because a register that cannot correct
+itself is the thing it was built to catch.
+
+**It said "Nothing supports the insurance half."** That overstated it and was
+written without reading the publication at `/insurable-ai/`, which is a coherent
+argument about the preconditions for underwriting AI. The defect is that the
+About description read as a capability, not that the argument is absent.
+
+**The first replacement wording claimed too much, and it was published before
+anyone noticed.** It ended "signs an offline-verifiable record of **every
+run**". The original description said "Signed, offline-verifiable audits" with
+no quantifier, which survives inspection; the universal was introduced in the
+replacement. It does not survive: running the documented one-command
+verification on any of the 99 archives in Appendix A of
+`docs/archive-errata.md` prints `VERDICT: FAILED` and exits 2, because their
+signed manifests name two files a repository ignore rule kept from ever being
+committed. A reader doing exactly what the sentence invites falsifies it on 34%
+of the published archive.
+
+That is the same defect class as the "configuration" wording corrected earlier
+the same day: a true-sounding sentence that invites a conclusion the evidence
+refuses. It got past this register, its tests, and two reviewers, which is worth
+knowing about all three. `tests/test_claims_register.py` now fails if any
+surface claims every run verifies while that errata list is non-empty, and will
+fail again if the list is ever emptied, because then the stronger claim becomes
+available and this row should say so.
 
 *Coverage: inside for the blocking half, claimed; outside for the insurance
 half.*
@@ -335,6 +364,19 @@ surface should claim it until item 7 lands.
 figures are for the corpora named, with their sampling methods. A rate for a
 real team depends on the proportion of their requests that quote attacker
 wording, which is a property of their work and not of SIR.
+
+**Four of the five surfaces carrying the description cannot be tested from
+here.** The same sentence now lives on the README, the GitHub About field,
+LinkedIn, X and the website. Only the README is in version control, and it is
+the only one a test can read. The other four drift silently: nothing fails if
+one of them is edited, and nothing fails if one of them is left behind when the
+wording changes, which it did twice on 8 October.
+
+The register is the only record that the five are meant to agree, and the
+wording for each is written out here so a reader can compare them by eye. That
+is a weaker guarantee than the repository surfaces have and it is stated rather
+than implied. The first thing to check when any of these claims is questioned is
+whether the four untested surfaces still say what this row says they say.
 
 ---
 
