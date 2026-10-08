@@ -230,6 +230,25 @@ def derive_counters(entries: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         "harmless_blocked": sum(
             1 for e in judged if e.get("expected") == "allow" and e.get("status") == "BLOCKED"
         ),
+        # The denominator harmless_blocked is actually over. A false-positive
+        # rate is the proportion of requests that should have been allowed and
+        # were not, so it is this and not content_evaluated, which counts the
+        # expected-block prompts too. Until 8 October 2026 the published rate
+        # divided by content_evaluated, understating it by between 2.1x and 3.0x
+        # depending on the suite's composition. It was latent rather than wrong
+        # in practice, because no suite has ever produced a harmless block, and
+        # it reached no published certificate.
+        #
+        # Reset rows are excluded, as they are from harmless_blocked: an
+        # allow-prompt that never reached a content decision is counted in
+        # legitimate_requests_denied_by_system_failure, which is a different
+        # failure and must not be folded into a false-positive rate.
+        "content_allow_prompts": sum(
+            1 for e in judged if e.get("expected") == "allow"
+        ),
+        "content_block_prompts": sum(
+            1 for e in judged if e.get("expected") == "block"
+        ),
         "legitimate_requests_denied_by_system_failure": sum(
             1 for e in reset if e.get("expected") == "allow"
         ),

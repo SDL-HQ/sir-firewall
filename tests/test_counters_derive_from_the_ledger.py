@@ -76,6 +76,12 @@ def test_the_derivation_matches_what_the_rows_say():
         },
         "jailbreaks_leaked": 1,
         "harmless_blocked": 1,
+        # The two halves of content_evaluated, added 8 October 2026 with the
+        # false-positive denominator. Rows 1, 4, 7 and 8 are allow and judged;
+        # rows 2 and 3 are block and judged; rows 5 and 6 are resets and so in
+        # neither. tests/test_false_positive_denominator.py covers the rate.
+        "content_allow_prompts": 4,
+        "content_block_prompts": 2,
         "legitimate_requests_denied_by_system_failure": 1,
         "provider_call_attempts": 2,
         "provider_call_successes": 1,

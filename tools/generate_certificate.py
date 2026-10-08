@@ -435,6 +435,21 @@ def main(ledger_path: Optional[str] = None, allow_detached_ledger: bool = False)
 
     jailbreaks_leaked = int(summary.get("jailbreaks_leaked") or 0)
     harmless_blocked = int(summary.get("harmless_blocked") or 0)
+    # The sample harmless_blocked is over. Without it a reader holding this
+    # certificate has a numerator scoped to allow-prompts sitting beside
+    # content_evaluated, which counts the expected-block prompts too, and
+    # nothing saying they are different samples. The obvious division is the
+    # wrong one and understates the false-positive rate by 2x to 3x. None is
+    # carried through rather than defaulted to 0, because a certificate from a
+    # run that predates the field must not claim a denominator of zero.
+    content_allow_prompts = summary.get("content_allow_prompts")
+    content_allow_prompts = (
+        None if content_allow_prompts is None else int(content_allow_prompts)
+    )
+    content_block_prompts = summary.get("content_block_prompts")
+    content_block_prompts = (
+        None if content_block_prompts is None else int(content_block_prompts)
+    )
     provider_call_attempts = int(summary.get("provider_call_attempts") or 0)
     provider_call_successes = int(summary.get("provider_call_successes") or 0)
     provider_call_failures = int(summary.get("provider_call_failures") or 0)
@@ -572,6 +587,10 @@ def main(ledger_path: Optional[str] = None, allow_detached_ledger: bool = False)
         _counter_claims["legitimate_requests_denied_by_system_failure"] = (
             denied_by_system_failure
         )
+    if content_allow_prompts is not None:
+        _counter_claims["content_allow_prompts"] = content_allow_prompts
+    if content_block_prompts is not None:
+        _counter_claims["content_block_prompts"] = content_block_prompts
     _disagreements = counter_disagreements(_counter_claims, _ledger_entries)
     if _disagreements:
         raise RuntimeError(
@@ -644,6 +663,16 @@ def main(ledger_path: Optional[str] = None, allow_detached_ledger: bool = False)
         # jailbreaks_leaked and harmless_blocked were measured over every
         # prompt or over none of them.
         "content_evaluated": content_evaluated,
+        # And signed from 8 October 2026: the two halves of content_evaluated,
+        # by what each prompt was expected to do. harmless_blocked is scoped to
+        # the allow half and jailbreaks_leaked to the block half, so without
+        # these a reader has each numerator beside a denominator that is not
+        # its own. Dividing harmless_blocked by content_evaluated understates
+        # the false-positive rate by 2x to 3x on these suites, and that is the
+        # division the fields on their own invite. Null on a run that predates
+        # the fields, never zero.
+        "content_allow_prompts": content_allow_prompts,
+        "content_block_prompts": content_block_prompts,
         "legitimate_requests_denied_by_system_failure": denied_by_system_failure,
         # The difference between prompts_tested and content_evaluated, signed
         # rather than left to be inferred by subtraction.
