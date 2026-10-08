@@ -28,7 +28,7 @@ Important semantics:
 - `latest-audit.*` means latest passing audit (last known good proof).
 - `latest-live-audit.*` means the latest attributable `LIVE_GATING_CHECK` with at least one successful provider call, regardless of result.
 - `latest-run.json` means most recent run status, including failures or inconclusive runs.
-- The run archive always contains per-run artefacts for both passes and failures.
+- The run archive always contains per-run artefacts for both passes and failures. 99 archives published between April and September 2026 name two files in their signed manifests that were never committed; see `docs/archive-errata.md`.
 - Gate request status (`PASS` / `BLOCKED`) is distinct from run/publication status (`PASS` / `FAIL` / `INCONCLUSIVE`).
 - `latest-audit.*` and `latest-run.*` are single-run truth surfaces, not paired benchmark claims.
 - Procedural cold-start path: `docs/minimal-pilot-runbook.md`
@@ -241,7 +241,7 @@ should not differ between one machine and another. If it does, that is a defect
 in the suite rather than in your environment; `tests/test_tools_run_from_a_clone.py`
 and `tests/test_declared_dependencies.py` exist to keep it that way.
 
-`sir packs list` reports public registry entries. It does not guarantee that a same-named ISC policy pack exists; see `tests/domain_packs/README.md` for the current execution constraint.
+`sir packs list` reports public registry entries. Each entry declares the ISC policy pack it is enforced under, separately from its own identifier, and selecting a suite whose declared pack does not exist fails at resolution rather than producing a run in which every row is a systemic reset. See `tests/domain_packs/README.md`.
 
 ---
 
@@ -338,6 +338,8 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 * [Assurance kit](docs/assurance-kit.md) (supporting evaluation and verification reference)
 * [Compliance evidence map](docs/compliance-evidence-map.md) (reviewer-facing evidence packaging map)
 * [Evidence perimeter note](docs/evidence-perimeter.v5.md) (current bounded benchmark perimeter)
+* [Claims register](docs/claims-register.md) (every public technical claim, and whether it survives a reader who examines the failures)
+* [Archive errata](docs/archive-errata.md) (published archives that do not verify, and why)
 * [Threat model](docs/threat-model.md) (trust, integration, verification, retention, and control boundaries)
 * [Failure modes](docs/failure-modes.md) (fail-closed verdicts, escaped exceptions, and process boundaries)
 * [Rule-coverage report](docs/rule-coverage.md) (deterministic and full-gate benchmark coverage)
