@@ -22,6 +22,7 @@ import json
 from pathlib import Path
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -155,15 +156,9 @@ def test_the_false_positive_rate_is_null_not_zero_when_nothing_was_measured(
 
 def _verdict_script() -> str:
     """The shell the CI verdict step actually runs, lifted from the workflow."""
-    import yaml
-
-    workflow = yaml.safe_load(
-        (ROOT / ".github/workflows/audit-and-sign.yml").read_text(encoding="utf-8")
-    )
-    for step in workflow["jobs"]["audit-and-sign"]["steps"]:
-        if str(step.get("name", "")).startswith("Compute audit verdict"):
-            return step["run"]
-    raise AssertionError("the Compute audit verdict step is gone")
+    script = ROOT / "tools/ci_audit_verdict.sh"
+    assert script.is_file(), "the verdict shell is gone"
+    return script.read_text(encoding="utf-8")
 
 
 def _run_verdict(tmp_path, leaks=None, harmless=None, evaluated=None):
@@ -180,11 +175,10 @@ def _run_verdict(tmp_path, leaks=None, harmless=None, evaluated=None):
 
     env_file = tmp_path / "github_env"
     env_file.write_text("", encoding="utf-8")
-    script = tmp_path / "verdict.sh"
-    script.write_text(_verdict_script(), encoding="utf-8")
-
+    # The real file, not a copy of its text. A copy would pass while the file
+    # the workflow runs had changed.
     result = subprocess.run(
-        ["bash", str(script)],
+        ["bash", str(ROOT / "tools/ci_audit_verdict.sh")],
         cwd=tmp_path,
         env={"PATH": "/usr/bin:/bin", "GITHUB_ENV": str(env_file)},
         capture_output=True,
@@ -234,3 +228,52 @@ def test_a_real_gate_failure_is_still_a_failure_not_an_inconclusive(tmp_path):
     assert code == 0
     assert env["AUDIT_PASS"] == "false"
     assert "INCONCLUSIVE" not in env
+
+
+def test_the_workflow_invokes_the_verdict_script_rather_than_a_copy():
+    """One copy of the rule, for the job, the tests and the verdict canary.
+
+    While this shell was inline in the workflow, the only way to run it was for
+    a test to parse it out of the YAML, which is why its inconclusive branch had
+    never fired inside a GitHub job. If it drifts back inline, the tests above
+    would be exercising a file nothing runs.
+    """
+    workflow = yaml.safe_load(
+        (ROOT / ".github/workflows/audit-and-sign.yml").read_text(encoding="utf-8")
+    )
+    steps = [
+        step
+        for step in workflow["jobs"]["audit-and-sign"]["steps"]
+        if str(step.get("name", "")).startswith("Compute audit verdict")
+    ]
+
+    assert len(steps) == 1, "the Compute audit verdict step is gone or duplicated"
+    assert steps[0]["run"].strip() == "bash tools/ci_audit_verdict.sh"
+    assert steps[0].get("if") == "always()", (
+        "the verdict must be computed even when an earlier step failed, or an "
+        "absent counter file is never read as the inconclusive signal it is"
+    )
+
+
+def test_the_verdict_canary_runs_the_same_script_and_expects_a_refusal():
+    """The residue item 1 left behind, closed.
+
+    The inconclusive branch was exercised only by the tests above, which run the
+    script outside any workflow. This canary runs the real canary_fail suite in a
+    GitHub job and then this script, and passes only when the script refuses the
+    run. A job that passes when the verdict passes would prove nothing.
+    """
+    canary = ROOT / ".github/workflows/verdict-canary.yml"
+    assert canary.is_file(), "the verdict canary workflow is gone"
+    workflow = yaml.safe_load(canary.read_text(encoding="utf-8"))
+    body = "\n".join(
+        str(step.get("run", ""))
+        for job in workflow["jobs"].values()
+        for step in job["steps"]
+    )
+
+    assert "tools/ci_audit_verdict.sh" in body, "the canary must run the real script"
+    assert "canary_fail" in body, "the canary must run the real canary_fail suite"
+    # It must assert the refusal rather than tolerate any failure.
+    assert "INCONCLUSIVE=true" in body
+    assert "AUDIT_PASS=false" in body

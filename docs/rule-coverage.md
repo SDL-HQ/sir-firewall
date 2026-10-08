@@ -11,7 +11,7 @@ certificate.
 ## Reproduce
 
 ```bash
-PYTHONPATH=src python tools/rule_coverage_report.py \
+python3 tools/rule_coverage_report.py \
   --json-out /tmp/sir-rule-coverage.json \
   --markdown-out /tmp/sir-rule-coverage.md
 ```
@@ -38,7 +38,7 @@ Those regions include active packs with `public` or `encoded` visibility; draft
 and internal packs are excluded:
 
 ```bash
-PYTHONPATH=src python tools/rule_coverage_report.py \
+python3 tools/rule_coverage_report.py \
   --json-out /tmp/sir-rule-coverage.json \
   --markdown-out /tmp/sir-rule-coverage.md \
   --update-published-surfaces

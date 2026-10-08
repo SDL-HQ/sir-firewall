@@ -464,6 +464,38 @@ def main() -> int:
             return LEDGER_BINDING_FAILURE
         cert_hash = cert.get("itgl_final_hash")
         if ledger_hash != cert_hash:
+            # Before SIR 2.3.4, certificate generation took itgl_final_hash from
+            # the ITGL_FINAL_HASH environment variable or the mutable
+            # proofs/itgl_final_hash.txt, so a certificate could sign a hash left
+            # by an earlier run. docs/evidence-binding-correction.md records this
+            # and states the consequence: a pre-2.3.4 certificate is a signature
+            # over an unbound evidence package, whose ledger it does not reliably
+            # identify. The archives were deliberately not re-signed.
+            #
+            # Measured on 8 October 2026 across the 292 published certificates
+            # that ship a ledger: every one from 2.3.4 onward matches, 24 of 24.
+            # Below it, 105 do not. Three certificates carrying no version share
+            # one itgl_final_hash between ledgers of 152, 8 and 6 rows.
+            #
+            # So a mismatch below the correction is a binding that was never
+            # made, which is exit 9, not established. At 2.3.4 and later it is a
+            # binding that was made and is wrong, which is exit 7. Reporting a
+            # documented and disclosed format boundary as a tampering failure
+            # would call 105 published archives broken.
+            claimed = _parse_semver(cert.get("sir_firewall_version"))
+            if claimed is None or claimed < (2, 3, 4):
+                print(
+                    "NOT CHECKED: the certificate-to-ledger binding was not established "
+                    "because this certificate predates the SIR 2.3.4 evidence-binding "
+                    "correction, so its itgl_final_hash does not reliably identify its "
+                    f"ledger (certificate version: {cert.get('sir_firewall_version')!r}).\n"
+                    f"  cert: {cert_hash}\n"
+                    f"  ledger: {ledger_hash}\n"
+                    "  See docs/evidence-binding-correction.md. The ledger itself is "
+                    "chain-valid and the signature is unaffected.",
+                    file=sys.stderr,
+                )
+                return LEDGER_BINDING_NOT_CHECKED
             print("ERROR: ledger binding verification failed: terminal hash mismatch", file=sys.stderr)
             print(f"  cert: {cert_hash}", file=sys.stderr)
             print(f"  ledger: {ledger_hash}", file=sys.stderr)

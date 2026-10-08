@@ -1,6 +1,6 @@
 # Published archive errata
 
-Last updated 2 October 2026, at SIR 2.3.8.
+Last updated 8 October 2026, at SIR 2.3.8, on the release/2.4 branch.
 
 This document records defects in SIR's own published evidence archive. It
 exists because the archive is offered for independent verification, and a
@@ -24,14 +24,15 @@ for the full per-run result. No network is required.
 
 ## Current figures
 
-Measured across all 290 published run archives under `proofs/runs/`:
+Measured across all 292 published run archives under `proofs/runs/`:
 
 | Check | Result | Count |
 |---|---|---|
-| `verify_certificate.py` | verified (exit 0) | 22 |
-| `verify_certificate.py` | ledger binding not checked (exit 9) | 262 |
+| `verify_certificate.py` | verified, binding checked and holds (exit 0) | 24 |
+| `verify_certificate.py` | verified; no ledger in the archive, so no binding was checked (exit 0) | 39 |
+| `verify_certificate.py` | ledger binding not established (exit 9) | 223 |
 | `verify_certificate.py` | signature verification failed (exit 5) | 6 |
-| `verify_archive_receipt.py` | verified (exit 0) | 146 |
+| `verify_archive_receipt.py` | verified (exit 0) | 148 |
 | `verify_archive_receipt.py` | incomplete archive or failed signature (exit 2) | 105 |
 | `verify_archive_receipt.py` | no receipt, legacy archive (exit 3) | 39 |
 
@@ -41,6 +42,38 @@ distinguish them.
 
 The exit 2 count is 105: 99 archives that are incomplete, described in E1, and
 6 whose receipt signature does not verify, described in E2.
+
+### What changed on 8 October 2026, and why these numbers moved
+
+The archive did not change. The measurement did, in two ways, and both were
+corrections to a script that was reporting checks it had not performed.
+
+**`tools/archive_verification_report.py` now passes each run's own ledger and
+requires registry resolution.** It previously invoked the verifier with the
+certificate alone, so it relied on ledger discovery, which resolves against the
+working directory and returned nothing for most archives, and it never required
+the signing key to be resolved through the approved registry. The figures this
+script produces are published here and read as a statement about the archive, so
+a check it did not perform was being counted as a check that found nothing wrong.
+Passing the ledger explicitly moved **41 archives from exit 9 to exit 0**: their
+bindings were always sound and had simply never been checked.
+
+**Exit 0 is now two rows.** `--no-ledger` exits 0, so 39 archives with no ledger
+to bind were counted beside certificates whose binding was checked and holds.
+A skipped check is not a passed one.
+
+**Exit 9 is now decomposed.** It was described as "certificates carry no run
+identity", which is one of three reasons and no longer the largest. The 223
+are: 118 certificates carrying no `itgl_row_count`, and 105 whose
+`itgl_final_hash` does not match the ledger shipped with them because they
+predate the SIR 2.3.4 evidence-binding correction, described in E4.
+
+**Two archives were published after the previous measurement**, which is why
+the total is 292 rather than 290. Both verify.
+
+These figures are no longer transcribed by hand.
+`tests/test_archive_errata_figures.py` runs the report and fails if this table
+disagrees with it.
 
 ## E1. Ninety-nine archives are incomplete against their own signed manifest
 
@@ -127,20 +160,41 @@ described in E4.
 
 Affected runs are listed in Appendix B.
 
-## E4. Two hundred and sixty-two certificates cannot have their ledger binding checked
+## E4. Two hundred and twenty-three certificates cannot have their ledger binding established
 
-**Symptom.** `tools/verify_certificate.py` exits 9 with
-`certificate-to-ledger binding was not checked`.
+**Symptom.** `tools/verify_certificate.py` exits 9.
 
-**Cause.** Certificates emitted before SIR 2.3.4 carry no `run_id` and no
-`itgl_row_count`, so a ledger sitting in the same directory cannot be bound to
-the signed identity. This is the verifier behaving correctly. A tool that
-reported success here would be asserting a check it did not perform.
+**Cause.** Three distinct ones, previously reported as one.
+
+*118 certificates carry no `itgl_row_count`.* The field postdates SIR 2.3.4, so
+the signed row count cannot be compared with the ledger. The terminal hash
+binding is still checked for these.
+
+*105 certificates sign an `itgl_final_hash` that is not the terminal hash of the
+ledger shipped with them.* These predate the SIR 2.3.4 evidence-binding
+correction, when certificate generation took that value from an environment
+variable or the mutable `proofs/itgl_final_hash.txt` and so could sign a hash
+left by an earlier run. `docs/evidence-binding-correction.md` records it. Three
+certificates carrying no version share one `itgl_final_hash` between ledgers of
+152, 8 and 6 rows, which is the defect in its plainest form. The ledgers
+themselves are chain-valid and the signatures are unaffected; the certificate
+does not identify its ledger.
+
+*The remaining certificates have no `run_id`*, so no ledger can be resolved from
+the signed identity at all.
+
+**Why this is exit 9 and not exit 7.** A binding that was never made is not a
+binding that disagrees. Every certificate from SIR 2.3.4 onward matches the
+ledger shipped with it, 24 of 24, so a mismatch at or above the correction is a
+real failure and is still reported as one. Below it, reporting a documented and
+disclosed format boundary as a tampering failure would describe 105 published
+archives as broken. This distinction was introduced on 8 October 2026; before
+it, the 105 were counted under "no run identity".
 
 **Effect.** For these records the signature and payload integrity are checked
 and the ledger binding is not. This is a property of the certificates, not a
 defect introduced later, and it is not repairable without re-signing historical
-evidence.
+evidence, which would destroy the only property the archive has.
 
 ## E5. Three April archives were completed as a side effect of the fix
 

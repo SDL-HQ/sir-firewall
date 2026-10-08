@@ -32,6 +32,11 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ROOT / "tools"
 BARE_ENVIRONMENT = {"PATH": "/usr/bin:/bin"}
+# The runner lives at the repository root rather than in tools/, and had the
+# same defect. The README documented ``PYTHONPATH=src python3 red_team_suite.py``
+# as a "source-tree bootstrap fallback", which is a workaround in prose for two
+# lines of code.
+ROOT_ENTRY_POINTS = ("red_team_suite.py",)
 
 
 def _imports_the_package(path: Path) -> bool:
@@ -39,15 +44,19 @@ def _imports_the_package(path: Path) -> bool:
     return "from sir_firewall" in text or "import sir_firewall" in text
 
 
-ALL_TOOLS = sorted(path.name for path in TOOLS.glob("*.py"))
+ALL_TOOLS = sorted(path.name for path in TOOLS.glob("*.py")) + list(ROOT_ENTRY_POINTS)
 TOOLS_IMPORTING_THE_PACKAGE = sorted(
     path.name for path in TOOLS.glob("*.py") if _imports_the_package(path)
 )
 
 
+def _path_of(name: str) -> Path:
+    return ROOT / name if name in ROOT_ENTRY_POINTS else TOOLS / name
+
+
 def _help(tool: str) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [sys.executable, str(TOOLS / tool), "--help"],
+        [sys.executable, str(_path_of(tool)), "--help"],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -91,3 +100,17 @@ def test_the_quorum_tool_imports_a_module_that_exists():
 
     assert "ModuleNotFoundError" not in combined, combined
     assert "Failed to load ISC payload" in combined, combined
+
+
+def test_the_runner_runs_from_a_clone():
+    """The entry point the README's own fallback worked around.
+
+    ``red_team_suite.py`` added tools/ to the path for ``itgl`` and not src/ for
+    the package, so running it from a clone needed ``PYTHONPATH=src``. The
+    parametrised test above now covers it; this names it, because it is the file
+    a stranger runs first.
+    """
+    result = _help("red_team_suite.py")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "usage: red_team_suite.py" in result.stdout

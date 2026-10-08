@@ -1,0 +1,137 @@
+name: Verdict canary
+
+# Fire the CI verdict's inconclusive branch inside a real GitHub job.
+#
+# Item 1 made an unassessed run impossible to mistake for a clean one across
+# four surfaces, and one residue was left: the branch of the verdict shell that
+# refuses a run evaluating no content had only ever been executed by a test.
+# While the shell was inline in audit-and-sign.yml there was no other way to run
+# it. It is tools/ci_audit_verdict.sh now, so this job runs the real canary_fail
+# suite and then the real script.
+#
+# This job passes only when the verdict REFUSES. A canary that passes when the
+# verdict passes proves nothing, and that is the shape of the defect this
+# repository keeps finding: an acceptance test that accepts anything.
+#
+# canary_fail has no ISC policy pack, deliberately, so every row of the run is a
+# systemic reset, content_evaluated is 0, and leaks and harmless_blocked are both
+# 0 over zero assessments. Those are the same two zeros a clean run produces,
+# which is exactly why this has to be checked rather than assumed.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verdict-canary:
+    name: The verdict refuses a run that evaluated nothing
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install package
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Run the canary_fail suite
+        run: |
+          set -euo pipefail
+          # The runner exits 2 when nothing was content-evaluated, which is the
+          # outcome under test, so its exit code is recorded rather than trusted
+          # to be zero. The counter files are what this job is here for.
+          set +e
+          python red_team_suite.py --suite tests/domain_packs/canary_fail.csv --no-model-calls
+          runner_exit=$?
+          set -e
+          echo "runner exited $runner_exit"
+          if [ "$runner_exit" -ne 2 ]; then
+            echo "ERROR: the canary_fail suite exited $runner_exit, expected 2."
+            echo "Exit 2 is how the runner reports that no prompt reached content"
+            echo "evaluation. A different code means the premise of this canary has"
+            echo "changed and the verdict check below would be testing nothing."
+            exit 1
+          fi
+
+      - name: The counter files say nothing was evaluated
+        run: |
+          set -euo pipefail
+          for f in leaks_count.txt harmless_blocked.txt content_evaluated.txt; do
+            [ -f "$f" ] || { echo "ERROR: $f was not written"; exit 1; }
+            echo "$f = $(cat "$f")"
+          done
+          # The two zeros a clean run also produces, beside the one that
+          # distinguishes them.
+          [ "$(cat leaks_count.txt)" = "0" ] || { echo "ERROR: expected leaks 0"; exit 1; }
+          [ "$(cat harmless_blocked.txt)" = "0" ] || { echo "ERROR: expected harmless_blocked 0"; exit 1; }
+          [ "$(cat content_evaluated.txt)" = "0" ] || { echo "ERROR: expected content_evaluated 0"; exit 1; }
+
+      - name: The verdict script refuses the run
+        run: |
+          set -euo pipefail
+          # The same file audit-and-sign.yml runs. GITHUB_ENV is redirected so
+          # this job's own environment is not polluted by a deliberate failure.
+          CANARY_ENV="$(mktemp)"
+          set +e
+          GITHUB_ENV="$CANARY_ENV" bash tools/ci_audit_verdict.sh
+          verdict_exit=$?
+          set -e
+          echo "verdict script exited $verdict_exit"
+          echo "--- exported ---"
+          cat "$CANARY_ENV"
+          echo "----------------"
+
+          if [ "$verdict_exit" -eq 0 ]; then
+            echo "ERROR: the verdict script accepted a run that evaluated no content."
+            echo "This is the defect the canary exists to catch. Do not make this job"
+            echo "green by relaxing the assertion."
+            exit 1
+          fi
+
+          grep -qx 'AUDIT_PASS=false' "$CANARY_ENV" || {
+            echo "ERROR: AUDIT_PASS=false was not exported"; exit 1; }
+          grep -qx 'INCONCLUSIVE=true' "$CANARY_ENV" || {
+            echo "ERROR: INCONCLUSIVE=true was not exported"; exit 1; }
+          grep -qx 'CONTENT_EVALUATED=0' "$CANARY_ENV" || {
+            echo "ERROR: CONTENT_EVALUATED=0 was not exported"; exit 1; }
+
+          echo "OK: the verdict refused the run as INCONCLUSIVE, exit $verdict_exit."
+
+      - name: And a clean set of counters still passes
+        run: |
+          set -euo pipefail
+          # The refusal above must not be the script failing on everything. This
+          # is the same script against counters from a run that did evaluate
+          # content, and it must exit 0 with AUDIT_PASS=true.
+          work="$(mktemp -d)"
+          printf 0 > "$work/leaks_count.txt"
+          printf 0 > "$work/harmless_blocked.txt"
+          printf 150 > "$work/content_evaluated.txt"
+          CLEAN_ENV="$(mktemp)"
+          ( cd "$work" && GITHUB_ENV="$CLEAN_ENV" bash "$GITHUB_WORKSPACE/tools/ci_audit_verdict.sh" )
+          cat "$CLEAN_ENV"
+          grep -qx 'AUDIT_PASS=true' "$CLEAN_ENV" || {
+            echo "ERROR: a clean run no longer passes; the refusal above is not specific"; exit 1; }
+          echo "OK: the refusal is specific to a run that evaluated nothing."
+
+      - name: Nothing was published
+        run: |
+          set -euo pipefail
+          # A canary must leave no evidence behind. This job signs nothing and
+          # has no key, but say so mechanically rather than by convention.
+          if [ -d proofs/archive ] && [ -n "$(ls -A proofs/archive 2>/dev/null)" ]; then
+            echo "ERROR: this job produced archive contents"; ls -la proofs/archive; exit 1
+          fi
+          test -z "${SDL_PRIVATE_KEY_PEM:-}" || { echo "ERROR: a signing key is present"; exit 1; }
+          echo "OK: no certificate, no archive, no key."

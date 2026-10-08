@@ -238,3 +238,104 @@ def test_the_four_exit_codes_are_distinct_and_documented():
     assert len({ESTABLISHED, NOT_ESTABLISHED, FAILED, UNREADABLE}) == 4
     for code, label in ((0, "ESTABLISHED"), (1, "NOT ESTABLISHED"), (2, "FAILED")):
         assert f"  {code}  {label}" in docstring, label
+
+
+# --- the SIR 2.3.4 evidence-binding correction -------------------------------
+#
+# Before 2.3.4, certificate generation took itgl_final_hash from an environment
+# variable or a mutable file, so a certificate could sign a hash left by an
+# earlier run. docs/evidence-binding-correction.md records it and states that the
+# archives were deliberately not re-signed. A verifier that calls those archives
+# broken is reporting a documented format boundary as tampering.
+
+
+def test_the_whole_published_archive_agrees_with_the_boundary_the_correction_states():
+    """Every certificate from 2.3.4 onward binds its ledger. Below it, many do not.
+
+    This is the measurement the classification rests on, so it is taken from the
+    archive rather than asserted. If a 2.3.4-or-later certificate ever stops
+    matching its ledger, that is a real failure and this test is where it
+    surfaces.
+    """
+    corrected_total = corrected_bound = 0
+    uncorrected_unbound = 0
+
+    for certificate in sorted((ROOT / "docs/runs").glob("*/audit.json")):
+        ledger = certificate.parent / "proofs/itgl_ledger.jsonl"
+        if not ledger.is_file():
+            continue
+        cert = json.loads(certificate.read_text(encoding="utf-8"))
+        version = cert.get("sir_firewall_version")
+        parsed = (
+            tuple(int(part) for part in version.split("."))
+            if isinstance(version, str) and version.count(".") == 2 and version[0].isdigit()
+            else None
+        )
+        rows = [
+            json.loads(line)
+            for line in ledger.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        bound = cert.get("itgl_final_hash") == "sha256:" + rows[-1]["ledger_hash"]
+        if parsed is not None and parsed >= (2, 3, 4):
+            corrected_total += 1
+            corrected_bound += int(bound)
+        elif not bound:
+            uncorrected_unbound += 1
+
+    assert corrected_total >= 24, corrected_total
+    assert corrected_bound == corrected_total, (
+        f"{corrected_total - corrected_bound} certificates at or above SIR 2.3.4 do not "
+        "match the ledger shipped with them; the correction is supposed to make that "
+        "impossible, so this is a real binding failure and not a format boundary"
+    )
+    assert uncorrected_unbound > 0, (
+        "no pre-2.3.4 certificate is unbound, so the classification below is "
+        "untested against the archive it exists for"
+    )
+
+
+def test_a_pre_correction_mismatch_is_unknown_rather_than_failed():
+    """105 published archives are in this position. None of them is broken."""
+    unbound = None
+    for certificate in sorted((ROOT / "docs/runs").glob("*/audit.json")):
+        ledger = certificate.parent / "proofs/itgl_ledger.jsonl"
+        if not ledger.is_file():
+            continue
+        cert = json.loads(certificate.read_text(encoding="utf-8"))
+        version = cert.get("sir_firewall_version")
+        if version != "1.0.2":
+            continue
+        rows = [
+            json.loads(line)
+            for line in ledger.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        if cert.get("itgl_final_hash") != "sha256:" + rows[-1]["ledger_hash"]:
+            unbound = certificate.parent
+            break
+
+    assert unbound is not None, "no unbound pre-correction archive to check"
+    code, report, _ = _verify(unbound)
+
+    assert _state(report, "certificate") == "unknown"
+    assert "predates the SIR 2.3.4 evidence-binding correction" in _detail(report, "certificate") or (
+        "not fully checked" in _detail(report, "certificate")
+    )
+    assert code == NOT_ESTABLISHED, "a documented format boundary is not a failure"
+
+
+def test_a_post_correction_mismatch_is_still_a_failure(archive):
+    """The softening above must not reach the certificates the correction covers.
+
+    COMPLETE_RUN is a 2.3.8 archive. Its ledger is replaced with another run's,
+    which is a genuine binding failure and must stay one.
+    """
+    run = archive()
+    other = ROOT / "docs/runs" / "20261002-030936-161538-gh36958888228-3c39599f5009"
+    shutil.copy(other / "proofs/itgl_ledger.jsonl", run / "proofs/itgl_ledger.jsonl")
+
+    code, report, _ = _verify(run)
+
+    assert _state(report, "certificate") == "failed"
+    assert code == FAILED

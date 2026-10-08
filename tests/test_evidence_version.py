@@ -137,7 +137,7 @@ def test_current_version_surfaces_match_runtime_authority():
         "examples/verifier-negatives/tampered-unregistered-key.json": Counter({v_230: 1}),
         "docs/additional-phase-1-findings.md": Counter({v_221: 4, v_102: 1, v_200: 1}),
         "docs/assets/StructuralDesignLabs_Logo.svg": Counter({v_210: 1}),
-        "docs/archive-errata.md": Counter({authority: 1, v_237: 1, v_234: 2, v_102: 1}),
+        "docs/archive-errata.md": Counter({v_234: 5, authority: 1, v_237: 1, v_102: 1}),
         "docs/backlog.md": Counter({v_230: 1}),
         "docs/coverage.json": Counter({authority: 1}),
         "docs/evidence-perimeter.v5.md": Counter({authority: 1}),
@@ -176,10 +176,11 @@ def test_current_version_surfaces_match_runtime_authority():
         "tests/test_release_checklist.py": Counter({v_240: 1}),
         "tests/test_check_archive_staged.py": Counter({v_237: 2}),
         "tests/test_standalone_verifiers.py": Counter({v_234: 1}),
-        "tools/verify_certificate.py": Counter({v_234: 4}),
+        "tools/verify_certificate.py": Counter({v_234: 9}),
+        "tools/archive_verification_report.py": Counter({v_234: 1}),
         "tools/verify_evidence.py": Counter({v_220: 1, v_240: 1}),
         "tools/key_registry.py": Counter({v_240: 1}),
-        "tests/test_one_command_verification.py": Counter({authority: 1, v_240: 1}),
+        "tests/test_one_command_verification.py": Counter({v_234: 7, authority: 2, v_240: 1, v_102: 1}),
     }
     version_pattern = re.compile(
         rf"(?<![\d.])(?:{'|'.join(re.escape(version) for version in (authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233, v_234, v_235, v_236, v_237, v_240))})(?!\d)"

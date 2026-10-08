@@ -39,6 +39,11 @@ from typing import Dict, List, Tuple, Optional, Any
 # imported rather than reimplemented. tools/ is not a package, so it is added
 # to the path the same way tools/verify_certificate.py does it.
 sys.path.insert(0, str(Path(__file__).resolve().parent / "tools"))
+# And src/, so the runner works from a clone without an editable install. The
+# README documented PYTHONPATH=src as a "source-tree bootstrap fallback", which
+# is a workaround in prose for a two-line fix in code. Every tool in tools/ does
+# this; tests/test_tools_run_from_a_clone.py covers this file too.
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 from itgl import (  # noqa: E402
     CURRENT_CHAIN_VERSION,
     compute_ledger_hash,

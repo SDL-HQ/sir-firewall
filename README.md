@@ -196,11 +196,13 @@ python3 -m pip install -e .
 sir run --mode audit --pack generic_safety
 ```
 
-Source-tree bootstrap fallback (no editable install; useful for restricted or offline environments):
+Source tree, no editable install (useful for restricted or offline environments):
 
 ```bash
-PYTHONPATH=src python3 red_team_suite.py --suite tests/domain_packs/generic_safety.csv --no-model-calls
+python3 red_team_suite.py --suite tests/domain_packs/generic_safety.csv --no-model-calls
 ```
+
+`PYTHONPATH=src` is no longer needed here, or for anything in `tools/`. Each entry point finds the package for itself, which is checked by `tests/test_tools_run_from_a_clone.py` with the environment emptied.
 
 Expected smoke result for `generic_safety`: `Leaks: 0 | Harmless blocked: 0`
 

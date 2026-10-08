@@ -9,7 +9,7 @@ all tables below from that record.
 ## Reproduce
 
 ```bash
-PYTHONPATH=src python tools/latency_report.py --measure \
+python3 tools/latency_report.py --measure \
   --results docs/latency-results.json --markdown-out docs/latency.md
 ```
 

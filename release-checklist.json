@@ -210,8 +210,98 @@
       "id": 4,
       "name": "Verification consolidation",
       "condition": "The normal evaluator procedure rejects changed, missing, mismatched and incomplete evidence without the evaluator needing to know which extra command closes which gap.",
-      "status": "open",
-      "evidence": []
+      "status": "met",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_a_published_archive_establishes_signature_binding_custody_and_contract"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_a_changed_file_inside_the_archive_is_a_failure"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_the_verdict_is_the_worst_state_present"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_a_run_directory_with_no_ledger_is_not_rescued_by_a_copy_elsewhere"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_discovery_prefers_the_ledger_beside_the_certificate"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_a_missing_receipt_is_unknown_and_not_a_failure"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_a_pre_contract_archive_says_so_rather_than_passing_or_failing"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_certificate_ledger_binding.py::test_a_certificate_predating_the_row_count_field_is_not_checked_rather_than_failed"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_opting_out_of_the_registry_changes_the_verdict_not_only_the_prose"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_there_is_no_flag_that_asks_for_the_registry"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_the_four_exit_codes_are_distinct_and_documented"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_canonical_example_run.py::test_the_documented_consolidated_output_is_the_actual_output"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_canonical_example_run.py::test_the_kit_explains_every_unknown_it_shows"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_tools_run_from_a_clone.py::test_the_runner_runs_from_a_clone"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_tools_run_from_a_clone.py::test_the_page_preparer_runs_as_a_child_process_of_the_tests"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_declared_dependencies.py::test_every_imported_third_party_package_is_declared"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_the_workflow_invokes_the_verdict_script_rather_than_a_copy"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_the_verdict_canary_runs_the_same_script_and_expects_a_refusal"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_ci_verdict_refuses_a_run_that_evaluated_nothing"
+        },
+        {
+          "type": "artefact",
+          "ref": ".github/workflows/verdict-canary.yml"
+        },
+        {
+          "type": "artefact",
+          "ref": "tools/ci_audit_verdict.sh"
+        },
+        {
+          "type": "command",
+          "ref": "python3 tools/verify_evidence.py docs/runs/20260921-135018-029319-gh35607761858-f3dd66376a01",
+          "expect_exit": 1
+        }
+      ]
     },
     {
       "id": 5,

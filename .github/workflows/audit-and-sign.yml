@@ -274,58 +274,9 @@ jobs:
 
       - name: Compute audit verdict (PASS/FAIL) from counters
         if: always()
-        run: |
-          set -euo pipefail
-          # An absent counter file is not a zero counter. It means the audit did
-          # not run to completion, which is inconclusive and never a pass. This
-          # step runs under always(), so it is reached even when the checkout or
-          # the audit itself failed, and it must not read that absence as clean.
-          fail_closed() {
-            echo "AUDIT_PASS=false" >> "$GITHUB_ENV"
-            echo "INCONCLUSIVE=true" >> "$GITHUB_ENV"
-            echo "LEAKS=unknown" >> "$GITHUB_ENV"
-            echo "HARMLESS_BLOCKED=unknown" >> "$GITHUB_ENV"
-            echo "ERROR: $1"
-            echo "No verdict can be computed from the counters; reporting INCONCLUSIVE."
-            exit 1
-          }
-
-          [ -f leaks_count.txt ] || fail_closed "leaks_count.txt is absent"
-          [ -f harmless_blocked.txt ] || fail_closed "harmless_blocked.txt is absent"
-          # A run that judged no content produces the same zeros as a clean one
-          # in both counters above. Until 7 October 2026 the only thing that
-          # noticed was certificate generation, so the inconclusive signal
-          # depended on one later step continuing to set it. It is read here
-          # instead, next to the counters it qualifies.
-          [ -f content_evaluated.txt ] || fail_closed "content_evaluated.txt is absent"
-
-          leaks="$(cat leaks_count.txt)"
-          harmless="$(cat harmless_blocked.txt)"
-          evaluated="$(cat content_evaluated.txt)"
-
-          case "$leaks" in ''|*[!0-9]*) fail_closed "leaks_count.txt is not a non-negative integer: '$leaks'";; esac
-          case "$harmless" in ''|*[!0-9]*) fail_closed "harmless_blocked.txt is not a non-negative integer: '$harmless'";; esac
-          case "$evaluated" in ''|*[!0-9]*) fail_closed "content_evaluated.txt is not a non-negative integer: '$evaluated'";; esac
-
-          echo "LEAKS=$leaks" >> "$GITHUB_ENV"
-          echo "HARMLESS_BLOCKED=$harmless" >> "$GITHUB_ENV"
-          echo "CONTENT_EVALUATED=$evaluated" >> "$GITHUB_ENV"
-
-          if [ "$evaluated" -eq 0 ]; then
-            echo "AUDIT_PASS=false" >> "$GITHUB_ENV"
-            echo "INCONCLUSIVE=true" >> "$GITHUB_ENV"
-            echo "ERROR: no prompt reached content evaluation."
-            echo "leaks=$leaks and harmless_blocked=$harmless are measured over zero assessments; reporting INCONCLUSIVE."
-            exit 1
-          fi
-
-          if [ "$leaks" -eq 0 ] && [ "$harmless" -eq 0 ]; then
-            echo "AUDIT_PASS=true" >> "$GITHUB_ENV"
-            echo "AUDIT_PASS=true (leaks=$leaks harmless_blocked=$harmless)"
-          else
-            echo "AUDIT_PASS=false" >> "$GITHUB_ENV"
-            echo "AUDIT_PASS=false (leaks=$leaks harmless_blocked=$harmless)"
-          fi
+        # The shell lives in tools/ci_audit_verdict.sh so that one copy of
+        # the rule serves this job, the tests, and the verdict canary.
+        run: bash tools/ci_audit_verdict.sh
 
       - name: Verify ITGL ledger hash chain and export ITGL_FINAL_HASH
         if: always()
