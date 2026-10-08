@@ -51,6 +51,15 @@ def _claim_sections():
 SECTIONS = _claim_sections()
 
 
+def _flat(body: str) -> str:
+    """A section with blockquote markers removed and whitespace collapsed.
+
+    Quoted replacement wording wraps across lines, so a substring check against
+    the raw section is a check on markdown wrapping rather than on the wording.
+    """
+    return re.sub(r"\s+", " ", body.replace("\n> ", " ").replace("> ", " "))
+
+
 def test_the_register_exists_and_is_linked_from_the_readme():
     assert REGISTER.is_file()
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -275,6 +284,54 @@ def test_the_pack_sentence_keeps_its_guard_against_the_opposite_overclaim():
     assert "not a finding that packs are inert" in readme
     for controlled in ("ISC templates", "friction limits", "enforcement flags"):
         assert controlled in readme, controlled
+
+
+def test_the_superseded_about_text_is_not_presented_as_current():
+    """A corrected row must not quote the defective wording as live.
+
+    The About description is a GitHub setting, so no test here can read what the
+    repository actually shows. What this file can hold is that the register does
+    not describe the superseded text as current, and that it records the
+    replacement verbatim so the two cannot drift silently.
+    """
+    about = _flat(SECTIONS["The GitHub repository About description"])
+
+    assert "Blocks policy-breaking requests" in about, (
+        "the superseded wording should stay on the record, not be deleted"
+    )
+    assert "Current text" not in about, (
+        "the row is corrected, so the old wording must not be labelled current"
+    )
+    assert "Rules-only, no model in the decision path" in about, (
+        "the replacement wording must be recorded verbatim"
+    )
+    assert "regulated/insurable AI. MIT." not in about.split("Replaced", 1)[1], (
+        "the defective wording must not appear in the replacement"
+    )
+
+
+def test_the_website_row_stays_open_until_the_deploy():
+    """A decision recorded is not a surface changed.
+
+    The homepage wording was decided on 8 October and queued. The claim is live
+    until the deploy, so this row closes on the deploy rather than on the
+    decision, and the checklist records a human verification for it because no
+    offline test can read a live site.
+    """
+    website = SECTIONS["The website homepage uncovered-row claim (structuraldesignlabs.com)"]
+    checklist = json.loads((ROOT / "release-checklist.json").read_text(encoding="utf-8"))
+    item8 = next(i for i in checklist["items"] if i["id"] == 8)
+
+    assert "**open" in website
+    assert "Decided" in website, "the decision taken must be on the record"
+    assert "claude/website-changes-queued.md" in website
+
+    verification = item8.get("verification") or {}
+    for field in ("who", "what", "why_not_a_test"):
+        assert verification.get(field), (
+            f"item 8 ends on a human check, so {field!r} must be stated rather than "
+            "left to look automated"
+        )
 
 
 def test_item_7_is_not_claimed_anywhere_public():
