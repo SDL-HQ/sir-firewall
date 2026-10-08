@@ -6,9 +6,11 @@ Deterministic pre-inference governance gate · rules-only · cryptographically s
 
 Plain language: SIR sits in front of an AI model or agent and inspects a prompt before it reaches inference. It either lets the prompt through (`PASS`) or blocks it (`BLOCKED`) using deterministic, versioned rules.
 
-Models provide capability. SIR makes governance enforceable and provable. It does not claim model alignment. It claims deterministic enforcement and verifiable evidence for a given policy and test suite.
+Models provide capability. SIR makes governance enforceable and provable. It does not claim model alignment. It claims deterministic enforcement and verifiable evidence for a given rule set and test suite.
 
-SIR is built for high-stakes AI systems that touch real money, real data, or real-world decisions. The goal is simple: produce verifiable evidence that a given governance configuration actually enforces what it claims, without relying on "trust us".
+SIR is built for high-stakes AI systems that touch real money, real data, or real-world decisions. The goal is simple: produce verifiable evidence that a given rule set actually enforces what it claims, without relying on "trust us".
+
+**What the signed evidence does and does not establish.** It establishes that a named rule set and policy were present, were computed from the artefacts actually loaded rather than asserted by the caller, did not change during the run, and produced the recorded verdicts. The hash chain over those rows re-derives from its first entry, and its terminal hash recomputes offline. The verdicts re-run deterministically from the retained prompts and the published rule set. It does not establish that every component of the signed configuration was causally responsible for a verdict. Measured across 453 prompts in all eight registry suites under each of the six domain packs, every per-prompt status and triggered rule was identical while the signed `configuration_hash` differed for each pack. The baseline policy and the deterministic rules decide. The domain pack does not change any verdict these suites measure. Packs still control ISC templates, friction limits, enforcement flags and structured schemas; no registry suite exercises those, so this is not a finding that packs are inert. See `docs/claims-register.md`.
 
 Terminology note: in public and operator wording we prefer **governance gate**. Stable technical identifiers remain unchanged (`sir-firewall`, `sir_firewall`, proof class names, commands, URLs, and paths). See `docs/terminology.md`.
 

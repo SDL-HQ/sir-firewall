@@ -225,6 +225,31 @@ with `--require-registry`; and the two agree, because neither could pass alone.
 **6. Destroy the superseded private key**, and any intermediate copies written
 during the rotation. Record that it was destroyed, and where it had been.
 
+#### The 6 October rotation, step 6 performed 8 October 2026
+
+The superseded private key, registry entry `default`, SPKI fingerprint
+`b57f3924a50caedeee956936`, was held at
+`~/tmp/sdl-key-rotate/sdl_private_key.pem` from 6 October to 8 October 2026. It
+sat there two days longer than the rotation because this step did not exist when
+the rotation was run; it was added to this procedure afterwards, and the loose
+copy is what prompted it.
+
+A scan of `~/tmp`, `~/.sdl-keys`, `~/Desktop`, `~/Downloads` and `~/Documents`
+for readable private keys found that file as the only copy of the retired key,
+and the active key `sdl-2026-10-06`, fingerprint `f1533b6f24a33509c7819941`, at
+`~/.sdl-keys/sir-signing-2026-10-06.pem` as the only other private key present.
+
+The file was removed with `rm -P`. On APFS with copy-on-write that overwrite is
+not a guaranteed scrub of the original blocks, so the accurate statement is that
+the key is deallocated and no longer reachable through the filesystem, not that
+the bytes were destroyed. Anyone restating this should restate it that way.
+
+That key signed 268 of the 292 published archives, and destroying it costs
+nothing. Verification resolves `default` through its registry entry, which keeps
+the public half, and none of the three options open for the historical set needs
+the private half: the attestation option signs a run-id-to-commit mapping with
+the active key.
+
 ### What this procedure has been through
 
 A procedure that has been run once and failed twice is more trustworthy than one

@@ -139,6 +139,7 @@ def test_current_version_surfaces_match_runtime_authority():
         "docs/assets/StructuralDesignLabs_Logo.svg": Counter({v_210: 1}),
         "docs/archive-errata.md": Counter({v_234: 5, authority: 1, v_237: 1, v_102: 1}),
         "docs/backlog.md": Counter({v_230: 1}),
+        "docs/claims-register.md": Counter({v_234: 3, v_220: 2, authority: 1}),
         "docs/coverage.json": Counter({authority: 1}),
         "docs/evidence-perimeter.v5.md": Counter({authority: 1}),
         "docs/assurance-kit.md": Counter({v_234: 4, v_237: 1, v_240: 4, v_220: 3, v_102: 1, v_200: 1}),
@@ -185,10 +186,19 @@ def test_current_version_surfaces_match_runtime_authority():
     version_pattern = re.compile(
         rf"(?<![\d.])(?:{'|'.join(re.escape(version) for version in (authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233, v_234, v_235, v_236, v_237, v_240))})(?!\d)"
     )
+    # Untracked-but-not-ignored files are scanned too. `git ls-files` alone meant
+    # a new version-bearing document was invisible to this test until it was
+    # committed, so it passed locally and failed on the first run afterwards.
+    # docs/claims-register.md did exactly that on 8 October: the suite was green
+    # before the commit and this test was red after it, which is the worst
+    # available ordering.
     tracked_paths = subprocess.check_output(
         ["git", "ls-files", "-z"], cwd=ROOT
     ).decode("utf-8").split("\0")
-    tracked_paths = list(filter(None, tracked_paths))
+    tracked_paths += subprocess.check_output(
+        ["git", "ls-files", "--others", "--exclude-standard", "-z"], cwd=ROOT
+    ).decode("utf-8").split("\0")
+    tracked_paths = sorted(filter(None, set(tracked_paths)))
     mutable_if_versioned = {
         relative_path
         for relative_path in tracked_paths

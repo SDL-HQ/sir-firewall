@@ -12,11 +12,15 @@ Last reviewed 8 October 2026 at SIR 2.3.8, on the `release/2.4` branch.
 
 The release item this register serves stays **open** while it exists, and
 deliberately so. The condition is about the claims rather than about the
-register, and three public surfaces still carry claims recorded below as not
-surviving examination. They are listed under `blocked_on` in
-`release-checklist.json` and the replacement wording is Ryan's to write. A
-register that ticked its own item while the surfaces it audits were unchanged
-would be the defect it was built to find.
+register, and two public surfaces still carry claims recorded below as not
+surviving examination: the repository About description and the website
+homepage. They are listed under `blocked_on` in `release-checklist.json` and the
+replacement wording is Ryan's to write. A register that ticked its own item
+while the surfaces it audits were unchanged would be the defect it was built to
+find.
+
+The README's two wordings were corrected on 8 October rather than carried as
+decisions, because the correction was a word rather than a position.
 
 ## How to read this
 
@@ -54,8 +58,8 @@ evaluation and a binary decision without model inference.
 
 ### "It claims deterministic enforcement and verifiable evidence for a given policy and test suite"
 
-**qualified.** Both halves are true. The qualification is what "a given policy"
-means to a reader.
+**corrected.** Both halves were true. The defect was what "a given policy"
+meant to a reader, and the word now reads **rule set**.
 
 Measured 8 October 2026: across 453 prompts in all eight registry suites, run
 under each of the six ISC policy packs, every per-prompt status and triggered
@@ -63,10 +67,11 @@ rule was identical, while the signed `configuration_hash` differed for every
 pack. The baseline policy and the deterministic rules decide; the **domain pack
 does not change any verdict these suites measure**.
 
-So "for a given policy" is true of the baseline policy, and misleading if a
-reader takes "policy" to include the domain pack. A pack must load, and a
-missing one makes every row a systemic reset, but which one loads changes
-nothing measurable.
+So "for a given policy" was true of the baseline policy and misleading if a
+reader took "policy" to include the domain pack. A pack must load, and selecting
+a suite whose declared pack does not exist now fails at resolution rather than
+producing a run in which every row is a systemic reset, but which pack loads
+changes nothing these suites measure.
 
 Recorded in `docs/threat-model.md` as a third category beside derived and
 asserted fields: derived, correct, signed, and not load-bearing.
@@ -78,8 +83,8 @@ reservoir rather than in the claims.
 
 ### "produce verifiable evidence that a given governance configuration actually enforces what it claims"
 
-**open.** This is the sharpest claim on any surface and the one the pack finding
-bears on most directly.
+**corrected.** This was the sharpest claim on any surface and the one the pack
+finding bore on most directly.
 
 The evidence does establish that a particular configuration was present, was
 computed from the artefacts actually loaded rather than asserted by the caller,
@@ -90,15 +95,19 @@ It does not establish that the configuration was **causally responsible** for
 any decision. For every published run, the same verdicts would have been
 produced under any of the six packs.
 
-The honest forms available, in increasing order of modesty:
+Three forms were available, in increasing order of modesty: an identity claim
+("identified and unchanged during the run"), the same enforcement claim over the
+thing that actually decides ("a given rule set actually enforces what it
+claims"), and keeping the sentence with the measurement beside it. The second
+was taken. The first retreats from something the archive does demonstrate, which
+is the same error in the other direction; the third leaves a misleading word in
+a sentence a reader stops at.
 
-1. "evidence that the configuration which produced a verdict is identified and
-   unchanged during the run"
-2. "evidence that a given rule set actually enforces what it claims"
-3. keep the sentence and add the measurement beside it
-
-**Decision required** on which, and whether the website's equivalent wording
-changes with it. Nothing on the public surfaces has been changed yet.
+The README now reads **rule set**, and the paragraph immediately after it states
+both what the evidence establishes and what it does not, including the
+measurement and the guard against the opposite overclaim. The website carries
+the same wording and is queued in `claude/website-changes-queued.md` rather than
+changed here, because the site is a separate deploy bundle.
 
 *Coverage: inside, partly claimed.* Claim 4 recites a configuration hash from a
 policy file loaded at initialisation. Paragraph [0086] supports the broader
@@ -227,7 +236,14 @@ an `UNKNOWN` property it does not explain. The example's own result is
 
 ---
 
-## GitHub repository About description
+## Other public surfaces
+
+These two rows were `##` sections until 8 October, which meant the structural
+checks in `tests/test_claims_register.py` never saw them: every parametrized
+test reads `###` claim rows. The two claims the register had not yet closed were
+therefore the two it was not checking. They are `###` rows now.
+
+### The GitHub repository About description
 
 Current text: *"Building SIR: deterministic pre-inference governance gate.
 Blocks policy-breaking requests. Signed, offline-verifiable audits for
@@ -250,24 +266,35 @@ a record of which part is wrong. Two candidates, both real:
 **Decision required** on the replacement wording. This is public copy and it is
 Ryan's to write.
 
----
+*Coverage: inside for the blocking half, claimed; outside for the insurance
+half.*
+Claims 1 and 14 recite deterministic rule evaluation and a binary decision
+without model inference. Nothing in the 64 pages recites an actor, user, session
+or principal, so the attribution an insurance conversation assumes is neither
+implemented nor described, and no amendment can add it.
 
-## Website (structuraldesignlabs.com)
+### The website homepage uncovered-row claim (structuraldesignlabs.com)
 
-Not changed in this release by decision: the figures move every release and the
-site is a separate deploy bundle. The audit is recorded in
+The site is not changed in this release by decision: the figures move every
+release and it is a separate deploy bundle. The audit is recorded in
 `claude/website-changes-queued.md`.
 
-The item that matters most there is already recorded and is **open**: the
-homepage's uncovered-row claim implies the naming of uncovered rows was
-independent of the gate, and it was not. The list is generated by calling the
-gate's own rule function. The agreement is one function evaluated twice, which
-is a useful regression guard and not the independent confirmation the page
-implies. That is the site's central claim.
+**open**, and it is the site's central claim. The homepage's uncovered-row claim
+implies the naming of uncovered rows was independent of the gate, and it was
+not. The list is generated by calling the gate's own rule function. The
+agreement is one function evaluated twice, which is a useful regression guard
+and not the independent confirmation the page implies.
 
-Three further items from this release now need to reach the site when it is next
-touched: the errata link, the pack measurement, and the use-versus-mention
-limit.
+**Decision required**: qualify it, or lead with the disclosure instead of the
+match.
+
+Four items from this release now need to reach the site when it is next touched:
+the errata link, the pack measurement, the use-versus-mention limit, and the
+rule-set wording corrected on the README on 8 October.
+
+*Coverage: outside.* The rule-coverage report is a build artefact. The patent
+boundary note places the coverage reporting work outside the specification, and
+the uncovered-row list it generates is not recited.
 
 ---
 
@@ -287,14 +314,15 @@ wording, which is a property of their work and not of SIR.
 
 ## Decisions this register surfaces
 
-1. **The configuration-enforcement claim.** Which of the three honest forms, on
-   the README and the website.
-2. **The About description.** Replacement wording.
-3. **The homepage uncovered-row claim.** Qualify it, or lead with the
+1. **The About description.** Replacement wording.
+2. **The homepage uncovered-row claim.** Qualify it, or lead with the
    disclosure.
-4. **Whether `mental_health_clinical`'s rule-coverage figure of 5 of 15 stays
+3. **Whether `mental_health_clinical`'s rule-coverage figure of 5 of 15 stays
    published** now that the suite runs and reports 10 leaks of 25. The two are
    different measurements and both are now available.
+
+The configuration-enforcement claim was the first entry on this list and is now
+corrected rather than decided. The website wording that matches it is queued.
 
 ## One patent consequence of this release, recorded here because it changes a parked decision
 

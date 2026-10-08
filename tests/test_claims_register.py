@@ -113,11 +113,47 @@ def test_every_open_row_says_a_decision_is_required():
         assert "Decision required" in body or "open" in body.lower(), name
 
 
+def _open_rows():
+    return [name for name, body in SECTIONS.items() if "**open" in body]
+
+
 def test_the_open_decisions_are_listed_where_they_can_be_found():
-    """Scattered through a long document is the same as unrecorded."""
+    """Scattered through a long document is the same as unrecorded.
+
+    The count is derived from the open rows rather than fixed. A fixed floor of
+    four passed until the README rows were corrected and then failed for the
+    wrong reason, which is a test asserting a number instead of a property.
+    """
     assert "## Decisions this register surfaces" in TEXT
     listed = TEXT.split("## Decisions this register surfaces", 1)[1]
-    assert len(re.findall(r"^\d+\. ", listed, flags=re.MULTILINE)) >= 4
+    numbered = re.findall(r"^\d+\. ", listed, flags=re.MULTILINE)
+
+    assert len(numbered) >= len(_open_rows()), (
+        f"{len(_open_rows())} rows are open and {len(numbered)} decisions are "
+        "listed; an open row with no entry in that list is not findable"
+    )
+    assert numbered, "the register claims no open decisions; verify that is true"
+
+
+def test_the_register_and_the_checklist_agree_on_what_is_open():
+    """Two records of the same blockers drift. This is where that shows up.
+
+    A blocker in the checklist with no open row in the register would be
+    invisible to a reader; an open row with no checklist entry would be
+    invisible to the release gate.
+    """
+    checklist = json.loads((ROOT / "release-checklist.json").read_text(encoding="utf-8"))
+    item8 = next(i for i in checklist["items"] if i["id"] == 8)
+    blocked = item8.get("blocked_on") or []
+
+    assert len(blocked) == len(_open_rows()), (
+        f"the checklist lists {len(blocked)} blockers and the register has "
+        f"{len(_open_rows())} open rows: {sorted(_open_rows())}"
+    )
+    if item8["status"] == "met":
+        assert not blocked and not _open_rows(), (
+            "item 8 is met while something is still recorded as open"
+        )
 
 
 # --- the figures must match the measurements that produced them --------------
@@ -185,6 +221,60 @@ def test_the_claim_corrected_in_the_readme_is_actually_corrected():
     assert "docs/archive-errata.md" in readme, (
         "the qualified archive claim must cross-reference the errata"
     )
+
+
+def test_the_configuration_wording_does_not_come_back():
+    """The word that oversold the claim, in both places it appeared.
+
+    "configuration" invited a reader to think the domain pack governed the
+    verdict, and the measurement says it governs nothing these suites measure.
+    Two sentences carried it. A correction with no test is a correction that goes
+    stale: the sir packs list sentence was wrong for months because nothing held
+    it.
+    """
+    readme = re.sub(r"\s+", " ", (ROOT / "README.md").read_text(encoding="utf-8"))
+
+    assert "governance configuration actually enforces" not in readme
+    assert "verifiable evidence for a given policy and test suite" not in readme
+    assert "a given rule set actually enforces what it claims" in readme
+    assert "verifiable evidence for a given rule set and test suite" in readme
+
+
+def test_the_limit_travels_with_the_corrected_claim():
+    """The paragraph is the other half of the correction, not a footnote.
+
+    A reader who stops at the goal sentence is the reader the bad word was
+    written for, so the limit sits immediately after it rather than in the
+    register alone.
+    """
+    readme = re.sub(r"\s+", " ", (ROOT / "README.md").read_text(encoding="utf-8"))
+    goal = readme.index("a given rule set actually enforces what it claims")
+    limit = readme.index("What the signed evidence does and does not establish")
+
+    assert limit > goal and limit - goal < 400, (
+        "the limit paragraph must follow the goal sentence, not sit further down "
+        "the page where a reader who stops at the goal will not reach it"
+    )
+    assert "does not establish that every component of the signed configuration" in readme
+    assert "causally responsible for a verdict" in readme
+    assert "453 prompts" in readme
+
+
+def test_the_pack_sentence_keeps_its_guard_against_the_opposite_overclaim():
+    """"Packs are inert" is the overclaim in the other direction.
+
+    The measurement covers verdicts in the registry suites. Packs also control
+    ISC templates, friction limits, enforcement flags and structured schemas,
+    and no registry suite exercises any of those. Shortening the sentence later
+    would turn a disclosure into a different false claim, so the guard is held
+    here rather than by anyone remembering.
+    """
+    readme = re.sub(r"\s+", " ", (ROOT / "README.md").read_text(encoding="utf-8"))
+
+    assert "does not change any verdict these suites measure" in readme
+    assert "not a finding that packs are inert" in readme
+    for controlled in ("ISC templates", "friction limits", "enforcement flags"):
+        assert controlled in readme, controlled
 
 
 def test_item_7_is_not_claimed_anywhere_public():
