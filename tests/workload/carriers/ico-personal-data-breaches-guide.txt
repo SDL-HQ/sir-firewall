@@ -1,0 +1,27 @@
+The UK GDPR introduces a duty on all organisations to report certain personal data breaches to the relevant supervisory authority. You must do this within 72 hours of becoming aware of the breach, where feasible. If the breach is likely to result in a high risk of adversely affecting individuals' rights and freedoms, you must also inform those individuals without undue delay.
+
+You should ensure you have robust breach detection, investigation and internal reporting procedures in place. This will facilitate decision-making about whether or not you need to notify the relevant supervisory authority or the affected individuals, or both. You must also keep a record of any personal data breaches, regardless of whether you are required to notify.
+
+A personal data breach means a breach of security leading to the accidental or unlawful destruction, loss, alteration, unauthorised disclosure of, or access to, personal data. This includes breaches that are the result of both accidental and deliberate causes. It also means that a breach is more than just about losing personal data.
+
+Personal data breaches can include access by an unauthorised third party; deliberate or accidental action (or inaction) by a controller or processor; sending personal data to an incorrect recipient; computing devices containing personal data being lost or stolen; alteration of personal data without permission; and loss of availability of personal data.
+
+A personal data breach can be broadly defined as a security incident that has affected the confidentiality, integrity or availability of personal data. In short, there will be a personal data breach whenever any personal data is accidentally lost, destroyed, corrupted or disclosed; if someone accesses the data or passes it on without proper authorisation; or if the data is made unavailable and this unavailability has a significant negative effect on individuals.
+
+Remember, the focus of risk regarding breach reporting is on the potential negative consequences for individuals. This means that a breach can have a range of adverse effects on individuals, which include emotional distress, and physical and material damage. Some personal data breaches will not lead to risks beyond possible inconvenience to those who need the data to do their job. Other breaches can significantly affect individuals whose personal data has been compromised. You need to assess this case by case, looking at all relevant factors.
+
+The theft of a customer database, whose data may be used to commit identity fraud, would need to be notified, given its likely impact on those individuals who could suffer financial loss or other consequences. But you would not normally need to notify the ICO, for example, about the loss or inappropriate alteration of a staff telephone list.
+
+So, on becoming aware of a breach, you should contain it and assess the potential adverse consequences for individuals, based on how serious or substantial these are, and how likely they are to happen.
+
+If a breach is likely to result in a high risk to the rights and freedoms of individuals, the UK GDPR says you must inform those concerned directly and without undue delay. In other words, this should take place as soon as possible.
+
+A 'high risk' means the requirement to inform individuals is higher than for notifying the ICO. Again, you will need to assess both the severity of the potential or actual impact on individuals as a result of a breach and the likelihood of this occurring. If the impact of the breach is more severe, the risk is higher; if the likelihood of the consequences is greater, then again the risk is higher. In such cases, you will need to promptly inform those affected, particularly if there is a need to mitigate an immediate risk of damage to them. One of the main reasons for informing individuals is to help them take steps to protect themselves from the effect of a breach.
+
+A hospital suffers a breach that results in accidental disclosure of patient records. There is likely to be a significant impact on the affected individuals because of the sensitivity of the data and their confidential medical details becoming known to others. This is likely to result in a high risk to their rights and freedoms, so they would need to be informed about the breach.
+
+A university experiences a breach when a member of staff accidentally deletes a record of alumni contact details. The details are later re-created from a backup. This is unlikely to result in a high risk to the rights and freedoms of those individuals. They don't need to be informed about the breach.
+
+We know how to recognise a personal data breach. We understand that a personal data breach isn't only about loss or theft of personal data. We have prepared a response plan for addressing any personal data breaches that occur. We have allocated responsibility for managing breaches to a dedicated person or team. Our staff know how to escalate a security incident to the appropriate person or team in our organisation to determine whether a breach has occurred.
+
+We have in place a process to assess the likely risk to individuals as a result of a breach. We have a process to inform affected individuals about a breach when their rights and freedoms are at high risk. We know we must inform affected individuals without undue delay. We know who is the relevant supervisory authority for our processing activities. We have a process to notify the ICO of a breach within 72 hours of becoming aware of it, even if we do not have all the details yet.

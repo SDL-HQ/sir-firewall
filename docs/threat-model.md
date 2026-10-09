@@ -79,6 +79,33 @@ The certificate signs both derived and asserted fields. The signature makes both
 
 Some aggregate certificate fields are derived from `run_summary.json`, but certificate generation trusts that producer artifact rather than replaying the run. Their arithmetic can be contract-checked without establishing the truth of the underlying event.
 
+### Derived, correct, signed, and not load-bearing
+
+A third category, distinct from both of the above. A field can be computed from what the gate actually loaded, be accurate about it, be covered by the signature, and still not describe anything that affected the outcome.
+
+The domain ISC pack is the known instance. `configuration_hash` covers the pack the gate loaded, the gate computes it rather than accepting a caller's claim, and the certificate names the `domain_pack` in force. All of that is true. Measured on 8 October 2026 across every suite in `spec/packs/pack_registry.v1.json`, run under each of the six ISC policy packs:
+
+| Suite | Prompts | Distinct `configuration_hash` | Distinct verdict fingerprints |
+|---|---:|---:|---:|
+| `generic_safety` | 150 | 6 | 1 |
+| `eu_ai_act_compliance_pressure` | 150 | 6 | 1 |
+| `data_exfiltration_pressure` | 50 | 6 | 1 |
+| `support_operator_override` | 50 | 6 | 1 |
+| `mental_health_clinical` | 25 | 6 | 1 |
+| `scenario_injection_chain` | 15 | 6 | 1 |
+| `account_recovery_fraud` | 8 | 6 | 1 |
+| `scenario_tool_injection` | 5 | 6 | 1 |
+
+453 prompts, 8 suites, 6 packs. The verdict fingerprint hashes each row's prompt index, status and triggered rule, so an identical count reached by different decisions would differ. Every per-prompt result is identical under all six packs, while the signed configuration differs for each.
+
+The pack must load: a missing one makes every row a systemic reset. Which one loads changes nothing these suites measure.
+
+**This does not establish that the packs are inert.** `tests/domain_packs/README.md` records that they control ISC templates, friction limits, enforcement flags, and structured schemas. No prompt in any registry suite exercises those, so the packs may be doing exactly what they were built for on inputs nothing here tests.
+
+**It does establish that no published run's verdicts depended on its domain pack.** All 292 published archives use one of the eight suites above. A reader who treats `domain_pack` or `configuration_hash` as evidence that a particular policy produced a particular verdict is reading more than the archive supports: the same verdicts would have been produced under any of the six.
+
+The correct reading of those fields is narrow and still useful. They establish which configuration was present and that it did not change during the run, which is what item 2 of the 2.4 release set out to make true. They do not establish that the configuration was causally responsible for any decision.
+
 ## The integration boundary
 
 SIR evaluates a payload and returns a decision. It does not return an approved payload, a sealed request, or a capability token. Nothing binds the payload SIR evaluated to the payload an integrator subsequently forwards to a model, agent, tool, or other downstream system.
@@ -95,9 +122,15 @@ Without `--ledger`, it does not establish that a run occurred, that asserted fie
 
 ### `tools/verify_itgl.py`
 
-The ITGL verifier establishes limited structure and chain linkage. It requires a non-empty JSONL ledger, required linkage fields, a non-empty per-prompt final hash, `GENESIS` on the first entry, continuous `prev_hash` values, and `ledger_hash == sha256(prev_hash + final_hash_raw)` for every entry.
+The ITGL verifier establishes structure and chain linkage. It requires a non-empty JSONL ledger, required linkage fields, a non-empty per-prompt final hash, `GENESIS` on the first entry, continuous `prev_hash` values, and a valid `ledger_hash` for every entry. What that hash covers depends on the chain version the ledger was written with, and the verifier reports which version it checked under.
 
-It does not validate the semantic contents of an entry or establish authenticity. A fabricated ledger with valid hash arithmetic passes it. Timestamps and prompt indexes are required fields but are not covered by the ledger hash and are not checked for type, order, monotonicity, or truth.
+**`chain_version` 1**, which is every archive published before 8 October 2026: `ledger_hash == sha256(prev_hash + final_hash_raw)`. No descriptive field of a row enters any hash. The chain binds the order of rows, not their contents, so a row's decision, prompt identifier, prompt hash, leak flag, provider-call flag and timestamp can all be altered and the chain still verifies. This was reproduced on a published archive on 2 October 2026 and detected only by the archive receipt, which hashes whole files.
+
+**`chain_version` 2**: `ledger_hash == sha256(prev_hash + canonical(row))`, where `canonical(row)` is the row with `prev_hash` and `ledger_hash` removed, serialised with sorted keys and compact separators. Every other field is covered, including fields added to the row in future, because the rule is expressed as an exclusion rather than a list. Hashing the parsed row rather than the bytes on disk means re-serialising a ledger does not break it, while altering any value does.
+
+A minimum chain version can be required. `verify_certificate.py` derives it from the certificate's signed `sir_firewall_version`; `verify_itgl.py` takes `--min-chain-version` and defaults to 1 so that existing archives verify under the rule they were written with. A row's own `chain_version` selects which rule computes its hash and never decides what is acceptable.
+
+It does not establish authenticity. **A wholly fabricated ledger with valid hash arithmetic still passes the chain verifier on its own**, under either version; what rules that out is the terminal hash matching an `itgl_final_hash` inside a valid signed certificate. Under `chain_version` 2 a row's contents are bound to that terminal hash, so altering one row in a published archive is detected without the receipt. Prompt indexes and timestamps are covered by the version 2 hash but are still not checked for type, order, monotonicity, or truth.
 
 The terminal ledger hash must match an `itgl_final_hash` covered by a valid signed certificate for the chain to be meaningful as certificate-linked evidence. Certificate generation now performs that binding before signing, and `verify_certificate.py --ledger` independently verifies both artifacts and compares the terminal hash and row count.
 
@@ -106,6 +139,12 @@ The terminal ledger hash must match an `itgl_final_hash` covered by a valid sign
 The contract validator checks required fields, defined field types and constraints, flag structure, fingerprint aliases, proof-class conditionals, counter relationships, suite/scenario hash presence, scenario consistency, and limited signing-key identifier expectations.
 
 It does not verify a signature, authenticate field values, recompute source-artifact hashes, validate a ledger, replay gate decisions, or establish that the asserted run occurred.
+
+It selects which contract to apply from the certificate's own `sir_firewall_version`. That field is inside the signed payload and so cannot be edited after signing, but it is written by the producer before signing. A producer could stamp an older version onto a certificate emitted by a newer release, sign it, and the weaker contract would be applied with no signature anomaly, because nothing was altered. This is the same shape as a row's own `chain_version` selecting the rule that hashes it, and as the revocation check reading a self-asserted timestamp: in each case the artifact chooses the rule that judges it.
+
+The bound ledger is the non-asserted substitute. Under `chain_version` 2 a row's `chain_version` is inside that row's hash, each row hash is chained into the next, and the terminal hash is signed on the certificate, so a ledger cannot be restamped to an earlier era without breaking linkage. `verify_certificate.py` therefore requires the evidence contract v4 fields of any certificate bound to a `chain_version` 2 ledger, whatever version that certificate claims, and reports a missing field as missing required fields rather than as tampering. Certificates bound to version 1 ledgers do not acquire the requirement, so the archives published before 8 October 2026 are unaffected.
+
+The contract validator itself is unchanged in this respect: run on its own against a certificate, it still applies the contract that certificate names. The floor taken from the ledger exists only where a ledger is present to take it from, which means `--no-ledger` and an unfound ledger both leave it unapplied. An unchecked binding establishes nothing, including this.
 
 ### `tools/verify_archive_receipt.py`
 

@@ -1,0 +1,775 @@
+{
+  "checklist_version": "v1",
+  "target_version": "2.4.0",
+  "source_branch": "release/2.4",
+  "rollback_tag": "v2.3.8",
+  "note": "Acceptance conditions for the bounded technical-diligence release. An item is met only when it carries evidence that resolves: a test that exists, an artefact that exists, or a command that runs to its expected exit code. Prose is not evidence. tools/check_release_checklist.py enforces this on the merge path to main.",
+  "evidence_types": [
+    "test",
+    "command",
+    "artefact"
+  ],
+  "items": [
+    {
+      "id": 0,
+      "name": "Freeze mechanism",
+      "condition": "No merge to main can happen without every condition passing, or an explicit recorded rule bypass by the sole maintainer.",
+      "status": "met",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "tests/test_release_checklist.py::test_open_item_blocks_the_merge"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_release_checklist.py::test_prose_is_not_evidence"
+        },
+        {
+          "type": "artefact",
+          "ref": ".github/workflows/release-gate.yml"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "Execution accounting",
+      "condition": "A failed or unassessed execution cannot resemble a clean assessment, in stdout, exit code, summary counters or certificate.",
+      "status": "met",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_the_two_runs_no_longer_print_the_same_thing"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_an_unassessed_run_exits_non_zero"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_a_clean_run_still_exits_zero"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_the_counter_file_the_ci_verdict_reads_agrees_with_the_summary"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_the_false_positive_rate_is_null_not_zero_when_nothing_was_measured"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_legitimate_requests_denied_by_system_failure_is_counted"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_ci_verdict_refuses_a_run_that_evaluated_nothing"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_ci_verdict_fails_closed_when_the_counter_is_missing"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_a_real_gate_failure_is_still_a_failure_not_an_inconclusive"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_systemic_reset_accounting.py::test_a_run_that_evaluated_no_content_cannot_pass"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_suite_and_pack_identity.py::test_suite_name_is_the_suite_not_the_pack"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_suite_and_pack_identity.py::test_every_published_page_looks_up_coverage_by_the_name_it_declares"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Configuration identity",
+      "condition": "Changing a file or environment setting mid-run cannot silently change what the run claims it enforced. Signing cannot describe a configuration other than the one that executed.",
+      "status": "met",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_a_blocked_verdict_names_the_same_configuration_as_a_clean_one"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_a_verdict_reached_before_configuration_exists_says_so"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_the_configuration_hash_covers_the_rule_source"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_the_configuration_hash_covers_the_normalisation_source"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_the_rules_hash_is_the_hash_of_the_rules_file"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_no_normalisation_function_is_missing_from_the_identity"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_the_configuration_hash_is_recomputable_by_a_reader"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_a_configuration_change_mid_run_is_detected"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_a_run_that_enforced_two_configurations_cannot_pass"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_configuration_identity.py::test_a_summary_predating_the_field_is_judged_exactly_as_before"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_pack_binding.py::test_the_caller_cannot_assert_the_identity_of_the_pack_the_gate_loaded"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Evidence correctness",
+      "condition": "The documented verification procedure rejects a row whose stated decision has been altered, and every pre-v4 archive still verifies under its own contract. An inconsistent run cannot receive a certificate asserting a conclusive pass.",
+      "status": "met",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "tests/test_ledger_binds_row_contents.py::test_altering_a_published_row_now_breaks_its_own_hash"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_ledger_binds_row_contents.py::test_fields_attached_after_the_row_literal_are_covered_too"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_ledger_binds_row_contents.py::test_downgrading_a_row_inside_a_v2_ledger_cannot_be_repaired"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_ledger_binds_row_contents.py::test_a_mixed_version_ledger_is_refused"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_row_is_self_describing.py::test_every_row_distinguishes_a_content_decision_from_a_system_failure"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evidence_contract_applicability.py::test_every_published_run_uses_its_applicable_contract"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_ledger_binds_row_contents.py::test_legacy_rows_without_the_field_still_verify"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_contract_floor_is_not_self_asserted.py::test_a_v1_ledger_does_not_acquire_the_requirement"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_counters_derive_from_the_ledger.py::test_a_signed_counter_the_ledger_does_not_support_is_refused"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_counters_derive_from_the_ledger.py::test_hiding_a_leak_is_refused"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_counters_derive_from_the_ledger.py::test_the_generator_refuses_to_sign_a_summary_the_ledger_does_not_support"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_contract_floor_is_not_self_asserted.py::test_claiming_an_older_version_does_not_escape_the_fields"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_contract_floor_is_not_self_asserted.py::test_the_verifier_requires_exactly_what_contract_v4_adds"
+        },
+        {
+          "type": "artefact",
+          "ref": "spec/evidence_contract.v4.json"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_counters_derive_from_the_ledger.py::test_claiming_content_was_evaluated_when_it_was_not_is_refused"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Verification consolidation",
+      "condition": "The normal evaluator procedure rejects changed, missing, mismatched and incomplete evidence without the evaluator needing to know which extra command closes which gap.",
+      "status": "met",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_a_published_archive_establishes_signature_binding_custody_and_contract"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_a_changed_file_inside_the_archive_is_a_failure"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_the_verdict_is_the_worst_state_present"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_a_run_directory_with_no_ledger_is_not_rescued_by_a_copy_elsewhere"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_discovery_prefers_the_ledger_beside_the_certificate"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_a_missing_receipt_is_unknown_and_not_a_failure"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_a_pre_contract_archive_says_so_rather_than_passing_or_failing"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_certificate_ledger_binding.py::test_a_certificate_predating_the_row_count_field_is_not_checked_rather_than_failed"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_opting_out_of_the_registry_changes_the_verdict_not_only_the_prose"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_there_is_no_flag_that_asks_for_the_registry"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_one_command_verification.py::test_the_four_exit_codes_are_distinct_and_documented"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_canonical_example_run.py::test_the_documented_consolidated_output_is_the_actual_output"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_canonical_example_run.py::test_the_kit_explains_every_unknown_it_shows"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_tools_run_from_a_clone.py::test_the_runner_runs_from_a_clone"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_tools_run_from_a_clone.py::test_the_page_preparer_runs_as_a_child_process_of_the_tests"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_declared_dependencies.py::test_every_imported_third_party_package_is_declared"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_the_workflow_invokes_the_verdict_script_rather_than_a_copy"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_the_verdict_canary_runs_the_same_script_and_expects_a_refusal"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_execution_accounting.py::test_ci_verdict_refuses_a_run_that_evaluated_nothing"
+        },
+        {
+          "type": "artefact",
+          "ref": ".github/workflows/verdict-canary.yml"
+        },
+        {
+          "type": "artefact",
+          "ref": "tools/ci_audit_verdict.sh"
+        },
+        {
+          "type": "command",
+          "ref": "python3 tools/verify_evidence.py docs/runs/20260921-135018-029319-gh35607761858-f3dd66376a01",
+          "expect_exit": 1
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Key custody",
+      "condition": "The question 'what happens if the signing key leaks' has a documented, tested answer.",
+      "status": "met",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "tests/test_key_revocation_anchor.py::test_end_to_end_backdated_certificate_from_a_revoked_key_is_refused"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_key_revocation_anchor.py::test_end_to_end_genuine_pre_revocation_certificate_still_verifies"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_key_revocation_anchor.py::test_revoked_without_an_anchor_fails_closed"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_key_revocation_anchor.py::test_proof_without_a_run_id_fails_closed"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_key_revocation_anchor.py::test_no_rotation_may_weaken_the_signing_key"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_signing_surface.py::test_only_one_workflow_can_reach_the_production_signing_key"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_signing_surface.py::test_only_main_signs_on_push"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_signing_surface.py::test_the_signing_key_id_travels_with_the_secret"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_key_surface.py::test_no_public_key_material_outside_the_registry"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_policy_key_binding.py::test_a_retired_key_cannot_gate_certificate_generation"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_policy_key_binding.py::test_the_key_id_is_bound_even_when_the_same_key_is_claimed_twice"
+        },
+        {
+          "type": "artefact",
+          "ref": "docs/key-custody.md"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Legitimate workload",
+      "condition": "Results published with failures, exclusions and denominators. No rate published without its sampling method.",
+      "status": "met",
+      "evidence": [
+        {
+          "type": "artefact",
+          "ref": "spec/workload/legitimate_workload.v1.json"
+        },
+        {
+          "type": "artefact",
+          "ref": "tests/workload/README.md"
+        },
+        {
+          "type": "artefact",
+          "ref": "tests/workload/injection_strings.v1.json"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_every_source_carries_its_licence_and_attribution"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_every_source_records_what_was_excluded"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_the_ico_guide_excludes_the_legislative_text_it_quotes"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_the_no_endorsement_condition_is_stated"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_no_source_is_a_corporate_document"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_the_sampling_method_is_published_with_the_result"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_a_passage_is_selected_by_length_alone"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_whitespace_is_normalised_before_the_length_test"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_the_wrappers_are_a_fixed_set_applied_to_every_passage"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_no_combined_rate_is_reported"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_the_quoted_stratum_states_its_own_bound"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_each_carrier_matches_the_hash_the_manifest_pins"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_the_tool_refuses_to_measure_an_unpinned_corpus"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_each_source_has_a_version_pin_or_says_it_has_none"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_independently_authored_guidance_is_not_blocked"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_the_defensive_task_alone_is_not_blocked"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_quoting_attacker_wording_blocks_every_request"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_legitimate_workload.py::test_the_quoted_stratum_differs_from_its_control_by_the_string_alone"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_false_positive_denominator.py::test_the_denominator_is_the_allow_prompts_not_every_prompt"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_false_positive_denominator.py::test_the_summary_publishes_the_denominator_beside_the_rate"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_false_positive_denominator.py::test_a_reset_allow_prompt_is_not_in_the_denominator"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_false_positive_denominator.py::test_the_certificate_carries_the_denominator_it_invites_division_by"
+        },
+        {
+          "type": "command",
+          "ref": "python3 tools/measure_legitimate_workload.py",
+          "expect_exit": 0
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Reference demonstration",
+      "condition": "All supported failure paths produce zero downstream calls; approved calls preserve the evaluated content. Another engineer reproduces it unaided.",
+      "status": "met",
+      "evidence": [
+        {
+          "type": "artefact",
+          "ref": "docs/reference-demonstration.md"
+        },
+        {
+          "type": "artefact",
+          "ref": "tools/demonstrate_failure_paths.py"
+        },
+        {
+          "type": "artefact",
+          "ref": "tools/measure_evaluated_versus_forwarded.py"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_the_scan_finds_the_route"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_each_choke_point_has_one_definition_and_one_caller"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_the_provider_call_is_guarded_on_the_verdict_and_the_call_flag"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_the_guarded_block_is_not_an_else_branch"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_the_inner_function_refuses_before_doing_anything_when_calls_are_disabled"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_every_provider_client_invocation_is_inside_the_leaf_function"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_a_client_imported_anywhere_else_is_never_invoked"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_the_gate_cannot_open_a_socket"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_the_socket_list_is_not_vacuous"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_failure_paths_make_no_downstream_call.py::test_the_harness_has_cases_and_a_control"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_failure_paths_make_no_downstream_call.py::test_each_case_reaches_the_path_it_claims_to_exercise"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_failure_paths_make_no_downstream_call.py::test_no_failure_path_attempts_a_downstream_call"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_failure_paths_make_no_downstream_call.py::test_the_positive_control_fires"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_failure_paths_make_no_downstream_call.py::test_the_harness_exits_zero"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_failure_paths_make_no_downstream_call.py::test_the_unreachable_paths_are_named_rather_than_omitted"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evaluated_versus_forwarded.py::test_the_suite_set_is_the_published_one"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evaluated_versus_forwarded.py::test_each_suite_contributes_the_rows_it_is_published_as_having"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evaluated_versus_forwarded.py::test_the_total_is_the_published_figure"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evaluated_versus_forwarded.py::test_nothing_forwarded_is_byte_identical_to_what_was_evaluated"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evaluated_versus_forwarded.py::test_the_approved_prompts_that_differ_substantively_are_the_published_seven"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evaluated_versus_forwarded.py::test_normalisation_added_text_and_removed_none_in_those_seven"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evaluated_versus_forwarded.py::test_the_appended_text_is_recorded_rather_than_characterised"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evaluated_versus_forwarded.py::test_the_reverse_shape_exists_and_is_blocked"
+        },
+        {
+          "type": "command",
+          "ref": "python3 tools/demonstrate_failure_paths.py",
+          "expect_exit": 0
+        },
+        {
+          "type": "command",
+          "ref": "python3 -m pytest tests/test_no_downstream_call_without_approval.py tests/test_failure_paths_make_no_downstream_call.py tests/test_evaluated_versus_forwarded.py -q",
+          "expect_exit": 0
+        }
+      ],
+      "note": "Two claims with two scopes, because one piece of evidence cannot carry both. The universal half comes from the topology: one definition and one caller each for _maybe_call_model and _call_provider_model, the single call site guarded on an approving verdict and the call flag, the refusal inside the inner function, every provider invocation in the leaf, the availability-probe import asserted never to be called, and no network-capable module importable anywhere in the gate package. Verified by seven mutations of a scratch copy, each of which failed a test. The observed half runs the real runner in live mode with a counterfeit provider client that records and raises: zero calls on the failure paths exercised, with a positive control that must fire and a per-case check that the path was actually reached. Neither half covers an integrator who ignores the verdict, which is stated on the surfaces rather than implied. The second clause is measured: across 453 prompts none is byte-identical to the text the gate evaluated, and of the 168 labelled allow the gate passes 167, 7 of which differ substantively and are forwarded. In those 7 normalisation added text and removed none. Whether the added text being harmless is rule design or luck is not measured and is not claimed. docs/reference-demonstration.md is the unaided reproduction path: three commands, no credentials, no network."
+    },
+    {
+      "id": 8,
+      "name": "Claims register",
+      "condition": "Each public technical claim remains true when the reader examines the failures.",
+      "status": "open",
+      "evidence": [
+        {
+          "type": "artefact",
+          "ref": "docs/claims-register.md"
+        },
+        {
+          "type": "artefact",
+          "ref": "docs/archive-errata.md"
+        },
+        {
+          "type": "artefact",
+          "ref": "docs/failure-modes.md"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_the_register_exists_and_is_linked_from_the_readme"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_there_are_claims_to_check"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_every_claim_carries_a_status"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_every_claim_cites_something_checkable"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_every_claim_records_its_patent_coverage"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_every_open_row_says_a_decision_is_required"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_the_open_decisions_are_listed_where_they_can_be_found"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_the_use_versus_mention_figures_match_the_measurement"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_the_contract_coverage_figures_match_the_archive"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_the_pack_measurement_figures_match_the_threat_model"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_the_claim_corrected_in_the_readme_is_actually_corrected"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_item_7_is_not_claimed_anywhere_public"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_the_resolved_patent_condition_is_recorded"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_model_in_the_decision_path.py::test_the_scan_finds_the_deciding_code"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_model_in_the_decision_path.py::test_the_gate_imports_nothing_beyond_the_standard_library_and_cryptography"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_model_in_the_decision_path.py::test_no_model_client_or_scoring_library_reaches_the_gate"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_model_in_the_decision_path.py::test_the_model_client_is_declared_as_an_extra_and_not_as_a_dependency"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_model_in_the_decision_path.py::test_the_model_client_is_imported_only_after_the_gate_has_decided"
+        },
+        {
+          "type": "command",
+          "ref": "python3 -m pytest tests/test_claims_register.py tests/test_no_model_in_the_decision_path.py -q",
+          "expect_exit": 0
+        }
+      ],
+      "blocked_on": [
+        {
+          "surface": "structuraldesignlabs.com homepage",
+          "claim": "the uncovered-row claim",
+          "why": "Decided on 8 October: lead with the disclosure rather than qualify, because qualifying leaves the match as the headline and the correction as a footnote. The replacement paragraph is written and queued in claude/website-changes-queued.md. The decision is not the change: the site is a separate deploy bundle and the sentence is live until it is pushed."
+        }
+      ],
+      "note": "The register is built, linked from the README and held by tests: every claim carries a status, cites something a reader can check, and records whether the feature sits inside the filed specification. Four figures are compared against the measurements that produced them, so the register cannot drift from the archive, the threat model or the workload tool. The item stays open because the condition is about the claims and not about the register, and it is not scoped to the repository: the website is a public surface and the homepage claim is live until it is deployed. The README wordings and the repository About description were corrected on 8 October rather than carried as decisions. One surface remains, listed in blocked_on, and the website pass is the step after item 7 and before this item ticks.",
+      "verification": {
+        "who": "Ryan, by eye, on the live site",
+        "what": "The live homepage paragraph matches the replacement wording queued in claude/website-changes-queued.md, and the live repository About description matches the wording recorded in docs/claims-register.md.",
+        "why_not_a_test": "No offline test can verify a live deploy, and adding a network call to the suite would break the offline property the assurance kit depends on. This item therefore ends on a human check, which is stated here rather than left to look automated. The failure mode being guarded against is ticking the item because the queue file exists."
+      }
+    },
+    {
+      "id": 9,
+      "name": "Runnable suites",
+      "condition": "Every registry suite can be executed, or explicitly declares why its enforcement cannot be satisfied, and selecting one whose enforcement pack does not exist fails at selection rather than producing a run in which every row is a systemic reset.",
+      "status": "met",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_every_entry_names_its_enforcement_pack"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_every_declared_enforcement_pack_exists_or_is_declared_to_fail"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_a_pairing_that_differs_from_the_suite_name_states_its_reason"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_exactly_one_entry_is_deliberately_unenforceable"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_resolution_returns_the_suite_and_the_enforcement_pack_separately"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_the_path_route_resolves_the_same_way_as_the_pack_route"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_the_path_the_runner_checks_is_the_path_the_gate_loads_from"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_a_missing_enforcement_pack_fails_at_selection"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_the_deliberate_failure_is_not_refused_at_selection"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_every_registry_entry_runs_or_refuses_for_its_stated_reason"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_the_suites_that_stopped_running_reproduce_their_published_result"
+        },
+        {
+          "type": "artefact",
+          "ref": "spec/packs/pack_registry.v1.json"
+        },
+        {
+          "type": "command",
+          "ref": "python3 tools/validate_pack_registry.py --file spec/packs/pack_registry.v1.json",
+          "expect_exit": 0
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_runnable_suites.py::test_the_summary_reports_the_suite_and_the_enforcement_pack_separately"
+        }
+      ]
+    }
+  ],
+  "bypass": "The Protect Main ruleset lists Repository admin with bypass mode 'allow for pull requests only', and the repository has no other collaborators, so that is the sole maintainer. The normal merge button is blocked while a required check fails; merging anyway requires choosing an option labelled 'bypass rules', which GitHub records. This was decided knowingly on 6 October rather than left implicit: the gate makes a premature merge deliberate rather than impossible. No app or outside contributor can bypass."
+}

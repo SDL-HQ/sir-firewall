@@ -105,6 +105,10 @@ def test_current_version_surfaces_match_runtime_authority():
     v_235 = ".".join(("2", "3", "5"))
     v_236 = ".".join(("2", "3", "6"))
     v_237 = ".".join(("2", "3", "7"))
+    # The release in flight. Recognised before it is the runtime authority so that
+    # the forward-looking floors written against it are classified now rather than
+    # all arriving uncounted and then all arriving at once on the version bump.
+    v_240 = ".".join(("2", "4", "0"))
     archived_evidence_prefixes = ("proofs/runs/", "docs/runs/", "proofs/archive/")
     mutable_certificate_pointers = {
         "proofs/latest-audit.json",
@@ -116,10 +120,16 @@ def test_current_version_surfaces_match_runtime_authority():
     expected_by_path = {
         # CLAUDE.md states the contract applicability floors; if a new contract
         # is added, this fires so the floors in it are confirmed rather than assumed.
-        "CLAUDE.md": Counter({v_220: 2, v_234: 1, v_235: 2}),
-        "AGENTS.md": Counter({v_220: 2, v_234: 1, v_235: 2}),
+        "CLAUDE.md": Counter({v_220: 2, v_234: 1, v_235: 2, v_240: 1}),
+        "AGENTS.md": Counter({v_220: 2, v_234: 1, v_235: 2, v_240: 1}),
         "README.md": Counter({v_234: 9, v_233: 3, v_232: 2, v_230: 2, v_231: 2, v_221: 2, v_220: 2, v_235: 1, authority: 1}),
         "RETENTION.md": Counter({v_234: 1, v_233: 1, v_220: 1, v_235: 1}),
+        # The release checklist names the rollback tag for the release in flight.
+        "release-checklist.json": Counter({authority: 1, v_240: 1}),
+        # The chain-version floor table is version-keyed, so that test names
+        # the released versions either side of the floor as boundary cases.
+        # This entry fires if the floor moves without the test moving with it.
+        "tests/test_ledger_binds_row_contents.py": Counter({v_102: 1, authority: 1, v_240: 1}),
         "examples/verifier-negatives/tampered-leak-count.json": Counter({v_230: 1}),
         "examples/verifier-negatives/tampered-leak-count-rehashed.json": Counter({v_230: 1}),
         "examples/verifier-negatives/tampered-required-field-removed.json": Counter({v_230: 1}),
@@ -127,11 +137,14 @@ def test_current_version_surfaces_match_runtime_authority():
         "examples/verifier-negatives/tampered-unregistered-key.json": Counter({v_230: 1}),
         "docs/additional-phase-1-findings.md": Counter({v_221: 4, v_102: 1, v_200: 1}),
         "docs/assets/StructuralDesignLabs_Logo.svg": Counter({v_210: 1}),
-        "docs/archive-errata.md": Counter({authority: 1, v_237: 1, v_234: 2, v_102: 1}),
-        "docs/backlog.md": Counter({v_230: 1}),
+        "docs/archive-errata.md": Counter({v_234: 5, authority: 1, v_237: 1, v_102: 1}),
+        # The scenario-suite divergence row names the version the three published
+        # archives were produced at, which is the half of the question that is known.
+        "docs/backlog.md": Counter({v_230: 1, v_102: 1}),
+        "docs/claims-register.md": Counter({v_234: 3, v_220: 2, authority: 1, v_102: 1}),
         "docs/coverage.json": Counter({authority: 1}),
         "docs/evidence-perimeter.v5.md": Counter({authority: 1}),
-        "docs/assurance-kit.md": Counter({v_234: 2, v_237: 1}),
+        "docs/assurance-kit.md": Counter({v_234: 4, v_237: 1, v_240: 4, v_220: 3, v_102: 1, v_200: 1}),
         "docs/evaluator-technical-explainer.md": Counter({v_234: 2, v_237: 1}),
         "docs/minimal-pilot-runbook.md": Counter({v_234: 3, v_237: 1}),
         "docs/evidence-binding-correction.md": Counter(
@@ -156,28 +169,45 @@ def test_current_version_surfaces_match_runtime_authority():
         "spec/evidence_contract.v1.json": Counter({v_220: 2}),
         "spec/evidence_contract.v2.json": Counter({v_234: 2}),
         "spec/evidence_contract.v3.json": Counter({v_235: 2}),
+        "spec/evidence_contract.v4.json": Counter({v_240: 2}),
         "src/sir_firewall/__init__.py": Counter({authority: 1}),
         "tests/test_evidence_binding_correction.py": Counter({v_220: 1}),
         "tests/test_evidence_contract_applicability.py": Counter({v_234: 3, v_220: 2, v_233: 1, v_235: 1}),
-        "tests/test_certificate_ledger_binding.py": Counter({v_234: 1}),
+        "tests/test_certificate_ledger_binding.py": Counter({v_234: 4}),
+        "tests/test_contract_floor_is_not_self_asserted.py": Counter({v_240: 2, v_235: 5}),
+        "tests/test_counters_derive_from_the_ledger.py": Counter({authority: 1}),
+        "tests/test_release_checklist.py": Counter({v_240: 1}),
         "tests/test_check_archive_staged.py": Counter({v_237: 2}),
         "tests/test_standalone_verifiers.py": Counter({v_234: 1}),
-        "tools/verify_certificate.py": Counter({v_234: 1}),
+        "tools/verify_certificate.py": Counter({v_234: 9}),
+        "tools/archive_verification_report.py": Counter({v_234: 1}),
+        "tools/verify_evidence.py": Counter({v_220: 1, v_240: 1}),
+        "tools/key_registry.py": Counter({v_240: 1}),
+        "tests/test_one_command_verification.py": Counter({v_234: 7, authority: 2, v_240: 1, v_102: 1}),
     }
     version_pattern = re.compile(
-        rf"(?<![\d.])(?:{'|'.join(re.escape(version) for version in (authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233, v_234, v_235, v_236, v_237))})(?!\d)"
+        rf"(?<![\d.])(?:{'|'.join(re.escape(version) for version in (authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233, v_234, v_235, v_236, v_237, v_240))})(?!\d)"
     )
+    # Untracked-but-not-ignored files are scanned too. `git ls-files` alone meant
+    # a new version-bearing document was invisible to this test until it was
+    # committed, so it passed locally and failed on the first run afterwards.
+    # docs/claims-register.md did exactly that on 8 October: the suite was green
+    # before the commit and this test was red after it, which is the worst
+    # available ordering.
     tracked_paths = subprocess.check_output(
         ["git", "ls-files", "-z"], cwd=ROOT
     ).decode("utf-8").split("\0")
-    tracked_paths = list(filter(None, tracked_paths))
+    tracked_paths += subprocess.check_output(
+        ["git", "ls-files", "--others", "--exclude-standard", "-z"], cwd=ROOT
+    ).decode("utf-8").split("\0")
+    tracked_paths = sorted(filter(None, set(tracked_paths)))
     mutable_if_versioned = {
         relative_path
         for relative_path in tracked_paths
         if relative_path == "proofs/local-audit.json"
         or Path(relative_path).name == "latest-run.json"
     }
-    recognised_versions = {authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233, v_234, v_235, v_236, v_237}
+    recognised_versions = {authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233, v_234, v_235, v_236, v_237, v_240}
     observed_by_path = {}
 
     for relative_path in sorted(mutable_certificate_pointers | mutable_if_versioned):

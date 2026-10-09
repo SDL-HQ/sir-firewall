@@ -1,0 +1,36 @@
+name: Release Gate
+
+# The checklist only has to hold at the point work is published. Pushes to a
+# release branch do not run this, so the checklist can sit incomplete for the
+# whole release; a pull request into main cannot merge until every acceptance
+# condition is met and every piece of evidence resolves.
+#
+# This workflow never signs anything. It has no access to the signing secret and
+# reads the repository only.
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  release-checklist:
+    name: Release checklist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install verification dependencies
+        run: python -m pip install -U pip cryptography
+
+      # --run-commands executes the command evidence each met item names and
+      # requires its stated exit code. An item whose only evidence is a
+      # paragraph cannot pass: the tool permits no prose evidence type.
+      - name: Check the release checklist
+        run: python tools/check_release_checklist.py --run-commands

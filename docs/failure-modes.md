@@ -139,3 +139,26 @@ the internal failure-mode audit identified it on **21 September 2026**, and the
 - Library integrators own the final disposition of any exception that escapes
   and of every returned verdict. They must stop inference on failure; SIR cannot
   control an integrator that elects to continue.
+- **A request containing attacker wording is blocked whether or not the
+  surrounding request is defensive.** SIR draws no distinction between using
+  such wording and quoting it. Measured on 8 October 2026 over published
+  guidance from the NCSC and the ICO: 220 requests of that guidance in five task
+  shapes were all allowed, and the same passages inside a staff-awareness task
+  with one quoted attacker phrase appended were blocked 264 times out of 264.
+  The affected work is real and specific: awareness training, incident
+  write-ups, detection-rule documentation, red-team remediation, and policy
+  clauses that instruct staff not to comply with such requests.
+
+  This is deliberate rather than a defect. A quoted injection payload is still
+  an injection payload at the point of inference: the wording reaches the model
+  either way, and a model may act on it regardless of the sentence wrapped
+  around it. Allowing it because the request looks defensive would mean
+  inferring intent from framing, which a deterministic pre-inference gate is
+  built not to do and which an attacker would imitate.
+
+  The consequence for an integrator is that the false-positive rate for a given
+  team is not a property of their domain but the proportion of their requests
+  that quote attacker wording. Teams whose work requires quoting it should
+  expect those requests to be blocked. `tools/measure_legitimate_workload.py`
+  reproduces the measurement, and `tests/workload/README.md` records the corpus,
+  its licence and its exclusions.

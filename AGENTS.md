@@ -57,12 +57,23 @@ days.
 | `spec/evidence_contract.v1.json` | 2.2.0 | baseline required fields |
 | `spec/evidence_contract.v2.json` | 2.3.4 | `itgl_row_count`, `detached_ledger` |
 | `spec/evidence_contract.v3.json` | 2.3.5 | `enforced_policy_matches_signed_policy` |
+| `spec/evidence_contract.v4.json` | 2.4.0 | `content_evaluated`, `systemic_reset_count`, `configuration_hash`, `counters_checked_against_ledger`, `signing_key_id` |
 
 `validate_certificate_contract.py` selects by the certificate's own
 `sir_firewall_version`. Certificates below 2.2.0 return exit 8 (out of scope),
 not a failure. When adding a contract, raise the floor rather than adding a
 required field to an existing one. A field required at a floor that predates
 the field invalidates every certificate in between. This has happened.
+
+Selecting by the certificate's own version means the artefact chooses the rule
+that judges it. `verify_certificate.py` therefore applies the v4 floor from the
+bound ledger instead: a certificate bound to a chain version 2 ledger must carry
+the v4 fields whatever version it claims, exit 2 if it does not. A ledger's
+chain version is covered by its own row hashes and chained to the terminal hash
+the certificate signs, so unlike `sir_firewall_version` it cannot be restamped.
+The field list is duplicated as `CONTRACT_V4_ADDED_FIELDS` in the verifier so a
+minimal bundle needs no spec file;
+`tests/test_contract_floor_is_not_self_asserted.py` holds the two together.
 
 ## Exit codes
 
@@ -77,14 +88,41 @@ the field invalidates every certificate in between. This has happened.
 | 5 | signature does not verify |
 | 6 | signature verification error |
 | 7 | binding failure: chain invalid, terminal-hash mismatch, or row-count mismatch |
-| 9 | binding **not checked**: no ledger corresponding to the signed identity was found |
+| 9 | binding **not checked**: no ledger was found, or the certificate predates `itgl_row_count` |
+| 10 | the signing key is revoked for this archive |
+| 11 | counter binding failure: the signed counters are not supported by the bound ledger |
 
 `tools/validate_certificate_contract.py`: 0 pass, 2 contract violation, 3 load
 error, 8 below the applicability floor.
 
+`tools/verify_evidence.py`, the consolidated command and the documented
+evaluator procedure: 0 established, 1 **not established**, 2 failed, 3 the run
+directory could not be read. It reports five properties separately and its
+verdict is the worst state present.
+
 7 and 9 are deliberately distinct. 7 means the binding was checked and is
 wrong. 9 means it could not be checked at all. Collapsing them loses the
-distinction between an attack and a defect.
+distinction between an attack and a defect. The same distinction is what
+separates exit 1 from exit 2 in `verify_evidence.py`, and it is why a
+certificate from before `itgl_row_count` existed reports 9 rather than 7: 219
+published archives never carried that field, and reporting a format change as a
+binding failure manufactures a catastrophe.
+
+**Unknown is not a pass and not a failure.** A property nobody could check is
+not a property that holds. This is the same rule as
+`content_false_positive_rate` being null rather than zero and
+`counters_checked_against_ledger: false` not meaning agreement.
+
+## The evaluator procedure
+
+`docs/assurance-kit.md` documents one command over one run directory. Prefer it
+over the individual tools when reaching a verdict: it passes explicit paths
+rather than letting `verify_certificate.py` discover a ledger, which resolves
+against the working directory and can find a copy elsewhere on disk, and it
+reports signing trust as a property of its own rather than leaving it to be
+inferred from which flags were typed. Registry resolution is its default and
+there is no flag that asks for it; `--allow-unregistered-key` opts out and
+changes the verdict.
 
 ## Invariants that must not quietly break
 
@@ -153,7 +191,10 @@ Editing a token's permissions does not change its value.
 
 ## Before you merge
 
-1. `PYTHONPATH=src pytest -q`. Full suite, currently 305 tests.
+1. `pytest -q`. Full suite, with no `PYTHONPATH` and no editable install:
+   every entry point finds the package for itself, and a suite whose result
+   depends on the ambient environment is not evidence. No test count is stated
+   here on purpose, because a number in a document rots between commits.
 2. `python3 tools/verify_policy.py`. Signed policy matches enforced policy.
 3. Run the published verification command from the website against the current
    release and diff its real stdout against what the site renders. Instance

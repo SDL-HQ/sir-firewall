@@ -6,9 +6,11 @@ Deterministic pre-inference governance gate · rules-only · cryptographically s
 
 Plain language: SIR sits in front of an AI model or agent and inspects a prompt before it reaches inference. It either lets the prompt through (`PASS`) or blocks it (`BLOCKED`) using deterministic, versioned rules.
 
-Models provide capability. SIR makes governance enforceable and provable. It does not claim model alignment. It claims deterministic enforcement and verifiable evidence for a given policy and test suite.
+Models provide capability. SIR makes governance enforceable and provable. It does not claim model alignment. It claims deterministic enforcement and verifiable evidence for a given rule set and test suite.
 
-SIR is built for high-stakes AI systems that touch real money, real data, or real-world decisions. The goal is simple: produce verifiable evidence that a given governance configuration actually enforces what it claims, without relying on "trust us".
+SIR is built for high-stakes AI systems that touch real money, real data, or real-world decisions. The goal is simple: produce verifiable evidence that a given rule set actually enforces what it claims, without relying on "trust us".
+
+**What the signed evidence does and does not establish.** It establishes that a named rule set and policy were present, were computed from the artefacts actually loaded rather than asserted by the caller, did not change during the run, and produced the recorded verdicts. The hash chain over those rows re-derives from its first entry, and its terminal hash recomputes offline. The verdicts re-run deterministically from the retained prompts and the published rule set. It does not establish that every component of the signed configuration was causally responsible for a verdict. Measured across 453 prompts in all eight registry suites under each of the six domain packs, every per-prompt status and triggered rule was identical while the signed `configuration_hash` differed for each pack. The baseline policy and the deterministic rules decide. The domain pack does not change any verdict these suites measure. Packs still control ISC templates, friction limits, enforcement flags and structured schemas; no registry suite exercises those, so this is not a finding that packs are inert. See `docs/claims-register.md`.
 
 Terminology note: in public and operator wording we prefer **governance gate**. Stable technical identifiers remain unchanged (`sir-firewall`, `sir_firewall`, proof class names, commands, URLs, and paths). See `docs/terminology.md`.
 
@@ -28,7 +30,7 @@ Important semantics:
 - `latest-audit.*` means latest passing audit (last known good proof).
 - `latest-live-audit.*` means the latest attributable `LIVE_GATING_CHECK` with at least one successful provider call, regardless of result.
 - `latest-run.json` means most recent run status, including failures or inconclusive runs.
-- The run archive always contains per-run artefacts for both passes and failures.
+- The run archive always contains per-run artefacts for both passes and failures. 99 archives published between April and September 2026 name two files in their signed manifests that were never committed; see `docs/archive-errata.md`.
 - Gate request status (`PASS` / `BLOCKED`) is distinct from run/publication status (`PASS` / `FAIL` / `INCONCLUSIVE`).
 - `latest-audit.*` and `latest-run.*` are single-run truth surfaces, not paired benchmark claims.
 - Procedural cold-start path: `docs/minimal-pilot-runbook.md`
@@ -129,7 +131,7 @@ environment.
 | `python3 tools/verify_certificate.py proofs/latest-audit.json` | `python3 tools/verify_certificate.py examples/verifier-negatives/tampered-leak-count.json` |
 | Prints `OK: payload_hash matches reconstructed signed payload and signature verifies ...` | Refuses with `ERROR: payload_hash mismatch` and exit code `3` |
 
-`verify_certificate.py` uses exit code `7` when ledger chain or signed terminal-hash/row-count binding fails, and exit code `9` when binding was not checked because no ledger was found. `--no-ledger` is the only successful explicit skip. Codes `2`–`6`
+`verify_certificate.py` uses exit code `7` when ledger chain or signed terminal-hash/row-count binding fails, and exit code `9` when binding was not checked because no ledger was found. Exit code `10` means the signing key is revoked and the certificate is not covered by that key's pre-revocation anchor. Revocation is decided by `last_trusted_run_id` in the key registry rather than by the certificate's own `timestamp_utc`, because whoever holds a leaked key can sign any timestamp they choose; the timestamp can only tighten the result. A revoked entry without an anchor, or a certificate without a parseable `run_id`, fails closed. Exit code `11` means the certificate's counters are not supported by the ledger it binds: the chain, the terminal hash and the signature can all be intact while the numbers describe a different run than the rows do, so the verifier recomputes them from the ledger. Ledgers written before chain version 2 do not carry the fields needed to recompute them, and are reported as not checked rather than as agreeing. `--no-ledger` is the only successful explicit skip. Codes `2`–`6`
 retain their existing certificate and signature failure meanings.
 
 The same deliberately invalid certificate demonstrates why consumers must run both tools:
@@ -196,11 +198,13 @@ python3 -m pip install -e .
 sir run --mode audit --pack generic_safety
 ```
 
-Source-tree bootstrap fallback (no editable install; useful for restricted or offline environments):
+Source tree, no editable install (useful for restricted or offline environments):
 
 ```bash
-PYTHONPATH=src python3 red_team_suite.py --suite tests/domain_packs/generic_safety.csv --no-model-calls
+python3 red_team_suite.py --suite tests/domain_packs/generic_safety.csv --no-model-calls
 ```
+
+`PYTHONPATH=src` is no longer needed here, or for anything in `tools/`. Each entry point finds the package for itself, which is checked by `tests/test_tools_run_from_a_clone.py` with the environment emptied.
 
 Expected smoke result for `generic_safety`: `Leaks: 0 | Harmless blocked: 0`
 
@@ -226,7 +230,20 @@ Current supported provider and model selection is documented in `docs/model-sele
 
 Low-level `python3 tools/...` commands remain available for debugging and CI internals, but operators should start with `sir ...`.
 
-`sir packs list` reports public registry entries. It does not guarantee that a same-named ISC policy pack exists; see `tests/domain_packs/README.md` for the current execution constraint.
+### Run the tests
+
+```bash
+python3 -m pip install -e .
+python3 -m pytest
+```
+
+The suite requires no network, no API key and no signing key. Everything it
+needs is committed, including the published evidence it verifies, so the result
+should not differ between one machine and another. If it does, that is a defect
+in the suite rather than in your environment; `tests/test_tools_run_from_a_clone.py`
+and `tests/test_declared_dependencies.py` exist to keep it that way.
+
+`sir packs list` reports public registry entries. Each entry declares the ISC policy pack it is enforced under, separately from its own identifier, and selecting a suite whose declared pack does not exist fails at resolution rather than producing a run in which every row is a systemic reset. See `tests/domain_packs/README.md`.
 
 ---
 
@@ -323,6 +340,9 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 * [Assurance kit](docs/assurance-kit.md) (supporting evaluation and verification reference)
 * [Compliance evidence map](docs/compliance-evidence-map.md) (reviewer-facing evidence packaging map)
 * [Evidence perimeter note](docs/evidence-perimeter.v5.md) (current bounded benchmark perimeter)
+* [Claims register](docs/claims-register.md) (every public technical claim, and whether it survives a reader who examines the failures)
+* [Archive errata](docs/archive-errata.md) (published archives that do not verify, and why)
+* [Reference demonstration](docs/reference-demonstration.md) (downstream calls on failure paths, and how the evaluated text differs from the forwarded one)
 * [Threat model](docs/threat-model.md) (trust, integration, verification, retention, and control boundaries)
 * [Failure modes](docs/failure-modes.md) (fail-closed verdicts, escaped exceptions, and process boundaries)
 * [Rule-coverage report](docs/rule-coverage.md) (deterministic and full-gate benchmark coverage)

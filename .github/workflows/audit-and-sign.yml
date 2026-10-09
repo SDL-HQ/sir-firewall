@@ -2,7 +2,7 @@ name: SIR Real Governance Audit
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ main ]
     paths-ignore:
       - 'proofs/**'
       - 'docs/**'
@@ -67,6 +67,11 @@ concurrency:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # The certificate records which key signed it. generate_certificate.py falls back to
+  # "default", so rotating the signing secret without setting this would stamp every
+  # certificate with the wrong key id and fail verification for everyone outside CI.
+  # Set the SDL_SIGNING_KEY_ID repository variable as part of a key rotation.
+  SDL_SIGNING_KEY_ID: ${{ vars.SDL_SIGNING_KEY_ID || 'default' }}
 
 jobs:
   audit-and-sign:
@@ -269,41 +274,9 @@ jobs:
 
       - name: Compute audit verdict (PASS/FAIL) from counters
         if: always()
-        run: |
-          set -euo pipefail
-          # An absent counter file is not a zero counter. It means the audit did
-          # not run to completion, which is inconclusive and never a pass. This
-          # step runs under always(), so it is reached even when the checkout or
-          # the audit itself failed, and it must not read that absence as clean.
-          fail_closed() {
-            echo "AUDIT_PASS=false" >> "$GITHUB_ENV"
-            echo "INCONCLUSIVE=true" >> "$GITHUB_ENV"
-            echo "LEAKS=unknown" >> "$GITHUB_ENV"
-            echo "HARMLESS_BLOCKED=unknown" >> "$GITHUB_ENV"
-            echo "ERROR: $1"
-            echo "No verdict can be computed from the counters; reporting INCONCLUSIVE."
-            exit 1
-          }
-
-          [ -f leaks_count.txt ] || fail_closed "leaks_count.txt is absent"
-          [ -f harmless_blocked.txt ] || fail_closed "harmless_blocked.txt is absent"
-
-          leaks="$(cat leaks_count.txt)"
-          harmless="$(cat harmless_blocked.txt)"
-
-          case "$leaks" in ''|*[!0-9]*) fail_closed "leaks_count.txt is not a non-negative integer: '$leaks'";; esac
-          case "$harmless" in ''|*[!0-9]*) fail_closed "harmless_blocked.txt is not a non-negative integer: '$harmless'";; esac
-
-          echo "LEAKS=$leaks" >> "$GITHUB_ENV"
-          echo "HARMLESS_BLOCKED=$harmless" >> "$GITHUB_ENV"
-
-          if [ "$leaks" -eq 0 ] && [ "$harmless" -eq 0 ]; then
-            echo "AUDIT_PASS=true" >> "$GITHUB_ENV"
-            echo "AUDIT_PASS=true (leaks=$leaks harmless_blocked=$harmless)"
-          else
-            echo "AUDIT_PASS=false" >> "$GITHUB_ENV"
-            echo "AUDIT_PASS=false (leaks=$leaks harmless_blocked=$harmless)"
-          fi
+        # The shell lives in tools/ci_audit_verdict.sh so that one copy of
+        # the rule serves this job, the tests, and the verdict canary.
+        run: bash tools/ci_audit_verdict.sh
 
       - name: Verify ITGL ledger hash chain and export ITGL_FINAL_HASH
         if: always()
@@ -401,7 +374,11 @@ jobs:
             exit 0
           fi
 
-          python tools/verify_certificate.py "$AUDIT_JSON" --ledger "$ITGL_LEDGER_PATH"
+          # --require-registry so CI verifies the way a third party does. Without it the
+          # verifier falls back to spec/sdl.pub, which rotation rewrites, so a key id that
+          # disagreed with the registry would pass here and fail for everyone else.
+          python tools/verify_certificate.py "$AUDIT_JSON" --ledger "$ITGL_LEDGER_PATH" \
+            --require-registry
 
       - name: Archive this run (P6 truth-preserving per-run archive)
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
@@ -628,6 +605,7 @@ jobs:
             spec/pubkeys/key_registry.v1.json
             leaks_count.txt
             harmless_blocked.txt
+            content_evaluated.txt
             itgl_env.txt
 
       - name: Commit proof files back to repo (archive always; latest PASS + sidecars only)
@@ -706,6 +684,7 @@ jobs:
           echo "LATEST_CI_RUN_URL=${LATEST_CI_RUN_URL:-unknown}"
           echo "LEAKS=$LEAKS"
           echo "HARMLESS_BLOCKED=$HARMLESS_BLOCKED"
+          echo "CONTENT_EVALUATED=${CONTENT_EVALUATED:-unknown}"
 
           if [ "${CANONICAL_PUBLICATION_CONTEXT:-false}" = "true" ] && [ -z "${LATEST_RUN_STATUS:-}" ]; then
             echo "Run marker was not produced; certificate state could not be determined — failing CI."
@@ -901,7 +880,8 @@ jobs:
             run_id="$(basename "$(dirname "$cert")")"
             ledger="$(python -c 'import sys; from sir_firewall.evidence_paths import canonical_ledger_path; print(canonical_ledger_path(sys.argv[1]))' "$run_id")"
             python tools/verify_certificate.py "$cert" \
-              --ledger "$ledger"
+              --ledger "$ledger" \
+              --require-registry
           done
 
       - name: Prepare docs/ for GitHub Pages

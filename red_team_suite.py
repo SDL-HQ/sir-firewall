@@ -29,9 +29,26 @@ import json
 import os
 import secrets
 import shutil
+import sys
 from contextlib import nullcontext
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Any
+
+# The chain rule lives in the verifier that ships to third parties, and is
+# imported rather than reimplemented. tools/ is not a package, so it is added
+# to the path the same way tools/verify_certificate.py does it.
+sys.path.insert(0, str(Path(__file__).resolve().parent / "tools"))
+# And src/, so the runner works from a clone without an editable install. The
+# README documented PYTHONPATH=src as a "source-tree bootstrap fallback", which
+# is a workaround in prose for a two-line fix in code. Every tool in tools/ does
+# this; tests/test_tools_run_from_a_clone.py covers this file too.
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+from itgl import (  # noqa: E402
+    CURRENT_CHAIN_VERSION,
+    compute_ledger_hash,
+    derive_counters,
+)
 
 from sir_firewall import validate_sir
 from sir_firewall.core import load_domain_pack
@@ -193,8 +210,36 @@ def _load_pack_registry(path: str = PACK_REGISTRY_PATH) -> Dict[str, Dict[str, s
             "pack_version": str(p.get("pack_version") or p.get("version") or "").strip(),
             "suite_path": str(p.get("suite_path") or "").strip(),
             "schema": str(p.get("schema") or "").strip(),
+            # The ISC policy pack this suite is enforced under, named separately
+            # from the suite itself. Until 8 October 2026 pack_id served as both,
+            # so selecting a suite demanded a policy pack of the same name. Four
+            # entries had none, every row of those runs became a systemic reset,
+            # and that had been true since e0ee45d on 16 April 2026 made an
+            # explicit missing pack a hard failure. Defaults to pack_id, which is
+            # correct for the four entries where the two genuinely coincide.
+            "enforcement_pack": str(p.get("enforcement_pack") or "").strip() or pack_id,
+            # True for canary_fail alone: the pack-load failure is that suite's
+            # fixture, so selection must not refuse it.
+            "enforcement_expected_to_fail": bool(p.get("enforcement_expected_to_fail")),
+            "enforcement_pack_reason": str(p.get("enforcement_pack_reason") or "").strip(),
         }
     return out
+
+
+def _isc_pack_path(pack_id: str) -> Path:
+    """Where load_domain_pack will look for an ISC policy pack.
+
+    Resolution lives in sir_firewall.core.load_domain_pack; this mirrors only
+    the path so selection can fail before a run starts.
+    tests/test_runnable_suites.py asserts the two agree.
+    """
+    import sir_firewall.core as _core
+
+    return Path(_core.__file__).resolve().parent / "policy" / "isc_packs" / f"{pack_id}.json"
+
+
+def _isc_pack_exists(pack_id: str) -> bool:
+    return _isc_pack_path(pack_id).is_file()
 
 
 def _resolve_suite_and_pack(
@@ -240,9 +285,11 @@ def _resolve_suite_and_pack(
 
     resolved_pack_id = ""
     resolved_pack_version = ""
+    resolved_entry: Dict[str, Any] = {}
     if pack_arg:
         pack = registry.get(pack_arg)
         if pack:
+            resolved_entry = pack
             resolved_pack_id = pack.get("pack_id", "")
             resolved_pack_version = pack.get("pack_version", "")
             resolved_schema = pack.get("schema", resolved_schema)
@@ -251,12 +298,51 @@ def _resolve_suite_and_pack(
         suite_norm = os.path.normpath(selected_path)
         for pack in registry.values():
             if os.path.normpath(pack.get("suite_path", "")) == suite_norm:
+                resolved_entry = pack
                 resolved_pack_id = pack.get("pack_id", "")
                 resolved_pack_version = pack.get("pack_version", "")
                 resolved_schema = pack.get("schema", resolved_schema)
                 break
 
-    return suite_path, scenario_path, resolved_pack_id, resolved_pack_version, resolved_schema
+    # Fail here, not one row at a time.
+    #
+    # Until 8 October 2026 a suite whose enforcement pack did not exist produced
+    # a complete run in which every row was a systemic reset, and before item 1
+    # that run printed and exited exactly like a clean one. Four of the nine
+    # registry entries were in that state for nearly six months. A selection
+    # that cannot be enforced is a selection error, and it is reported as one.
+    if resolved_entry and not resolved_entry.get("enforcement_expected_to_fail"):
+        # enforcement_expected_to_fail is canary_fail and nothing else. That suite
+        # must run and must reset every row, because the pack-load failure is the
+        # fixture that proves an unassessed run cannot resemble a clean one. An
+        # earlier version of this check refused it, which broke the verdict canary
+        # landed the same day.
+        enforcement_pack = resolved_entry.get("enforcement_pack") or resolved_entry.get("pack_id", "")
+        if enforcement_pack and not _isc_pack_exists(enforcement_pack):
+            raise ValueError(
+                f"Suite '{resolved_entry.get('pack_id')}' declares enforcement pack "
+                f"'{enforcement_pack}', which does not exist at "
+                f"{_isc_pack_path(enforcement_pack)}. Running it would make every row a "
+                "systemic reset. Declare an enforcement pack that exists, or set "
+                "enforcement_expected_to_fail with a reason if the failure is the point."
+            )
+
+    # Two values, deliberately. Collapsing them into one is the defect being
+    # fixed here: pack_id is the suite identity, which 292 published
+    # certificates already mean by that name and which R1 CLI acceptance
+    # asserts, and enforcement_pack is the ISC policy pack the gate loads.
+    resolved_enforcement_pack = (
+        resolved_entry.get("enforcement_pack") or resolved_pack_id
+    ) if resolved_entry else resolved_pack_id
+
+    return (
+        suite_path,
+        scenario_path,
+        resolved_pack_id,
+        resolved_pack_version,
+        resolved_schema,
+        resolved_enforcement_pack,
+    )
 
 
 def _suite_hash(rows_decoded: List[Dict[str, str]]) -> str:
@@ -472,11 +558,6 @@ def _strip_sha256_prefix(v: str) -> str:
     return v
 
 
-def _compute_ledger_hash(prev_hash: str, final_hash_raw: str) -> str:
-    payload = (prev_hash or "") + (final_hash_raw or "")
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-
 def _final_hash_from_verdict(verdict: Dict[str, object]) -> Optional[str]:
     """
     Prefer governance_context.itgl_final_hash for PASS.
@@ -556,7 +637,14 @@ def main() -> None:
         except ImportError as exc:
             raise SystemExit("ERROR: LIVE mode requires litellm installed.") from exc
 
-    suite_path, scenario_path, pack_id, pack_version, pack_schema = _resolve_suite_and_pack(
+    (
+        suite_path,
+        scenario_path,
+        pack_id,
+        pack_version,
+        pack_schema,
+        enforcement_pack,
+    ) = _resolve_suite_and_pack(
         suite_arg=args.suite,
         scenario_arg=args.scenario,
         pack_arg=args.pack,
@@ -600,6 +688,30 @@ def main() -> None:
     # Counters
     jailbreaks_leaked = 0
     harmless_blocked = 0
+    # Rows that actually reached content evaluation. jailbreaks_leaked and
+    # harmless_blocked deliberately exclude systemic resets, which is defensible
+    # as a counting rule and indefensible as an interface: without this counter a
+    # run that assessed nothing reports the same zeros as a clean one.
+    # Every distinct execution configuration this run enforced under. More
+    # than one means the configuration moved mid-run, which is possible:
+    # SIR_ISC_PACK is read inside load_domain_pack at call time, so changing
+    # it between rows switches packs. A run that enforced two configurations
+    # cannot honestly name one in its certificate.
+    # Every row as written, so the published counters can be derived from the
+    # evidence rather than counted beside it.
+    written_rows: List[Dict[str, Any]] = []
+    configuration_hashes: set[str] = set()
+    rows_without_configuration = 0
+    content_evaluated = 0
+    # The two halves of content_evaluated, by what each prompt was expected to
+    # do. content_allow_prompts is the denominator of the false-positive rate,
+    # published beside it so no rate appears without the sample it is over.
+    content_allow_prompts = 0
+    content_block_prompts = 0
+    # Rows labelled allow that were denied because the system failed, not because
+    # the gate judged their content. These are real denials of legitimate
+    # requests and belong in any honest false-positive discussion.
+    legitimate_requests_denied_by_system_failure = 0
     systemic_reset_count = 0
     systemic_reset_counts_by_reason: Dict[str, int] = {}
     provider_call_attempts = 0
@@ -646,18 +758,32 @@ def main() -> None:
             else:
                 verdict = validate_sir(
                     {"isc": isc},
-                    enforcement_pack_id=(pack_id or None),
+                    enforcement_pack_id=(enforcement_pack or None),
                     pack_identity_context={
                         "pack_version": selected_pack_version,
                     },
                 )
             status = str(verdict.get("status", "UNKNOWN"))
+
+            row_configuration = (
+                (verdict.get("governance_context") or {}).get("execution_configuration") or {}
+            ).get("configuration_hash")
+            if row_configuration:
+                configuration_hashes.add(str(row_configuration))
+            elif not args.ungated_baseline:
+                # An ungated baseline never calls the gate, so it has no
+                # configuration by construction. Anything else reaching here
+                # was decided before one was established.
+                rows_without_configuration += 1
+
             systemic_reset_reason = _systemic_reset_reason(verdict)
             if systemic_reset_reason:
                 systemic_reset_count += 1
                 systemic_reset_counts_by_reason[systemic_reset_reason] = (
                     systemic_reset_counts_by_reason.get(systemic_reset_reason, 0) + 1
                 )
+                if expected == "allow":
+                    legitimate_requests_denied_by_system_failure += 1
 
             governance_context = verdict.get("governance_context")
             if isinstance(governance_context, dict):
@@ -670,6 +796,11 @@ def main() -> None:
             ok = (status == expected_status)
 
             if not systemic_reset_reason:
+                content_evaluated += 1
+                if expected == "allow":
+                    content_allow_prompts += 1
+                elif expected == "block":
+                    content_block_prompts += 1
                 if expected == "block" and status == "PASS":
                     jailbreaks_leaked += 1
                 if expected == "allow" and status == "BLOCKED":
@@ -681,6 +812,7 @@ def main() -> None:
 
             # Prove we are actually gating a real call (optional)
             provider_call_attempted = False
+            provider_call_outcome = ""
             if status == "PASS" and do_model_calls:
                 # Counting rule (deterministic): increment once per attempted downstream call.
                 # Retries/timeouts are separate attempts and must each increment this counter.
@@ -699,6 +831,7 @@ def main() -> None:
                         provider=provider_name,
                     )
                     provider_call_successes += 1
+                    provider_call_outcome = "success"
                     if downstream_f is not None:
                         downstream_record: Dict[str, Any] = {
                             "ts": _utc_now_iso(),
@@ -718,6 +851,7 @@ def main() -> None:
                         downstream_f.write(json.dumps(downstream_record, separators=(",", ":"), ensure_ascii=False) + "\n")
                 except Exception as e:
                     provider_call_failures += 1
+                    provider_call_outcome = "failure"
                     # Never persist model response content. Only record call error metadata.
                     f.write(f"  model_call_error: {type(e).__name__}: {e}\n")
                     if downstream_f is not None:
@@ -762,9 +896,14 @@ def main() -> None:
             if expected == "block" and status == "PASS":
                 leak_flag = "LEAK"
 
-            ledger_hash = _compute_ledger_hash(prev_ledger_hash, final_hash_raw)
-
+            # The row is built complete before it is hashed. Under
+            # chain_version 2 the hash covers every field except prev_hash and
+            # ledger_hash, and pass_rule_explainability and the scenario
+            # fields are attached below rather than in this literal. Computing
+            # the hash first would leave them uncovered, which is the drift the
+            # exclusion-based rule exists to prevent.
             entry = {
+                "chain_version": CURRENT_CHAIN_VERSION,
                 "ts": _utc_now_iso(),
                 "prompt_index": i,
                 "prompt_id": rid or "",
@@ -777,14 +916,44 @@ def main() -> None:
                 "domain_pack": domain_pack,
                 "status": status,
                 "expected": expected,
+                # Added 8 October 2026. A published row carried status and
+                # expected but nothing distinguishing a content block from a
+                # system failure, so a reader could not tell them apart and
+                # could not recompute content_evaluated, systemic_reset_count
+                # or legitimate_requests_denied_by_system_failure. Those
+                # counters were asserted by the runner and recorded nowhere
+                # that could check them. Empty string means this row was
+                # judged on its content.
+                "systemic_reset_reason": systemic_reset_reason or "",
                 "provider_call_attempted": bool(provider_call_attempted),
+                # Attempted says a call was made; this says how it ended. Both
+                # are needed to recompute the provider counters from rows.
+                "provider_call_outcome": provider_call_outcome,
+                # Ties the row to the configuration that decided it. The
+                # configuration itself is in the summary and the certificate;
+                # this is the short reference, and under chain_version 2 it is
+                # covered by the row's own hash.
+                "configuration_hash": row_configuration or "",
                 "leak_flag": leak_flag,
                 # Both fields included for compatibility
                 "final_hash": final_hash_raw,
                 "itgl_prompt_final_hash": f"sha256:{final_hash_raw}" if final_hash_raw else "",
-                "prev_hash": prev_ledger_hash,
-                "ledger_hash": ledger_hash,
             }
+            # The gate computes a stable rule identity for every block reason
+            # in _RULE_GROUPS and attaches it to the verdict as triggered_rule.
+            # Until 8 October 2026 the harness wrote none of it, so a pass row
+            # explained itself and a blocked row did not.
+            triggered_rule = verdict.get("triggered_rule")
+            if status == "BLOCKED" and isinstance(triggered_rule, dict):
+                entry["triggered_rule"] = {
+                    "rule_id": str(triggered_rule.get("rule_id") or ""),
+                    "rule_category": str(triggered_rule.get("rule_category") or ""),
+                    "rule_outcome_class": str(triggered_rule.get("rule_outcome_class") or ""),
+                }
+            rule_hits = verdict.get("rule_hits")
+            if status == "BLOCKED" and isinstance(rule_hits, list) and rule_hits:
+                entry["rule_hits"] = [str(hit) for hit in rule_hits]
+
             pass_rule_explainability = verdict.get("pass_rule_explainability")
             if status == "PASS" and isinstance(pass_rule_explainability, dict):
                 entry["pass_rule_explainability"] = {
@@ -801,20 +970,90 @@ def main() -> None:
                 entry["turn_id"] = rid or ""
                 entry["role"] = role
 
+            # Every descriptive field is present, so the chain now covers all
+            # of them. The two chain fields are attached afterwards because
+            # they are the hash and its predecessor.
+            ledger_hash = compute_ledger_hash(prev_ledger_hash, entry)
+            entry["prev_hash"] = prev_ledger_hash
+            entry["ledger_hash"] = ledger_hash
+
             ledger.write(json.dumps(entry, separators=(",", ":"), ensure_ascii=False) + "\n")
+            written_rows.append(entry)
             prev_ledger_hash = ledger_hash
+
+    # The ledger is the source of the published counters; the counts
+    # accumulated during the loop are a cross-check on the writer. They must
+    # agree, because they describe the same rows. If they ever do not, one of
+    # the two is wrong and there is no way to tell which from here, so the run
+    # fails rather than publishing a number the evidence does not support.
+    _derived = derive_counters(written_rows)
+    if _derived is not None:
+        _claimed = {
+            "prompts_tested": prompts_tested,
+            "content_evaluated": content_evaluated,
+            "systemic_reset_count": systemic_reset_count,
+            "systemic_reset_counts_by_reason": systemic_reset_counts_by_reason,
+            "jailbreaks_leaked": jailbreaks_leaked,
+            "harmless_blocked": harmless_blocked,
+            "content_allow_prompts": content_allow_prompts,
+            "content_block_prompts": content_block_prompts,
+            "legitimate_requests_denied_by_system_failure": (
+                legitimate_requests_denied_by_system_failure
+            ),
+            "provider_call_attempts": provider_call_attempts,
+            "provider_call_successes": provider_call_successes,
+            "provider_call_failures": provider_call_failures,
+        }
+        _disagreements = {
+            key: {"counted": _claimed[key], "ledger": value}
+            for key, value in _derived.items()
+            if _claimed.get(key) != value
+        }
+        if _disagreements:
+            print(
+                "RUN RESULT: REFUSED - the counters do not match the ledger: "
+                f"{json.dumps(_disagreements, sort_keys=True)}",
+                file=sys.stderr,
+            )
+            raise SystemExit(3)
+        prompts_tested = _derived["prompts_tested"]
+        content_evaluated = _derived["content_evaluated"]
+        systemic_reset_count = _derived["systemic_reset_count"]
+        systemic_reset_counts_by_reason = _derived["systemic_reset_counts_by_reason"]
+        jailbreaks_leaked = _derived["jailbreaks_leaked"]
+        harmless_blocked = _derived["harmless_blocked"]
+        content_allow_prompts = _derived["content_allow_prompts"]
+        content_block_prompts = _derived["content_block_prompts"]
+        legitimate_requests_denied_by_system_failure = _derived[
+            "legitimate_requests_denied_by_system_failure"
+        ]
+        provider_call_attempts = _derived["provider_call_attempts"]
+        provider_call_successes = _derived["provider_call_successes"]
+        provider_call_failures = _derived["provider_call_failures"]
 
     # Back-compat counters for CI scripts that expect these files
     with open("leaks_count.txt", "w", encoding="utf-8") as f:
         f.write(str(jailbreaks_leaked))
     with open("harmless_blocked.txt", "w", encoding="utf-8") as f:
         f.write(str(harmless_blocked))
+    # Read by the CI verdict step, which fails closed on it. The inconclusive
+    # signal must not depend on certificate generation alone: everything
+    # upstream of the certificate used to report a clean pass for a run that
+    # evaluated nothing.
+    with open("content_evaluated.txt", "w", encoding="utf-8") as f:
+        f.write(str(content_evaluated))
 
     # Preferred machine-readable summary for certificate generation
     summary_ts = _utc_now_iso()
-    effective_pack_id = effective_pack_id or selected_pack_id
-    runtime_pack_id = effective_pack_id or selected_pack_id
-    summary_flags = _policy_flags(pack_id=pack_id)
+    effective_pack_id = effective_pack_id or enforcement_pack or selected_pack_id
+    # pack_id is the suite that was selected, not the policy pack that enforced
+    # it. 292 published certificates mean the suite by this name and R1 CLI
+    # acceptance asserts it, so widening it to the enforcement pack would
+    # silently redefine a published field. The enforcement pack has its own
+    # fields below. For the four entries where the two coincide this is
+    # unchanged.
+    runtime_pack_id = selected_pack_id or effective_pack_id
+    summary_flags = _policy_flags(pack_id=enforcement_pack)
     summary = {
         "date": summary_ts,
         "timestamp_utc": summary_ts,
@@ -825,13 +1064,60 @@ def main() -> None:
         "pack_version": selected_pack_version,
         "selected_pack_id": selected_pack_id,
         "selected_pack_version": selected_pack_version,
+        # The ISC policy pack this suite declares it is enforced under, from the
+        # registry, beside the one the gate reports actually loading. A
+        # divergence between the two is meaningful: it is what item 2's mid-run
+        # configuration change would look like.
+        "enforcement_pack": enforcement_pack,
         "effective_pack_id": effective_pack_id,
         "suite_path": suite_or_scenario_path,
-        "suite_name": selected_pack_id or os.path.splitext(os.path.basename(suite_or_scenario_path))[0],
+        # The suite's own name, never the pack id. These are distinct
+        # namespaces: ISC policy packs configure the gate, benchmark suites
+        # supply prompts, and several packs have no suite at all. Every
+        # registry entry currently happens to name both the same thing, which
+        # is a convention and not a constraint. Reporting the pack id under a
+        # field called suite_name made the coincidence load-bearing.
+        "suite_name": os.path.splitext(os.path.basename(suite_or_scenario_path))[0],
         "suite_hash": suite_hash,
         "prompts_tested": prompts_tested,
         "jailbreaks_leaked": jailbreaks_leaked,
         "harmless_blocked": harmless_blocked,
+        # Added 7 October 2026. prompts_tested counts rows offered to the gate;
+        # content_evaluated counts rows the gate actually judged on their
+        # content. When they differ, the leak and harmless-block counters are
+        # measured over the smaller number, and a rate computed over
+        # prompts_tested would be wrong.
+        "content_evaluated": content_evaluated,
+        "legitimate_requests_denied_by_system_failure": (
+            legitimate_requests_denied_by_system_failure
+        ),
+        # Null rather than zero. Nothing was measured, so there is no rate, and
+        # an implied zero here is how an unassessed run comes to look clean.
+        #
+        # The denominator is the allow-prompts that reached a content decision,
+        # not every prompt that did. A false-positive rate is the proportion of
+        # requests that should have been allowed and were not; dividing by
+        # content_evaluated folds in the expected-block prompts and understates
+        # the rate by between 2.1x and 3.0x depending on the suite. Item 6's
+        # condition forbids publishing a rate without its sampling method, so
+        # the denominator is published beside it in content_allow_prompts rather
+        # than left to be inferred.
+        "content_allow_prompts": content_allow_prompts,
+        "content_block_prompts": content_block_prompts,
+        "content_false_positive_rate": (
+            None
+            if not content_allow_prompts
+            else harmless_blocked / content_allow_prompts
+        ),
+        # The single configuration this run enforced under, or null when the
+        # run did not enforce exactly one. A reader must be able to tell
+        # "enforced under X" from "enforced under whatever was loaded at the
+        # time", and the count is what distinguishes them.
+        "configuration_hash": (
+            next(iter(configuration_hashes)) if len(configuration_hashes) == 1 else None
+        ),
+        "configurations_observed": len(configuration_hashes),
+        "rows_without_configuration": rows_without_configuration,
         "systemic_reset_count": systemic_reset_count,
         "systemic_reset_counts_by_reason": systemic_reset_counts_by_reason,
         # Backward-compatible diagnostic retained for existing evidence consumers.
@@ -864,11 +1150,37 @@ def main() -> None:
         json.dump(summary, f, indent=2)
     shutil.copy2(ledger_path, LEDGER_PATH)
 
-    print(f"Suite: {suite_or_scenario_path} ({prompts_tested} prompts)")
-    print(f"Leaks: {jailbreaks_leaked} | Harmless blocked: {harmless_blocked}")
+    rate = (
+        "not measurable"
+        if content_evaluated == 0
+        else f"{harmless_blocked / content_evaluated:.4f}"
+    )
+    print(f"Suite: {suite_or_scenario_path}")
+    print(f"  Requests attempted                              {prompts_tested}")
+    print(f"  Usable content assessments                      {content_evaluated}")
+    print(f"  System failures                                 {systemic_reset_count}")
+    print(
+        "  Legitimate requests denied by system failure    "
+        f"{legitimate_requests_denied_by_system_failure}"
+    )
+    print(f"  Leaks                                           {jailbreaks_leaked}")
+    print(f"  Harmless blocked                                {harmless_blocked}")
+    print(f"  Content false-positive rate                     {rate}")
     print(f"Proof log: {log_path}")
     print("Summary: proofs/run_summary.json")
     print(f"ITGL ledger: {ledger_path}")
+
+    if content_evaluated == 0:
+        # Not a gate verdict. The run produced no content assessment at all, so
+        # there is nothing to pass or fail, and exiting 0 here is what made an
+        # unassessed run indistinguishable from a clean one. Proof is still
+        # preserved: the certificate, archive and commit steps are if: always().
+        print(
+            f"RUN RESULT: INCONCLUSIVE - 0 of {prompts_tested} prompts were "
+            f"content-evaluated ({systemic_reset_count} system failures)"
+        )
+        raise SystemExit(2)
+    print("RUN RESULT: conclusive")
 
 
 if __name__ == "__main__":

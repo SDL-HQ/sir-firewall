@@ -425,6 +425,75 @@ def test_verifier_reports_absent_signed_itgl_row_count(tmp_path, monkeypatch, ca
     )
 
 
+def test_a_certificate_predating_the_row_count_field_is_not_checked_rather_than_failed(
+    tmp_path, monkeypatch, capsys
+):
+    """itgl_row_count postdates SIR 2.3.4, so 219 published archives never had one.
+
+    Reporting an uncheckable binding as a binding failure manufactures a
+    catastrophe out of a format change, which is the same error as a verifier
+    that defaults to requiring chain version 2. The terminal hash binding still
+    verifies; it is only the row count that cannot be compared.
+
+    The test above covers the other branch: a certificate claiming 2.3.4 or
+    later with the field stripped out still fails at exit 7, because that field
+    should be there.
+    """
+    monkeypatch.chdir(tmp_path)
+    key = _key(monkeypatch)
+    ledger = canonical_ledger_path("binding-run", tmp_path / "proofs/runs")
+    _ledger(ledger, "c" * 64)
+    _setup_run(tmp_path, ledger)
+    generator = _load_generator("generator_predates_row_count")
+    cert_path, certificate = _generated_certificate(generator, capsys)
+    certificate.pop("itgl_row_count")
+    certificate["sir_firewall_version"] = ".".join(("2", "3", "3"))
+    _resign_certificate(cert_path, certificate, key)
+    pubkey = tmp_path / "public.pem"
+    pubkey.write_bytes(key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    ))
+
+    result = subprocess.run([
+        sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
+        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--ledger", str(ledger),
+    ], cwd=ROOT, capture_output=True, text=True)
+
+    assert result.returncode == 9, result.stdout + result.stderr
+    assert "NOT CHECKED" in result.stderr
+    assert "postdates SIR 2.3.4" in result.stderr
+    assert "The terminal hash binding above did verify." in result.stderr
+
+
+def test_a_certificate_with_no_version_at_all_is_not_checked_rather_than_failed(
+    tmp_path, monkeypatch, capsys
+):
+    """Three published certificates carry no sir_firewall_version field."""
+    monkeypatch.chdir(tmp_path)
+    key = _key(monkeypatch)
+    ledger = canonical_ledger_path("binding-run", tmp_path / "proofs/runs")
+    _ledger(ledger, "c" * 64)
+    _setup_run(tmp_path, ledger)
+    generator = _load_generator("generator_no_version")
+    cert_path, certificate = _generated_certificate(generator, capsys)
+    certificate.pop("itgl_row_count")
+    certificate.pop("sir_firewall_version", None)
+    _resign_certificate(cert_path, certificate, key)
+    pubkey = tmp_path / "public.pem"
+    pubkey.write_bytes(key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    ))
+
+    result = subprocess.run([
+        sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
+        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--ledger", str(ledger),
+    ], cwd=ROOT, capture_output=True, text=True)
+
+    assert result.returncode == 9, result.stdout + result.stderr
+
+
 def test_verifier_accepts_correct_signed_itgl_row_count(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     key = _key(monkeypatch)
