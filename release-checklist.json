@@ -476,8 +476,124 @@
       "id": 7,
       "name": "Reference demonstration",
       "condition": "All supported failure paths produce zero downstream calls; approved calls preserve the evaluated content. Another engineer reproduces it unaided.",
-      "status": "open",
-      "evidence": []
+      "status": "met",
+      "evidence": [
+        {
+          "type": "artefact",
+          "ref": "docs/reference-demonstration.md"
+        },
+        {
+          "type": "artefact",
+          "ref": "tools/demonstrate_failure_paths.py"
+        },
+        {
+          "type": "artefact",
+          "ref": "tools/measure_evaluated_versus_forwarded.py"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_the_scan_finds_the_route"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_each_choke_point_has_one_definition_and_one_caller"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_the_provider_call_is_guarded_on_the_verdict_and_the_call_flag"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_the_guarded_block_is_not_an_else_branch"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_the_inner_function_refuses_before_doing_anything_when_calls_are_disabled"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_every_provider_client_invocation_is_inside_the_leaf_function"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_a_client_imported_anywhere_else_is_never_invoked"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_the_gate_cannot_open_a_socket"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_downstream_call_without_approval.py::test_the_socket_list_is_not_vacuous"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_failure_paths_make_no_downstream_call.py::test_the_harness_has_cases_and_a_control"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_failure_paths_make_no_downstream_call.py::test_each_case_reaches_the_path_it_claims_to_exercise"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_failure_paths_make_no_downstream_call.py::test_no_failure_path_attempts_a_downstream_call"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_failure_paths_make_no_downstream_call.py::test_the_positive_control_fires"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_failure_paths_make_no_downstream_call.py::test_the_harness_exits_zero"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_failure_paths_make_no_downstream_call.py::test_the_unreachable_paths_are_named_rather_than_omitted"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evaluated_versus_forwarded.py::test_the_suite_set_is_the_published_one"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evaluated_versus_forwarded.py::test_each_suite_contributes_the_rows_it_is_published_as_having"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evaluated_versus_forwarded.py::test_the_total_is_the_published_figure"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evaluated_versus_forwarded.py::test_nothing_forwarded_is_byte_identical_to_what_was_evaluated"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evaluated_versus_forwarded.py::test_the_approved_prompts_that_differ_substantively_are_the_published_seven"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evaluated_versus_forwarded.py::test_normalisation_added_text_and_removed_none_in_those_seven"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evaluated_versus_forwarded.py::test_the_appended_text_is_recorded_rather_than_characterised"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_evaluated_versus_forwarded.py::test_the_reverse_shape_exists_and_is_blocked"
+        },
+        {
+          "type": "command",
+          "ref": "python3 tools/demonstrate_failure_paths.py",
+          "expect_exit": 0
+        },
+        {
+          "type": "command",
+          "ref": "python3 -m pytest tests/test_no_downstream_call_without_approval.py tests/test_failure_paths_make_no_downstream_call.py tests/test_evaluated_versus_forwarded.py -q",
+          "expect_exit": 0
+        }
+      ],
+      "note": "Two claims with two scopes, because one piece of evidence cannot carry both. The universal half comes from the topology: one definition and one caller each for _maybe_call_model and _call_provider_model, the single call site guarded on an approving verdict and the call flag, the refusal inside the inner function, every provider invocation in the leaf, the availability-probe import asserted never to be called, and no network-capable module importable anywhere in the gate package. Verified by seven mutations of a scratch copy, each of which failed a test. The observed half runs the real runner in live mode with a counterfeit provider client that records and raises: zero calls on the failure paths exercised, with a positive control that must fire and a per-case check that the path was actually reached. Neither half covers an integrator who ignores the verdict, which is stated on the surfaces rather than implied. The second clause is measured: across 453 prompts none is byte-identical to the text the gate evaluated, and of the 168 labelled allow the gate passes 167, 7 of which differ substantively and are forwarded. In those 7 normalisation added text and removed none. Whether the added text being harmless is rule design or luck is not measured and is not claimed. docs/reference-demonstration.md is the unaided reproduction path: three commands, no credentials, no network."
     },
     {
       "id": 8,

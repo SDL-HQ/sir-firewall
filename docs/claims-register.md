@@ -169,6 +169,73 @@ Four of the nine entries had been unrunnable since `e0ee45d` on 16 April 2026.
 described in the specification. Item 9's fast failure moves the implementation
 toward the described behaviour.
 
+### Zero downstream calls on failure paths
+
+**holds, bounded to SIR's own code.** No code path in SIR can issue a
+downstream call unless the gate returned `PASS` and the call flag is enabled.
+
+That is a universal, and it rests on the topology rather than on a harness. The
+route to a provider is one choke point: `_maybe_call_model` and
+`_call_provider_model` each have exactly one definition and one caller, the call
+site is guarded on the verdict and the flag, the inner function refuses before
+doing anything when calls are disabled, every provider invocation is inside the
+leaf, the availability-probe import is asserted never to be called, and
+`src/sir_firewall/` imports nothing capable of a network call. A module that
+cannot reach the network cannot make a downstream call on any path, exercised or
+not.
+
+`tests/test_no_downstream_call_without_approval.py` holds all of it, and was
+verified against seven mutations of a scratch copy, each of which failed a test.
+A structural test that has never been shown to fail is worth nothing.
+
+**The observation is a separate and weaker claim**, deliberately: on each
+failure path the harness exercises, zero downstream calls were observed. A
+harness cannot support the word "all", because it sees only the paths it runs.
+`tools/demonstrate_failure_paths.py` runs the real runner in live mode with a
+counterfeit provider client that records and raises, carries a positive control
+that must fire, and refuses to report anything if a case did not reach the path
+it claims to exercise. The paths it cannot construct are named in
+`docs/reference-demonstration.md` rather than omitted.
+
+**Neither half covers an integrator who ignores the verdict.** A caller that
+reads `BLOCKED` and calls the model anyway is outside both, and nothing in SIR
+can prevent it. That is the same boundary as the attribution gap.
+
+*Coverage: outside.* The reference harness is product work. The boundary note
+treats items 1, 4, 6, 7 and 8 as outside the specification unless something
+specific turns up, and nothing here did.
+
+### "approved calls preserve the evaluated content"
+
+**qualified, and the qualification is the whole of it.** The sentence reads two
+ways and only one is true.
+
+The approved request is forwarded byte-for-byte when the call flag is enabled,
+which is what the single call site does. What the model receives is not what the
+rules matched: the gate decides on the normalised payload and the runner
+forwards the raw prompt.
+
+Measured over 453 prompts in the eight registry suites: **none is byte-identical
+to the text evaluated.** 359 differ by case and whitespace folding alone and 94
+differ substantively. Of the 168 labelled allow the gate passes 167, and 7 of
+those differ substantively and are forwarded. In those 7 the evaluated string
+contains the forwarded string, so normalisation added text and removed none:
+` override` five times, ` bypass`, ` human oversight`.
+
+So the gate decided on text it had partly added, which is the non-idempotent
+marker recovery recorded above. For these 7 that addition did not cause a block.
+**Whether that is rule design or luck is not measured**, and no surface says
+otherwise.
+
+Two prompts have the reverse shape, where the evaluated form does not contain
+the forwarded one. Both are a base64 wrapper replaced by its decoded payload, so
+the wrapper's rule hit disappears because the wrapper did. Both are blocked.
+They are why no surface says normalisation only ever adds.
+
+*Coverage: inside, claimed in part.* Claim 2 recites the normalisation modes and
+claim 9 offline verification without access to the evaluated content. The
+difference between the evaluated and the forwarded string is not recited.
+
 ### "Deterministic and explainable (rules-only; no embeddings, no hidden scoring)"
 
 **holds, and as of this release it is checked rather than argued.** The
@@ -381,10 +448,9 @@ the uncovered-row list it generates is not recited.
 
 ## What this register does not cover
 
-**Item 7 is not built**, so no claim about downstream call suppression appears
-here. SIR's zero-downstream-call behaviour on failure paths is asserted in the
-architecture and not yet demonstrated by a reproducible harness. No public
-surface should claim it until item 7 lands.
+**No single claim about downstream call suppression**, because one piece of
+evidence cannot carry the universal and the observation. Item 7 landed on
+9 October 2026 and the two halves are separate rows below, with separate scopes.
 
 **No claim about false-positive rates for any customer workload.** The measured
 figures are for the corpora named, with their sampling methods. A rate for a

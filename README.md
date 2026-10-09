@@ -342,6 +342,7 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 * [Evidence perimeter note](docs/evidence-perimeter.v5.md) (current bounded benchmark perimeter)
 * [Claims register](docs/claims-register.md) (every public technical claim, and whether it survives a reader who examines the failures)
 * [Archive errata](docs/archive-errata.md) (published archives that do not verify, and why)
+* [Reference demonstration](docs/reference-demonstration.md) (downstream calls on failure paths, and how the evaluated text differs from the forwarded one)
 * [Threat model](docs/threat-model.md) (trust, integration, verification, retention, and control boundaries)
 * [Failure modes](docs/failure-modes.md) (fail-closed verdicts, escaped exceptions, and process boundaries)
 * [Rule-coverage report](docs/rule-coverage.md) (deterministic and full-gate benchmark coverage)

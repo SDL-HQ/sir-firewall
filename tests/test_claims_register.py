@@ -383,17 +383,47 @@ def test_no_surface_claims_that_every_run_verifies():
         )
 
 
-def test_item_7_is_not_claimed_anywhere_public():
-    """Nothing may claim zero downstream calls until item 7 demonstrates it."""
-    assert "Item 7 is not built" in TEXT
+def test_the_downstream_call_claim_tracks_item_7():
+    """It withheld the claim until item 7 landed, and now holds its shape.
+
+    Until 9 October this asserted that the register said "Item 7 is not built"
+    and failed the moment item 7 was marked met, which is what it did. The claim
+    is now made, so what needs holding is that it is made in two scopes rather
+    than one: a universal that rests on the topology, and an observation bounded
+    to the paths a harness ran. Collapsing them into one sentence is the failure
+    this guards.
+    """
     checklist = json.loads((ROOT / "release-checklist.json").read_text(encoding="utf-8"))
     item7 = next(i for i in checklist["items"] if i["id"] == 7)
 
-    if item7["status"] == "met":
-        pytest.fail(
-            "item 7 is now met; the register's statement that it is not built, and "
-            "the claim it withholds, both need revisiting"
+    if item7["status"] != "met":
+        assert "Item 7 is not built" in TEXT or "no claim about downstream" in TEXT.lower(), (
+            "item 7 is not met, so no surface may claim zero downstream calls"
         )
+        return
+
+    row = _flat(SECTIONS["Zero downstream calls on failure paths"])
+    assert "bounded to SIR's own code" in row
+    assert "cannot support the word" in row, (
+        "the observed half must say why a harness cannot carry the universal"
+    )
+    assert "integrator who ignores the verdict" in row, (
+        "the boundary that neither half covers has to be stated, not implied"
+    )
+    assert "tests/test_no_downstream_call_without_approval.py" in row
+
+
+def test_the_forwarded_content_row_states_both_readings():
+    """The clause is ambiguous and the register must resolve it, not repeat it."""
+    row = _flat(SECTIONS['"approved calls preserve the evaluated content"'])
+
+    assert "forwarded byte-for-byte" in row
+    assert "not what the rules matched" in row
+    assert "none is byte-identical" in row
+    assert "not measured" in row, (
+        "whether the added text being harmless is rule design or luck is "
+        "unmeasured, and the row must say so"
+    )
 
 
 def test_the_resolved_patent_condition_is_recorded():
