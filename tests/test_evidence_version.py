@@ -138,8 +138,10 @@ def test_current_version_surfaces_match_runtime_authority():
         "docs/additional-phase-1-findings.md": Counter({v_221: 4, v_102: 1, v_200: 1}),
         "docs/assets/StructuralDesignLabs_Logo.svg": Counter({v_210: 1}),
         "docs/archive-errata.md": Counter({v_234: 5, authority: 1, v_237: 1, v_102: 1}),
-        "docs/backlog.md": Counter({v_230: 1}),
-        "docs/claims-register.md": Counter({v_234: 3, v_220: 2, authority: 1}),
+        # The scenario-suite divergence row names the version the three published
+        # archives were produced at, which is the half of the question that is known.
+        "docs/backlog.md": Counter({v_230: 1, v_102: 1}),
+        "docs/claims-register.md": Counter({v_234: 3, v_220: 2, authority: 1, v_102: 1}),
         "docs/coverage.json": Counter({authority: 1}),
         "docs/evidence-perimeter.v5.md": Counter({authority: 1}),
         "docs/assurance-kit.md": Counter({v_234: 4, v_237: 1, v_240: 4, v_220: 3, v_102: 1, v_200: 1}),
