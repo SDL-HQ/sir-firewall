@@ -196,6 +196,9 @@ def test_current_version_surfaces_match_runtime_authority():
         "tests/test_certificate_ledger_binding.py": Counter({v_234: 4, v_240: 3}),
         "tests/test_contract_floor_is_not_self_asserted.py": Counter({v_240: 2, v_235: 5}),
         "tests/test_counters_derive_from_the_ledger.py": Counter({v_238: 1}),
+        # Names the release whose version bump was validated by the branch
+        # dispatch that had no missing-certificate net.
+        "tests/test_audit_workflow_cannot_pass_without_verifying.py": Counter({v_240: 1}),
         "tests/test_release_checklist.py": Counter({v_240: 1}),
         "tests/test_check_archive_staged.py": Counter({v_237: 2}),
         "tests/test_standalone_verifiers.py": Counter({v_234: 1}),

@@ -356,8 +356,17 @@ jobs:
           set -euo pipefail
 
           if [ -z "${AUDIT_JSON:-}" ] || [ ! -f "$AUDIT_JSON" ]; then
-            echo "SKIP: generate_certificate.py did not produce a current-run certificate path."
-            exit 0
+            # Fails rather than skipping. A certificate is produced for failed and
+            # inconclusive runs too, because the archive holds artefacts for both
+            # passes and failures, so an absent one is a defect and not a state to
+            # step over. This printed SKIP and exited 0 until 12 October, which
+            # meant a green job was compatible with nothing having been verified:
+            # the finalize step's missing-certificate net is gated on the
+            # publication context, so it does not apply on a branch, and a branch
+            # dispatch is exactly what the key custody procedure tells us to trust
+            # before calling a rotation or a version bump done.
+            echo "ERROR: generate_certificate.py produced no current-run certificate path, so this step verified nothing."
+            exit 1
           fi
 
           python tools/validate_certificate_contract.py "$AUDIT_JSON"
@@ -370,8 +379,17 @@ jobs:
           set -euo pipefail
 
           if [ -z "${AUDIT_JSON:-}" ] || [ ! -f "$AUDIT_JSON" ]; then
-            echo "SKIP: generate_certificate.py did not produce a current-run certificate path."
-            exit 0
+            # Fails rather than skipping. A certificate is produced for failed and
+            # inconclusive runs too, because the archive holds artefacts for both
+            # passes and failures, so an absent one is a defect and not a state to
+            # step over. This printed SKIP and exited 0 until 12 October, which
+            # meant a green job was compatible with nothing having been verified:
+            # the finalize step's missing-certificate net is gated on the
+            # publication context, so it does not apply on a branch, and a branch
+            # dispatch is exactly what the key custody procedure tells us to trust
+            # before calling a rotation or a version bump done.
+            echo "ERROR: generate_certificate.py produced no current-run certificate path, so this step verified nothing."
+            exit 1
           fi
 
           # --require-registry so CI verifies the way a third party does. Without it the
@@ -389,8 +407,17 @@ jobs:
           set -euo pipefail
 
           if [ -z "${AUDIT_JSON:-}" ] || [ ! -f "$AUDIT_JSON" ]; then
-            echo "SKIP: generate_certificate.py did not produce a current-run certificate path."
-            exit 0
+            # Fails rather than skipping. A certificate is produced for failed and
+            # inconclusive runs too, because the archive holds artefacts for both
+            # passes and failures, so an absent one is a defect and not a state to
+            # step over. This printed SKIP and exited 0 until 12 October, which
+            # meant a green job was compatible with nothing having been verified:
+            # the finalize step's missing-certificate net is gated on the
+            # publication context, so it does not apply on a branch, and a branch
+            # dispatch is exactly what the key custody procedure tells us to trust
+            # before calling a rotation or a version bump done.
+            echo "ERROR: generate_certificate.py produced no current-run certificate path, so this step verified nothing."
+            exit 1
           fi
 
           python tools/publish_run.py \
