@@ -557,7 +557,8 @@ def render_e4_above_the_correction(figures: dict) -> str:
         return _wrap(
             opening
             + f"{bound} of the {era} certificates at or above SIR 2.3.4 match the ledger "
-            f"shipped with them, and {era - bound} do not: {named}. A mismatch at or "
+            f"shipped with them, and {era - bound} "
+            f"{'does' if era - bound == 1 else 'do'} not: {named}. A mismatch at or "
             "above the correction is a real failure and is reported as one. " + closing
         )
     return _wrap(
@@ -635,8 +636,16 @@ def _counters_bullet(figures: dict) -> str:
             "counters as `unknown` for every one of them, which is neither agreement nor "
             "disagreement. Absent is not false."
         )
+    carried = false + true
+    # Number agreement. Audit 637 produced the first mixed state and this bullet
+    # published "1 of the 293 published certificates carry", because it was
+    # written when every count in these documents was in the hundreds. This is
+    # the only generated figure that can be one: every other count paired with a
+    # verb here is already above it and only grows, since the archive is never
+    # reduced and the historical sets are closed.
     return (
-        f"**{false + true} of the {total} published certificates carry "
+        f"**{carried} of the {total} published certificates "
+        f"{'carries' if carried == 1 else 'carry'} "
         f"`counters_checked_against_ledger`: {true} true and {false} false.** The field "
         f"arrives with evidence contract v4 at SIR 2.4.0. The remaining {absent} do not "
         "carry it, and `tools/verify_evidence.py` reports their signed counters as "
