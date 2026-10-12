@@ -178,11 +178,28 @@ changes the verdict.
 `github.token` on every other ref. That secret is a personal access token with
 a hard expiry, and it is the only credential the audit bot has.
 
-When it expires or is regenerated, the failure does not say so. Checkout
-retries three times, prints `could not read Username for 'https://github.com'`,
-then exits 128. Every step needing a working tree is skipped, the `always()`
-steps fail on missing files, and the run surfaces a dozen errors, none of which
-mention a token.
+Since 12 October 2026 it also opens the proof pull request, as `GH_TOKEN` for
+`gh pr create` and `gh pr merge --auto`, so it needs **pull-requests write** as
+well as contents write. A pull request opened with `GITHUB_TOKEN` is authored by
+the Actions bot, and GitHub does not let that event start further workflows, so
+the required checks never run and publication stays pending forever. That is
+what proof pull request #342 was. Editing a token's permissions does not change
+its value, so adding the permission does not mean re-entering the secret.
+
+It has two failure modes and neither names the token.
+
+**Expired, regenerated, or missing contents write.** Checkout retries three
+times, prints `could not read Username for 'https://github.com'`, then exits
+128. Every step needing a working tree is skipped, the `always()` steps fail on
+missing files, and the run surfaces a dozen errors, none of which mention a
+token.
+
+**Contents write but no pull-requests write.** The audit passes, the archive is
+built, the proof branch pushes, and `gh pr create` fails with
+`must be a collaborator (createPullRequest)`. The step reports publication
+pending rather than failing, which is correct and also indistinguishable at a
+glance from the defect above it. If a proof branch exists on the remote with no
+pull request against it, check that permission.
 
 If the audit fails on `main` while branches and pull requests stay green, check
 that secret first. Regenerating a token changes its value and revokes the old
