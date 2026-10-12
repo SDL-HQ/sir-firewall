@@ -34,6 +34,18 @@ def test_validate_registry_accepts_internal_visibility(tmp_path):
                         "pack_class": "domain",
                         "visibility": "internal",
                         "maturity": "demo",
+                        # Required since 8 October 2026. An entry that does not
+                        # name what it enforces under is how four registry
+                        # entries became silently unenforceable; see
+                        # tests/test_runnable_suites.py. generic_safety is used
+                        # here because the validator resolves the pack path
+                        # against the working directory, which is the repository
+                        # root under pytest.
+                        "enforcement_pack": "generic_safety",
+                        "enforcement_pack_reason": (
+                            "Fixture for the visibility check; the pairing is not "
+                            "the subject of this test."
+                        ),
                     }
                 ],
             }

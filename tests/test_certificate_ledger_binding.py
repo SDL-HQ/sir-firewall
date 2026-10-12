@@ -17,6 +17,11 @@ from sir_firewall.evidence_paths import canonical_ledger_path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+_ITGL_SPEC = importlib.util.spec_from_file_location("itgl_for_binding_tests", ROOT / "tools/itgl.py")
+assert _ITGL_SPEC and _ITGL_SPEC.loader
+ITGL = importlib.util.module_from_spec(_ITGL_SPEC)
+_ITGL_SPEC.loader.exec_module(ITGL)
+
 
 def _load_generator(name: str):
     spec = importlib.util.spec_from_file_location(name, ROOT / "tools/generate_certificate.py")
@@ -26,26 +31,47 @@ def _load_generator(name: str):
     return module
 
 
+def _row(index: int, previous: str, value: str) -> dict:
+    """A ledger row as a run at the current version writes one.
+
+    The chain hash comes from tools/itgl.py rather than from a second copy of
+    the rule, because that module is what ships to a third party in a minimal
+    verification bundle and a private copy in the tests would let writer and
+    verifier drift apart silently.
+
+    These rows declare chain_version 2. They declared nothing, and so defaulted
+    to 1, until the 2.4.0 bump: from 2.4.0 the verifier refuses a version 1
+    ledger because its row hash does not cover the row's contents, so accepting
+    one would accept an unbound row. The floor itself is covered by
+    tests/test_ledger_binds_row_contents.py, which asserts the refusal by
+    version; these fixtures exist to test binding, row counts and discovery, so
+    they carry the version a current run produces.
+    """
+    row = {
+        "ts": "2026-09-21T00:00:00Z",
+        "prompt_index": index,
+        "chain_version": ITGL.CURRENT_CHAIN_VERSION,
+        "prev_hash": previous,
+        "final_hash": value,
+    }
+    row["ledger_hash"] = ITGL.compute_ledger_hash(previous, row)
+    return row
+
+
 def _ledger(path: Path, final_hash: str) -> str:
-    head = hashlib.sha256(("GENESIS" + final_hash).encode()).hexdigest()
+    row = _row(0, "GENESIS", final_hash)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({
-        "ts": "2026-09-21T00:00:00Z", "prompt_index": 0,
-        "prev_hash": "GENESIS", "final_hash": final_hash, "ledger_hash": head,
-    }) + "\n", encoding="utf-8")
-    return "sha256:" + head
+    path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    return "sha256:" + row["ledger_hash"]
 
 
 def _ledger_rows(path: Path, values: list[str]) -> str:
     previous = "GENESIS"
     rows = []
     for index, value in enumerate(values):
-        head = hashlib.sha256((previous + value).encode()).hexdigest()
-        rows.append({
-            "ts": "2026-09-21T00:00:00Z", "prompt_index": index,
-            "prev_hash": previous, "final_hash": value, "ledger_hash": head,
-        })
-        previous = head
+        row = _row(index, previous, value)
+        rows.append(row)
+        previous = row["ledger_hash"]
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
     return "sha256:" + previous
@@ -60,6 +86,15 @@ def _setup_run(tmp_path: Path, ledger_path: Path, run_id: str = "binding-run") -
         "proof_class": "FIREWALL_ONLY_AUDIT",
         "provider_call_attempts": 0, "provider_call_successes": 0,
         "provider_call_failures": 0,
+        # Evidence contract v4's added fields. The verifier requires them of any
+        # certificate bound to a chain version 2 ledger, whatever version the
+        # certificate claims, because the ledger's chain version is covered by
+        # its own row hashes and so cannot be restamped. These fixtures used to
+        # describe a pre-v4 run and started failing on the 2.4.0 bump, which is
+        # the contract applying rather than a defect.
+        "configuration_hash": "sha256:" + "2" * 64,
+        "content_evaluated": 1,
+        "systemic_reset_count": 0,
     }), encoding="utf-8")
 
 
@@ -423,6 +458,75 @@ def test_verifier_reports_absent_signed_itgl_row_count(tmp_path, monkeypatch, ca
         "so the signed row count cannot be bound to this ledger (ledger rows: 1,\n"
         "prompts_tested: 1). Certificates emitted before SIR 2.3.4 do not carry this field.\n"
     )
+
+
+def test_a_certificate_predating_the_row_count_field_is_not_checked_rather_than_failed(
+    tmp_path, monkeypatch, capsys
+):
+    """itgl_row_count postdates SIR 2.3.4, so 219 published archives never had one.
+
+    Reporting an uncheckable binding as a binding failure manufactures a
+    catastrophe out of a format change, which is the same error as a verifier
+    that defaults to requiring chain version 2. The terminal hash binding still
+    verifies; it is only the row count that cannot be compared.
+
+    The test above covers the other branch: a certificate claiming 2.3.4 or
+    later with the field stripped out still fails at exit 7, because that field
+    should be there.
+    """
+    monkeypatch.chdir(tmp_path)
+    key = _key(monkeypatch)
+    ledger = canonical_ledger_path("binding-run", tmp_path / "proofs/runs")
+    _ledger(ledger, "c" * 64)
+    _setup_run(tmp_path, ledger)
+    generator = _load_generator("generator_predates_row_count")
+    cert_path, certificate = _generated_certificate(generator, capsys)
+    certificate.pop("itgl_row_count")
+    certificate["sir_firewall_version"] = ".".join(("2", "3", "3"))
+    _resign_certificate(cert_path, certificate, key)
+    pubkey = tmp_path / "public.pem"
+    pubkey.write_bytes(key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    ))
+
+    result = subprocess.run([
+        sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
+        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--ledger", str(ledger),
+    ], cwd=ROOT, capture_output=True, text=True)
+
+    assert result.returncode == 9, result.stdout + result.stderr
+    assert "NOT CHECKED" in result.stderr
+    assert "postdates SIR 2.3.4" in result.stderr
+    assert "The terminal hash binding above did verify." in result.stderr
+
+
+def test_a_certificate_with_no_version_at_all_is_not_checked_rather_than_failed(
+    tmp_path, monkeypatch, capsys
+):
+    """Three published certificates carry no sir_firewall_version field."""
+    monkeypatch.chdir(tmp_path)
+    key = _key(monkeypatch)
+    ledger = canonical_ledger_path("binding-run", tmp_path / "proofs/runs")
+    _ledger(ledger, "c" * 64)
+    _setup_run(tmp_path, ledger)
+    generator = _load_generator("generator_no_version")
+    cert_path, certificate = _generated_certificate(generator, capsys)
+    certificate.pop("itgl_row_count")
+    certificate.pop("sir_firewall_version", None)
+    _resign_certificate(cert_path, certificate, key)
+    pubkey = tmp_path / "public.pem"
+    pubkey.write_bytes(key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    ))
+
+    result = subprocess.run([
+        sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
+        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--ledger", str(ledger),
+    ], cwd=ROOT, capture_output=True, text=True)
+
+    assert result.returncode == 9, result.stdout + result.stderr
 
 
 def test_verifier_accepts_correct_signed_itgl_row_count(tmp_path, monkeypatch, capsys):

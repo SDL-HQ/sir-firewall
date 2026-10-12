@@ -27,6 +27,8 @@ def test_policy_verifier_rejects_runtime_drift(tmp_path):
     enforced["version"] = "drifted"
     enforced_path = tmp_path / "enforced.json"
     enforced_path.write_text(json.dumps(enforced))
-    ok, detail = MODULE.verify_policy(signed_path, enforced_path, ROOT / "spec/sdl.pub")
+    ok, detail = MODULE.verify_policy(
+        signed_path, enforced_path, ROOT / "spec/pubkeys/key_registry.v1.json"
+    )
     assert not ok
     assert "differs" in detail

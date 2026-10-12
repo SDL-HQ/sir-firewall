@@ -176,7 +176,7 @@
         const prompts = Number(data.prompts_tested ?? 0);
 
         // BEGIN GENERATED FULL-GATE COVERAGE
-        const coverageBySuite = {
+        const coverageByPack = {
           "generic_safety": "100/100",
           "mental_health_clinical": "5/15",
           "account_recovery_fraud": "0/5",
@@ -200,7 +200,11 @@
         setText("prompts", prompts ? String(prompts) : "—");
         setText("leaks", String(leaks));
         setText("harmless", String(harmless));
-        setText("rule-coverage", coverageBySuite[data.suite_name]);
+        // Rule coverage is a property of a ruleset measured against a suite,
+        // and the table is keyed by pack id. suite_name is the suite, which is
+        // a different namespace even where the two names currently coincide.
+        const packId = data.effective_pack_id || data.selected_pack_id || data.pack_id;
+        setText("rule-coverage", coverageByPack[packId]);
         setText("provider-attempts", data.provider_call_attempts);
         // A configured model is not an invoked model. Name the distinction here
         // rather than leaving a reader to reconcile this row with the call

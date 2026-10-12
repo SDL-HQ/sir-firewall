@@ -70,6 +70,36 @@ def _certificate_result(summary: dict) -> str:
         systemic_reset_domain_pack_load_failed_count=int(
             summary.get("systemic_reset_domain_pack_load_failed_count") or 0
         ),
+        prompts_tested=int(summary.get("prompts_tested") or 0),
+        # Mirrors the production reader: absent means unknown, not zero, so a
+        # summary written before content_evaluated existed is judged exactly as
+        # it was before the field was added.
+        content_evaluated=summary.get("content_evaluated"),
+    )
+
+
+def _run_main(runner) -> int:
+    """Run the suite runner and return its exit code.
+
+    Since 7 October 2026 the runner exits 2 when no prompt reached content
+    evaluation. Before that it had no sys.exit at all and returned 0 whatever
+    happened, which is how a run that assessed nothing came to look like a
+    clean one to anything checking only the exit status.
+    """
+    try:
+        runner.main()
+    except SystemExit as exc:
+        return int(exc.code or 0)
+    return 0
+
+
+def _assert_exit_code_matches_summary(exit_code: int, summary: dict) -> None:
+    evaluated = int(summary.get("content_evaluated", 0))
+    expected = 2 if evaluated == 0 else 0
+    assert exit_code == expected, (
+        f"content_evaluated is {evaluated} but the runner exited {exit_code}. "
+        "The exit code and the counters must agree, or one of the two surfaces "
+        "is still reporting an unassessed run as clean."
     )
 
 
@@ -81,12 +111,13 @@ def test_canary_fail_systemic_reset_is_inconclusive(tmp_path, monkeypatch):
     monkeypatch.setattr(
         runner,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite), "", "canary_fail", "1.0.0", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite), "", "canary_fail", "1.0.0", "csv_single_turn_v1", "canary_fail"),
     )
     monkeypatch.setattr(argparse.ArgumentParser, "parse_args", lambda _self: _runner_args(pack="canary_fail"))
-    runner.main()
+    exit_code = _run_main(runner)
 
     summary = json.loads((tmp_path / "proofs/run_summary.json").read_text(encoding="utf-8"))
+    _assert_exit_code_matches_summary(exit_code, summary)
     assert summary["systemic_reset_domain_pack_load_failed_count"] == 1
     assert summary["systemic_reset_count"] == 1
     assert summary["systemic_reset_counts_by_reason"] == {
@@ -130,12 +161,13 @@ def test_mixed_suite_systemic_reset_rows_are_not_scored(tmp_path, monkeypatch):
     monkeypatch.setattr(
         runner,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite), "", "missing_pack", "1.0.0", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite), "", "missing_pack", "1.0.0", "csv_single_turn_v1", "missing_pack"),
     )
     monkeypatch.setattr(argparse.ArgumentParser, "parse_args", lambda _self: _runner_args(pack="missing_pack"))
-    runner.main()
+    exit_code = _run_main(runner)
 
     summary = json.loads((tmp_path / "proofs/run_summary.json").read_text(encoding="utf-8"))
+    _assert_exit_code_matches_summary(exit_code, summary)
     assert summary["systemic_reset_domain_pack_load_failed_count"] == 2
     assert summary["systemic_reset_count"] == 2
     assert summary["systemic_reset_counts_by_reason"] == {
@@ -154,9 +186,35 @@ def test_legacy_summary_without_systemic_reset_count_is_unchanged():
         "provider_call_attempts": 0,
         "provider_call_successes": 0,
         "provider_call_failures": 0,
+        # Every summary ever written carries this. It is spelled out here
+        # because a certificate asserting AUDIT PASSED over zero prompts is
+        # itself a defect, and is covered by its own test below.
+        "prompts_tested": 10,
     }
 
     assert _certificate_result(summary) == "AUDIT PASSED"
+
+
+def test_a_run_that_evaluated_no_content_cannot_pass():
+    """Resets are the usual cause and are caught by systemic_reset_count, but an
+    empty or fully filtered suite reaches the classifier with every counter at
+    zero, which is the exact shape of a clean result."""
+    base = {
+        "proof_class": "FIREWALL_ONLY_AUDIT",
+        "jailbreaks_leaked": 0,
+        "harmless_blocked": 0,
+        "provider_call_attempts": 0,
+        "provider_call_successes": 0,
+        "provider_call_failures": 0,
+    }
+
+    assert _certificate_result({**base, "prompts_tested": 0}) == "INCONCLUSIVE"
+    assert _certificate_result(
+        {**base, "prompts_tested": 10, "content_evaluated": 0}
+    ) == "INCONCLUSIVE"
+    assert _certificate_result(
+        {**base, "prompts_tested": 10, "content_evaluated": 10}
+    ) == "AUDIT PASSED"
 
 
 def _assert_all_expected_block_reset_is_inconclusive(
@@ -176,7 +234,7 @@ def _assert_all_expected_block_reset_is_inconclusive(
     monkeypatch.setattr(
         runner,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite), "", "generic_safety", "1.0.0", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite), "", "generic_safety", "1.0.0", "csv_single_turn_v1", "generic_safety"),
     )
     monkeypatch.setattr(argparse.ArgumentParser, "parse_args", lambda _self: _runner_args())
     monkeypatch.setattr(
@@ -190,9 +248,10 @@ def _assert_all_expected_block_reset_is_inconclusive(
             "itgl_log": [{"hash": "a" * 64}],
         },
     )
-    runner.main()
+    exit_code = _run_main(runner)
 
     summary = json.loads((tmp_path / "proofs/run_summary.json").read_text(encoding="utf-8"))
+    _assert_exit_code_matches_summary(exit_code, summary)
     assert summary["jailbreaks_leaked"] == 0
     assert summary["harmless_blocked"] == 0
     assert summary["systemic_reset_count"] == 2
@@ -294,14 +353,14 @@ def test_scenario_summary_preserves_reset_count_and_is_inconclusive(tmp_path, mo
     monkeypatch.setattr(
         runner,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: ("", str(scenario), "missing_policy", "1.0.0", "scenario_json_v1"),
+        lambda **_kwargs: ("", str(scenario), "missing_policy", "1.0.0", "scenario_json_v1", "missing_policy"),
     )
     monkeypatch.setattr(
         argparse.ArgumentParser,
         "parse_args",
         lambda _self: _runner_args(pack="missing_policy", scenario=str(scenario)),
     )
-    runner.main()
+    scenario_exit_code = _run_main(runner)
 
     monkeypatch.setattr(cli, "ROOT", tmp_path)
     monkeypatch.setattr(cli, "_run_py", lambda *_args, **_kwargs: 0)
@@ -319,6 +378,7 @@ def test_scenario_summary_preserves_reset_count_and_is_inconclusive(tmp_path, mo
     )
 
     summary = json.loads((tmp_path / "proofs/run_summary.json").read_text(encoding="utf-8"))
+    _assert_exit_code_matches_summary(scenario_exit_code, summary)
     assert rc == 0
     assert summary["proof_class"] == "SCENARIO_AUDIT"
     assert summary["systemic_reset_domain_pack_load_failed_count"] == summary["turns_tested"]

@@ -35,7 +35,7 @@ def test_ungated_baseline_marks_summary_and_role(tmp_path, monkeypatch):
     monkeypatch.setattr(
         rts,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite_path), "", "generic_safety", "1.0.0", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite_path), "", "generic_safety", "1.0.0", "csv_single_turn_v1", "generic_safety"),
     )
     monkeypatch.setattr(
         argparse.ArgumentParser,
@@ -91,7 +91,7 @@ def test_live_mode_default_off_does_not_write_downstream_evidence(tmp_path, monk
     monkeypatch.setattr(
         rts,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite_path), "", "generic_safety", "1.0.0", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite_path), "", "generic_safety", "1.0.0", "csv_single_turn_v1", "generic_safety"),
     )
     monkeypatch.setattr(rts, "validate_sir", lambda *_args, **_kwargs: {"status": "PASS", "domain_pack": "generic_safety"})
     monkeypatch.setattr(
@@ -135,7 +135,7 @@ def test_live_mode_capture_writes_bounded_downstream_evidence(tmp_path, monkeypa
     monkeypatch.setattr(
         rts,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite_path), "", "generic_safety", "1.0.0", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite_path), "", "generic_safety", "1.0.0", "csv_single_turn_v1", "generic_safety"),
     )
     monkeypatch.setattr(rts, "validate_sir", lambda *_args, **_kwargs: {"status": "PASS", "domain_pack": "generic_safety"})
     monkeypatch.setattr(

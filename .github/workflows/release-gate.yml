@@ -1,0 +1,46 @@
+name: Release Gate
+
+# The checklist only has to hold at the point work is published. Pushes to a
+# release branch do not run this, so the checklist can sit incomplete for the
+# whole release; a pull request into main cannot merge until every acceptance
+# condition is met and every piece of evidence resolves.
+#
+# This workflow never signs anything. It has no access to the signing secret and
+# reads the repository only.
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  release-checklist:
+    name: Release checklist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # The documented install, which is what every other workflow uses. The gate
+      # needs it rather than cryptography alone because the command evidence
+      # items 7 and 8 name runs pytest over the tests that hold their claims, so
+      # the gate proves those tests pass rather than only that they exist. With
+      # cryptography alone the gate reported both items as marked met with
+      # evidence that does not resolve, which is the mark working and the
+      # workflow being wrong.
+      - name: Install the package and its declared dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install -U pip
+          pip install -e .
+
+      # --run-commands executes the command evidence each met item names and
+      # requires its stated exit code. An item whose only evidence is a
+      # paragraph cannot pass: the tool permits no prose evidence type.
+      - name: Check the release checklist
+        run: python tools/check_release_checklist.py --run-commands

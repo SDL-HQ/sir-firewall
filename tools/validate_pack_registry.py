@@ -15,8 +15,17 @@ ALLOWED_STATUS = {"active", "draft", "deprecated"}
 ALLOWED_PACK_CLASS = {"domain", "scenario"}
 ALLOWED_VISIBILITY = {"public", "encoded", "internal"}
 ALLOWED_MATURITY = {"canonical", "demo"}
+ISC_PACK_DIR = Path("src/sir_firewall/policy/isc_packs")
 REQUIRED_PACK_FIELDS = {
     "pack_id",
+    # Which ISC policy pack the suite is enforced under, named separately from
+    # the suite. Required rather than optional, because the defect this closes
+    # was an entry that said nothing and fell back to the suite's own name:
+    # four of nine entries selected a policy pack that had never existed, every
+    # row of those runs became a systemic reset, and that was true from
+    # e0ee45d on 16 April 2026 until 8 October 2026. An entry that must state
+    # what it enforces under cannot be silently unenforceable.
+    "enforcement_pack",
     "schema",
     "risk_class",
     "status",
@@ -127,6 +136,59 @@ def validate_registry(path: Path) -> list[str]:
 
         if pack.get("hash_binds_to") != "decoded_prompt_content":
             errors.append(f"{prefix}.hash_binds_to must equal 'decoded_prompt_content'")
+
+        enforcement_pack = pack.get("enforcement_pack")
+        expected_to_fail = pack.get("enforcement_expected_to_fail")
+        reason = pack.get("enforcement_pack_reason")
+
+        if expected_to_fail is not None and not isinstance(expected_to_fail, bool):
+            errors.append(f"{prefix}.enforcement_expected_to_fail must be a boolean when provided")
+        if reason is not None and (not isinstance(reason, str) or not reason.strip()):
+            errors.append(f"{prefix}.enforcement_pack_reason must be a non-empty string when provided")
+
+        if not isinstance(enforcement_pack, str) or not enforcement_pack:
+            errors.append(f"{prefix}.enforcement_pack must be a non-empty string")
+        elif not (repo_root / ISC_PACK_DIR / f"{enforcement_pack}.json").is_file():
+            if expected_to_fail is True:
+                # Declared unenforceable on purpose. canary_fail is the only such
+                # entry: its pack-load failure is the fixture that proves an
+                # unassessed run cannot resemble a clean one.
+                if not reason:
+                    errors.append(
+                        f"{prefix}.enforcement_expected_to_fail is set without "
+                        "enforcement_pack_reason; a deliberate failure must state why"
+                    )
+                if enforcement_pack != pack_id:
+                    # Otherwise the flag becomes a way to silence this check for
+                    # any entry at all, which is the "special-case it to get
+                    # green" trap. A deliberate failure means this suite's own
+                    # pack deliberately does not exist, not that it points at
+                    # some other absent one.
+                    errors.append(
+                        f"{prefix}.enforcement_expected_to_fail is set while "
+                        f"enforcement_pack is '{enforcement_pack}' rather than "
+                        f"'{pack_id}'; the flag declares that this suite's own pack "
+                        "deliberately does not exist, not that it names another "
+                        "missing one"
+                    )
+            else:
+                errors.append(
+                    f"{prefix}.enforcement_pack does not exist: "
+                    f"{ISC_PACK_DIR / (enforcement_pack + '.json')}. Every row of a run "
+                    "selecting this entry would be a systemic reset. Declare a pack that "
+                    "exists, or set enforcement_expected_to_fail with a reason."
+                )
+        elif expected_to_fail is True:
+            errors.append(
+                f"{prefix}.enforcement_expected_to_fail is set but "
+                f"'{enforcement_pack}' exists, so enforcement would not fail"
+            )
+
+        if enforcement_pack and enforcement_pack != pack_id and not reason:
+            errors.append(
+                f"{prefix}.enforcement_pack is '{enforcement_pack}' rather than "
+                f"'{pack_id}', which needs enforcement_pack_reason to say why"
+            )
 
     return errors
 

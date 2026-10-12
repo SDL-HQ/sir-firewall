@@ -102,3 +102,60 @@ def test_canonical_verifier_stdout_matches_documented_output():
     for document in VERIFIER_OUTPUT_DOCS:
         text = document.read_text(encoding="utf-8")
         assert f"```text\n{verifier_line}\n" in text, document
+
+
+def test_the_documented_consolidated_output_is_the_actual_output():
+    """The assurance kit's worked example is the procedure a reader follows.
+
+    docs/assurance-kit.md documents tools/verify_evidence.py as the evaluator
+    procedure and shows its output. A documented output that has drifted from
+    the real one is worse than none, because a reader compares what they see
+    against it and concludes their copy is wrong. This pins the whole block,
+    including the UNKNOWN lines and the verdict, which are the part a reader is
+    most likely to think is a problem with their download.
+    """
+    run_id = json.loads(SPEC_PATH.read_text(encoding="utf-8"))["run_id"]
+    result = subprocess.run(
+        [sys.executable, "tools/verify_evidence.py", f"docs/runs/{run_id}"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1, (
+        "the canonical example is expected to report NOT ESTABLISHED, because its "
+        "ledger predates the fields needed to recompute the signed counters; if this "
+        "changes, the documented output and the prose explaining it change with it"
+        f"{chr(10)}{result.stdout}{chr(10)}{result.stderr}"
+    )
+    kit = (ROOT / "docs/assurance-kit.md").read_text(encoding="utf-8")
+    assert f"```text\n{result.stdout.strip()}\n```" in kit
+
+
+def test_the_kit_explains_every_unknown_it_shows():
+    """A reader must not have to guess why a property is unknown.
+
+    Each UNKNOWN in the documented output names a property; the kit must discuss
+    that property by name, so the reader is told whether it is expected.
+    """
+    run_id = json.loads(SPEC_PATH.read_text(encoding="utf-8"))["run_id"]
+    result = subprocess.run(
+        [sys.executable, "tools/verify_evidence.py", f"docs/runs/{run_id}", "--json"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    report = json.loads(result.stdout)
+    unknown = [
+        entry["property"] for entry in report["properties"] if entry["state"] == "unknown"
+    ]
+
+    assert unknown, "this test assumes the canonical example has at least one unknown"
+    kit = (ROOT / "docs/assurance-kit.md").read_text(encoding="utf-8")
+    for name in unknown:
+        assert f"**`{name}`**" in kit, (
+            f"the documented output shows {name!r} as unknown and the kit does not "
+            "explain it"
+        )

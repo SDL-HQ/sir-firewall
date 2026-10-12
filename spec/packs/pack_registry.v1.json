@@ -12,7 +12,8 @@
       "doc_path": "tests/domain_packs/generic_safety.md",
       "pack_class": "domain",
       "visibility": "public",
-      "maturity": "canonical"
+      "maturity": "canonical",
+      "enforcement_pack": "generic_safety"
     },
     {
       "pack_id": "mental_health_clinical",
@@ -25,7 +26,9 @@
       "doc_path": "tests/domain_packs/mental_health_clinical.md",
       "pack_class": "domain",
       "visibility": "encoded",
-      "maturity": "canonical"
+      "maturity": "canonical",
+      "enforcement_pack": "generic_safety",
+      "enforcement_pack_reason": "No ISC policy pack of this name has ever existed, and hipaa_mental_health is a separate artefact that tests/domain_packs/README.md states has no naming correspondence with this suite. generic_safety is declared because it is what the other registry entries of this class fell back to before e0ee45d, and because measurement on 8 October 2026 found the enforcement pack changes no verdict in any registry suite."
     },
     {
       "pack_id": "account_recovery_fraud",
@@ -38,7 +41,9 @@
       "pack_class": "domain",
       "visibility": "public",
       "maturity": "canonical",
-      "doc_path": "tests/domain_packs/account_recovery_fraud.md"
+      "doc_path": "tests/domain_packs/account_recovery_fraud.md",
+      "enforcement_pack": "generic_safety",
+      "enforcement_pack_reason": "Ran under generic_safety until e0ee45d on 16 April 2026, by silent fallback rather than by declaration. Recovered from the published archive: runs 20260405-113555 and 20260416-003924 report 8 prompts and 5 leaks under this suite, which the declared pairing reproduces."
     },
     {
       "pack_id": "support_operator_override",
@@ -51,7 +56,8 @@
       "pack_class": "domain",
       "visibility": "public",
       "maturity": "canonical",
-      "doc_path": "tests/domain_packs/support_operator_override.md"
+      "doc_path": "tests/domain_packs/support_operator_override.md",
+      "enforcement_pack": "support_operator_override"
     },
     {
       "pack_id": "data_exfiltration_pressure",
@@ -64,7 +70,8 @@
       "pack_class": "domain",
       "visibility": "public",
       "maturity": "canonical",
-      "doc_path": "tests/domain_packs/data_exfiltration_pressure.md"
+      "doc_path": "tests/domain_packs/data_exfiltration_pressure.md",
+      "enforcement_pack": "data_exfiltration_pressure"
     },
     {
       "pack_id": "eu_ai_act_compliance_pressure",
@@ -77,7 +84,8 @@
       "pack_class": "domain",
       "visibility": "public",
       "maturity": "canonical",
-      "doc_path": "tests/domain_packs/eu_ai_act_compliance_pressure.md"
+      "doc_path": "tests/domain_packs/eu_ai_act_compliance_pressure.md",
+      "enforcement_pack": "eu_ai_act_compliance_pressure"
     },
     {
       "pack_id": "canary_fail",
@@ -89,7 +97,10 @@
       "hash_binds_to": "decoded_prompt_content",
       "pack_class": "domain",
       "visibility": "internal",
-      "maturity": "demo"
+      "maturity": "demo",
+      "enforcement_expected_to_fail": true,
+      "enforcement_pack_reason": "Deliberately unenforceable, and therefore deliberately runnable. No ISC policy pack of this name exists and none should: this suite exists so that a run which evaluates no content cannot resemble a clean one, and the pack-load failure is the fixture. Giving it a pack that loads would destroy the only thing it tests. Selection does not fail fast for this entry alone; every other entry whose enforcement pack is missing is refused at resolution.",
+      "enforcement_pack": "canary_fail"
     },
     {
       "pack_id": "scenario_injection_chain",
@@ -102,7 +113,9 @@
       "pack_class": "scenario",
       "visibility": "public",
       "maturity": "canonical",
-      "doc_path": "tests/scenario_packs/scenario_injection_chain.md"
+      "doc_path": "tests/scenario_packs/scenario_injection_chain.md",
+      "enforcement_pack": "generic_safety",
+      "enforcement_pack_reason": "Ran under generic_safety until e0ee45d on 16 April 2026, by silent fallback. Recovered from the published archive: runs 20260405-112821 and 20260416-003926 report 6 prompts and 0 leaks. The scenario pack has since grown to 15 turns, so the current result is not the published one."
     },
     {
       "pack_id": "scenario_tool_injection",
@@ -115,7 +128,9 @@
       "pack_class": "scenario",
       "visibility": "public",
       "maturity": "canonical",
-      "doc_path": "tests/scenario_packs/scenario_tool_injection.md"
+      "doc_path": "tests/scenario_packs/scenario_tool_injection.md",
+      "enforcement_pack": "generic_safety",
+      "enforcement_pack_reason": "Never published a run. generic_safety is declared on the same basis as the other scenario entry."
     }
   ]
 }

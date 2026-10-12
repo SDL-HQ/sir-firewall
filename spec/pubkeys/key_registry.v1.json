@@ -6,13 +6,26 @@
       "pubkey_pem": "-----BEGIN PUBLIC KEY-----\nMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAuqVNy5bsi/o1nJNrVCrM\nmpEOpDshG7V+xT67+VkpVvYK1n0G1EUnxvkKPj0Q3rJzjEq+a5kGNZ2+GLnkDp0B\nix/xSKoakL+QHOyFvDU6CAu0pq+DAF3IXArAeAmfoajBiB5sFujRVp+Y8ZXnMnl/\nITNgYNJC0d/dAHYhHn4fduFpTAD0OQL100k/H3CxJmwjA/Iko1GYmCmqQUFpmLNC\nqlrPq4z6KI9UHBOz1Ofh9NNgPOPZadcU1GUb36QYFuJfngiaV/WYkPssCi2h2D9k\n5lzGi9u00rK1XhUKt4yFPscB+hqnTaA3h49YQmrsge5dNeBtg5uA+oiMOo6JGTG+\n3dV+a1bA3R/cZYJfA+N5YwES1bYjypxHKom/JdfL+YP9UYLM810+3uDoo+Uygz/A\n09Qm1ACXmDUM+5xc3ict6o7HAItU6bO5c9jGNCxTFV+DFOEnC3lSIr3pJlYezkUc\nrqsKpuxLK+Px85lUnGJi+JIuB7vPfnzxAcxdQ4wofdoXudoklxqeFbSLu/k8WhcE\nTd3uQDTDr3iQjaPMoaUr1s0B2xZllB+ukefUWbC6MUTBrSHjsrFDbYobqLXVH7UQ\nUH9HTjr3zSSdix/J2cLVQm8bI77GxP8vKkMlhRh5M26y2x6l4Ccj3z4PmoQQHX0C\nxkm64QYQWpNOgGZBUf8wZGMCAwEAAQ==\n-----END PUBLIC KEY-----\n",
       "created_utc": "2025-01-01T00:00:00Z",
       "valid_from_utc": "2025-01-01T00:00:00Z",
+      "status": "retired",
+      "revocation_reason": "",
+      "valid_until_utc": "2026-10-06T00:19:33Z",
+      "last_trusted_run_id": "20261002-030936-161538-gh36958888228-3c39599f5009"
+    },
+    {
+      "key_id": "sdl-2026-10-06",
+      "pubkey_pem": "-----BEGIN PUBLIC KEY-----\nMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAxv5z1SHYJoO/hnY3+Tl0\nyLCX9x0b+sUQsxG8g49dwfzahB76DxHpouu3hV7kWLfVui7g8vzvq2LVv4mtjim/\n+/OxNXqlrJ8VoEe/VGAh+ZroY28QgjSnvgoiYNztxx/cyfMXx3GR6ZdaKqI8FXdj\nEKhy5qdVnFIPLj4P8bOf98fWbA3R/soEDN3tyVHrBbjOh0/hVmly3VfyngzxKGja\nEKpgHvB299hwvkAbD4sBR2NdB9pd4Ds1yHmBQePwcFsq/qqUR94PjJN3je68MaOq\n/+EVLrvf5B5oU04SjDGO2ghKNXCIXHXmp+NESkX64MTckHrIK3+m5cQyIBCacMBs\nMDVI1tv8BGI/kAGpgSG4np+Onyf17E+IsOgrD8eigDDj4MTPmyMUACX7NDW/ux6N\ncLY1I2g0Qk+SZ7hVGMnzPJZuWSVLZpjw5waCiT/ca2R/y0iEwugfArg3Mpd2wB8X\nW2YtNjIU7hYuXvaJmJ2pqQkIKkTN0AKC1HaBkZicYCsWVhujt5FR7DZAfrpbkbWB\nqlCtg2MuZl2gv0X54y77HtZQpyouWzeDa4IsvuuftAJ/5HJFU78jsJqPQoFFCZgy\nzRq5S6ZPV9P52Wy26M86NmpEBV7RCyez9OOtp2G9S20xn/9Tfs1ure667lMM5zux\n6URchB87ClYWaIXvCyfziEsCAwEAAQ==\n-----END PUBLIC KEY-----\n",
+      "pubkey_base64": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQ0lqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FnOEFNSUlDQ2dLQ0FnRUF4djV6MVNIWUpvTy9oblkzK1RsMAp5TENYOXgwYitzVVFzeEc4ZzQ5ZHdmemFoQjc2RHhIcG91dTNoVjdrV0xmVnVpN2c4dnp2cTJMVnY0bXRqaW0vCisvT3hOWHFscko4Vm9FZS9WR0FoK1pyb1kyOFFnalNudmdvaVlOenR4eC9jeWZNWHgzR1I2WmRhS3FJOEZYZGoKRUtoeTVxZFZuRklQTGo0UDhiT2Y5OGZXYkEzUi9zb0VETjN0eVZIckJiak9oMC9oVm1seTNWZnluZ3p4S0dqYQpFS3BnSHZCMjk5aHd2a0FiRDRzQlIyTmRCOXBkNERzMXlIbUJRZVB3Y0ZzcS9xcVVSOTRQakpOM2plNjhNYU9xCi8rRVZMcnZmNUI1b1UwNFNqREdPMmdoS05YQ0lYSFhtcCtORVNrWDY0TVRja0hySUszK201Y1F5SUJDYWNNQnMKTURWSTF0djhCR0kva0FHcGdTRzRucCtPbnlmMTdFK0lzT2dyRDhlaWdERGo0TVRQbXlNVUFDWDdORFcvdXg2TgpjTFkxSTJnMFFrK1NaN2hWR01uelBKWnVXU1ZMWnBqdzV3YUNpVC9jYTJSL3kwaUV3dWdmQXJnM01wZDJ3QjhYClcyWXROaklVN2hZdVh2YUptSjJwcVFrSUtrVE4wQUtDMUhhQmtaaWNZQ3NXVmh1anQ1RlI3RFpBZnJwYmtiV0IKcWxDdGcyTXVabDJndjBYNTR5NzdIdFpRcHlvdVd6ZURhNElzdnV1ZnRBSi81SEpGVTc4anNKcVBRb0ZGQ1pneQp6UnE1UzZaUFY5UDUyV3kyNk04Nk5tcEVCVjdSQ3llejlPT3RwMkc5UzIweG4vOVRmczF1cmU2NjdsTU01enV4CjZVUmNoQjg3Q2xZV2FJWHZDeWZ6aUVzQ0F3RUFBUT09Ci0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQo=",
+      "created_utc": "2026-10-06T00:19:33Z",
+      "valid_from_utc": "2026-10-06T00:19:33Z",
       "status": "active",
       "revocation_reason": ""
     }
   ],
   "x_verifier_expectations": {
-    "revocation_behavior": "Do not retroactively invalidate proofs signed before revoked_utc. Fail verification only for proofs where timestamp_utc >= revoked_utc for that key.",
-    "timestamp_requirement": "If proof timestamp_utc is missing during revocation checks, fail closed.",
-    "timestamp_format": "UTC ISO-8601 with Z suffix required for comparisons."
+    "revocation_behavior": "Revocation is decided by the anchor, not by the signer's own timestamp. A revoked entry must carry last_trusted_run_id, naming the last run published before revocation. A proof counts as pre-revocation only if the CI run number embedded in its own run_id is at or below the anchor's. Run numbers are assigned by the forge, so a key holder cannot raise theirs; a timestamp, being inside the signed payload, can be set to anything by whoever holds the key, which is exactly the party revocation exists to stop.",
+    "anchor_requirement": "Fail closed when a revoked entry has no usable last_trusted_run_id, or when the proof carries no parseable run_id.",
+    "timestamp_requirement": "The proof timestamp_utc is still compared against revoked_utc and can only tighten the result. It is never sufficient on its own.",
+    "timestamp_format": "UTC ISO-8601 with Z suffix required for comparisons.",
+    "residual_risk": "A key holder can claim a run_id below the anchor. They cannot make that archive exist in the published repository at that identifier, so the claim is detectable by comparing against published history. That comparison needs the repository and is outside offline certificate verification."
   }
 }

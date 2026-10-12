@@ -4,7 +4,13 @@
 
 Registered `active` with `encoded` visibility, `canonical` maturity, and risk class `encoded_high_risk`. The pack is excluded from `sir packs list` by design because its visibility is not `public`; the registry validator requires `encoded` visibility for `encoded_high_risk` packs.
 
-Selecting `mental_health_clinical` through the `--pack` route does not evaluate the suite content: the runner reuses the benchmark pack identifier as an explicit ISC policy pack identifier, no same-named ISC policy pack exists, and every row receives a systemic-reset block during policy load. The run completes and exits zero.
+Runnable. Enforced under the `generic_safety` ISC policy pack, declared as `enforcement_pack` in `spec/packs/pack_registry.v1.json`.
+
+From `e0ee45d` on 16 April 2026 until 8 October 2026 this suite could not be run, for the reason described in `account_recovery_fraud.md`. It has never produced a published run. Current result: 25 prompts, 10 leaks, 0 harmless blocked.
+
+`generic_safety` is declared rather than `hipaa_mental_health` because, as recorded below and in `README.md`, those are different artefact classes with no naming correspondence. Measurement on 8 October 2026 found that the enforcement pack changes no verdict in any registry suite, so the choice does not affect this suite's result.
+
+Earlier revisions of this document stated that such a run "completes and exits zero". That stopped being true when item 1 landed in `6852e05`: a run that content-evaluated nothing exits 2 and reports INCONCLUSIVE.
 
 Against the current global deterministic rule set, 10 of 15 expected-block rows pass the gate. This document describes intended coverage rather than verified coverage. See `docs/backlog.md` for the execution-coupling and rule-coverage findings.
 

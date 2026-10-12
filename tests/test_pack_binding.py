@@ -16,6 +16,20 @@ def _load_red_team_suite_module():
     return module
 
 
+def _run_main(runner) -> int:
+    """Run the suite runner and return its exit code.
+
+    Since 7 October 2026 the runner exits 2 when no prompt reached content
+    evaluation, so a caller checking only the exit status can no longer mistake
+    an unassessed run for a clean one.
+    """
+    try:
+        runner.main()
+    except SystemExit as exc:
+        return int(exc.code or 0)
+    return 0
+
+
 def test_selected_pack_id_controls_enforcement_context(tmp_path, monkeypatch):
     rts = _load_red_team_suite_module()
 
@@ -26,7 +40,7 @@ def test_selected_pack_id_controls_enforcement_context(tmp_path, monkeypatch):
     monkeypatch.setattr(
         rts,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite_path), "", "pci_payments", "1.0.0", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite_path), "", "pci_payments", "1.0.0", "csv_single_turn_v1", "pci_payments"),
     )
     monkeypatch.setattr(
         argparse.ArgumentParser,
@@ -61,7 +75,7 @@ def test_run_summary_flags_use_effective_pack_context(tmp_path, monkeypatch):
     monkeypatch.setattr(
         rts,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite_path), "", "pci_payments", "1.0.0", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite_path), "", "pci_payments", "1.0.0", "csv_single_turn_v1", "pci_payments"),
     )
     monkeypatch.setattr(
         argparse.ArgumentParser,
@@ -87,9 +101,15 @@ def test_run_summary_flags_use_effective_pack_context(tmp_path, monkeypatch):
     monkeypatch.setattr(rts, "load_domain_pack", _fake_load_domain_pack)
     monkeypatch.setattr(core, "load_domain_pack", _fake_load_domain_pack)
 
-    rts.main()
+    exit_code = _run_main(rts)
 
     summary = json.loads((tmp_path / "proofs" / "run_summary.json").read_text(encoding="utf-8"))
+    # This fixture's single row reaches a systemic reset, so nothing was
+    # content-evaluated. That was always true; before 7 October 2026 the run
+    # exited 0 and said nothing about it. Asserted here so the fixture's nature
+    # is explicit rather than incidental.
+    assert summary["content_evaluated"] == 0
+    assert exit_code == 2
     assert summary["selected_pack_id"] == "pci_payments"
     assert summary["effective_pack_id"] == "pci_payments"
     assert summary["pack_id"] == "pci_payments"
@@ -109,7 +129,7 @@ def test_run_summary_separates_selected_and_effective_pack_when_selection_is_imp
     monkeypatch.setattr(
         rts,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite_path), "", "", "", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite_path), "", "", "", "csv_single_turn_v1", ""),
     )
     monkeypatch.setattr(
         argparse.ArgumentParser,
@@ -145,7 +165,7 @@ def test_run_summary_effective_pack_falls_back_to_selected_pack_when_verdict_omi
     monkeypatch.setattr(
         rts,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite_path), "", "support_operator_override", "1.0.0", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite_path), "", "support_operator_override", "1.0.0", "csv_single_turn_v1", "support_operator_override"),
     )
     monkeypatch.setattr(
         argparse.ArgumentParser,
@@ -201,11 +221,44 @@ def test_validate_sir_binds_pack_identity_into_itgl_context_and_governance_conte
     context_entry = verdict["itgl_log"][0]
     assert context_entry["component"] == "context"
     assert context_entry["input"]["pack_version"] == "1.0.0"
-    assert context_entry["input"]["pack_hash"] == "sha256:testpackhash"
     assert verdict["governance_context"]["pack_version"] == "1.0.0"
-    assert verdict["governance_context"]["pack_hash"] == "sha256:testpackhash"
     assert verdict["governance_context"]["governance_scope"] == "deployment"
     assert verdict["governance_context"]["crypto_enforced"] is False
+
+    # From 7 October 2026 the gate hashes the pack it loaded, so a
+    # caller-supplied pack_hash no longer reaches the record. A caller cannot
+    # know the identity of an artefact the gate read for itself, and before
+    # this nothing supplied the field at all, so it travelled empty.
+    assert verdict["governance_context"]["pack_hash"] != "sha256:testpackhash"
+    assert context_entry["input"]["pack_hash"] != "sha256:testpackhash"
+
+
+def test_the_caller_cannot_assert_the_identity_of_the_pack_the_gate_loaded():
+    """pack_hash is computed from the loaded pack, not accepted from the
+    caller. Two calls differing only in the claimed hash must agree."""
+    payload = "hello world"
+    checksum = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    isc = {
+        "version": "1.0",
+        "template_id": "EU-AI-Act-ISC-v1",
+        "payload": payload,
+        "checksum": checksum,
+        "signature": "",
+        "key_id": "default",
+    }
+
+    honest = validate_sir({"isc": dict(isc)}, pack_identity_context={"pack_version": "1.0.0"})
+    claimed = validate_sir(
+        {"isc": dict(isc)},
+        pack_identity_context={"pack_version": "1.0.0", "pack_hash": "sha256:" + "f" * 64},
+    )
+
+    assert honest["governance_context"]["pack_hash"].startswith("sha256:")
+    assert honest["governance_context"]["pack_hash"] == claimed["governance_context"]["pack_hash"]
+    assert (
+        honest["governance_context"]["execution_configuration"]["configuration_hash"]
+        == claimed["governance_context"]["execution_configuration"]["configuration_hash"]
+    )
 
 
 def test_red_team_suite_passes_selected_pack_identity_context_to_validate_sir(tmp_path, monkeypatch):
@@ -218,7 +271,7 @@ def test_red_team_suite_passes_selected_pack_identity_context_to_validate_sir(tm
     monkeypatch.setattr(
         rts,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite_path), "", "pci_payments", "1.0.0", "csv_single_turn_v1"),
+        lambda **_kwargs: (str(suite_path), "", "pci_payments", "1.0.0", "csv_single_turn_v1", "pci_payments"),
     )
     monkeypatch.setattr(
         argparse.ArgumentParser,

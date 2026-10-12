@@ -34,9 +34,15 @@ CERTIFICATE_EXIT_MEANINGS = {
     4: "signature not valid base64",
     5: "SIGNATURE VERIFICATION FAILED",
     6: "signature verification error",
-    7: "ledger binding failed",
-    9: "ledger binding not checked (certificate carries no run identity)",
+    7: "LEDGER BINDING FAILED",
+    9: "ledger binding not established (no ledger, no row count, or predates the 2.3.4 correction)",
+    10: "SIGNING KEY REVOKED FOR THIS ARCHIVE",
+    11: "SIGNED COUNTERS NOT SUPPORTED BY THE BOUND LEDGER",
 }
+
+# Reported separately from "verified", which means the binding was checked and
+# holds. This archive has no ledger to check against at all.
+NO_LEDGER_TO_BIND = "verified; no ledger in the archive, so no binding was checked"
 
 RECEIPT_EXIT_MEANINGS = {
     0: "verified",
@@ -83,11 +89,32 @@ def main() -> int:
         record = {"run_id": run_dir.name}
 
         if certificate.is_file():
-            code, detail = _exit_code(
-                [sys.executable, "tools/verify_certificate.py", str(certificate)]
-            )
+            # Pass this run's own ledger and require the registry.
+            #
+            # Until 8 October 2026 this script invoked the verifier with the
+            # certificate alone. It therefore relied on ledger discovery, which
+            # resolves from the working directory and returns nothing for most
+            # archives, and it never required registry resolution. The figures
+            # this script produces are published in docs/archive-errata.md and
+            # read as a statement about the archive, so a check it did not
+            # perform was being counted as a check that found nothing wrong.
+            ledger = run_dir / "proofs/itgl_ledger.jsonl"
+            argv = [sys.executable, "tools/verify_certificate.py", str(certificate)]
+            argv += ["--ledger", str(ledger)] if ledger.is_file() else ["--no-ledger"]
+            argv += [
+                "--key-registry", "spec/pubkeys/key_registry.v1.json",
+                "--require-registry",
+            ]
+            code, detail = _exit_code(argv)
             record["certificate_exit"] = code
-            record["certificate_meaning"] = CERTIFICATE_EXIT_MEANINGS.get(code, "unmapped exit code")
+            meaning = CERTIFICATE_EXIT_MEANINGS.get(code, "unmapped exit code")
+            if code == 0 and not ledger.is_file():
+                # --no-ledger exits 0, and counting that beside a certificate
+                # whose binding was checked and holds would report a skipped
+                # check as a passed one. Its own row, so the two cannot be read
+                # as the same outcome.
+                meaning = NO_LEDGER_TO_BIND
+            record["certificate_meaning"] = meaning
             record["certificate_detail"] = detail
         else:
             record["certificate_exit"] = None
@@ -95,7 +122,9 @@ def main() -> int:
 
         if manifest.is_file():
             code, detail = _exit_code(
-                [sys.executable, "tools/verify_archive_receipt.py", str(run_dir)]
+                [sys.executable, "tools/verify_archive_receipt.py", str(run_dir),
+                 "--key-registry", "spec/pubkeys/key_registry.v1.json",
+                 "--require-registry"]
             )
             record["receipt_exit"] = code
             record["receipt_meaning"] = RECEIPT_EXIT_MEANINGS.get(code, "unmapped exit code")
@@ -117,8 +146,12 @@ def main() -> int:
     print(f"Source: {runs_dir}\n")
 
     print("Certificate verification (tools/verify_certificate.py)")
-    for code, count in tally("certificate_exit"):
-        label = CERTIFICATE_EXIT_MEANINGS.get(code, "no certificate" if code is None else "unmapped")
+    # Tally on the meaning rather than the exit code, so that exit 0 with a
+    # checked binding and exit 0 with no ledger to check are two rows.
+    for label, count in tally("certificate_meaning"):
+        code = next(
+            r["certificate_exit"] for r in records if r["certificate_meaning"] == label
+        )
         print(f"  exit {str(code):>4}  {count:>4}  {label}")
 
     print("\nArchive receipt verification (tools/verify_archive_receipt.py)")

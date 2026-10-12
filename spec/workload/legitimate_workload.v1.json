@@ -1,0 +1,87 @@
+{
+  "manifest_version": "v1",
+  "purpose": "A legitimate workload for measuring how often SIR blocks requests it should allow. Item 6 of the 2.4 release requires results published with failures, exclusions and denominators, and no rate published without its sampling method.",
+  "what_this_corpus_can_support": "A false-positive rate over published security, privacy and incident-response guidance, and over the same text with a quoted injection string added. These are documents a security or privacy function READS. They are not that function's own internal control prose, which it WRITES, and no result here should be described as measuring the latter.",
+  "endorsement_disclaimer": "The sources below are reproduced under the Open Government Licence v3.0, which requires that the information is not used in a way that suggests official status or that the licensor endorses the user or their use. Neither the National Cyber Security Centre nor the Information Commissioner's Office has reviewed, approved or endorsed SIR, Structural Design Labs, or any result produced from this corpus. They are quoted here solely as independently authored examples of legitimate text.",
+  "sampling_method": {
+    "carrier_passages": "Every paragraph of the committed carrier text whose whitespace-normalised length is between 200 and 1200 characters. No passage-level selection: a paragraph is in or out by length alone.",
+    "strata": [
+      {
+        "id": "carrier_only",
+        "definition": "The passage as the request, and the passage inside each task wrapper."
+      },
+      {
+        "id": "carrier_plus_quoted_injection",
+        "definition": "The same passage inside the same defensive task, with one injection string appended as an example for staff to recognise. Every passage is paired with every string, so the stratum is a full cross product and nothing is chosen per passage."
+      }
+    ],
+    "task_wrappers": "Fixed set, applied uniformly to every passage. See tools/measure_legitimate_workload.py.",
+    "why_stratified": "A single combined rate would be an artefact of how many quoting requests happened to be in the sample. The rate is reported per stratum."
+  },
+  "sources": [
+    {
+      "id": "ncsc-phishing-attacks",
+      "publisher": "National Cyber Security Centre (NCSC)",
+      "title": "Phishing attacks: defending your organisation",
+      "url": "https://www.ncsc.gov.uk/guidance/phishing",
+      "document_version": "2.0",
+      "document_reviewed": "2024-02-13",
+      "retrieved_utc": "2026-10-08",
+      "licence": "Open Government Licence v3.0",
+      "licence_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "rights_statement_url": "https://www.ncsc.gov.uk/terms-and-conditions",
+      "rights_statement_checked": true,
+      "attribution": "Contains public sector information licensed under the Open Government Licence v3.0 (https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/). Source: National Cyber Security Centre (NCSC), 'Phishing attacks: defending your organisation', version 2.0, reviewed 13 February 2024.",
+      "file": "tests/workload/carriers/ncsc-phishing-attacks.v2.0.txt",
+      "exclusions": [
+        "Site navigation, download links, related-article listings and feedback controls: not body text.",
+        "Images and logos: excluded from the OGL by the publisher's own terms."
+      ],
+      "sha256": "sha256:f2f6b877e920e0d38c381349ff6978a0ae2d7558ce4ac516db991046e99f804d"
+    },
+    {
+      "id": "ncsc-10-steps-incident-management",
+      "publisher": "National Cyber Security Centre (NCSC)",
+      "title": "10 Steps to Cyber Security: Incident management",
+      "url": "https://www.ncsc.gov.uk/collection/10-steps/incident-management",
+      "document_version": "1.0",
+      "document_reviewed": "2021-05-11",
+      "retrieved_utc": "2026-10-08",
+      "licence": "Open Government Licence v3.0",
+      "licence_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "rights_statement_url": "https://www.ncsc.gov.uk/terms-and-conditions",
+      "rights_statement_checked": true,
+      "attribution": "Contains public sector information licensed under the Open Government Licence v3.0 (https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/). Source: National Cyber Security Centre (NCSC), '10 Steps to Cyber Security: Incident management', version 1.0, reviewed 11 May 2021.",
+      "file": "tests/workload/carriers/ncsc-10-steps-incident-management.v1.0.txt",
+      "exclusions": [
+        "Site navigation, page list, related-article listings and feedback controls: not body text.",
+        "Cross-references to other NCSC products (Exercise in a Box, CSIRT guidance): link text rather than prose.",
+        "Images and logos: excluded from the OGL by the publisher's own terms."
+      ],
+      "sha256": "sha256:2bacf1b866ab40a30fe731d16d77c97276cb562c75035e0451c5770026eb85ae"
+    },
+    {
+      "id": "ico-personal-data-breaches-guide",
+      "publisher": "Information Commissioner's Office (ICO)",
+      "title": "Personal data breaches: a guide",
+      "url": "https://ico.org.uk/for-organisations/report-a-breach/personal-data-breach/personal-data-breaches-a-guide/",
+      "document_version": null,
+      "document_reviewed": null,
+      "retrieved_utc": "2026-10-08",
+      "licence": "Open Government Licence v3.0",
+      "licence_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "rights_statement_url": "https://ico.org.uk/global/copyright-and-re-use-of-materials/",
+      "rights_statement_checked": true,
+      "attribution": "Contains public sector information licensed under the Open Government Licence v3.0 (https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/). Source: Information Commissioner's Office (ICO), 'Personal data breaches: a guide', retrieved 8 October 2026. The ICO publishes no version or revision date for this page, so the retrieval date is given in its place.",
+      "file": "tests/workload/carriers/ico-personal-data-breaches-guide.txt",
+      "exclusions": [
+        "The quoted text of UK GDPR Recital 85. The ICO's OGL grant covers the ICO's own text, not legislative text it quotes, so the quotation is dropped rather than relied upon.",
+        "A cross-reference to Article 29 Working Party guidelines: third-party material the ICO does not license.",
+        "Site navigation, section index and 'Latest updates' controls: not body text.",
+        "Images and logos: excluded from the OGL by the publisher's own terms."
+      ],
+      "note": "This page carries no version or review date in its published metadata, unlike the two NCSC sources. The retrieval date is therefore the only pin, and a re-measurement against a later revision is not comparable.",
+      "sha256": "sha256:c80f8bb475a853014a728178e29c04c226b04f95306b671d67a426197849b94c"
+    }
+  ]
+}

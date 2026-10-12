@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdl.internal/sir/spec/evidence_contract.v4.json",
+  "title": "SIR Evidence Contract v4",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "proof_class",
+    "sir_firewall_version",
+    "suite_name",
+    "suite_hash",
+    "policy_hash",
+    "model",
+    "provider",
+    "governance_scope",
+    "crypto_enforced",
+    "prompts_tested",
+    "jailbreaks_leaked",
+    "harmless_blocked",
+    "result",
+    "ci_run_url",
+    "commit_sha",
+    "repository",
+    "itgl_final_hash",
+    "itgl_row_count",
+    "detached_ledger",
+    "provider_call_attempts",
+    "provider_call_successes",
+    "model_calls_made",
+    "flags",
+    "enforced_policy_matches_signed_policy",
+    "payload_hash",
+    "signature",
+    "content_evaluated",
+    "systemic_reset_count",
+    "configuration_hash",
+    "counters_checked_against_ledger",
+    "signing_key_id"
+  ],
+  "properties": {
+    "proof_class": {
+      "type": "string",
+      "enum": [
+        "FIREWALL_ONLY_AUDIT",
+        "LIVE_GATING_CHECK",
+        "SCENARIO_AUDIT"
+      ]
+    },
+    "sir_firewall_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "suite_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "suite_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "policy_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "provider": {
+      "type": "string",
+      "minLength": 1
+    },
+    "governance_scope": {
+      "type": "string",
+      "minLength": 1
+    },
+    "crypto_enforced": {
+      "type": "boolean"
+    },
+    "prompts_tested": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "itgl_row_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "detached_ledger": {
+      "type": "boolean"
+    },
+    "jailbreaks_leaked": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "harmless_blocked": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "result": {
+      "type": "string",
+      "enum": [
+        "AUDIT PASSED",
+        "AUDIT FAILED",
+        "INCONCLUSIVE"
+      ]
+    },
+    "ci_run_url": {
+      "type": "string"
+    },
+    "commit_sha": {
+      "type": "string"
+    },
+    "repository": {
+      "type": "string"
+    },
+    "itgl_final_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "provider_call_attempts": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "provider_call_successes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "model_calls_made": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "flags": {
+      "type": "object",
+      "required": [
+        "CRYPTO_ENFORCED",
+        "CHECKSUM_ENFORCED"
+      ],
+      "properties": {
+        "CRYPTO_ENFORCED": {
+          "type": "boolean"
+        },
+        "CHECKSUM_ENFORCED": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "enforced_policy_matches_signed_policy": {
+      "type": "boolean",
+      "const": true
+    },
+    "trust_fingerprint": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "safety_fingerprint": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "payload_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "signature": {
+      "type": "string",
+      "minLength": 1
+    },
+    "timestamp_utc": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "content_evaluated": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "systemic_reset_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "legitimate_requests_denied_by_system_failure": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "configuration_hash": {
+      "type": "string"
+    },
+    "configurations_observed": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "counters_checked_against_ledger": {
+      "type": "boolean"
+    },
+    "signing_key_id": {
+      "type": "string"
+    }
+  },
+  "x_contract_rules": {
+    "applicability": {
+      "minimum_sir_firewall_version": "2.4.0",
+      "note": "Non-normative applicability metadata: evidence contract v4 governs certificates emitted by SIR 2.4.0 and later; earlier certificates remain governed by their version-applicable contract. Contract selection is made from the certificate's own sir_firewall_version, which the signer chooses, so it is not by itself a guarantee that the stronger rules were applied. verify_certificate.py additionally requires the fields below of any certificate whose bound ledger is chain_version 2 or later, because a ledger's chain version is covered by its row hashes and chained to the terminal hash the certificate signs, and so cannot be restamped."
+    },
+    "legacy_aliases": {
+      "canonical": "trust_fingerprint",
+      "legacy": "safety_fingerprint",
+      "rule": "trust_fingerprint is canonical. safety_fingerprint is deprecated, may be present for 2.x compatibility, and is scheduled for removal in SIR 3.0.0. Consumers MUST read trust_fingerprint. If both exist they MUST be identical."
+    },
+    "proof_class_conditionals": {
+      "FIREWALL_ONLY_AUDIT": {
+        "provider_call_attempts": 0,
+        "provider_call_successes": 0,
+        "model_calls_made": 0
+      }
+    },
+    "model_calls_made_semantics": "Count attempted downstream provider calls, including retries/timeouts.",
+    "provider_call_successes_semantics": "Informational counter for successful downstream provider responses.",
+    "content_evaluation_semantics": {
+      "note": "A run that attempted prompts but evaluated none of their content has nothing to pass. Where content_evaluated is present it must be greater than zero whenever prompts_tested is greater than zero, unless the result is INCONCLUSIVE. This rule is applied wherever the field is present, including under earlier contracts, so that asserting an older version does not escape it.",
+      "requires_nonzero_content_evaluated_unless_inconclusive": true
+    },
+    "counter_derivation_semantics": {
+      "note": "counters_checked_against_ledger records whether the signed counters were recomputed from the ledger this certificate binds. False means the ledger predates the fields needed to recompute them, which is not the same as agreement and must not be read as such."
+    }
+  }
+}
