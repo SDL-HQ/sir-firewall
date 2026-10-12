@@ -7,6 +7,12 @@ on:
       - 'proofs/**'
       - 'docs/**'
       - 'policy/isc_policy.signed.json'
+      # The publication step regenerates the archive figures the README carries,
+      # so a published proof touches README.md. Without this a merged proof
+      # pull request would start another audit, which would publish another
+      # proof. paths-ignore only suppresses a commit that touches nothing else,
+      # so a README change made alongside code still triggers the audit.
+      - 'README.md'
 
   workflow_dispatch:
     inputs:
@@ -677,7 +683,22 @@ jobs:
           proof_branch="proofs/${GITHUB_RUN_ID}"
           git switch -c "$proof_branch"
 
+          # Published figures about the archive are derived, not transcribed.
+          # This run has added an archive, so every figure that counts archives
+          # has moved. Regenerating before the commit is what makes the proof
+          # internally consistent: the archive and the documents that describe
+          # it land together, rather than the documents being retyped later.
+          if ! python tools/archive_verification_report.py --update-published-surfaces; then
+            echo "ERROR: the published archive figures could not be regenerated, so this"
+            echo "ERROR: archive would publish beside figures that do not describe it."
+            echo "ERROR: The audit itself is complete and verified. Publication is blocked"
+            echo "ERROR: until the generator can account for every record it measured."
+            exit 1
+          fi
+
           git add proofs/runs/ docs/runs/ docs/latest-run.json docs/monitor-summary.json
+          git add docs/archive-errata.md docs/claims-register.md README.md
+          git add docs/archive-figures.json
 
           if [ "${AUDIT_JSON:-}" = "proofs/latest-audit.json" ]; then
             git add proofs/latest-audit.json proofs/latest-audit.html || true
@@ -1196,7 +1217,16 @@ jobs:
               continue
             fi
 
+            # Same reason as the audit job: a benchmark dispatch adds archives,
+            # so the figures that count archives have moved.
+            if ! python tools/archive_verification_report.py --update-published-surfaces; then
+              echo "ERROR: the published archive figures could not be regenerated."
+              exit 1
+            fi
+
             git add proofs/runs/ docs/runs/ docs/monitor-summary.json docs/latest-run.json
+            git add docs/archive-errata.md docs/claims-register.md README.md
+            git add docs/archive-figures.json
             if [ "${BENCHMARK_GATED_PASS:-false}" = "true" ]; then
               git add proofs/latest-audit.json proofs/latest-audit.html
               git add docs/latest-audit.json docs/latest-audit.html

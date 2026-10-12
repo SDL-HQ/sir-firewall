@@ -30,11 +30,19 @@ Important semantics:
 - `latest-audit.*` means latest passing audit (last known good proof).
 - `latest-live-audit.*` means the latest attributable `LIVE_GATING_CHECK` with at least one successful provider call, regardless of result.
 - `latest-run.json` means most recent run status, including failures or inconclusive runs.
-- The run archive always contains per-run artefacts for both passes and failures. 99 archives published between April and September 2026 name two files in their signed manifests that were never committed; see `docs/archive-errata.md`.
+- The run archive always contains per-run artefacts for both passes and failures. Some published archives do not verify, and the count and the reasons are in `docs/archive-errata.md`.
 - Gate request status (`PASS` / `BLOCKED`) is distinct from run/publication status (`PASS` / `FAIL` / `INCONCLUSIVE`).
 - `latest-audit.*` and `latest-run.*` are single-run truth surfaces, not paired benchmark claims.
 - Procedural cold-start path: `docs/minimal-pilot-runbook.md`
 - Evaluation and interpretation path: `docs/evaluator-technical-explainer.md`
+
+<!-- BEGIN GENERATED ARCHIVE FIGURES: readme-incomplete-archives -->
+99 archives published between 5 April 2026 and 29 September 2026 name
+`leaks_count.txt` and `harmless_blocked.txt` in their signed manifests, and a
+repository-wide ignore rule meant those two files were never committed. The
+receipt verifier reports `file listed in manifest is missing` for every one of
+them. They are listed in Appendix A of `docs/archive-errata.md`.
+<!-- END GENERATED ARCHIVE FIGURES: readme-incomplete-archives -->
 
 ---
 

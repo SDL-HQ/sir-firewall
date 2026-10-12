@@ -230,3 +230,40 @@ def test_publishing_cannot_retrigger_the_audit():
             f"{path} is not in paths-ignore, so merging a proof pull request would "
             "start another audit"
         )
+
+    # Derived from what the publication steps actually stage rather than from a
+    # fixed list. On 12 October the publication step began regenerating the
+    # archive figures the README carries, so it staged README.md, which the
+    # fixed list above did not cover: a merged proof would have started another
+    # audit, which would have published another proof.
+    staged = set()
+    for _, run in _steps():
+        if "git add " not in run:
+            continue
+        for line in run.splitlines():
+            line = line.strip()
+            if not line.startswith("git add "):
+                continue
+            for token in line[len("git add "):].split():
+                if token.startswith("$") or token in {"||", "true", "&&"}:
+                    continue
+                staged.add(token.rstrip("/"))
+
+    assert staged, "no publication step stages anything; this guard is vacuous"
+
+    def covered(path: str) -> bool:
+        for pattern in ignored:
+            if pattern == path:
+                return True
+            if pattern.endswith("/**") and (
+                path == pattern[:-3] or path.startswith(pattern[:-2])
+            ):
+                return True
+        return False
+
+    uncovered = sorted(path for path in staged if not covered(path))
+    assert not uncovered, (
+        f"the publication steps stage {uncovered}, which paths-ignore does not "
+        "cover, so merging a published proof would start another audit and that "
+        "audit would publish another proof"
+    )
