@@ -230,3 +230,88 @@ def test_publishing_cannot_retrigger_the_audit():
             f"{path} is not in paths-ignore, so merging a proof pull request would "
             "start another audit"
         )
+
+    # Derived from what the publication steps actually stage rather than from a
+    # fixed list. On 12 October the publication step began regenerating the
+    # archive figures the README carries, so it staged README.md, which the
+    # fixed list above did not cover: a merged proof would have started another
+    # audit, which would have published another proof.
+    staged = set()
+    for _, run in _steps():
+        if "git add " not in run:
+            continue
+        for line in run.splitlines():
+            line = line.strip()
+            if not line.startswith("git add "):
+                continue
+            for token in line[len("git add "):].split():
+                if token.startswith("$") or token in {"||", "true", "&&"}:
+                    continue
+                staged.add(token.rstrip("/"))
+
+    assert staged, "no publication step stages anything; this guard is vacuous"
+
+    def covered(path: str) -> bool:
+        for pattern in ignored:
+            if pattern == path:
+                return True
+            if pattern.endswith("/**") and (
+                path == pattern[:-3] or path.startswith(pattern[:-2])
+            ):
+                return True
+        return False
+
+    uncovered = sorted(path for path in staged if not covered(path))
+    assert not uncovered, (
+        f"the publication steps stage {uncovered}, which paths-ignore does not "
+        "cover, so merging a published proof would start another audit and that "
+        "audit would publish another proof"
+    )
+
+
+def test_the_proof_pull_request_is_not_opened_by_the_actions_bot():
+    """A bot-authored pull request cannot run the checks it exists to run.
+
+    A pull request opened with GITHUB_TOKEN is authored by the Actions bot, and
+    GitHub does not let that event start further workflows. Proof pull request
+    #342 therefore sat with "4 workflows awaiting approval" and could never
+    merge: publication was permanently pending while the audit itself was
+    complete and verified.
+
+    The step now prefers SIR_AUDIT_PUSH_TOKEN, which this workflow already
+    checks out with on main, so the pull request is opened by the same identity
+    that pushed the branch. The fallback to GITHUB_TOKEN is deliberate, so a
+    fork or a repository without the secret keeps the old behaviour rather than
+    failing to publish at all, which is why this asserts the preference rather
+    than the absence of the default.
+
+    That token needs pull-requests write as well as the contents write it
+    already carries. With contents write alone the branch pushes and gh pr
+    create fails, which reports as publication pending rather than as a failed
+    audit, so it looks like the defect this replaced.
+
+    This route is only safe while the workflow has no pull_request trigger,
+    which test_publishing_cannot_retrigger_the_audit holds. Opening the pull
+    request as a person means its creation does start workflows, and an audit
+    among them would publish another proof.
+    """
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    steps = [
+        step
+        for job in workflow["jobs"].values()
+        for step in job.get("steps", [])
+        if "gh pr create" in (step.get("run") or "")
+    ]
+
+    assert steps, "no step opens the proof pull request; this guard is vacuous"
+    for step in steps:
+        token = (step.get("env") or {}).get("GH_TOKEN", "")
+        assert "SIR_AUDIT_PUSH_TOKEN" in token, (
+            f"step {step.get('name')!r} opens the proof pull request with "
+            f"GH_TOKEN={token!r}. Opened with GITHUB_TOKEN alone it is authored "
+            "by the Actions bot, its required checks never run, and publication "
+            "stays pending forever"
+        )
+        assert token.index("SIR_AUDIT_PUSH_TOKEN") < token.index("GITHUB_TOKEN"), (
+            "the dedicated token must be preferred, not used as the fallback"
+        )

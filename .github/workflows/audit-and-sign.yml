@@ -7,6 +7,12 @@ on:
       - 'proofs/**'
       - 'docs/**'
       - 'policy/isc_policy.signed.json'
+      # The publication step regenerates the archive figures the README carries,
+      # so a published proof touches README.md. Without this a merged proof
+      # pull request would start another audit, which would publish another
+      # proof. paths-ignore only suppresses a commit that touches nothing else,
+      # so a README change made alongside code still triggers the audit.
+      - 'README.md'
 
   workflow_dispatch:
     inputs:
@@ -660,7 +666,32 @@ jobs:
         env:
           AUDIT_JSON: ${{ steps.generate_certificate.outputs.audit_json }}
           LIVE_AUDIT_UPDATED: ${{ steps.generate_certificate.outputs.live_audit_updated }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # A pull request opened with GITHUB_TOKEN is authored by the Actions
+          # bot, and GitHub deliberately does not let that event start further
+          # workflows. The required status checks therefore never ran on a proof
+          # pull request, which reported as "4 workflows awaiting approval" and
+          # left publication permanently pending. SIR_AUDIT_PUSH_TOKEN is the
+          # token this workflow already checks out with on main, so the pull
+          # request is opened by the same identity that pushed the branch and its
+          # checks run. It needs pull-requests write in addition to the contents
+          # write it already carries; editing a token's permissions does not
+          # change its value, so the secret does not have to be re-entered.
+          #
+          # This is only safe because the audit workflow has no pull_request
+          # trigger: with one, a proof pull request would start another audit,
+          # which would publish another proof. tests/
+          # test_audit_workflow_cannot_pass_without_verifying.py refuses that
+          # trigger and checks that paths-ignore covers everything the
+          # publication steps stage.
+          #
+          # The fallback keeps a fork or a repository without the secret working
+          # at the old behaviour rather than failing to publish at all. When the
+          # token expires the step reports publication pending, not failed.
+          GH_TOKEN: ${{ secrets.SIR_AUDIT_PUSH_TOKEN || secrets.GITHUB_TOKEN }}
+          # A second credential was considered and rejected: this token already
+          # holds contents write on this repository, so pull-requests write adds
+          # strictly less capability than it has, while a second token would add
+          # a second expiry date with its own undocumented failure mode.
         run: |
           set -euo pipefail
 
@@ -677,7 +708,22 @@ jobs:
           proof_branch="proofs/${GITHUB_RUN_ID}"
           git switch -c "$proof_branch"
 
+          # Published figures about the archive are derived, not transcribed.
+          # This run has added an archive, so every figure that counts archives
+          # has moved. Regenerating before the commit is what makes the proof
+          # internally consistent: the archive and the documents that describe
+          # it land together, rather than the documents being retyped later.
+          if ! python tools/archive_verification_report.py --update-published-surfaces; then
+            echo "ERROR: the published archive figures could not be regenerated, so this"
+            echo "ERROR: archive would publish beside figures that do not describe it."
+            echo "ERROR: The audit itself is complete and verified. Publication is blocked"
+            echo "ERROR: until the generator can account for every record it measured."
+            exit 1
+          fi
+
           git add proofs/runs/ docs/runs/ docs/latest-run.json docs/monitor-summary.json
+          git add docs/archive-errata.md docs/claims-register.md README.md
+          git add docs/archive-figures.json
 
           if [ "${AUDIT_JSON:-}" = "proofs/latest-audit.json" ]; then
             git add proofs/latest-audit.json proofs/latest-audit.html || true
@@ -1196,7 +1242,16 @@ jobs:
               continue
             fi
 
+            # Same reason as the audit job: a benchmark dispatch adds archives,
+            # so the figures that count archives have moved.
+            if ! python tools/archive_verification_report.py --update-published-surfaces; then
+              echo "ERROR: the published archive figures could not be regenerated."
+              exit 1
+            fi
+
             git add proofs/runs/ docs/runs/ docs/monitor-summary.json docs/latest-run.json
+            git add docs/archive-errata.md docs/claims-register.md README.md
+            git add docs/archive-figures.json
             if [ "${BENCHMARK_GATED_PASS:-false}" = "true" ]; then
               git add proofs/latest-audit.json proofs/latest-audit.html
               git add docs/latest-audit.json docs/latest-audit.html

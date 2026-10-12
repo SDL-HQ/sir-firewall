@@ -14,9 +14,16 @@ the working directory and returned nothing for most archives; and no
 --require-registry, so signing trust was never established. Checks that were not
 performed were being counted as checks that found nothing wrong.
 
-This runs the report and compares. It is slow, a minute or so, because it
-executes two verifier subprocesses per archive, which is the point: the figures
-come from the real tools over the real archive, not from a fixture.
+This runs the report and compares. It executes two verifier subprocesses per
+archive, about twenty seconds for the published set, which is the point: the
+figures come from the real tools over the real archive, not from a fixture.
+
+Since 12 October 2026 the table is generated rather than transcribed, and
+tests/test_published_archive_figures.py holds every generated region against
+fresh output. This file is kept because it compares the published table against
+the report's own stdout, which is printed by different code from the one that
+renders the table. A renderer that substituted the wrong figure consistently
+would satisfy the region comparison and fail here.
 """
 
 import re

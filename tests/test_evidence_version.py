@@ -148,16 +148,25 @@ def test_current_version_surfaces_match_runtime_authority():
         "examples/verifier-negatives/tampered-unregistered-key.json": Counter({v_230: 1}),
         "docs/additional-phase-1-findings.md": Counter({v_221: 4, v_102: 1, v_200: 1}),
         "docs/assets/StructuralDesignLabs_Logo.svg": Counter({v_210: 1}),
-        "docs/archive-errata.md": Counter({v_234: 5, v_238: 1, v_237: 1, v_102: 1}),
+        # The commentary around the generated figures records the release it was
+        # last revised at. The figures themselves name no version.
+        "docs/archive-errata.md": Counter({v_234: 5, v_240: 1, v_237: 1, v_102: 1}),
         # The scenario-suite divergence row names the version the three published
         # archives were produced at, which is the half of the question that is known.
         "docs/backlog.md": Counter({v_230: 1, v_102: 1}),
         # The publication step records the release whose merge exposed that a
         # direct push to main cannot satisfy the required status checks.
         ".github/workflows/audit-and-sign.yml": Counter({v_240: 1}),
+        # The generated counters bullet names the release the field arrives at.
         "docs/claims-register.md": Counter(
-            {v_234: 3, v_220: 2, v_238: 1, v_102: 1, v_235: 1}
+            {v_234: 3, v_220: 2, v_238: 1, v_240: 1, v_102: 1, v_235: 1}
         ),
+        # Generated output, not an authored claim. Its one version reference comes
+        # from the exit 9 meaning string, which names the correction the
+        # decomposition turns on. A new exit code whose meaning names a version
+        # would change this count, and that is worth a look rather than an
+        # exclusion.
+        "docs/archive-figures.json": Counter({v_234: 1}),
         "docs/coverage.json": Counter({authority: 1}),
         "docs/evidence-perimeter.v5.md": Counter({authority: 1}),
         "docs/assurance-kit.md": Counter({v_234: 4, v_237: 1, v_240: 4, v_220: 3, v_102: 1, v_200: 1}),
@@ -206,7 +215,11 @@ def test_current_version_surfaces_match_runtime_authority():
         "tests/test_check_archive_staged.py": Counter({v_237: 2}),
         "tests/test_standalone_verifiers.py": Counter({v_234: 1}),
         "tools/verify_certificate.py": Counter({v_234: 9}),
-        "tools/archive_verification_report.py": Counter({v_234: 1}),
+        # Since 12 October 2026 this tool also generates the published figures,
+        # so it names the evidence-binding correction it decomposes exit 9 by, the
+        # contract floor it counts ungoverned certificates against, and the
+        # release the counters field arrives at.
+        "tools/archive_verification_report.py": Counter({v_234: 9, v_240: 3, v_220: 2}),
         "tools/verify_evidence.py": Counter({v_220: 1, v_240: 1}),
         "tools/key_registry.py": Counter({v_240: 1}),
         "tests/test_one_command_verification.py": Counter({v_234: 7, v_238: 2, v_240: 1, v_102: 1}),
