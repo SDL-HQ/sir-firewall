@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-10-07T00:01:20.041597Z",
-  "sir_firewall_version": "2.3.8",
+  "generated_at": "2026-10-12T00:26:16.306622Z",
+  "sir_firewall_version": "2.4.0",
   "public_inclusion_policy": {
     "statuses": [
       "active"

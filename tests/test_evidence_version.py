@@ -105,6 +105,14 @@ def test_current_version_surfaces_match_runtime_authority():
     v_235 = ".".join(("2", "3", "5"))
     v_236 = ".".join(("2", "3", "6"))
     v_237 = ".".join(("2", "3", "7"))
+    # The version that was the runtime authority before the bump this release
+    # carries. Every surface naming it now names it as history: the rollback
+    # tag, dated review lines, fixture archives and boundary cases. It is a
+    # constant rather than `authority` so that a current surface left behind at
+    # the old version fails instead of passing. Written with join like its
+    # neighbours, because a literal here would make this file a version surface
+    # that has to classify itself.
+    v_238 = ".".join(("2", "3", "8"))
     # The release in flight. Recognised before it is the runtime authority so that
     # the forward-looking floors written against it are classified now rather than
     # all arriving uncounted and then all arriving at once on the version bump.
@@ -128,11 +136,11 @@ def test_current_version_surfaces_match_runtime_authority():
         # Item 8's verification record points twice at the release whose notes
         # the evidence page now frames as a dated record rather than as the
         # current measurement.
-        "release-checklist.json": Counter({authority: 1, v_240: 1, v_235: 2}),
+        "release-checklist.json": Counter({v_238: 1, v_240: 1, v_235: 2}),
         # The chain-version floor table is version-keyed, so that test names
         # the released versions either side of the floor as boundary cases.
         # This entry fires if the floor moves without the test moving with it.
-        "tests/test_ledger_binds_row_contents.py": Counter({v_102: 1, authority: 1, v_240: 1}),
+        "tests/test_ledger_binds_row_contents.py": Counter({v_102: 1, v_238: 1, v_240: 1}),
         "examples/verifier-negatives/tampered-leak-count.json": Counter({v_230: 1}),
         "examples/verifier-negatives/tampered-leak-count-rehashed.json": Counter({v_230: 1}),
         "examples/verifier-negatives/tampered-required-field-removed.json": Counter({v_230: 1}),
@@ -140,12 +148,12 @@ def test_current_version_surfaces_match_runtime_authority():
         "examples/verifier-negatives/tampered-unregistered-key.json": Counter({v_230: 1}),
         "docs/additional-phase-1-findings.md": Counter({v_221: 4, v_102: 1, v_200: 1}),
         "docs/assets/StructuralDesignLabs_Logo.svg": Counter({v_210: 1}),
-        "docs/archive-errata.md": Counter({v_234: 5, authority: 1, v_237: 1, v_102: 1}),
+        "docs/archive-errata.md": Counter({v_234: 5, v_238: 1, v_237: 1, v_102: 1}),
         # The scenario-suite divergence row names the version the three published
         # archives were produced at, which is the half of the question that is known.
         "docs/backlog.md": Counter({v_230: 1, v_102: 1}),
         "docs/claims-register.md": Counter(
-            {v_234: 3, v_220: 2, authority: 1, v_102: 1, v_235: 1}
+            {v_234: 3, v_220: 2, v_238: 1, v_102: 1, v_235: 1}
         ),
         "docs/coverage.json": Counter({authority: 1}),
         "docs/evidence-perimeter.v5.md": Counter({authority: 1}),
@@ -165,11 +173,11 @@ def test_current_version_surfaces_match_runtime_authority():
         f"docs/release-notes-{v_235}.md": Counter({v_234: 4, v_235: 4, v_220: 3, v_233: 1}),
         f"docs/release-notes-{v_236}.md": Counter({v_236: 3, v_235: 3}),
         f"docs/release-notes-{v_237}.md": Counter({v_237: 3, v_236: 2, v_235: 1}),
-        f"docs/release-notes-{authority}.md": Counter({authority: 3, v_235: 1}),
+        f"docs/release-notes-{v_238}.md": Counter({v_238: 3, v_235: 1}),
         # The release in flight. Its notes name the contract floor and the
         # applicability boundary of the contracts that precede it.
         f"docs/release-notes-{v_240}.md": Counter(
-            {v_240: 4, v_220: 2, v_234: 1, v_102: 1}
+            {v_240: 5, v_220: 2, v_234: 1, v_102: 1}
         ),
         "docs/failure-modes.md": Counter({v_230: 3, v_231: 3, authority: 2}),
         "docs/rule-coverage.md": Counter({authority: 1}),
@@ -183,9 +191,11 @@ def test_current_version_surfaces_match_runtime_authority():
         "src/sir_firewall/__init__.py": Counter({authority: 1}),
         "tests/test_evidence_binding_correction.py": Counter({v_220: 1}),
         "tests/test_evidence_contract_applicability.py": Counter({v_234: 3, v_220: 2, v_233: 1, v_235: 1}),
-        "tests/test_certificate_ledger_binding.py": Counter({v_234: 4}),
+        # Its ledger fixtures declare chain version 2 and carry the contract v4
+        # fields, and say in comments why the bump required both.
+        "tests/test_certificate_ledger_binding.py": Counter({v_234: 4, v_240: 3}),
         "tests/test_contract_floor_is_not_self_asserted.py": Counter({v_240: 2, v_235: 5}),
-        "tests/test_counters_derive_from_the_ledger.py": Counter({authority: 1}),
+        "tests/test_counters_derive_from_the_ledger.py": Counter({v_238: 1}),
         "tests/test_release_checklist.py": Counter({v_240: 1}),
         "tests/test_check_archive_staged.py": Counter({v_237: 2}),
         "tests/test_standalone_verifiers.py": Counter({v_234: 1}),
@@ -193,10 +203,10 @@ def test_current_version_surfaces_match_runtime_authority():
         "tools/archive_verification_report.py": Counter({v_234: 1}),
         "tools/verify_evidence.py": Counter({v_220: 1, v_240: 1}),
         "tools/key_registry.py": Counter({v_240: 1}),
-        "tests/test_one_command_verification.py": Counter({v_234: 7, authority: 2, v_240: 1, v_102: 1}),
+        "tests/test_one_command_verification.py": Counter({v_234: 7, v_238: 2, v_240: 1, v_102: 1}),
     }
     version_pattern = re.compile(
-        rf"(?<![\d.])(?:{'|'.join(re.escape(version) for version in (authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233, v_234, v_235, v_236, v_237, v_240))})(?!\d)"
+        rf"(?<![\d.])(?:{'|'.join(re.escape(version) for version in (authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233, v_234, v_235, v_236, v_237, v_238, v_240))})(?!\d)"
     )
     # Untracked-but-not-ignored files are scanned too. `git ls-files` alone meant
     # a new version-bearing document was invisible to this test until it was
@@ -217,7 +227,7 @@ def test_current_version_surfaces_match_runtime_authority():
         if relative_path == "proofs/local-audit.json"
         or Path(relative_path).name == "latest-run.json"
     }
-    recognised_versions = {authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233, v_234, v_235, v_236, v_237, v_240}
+    recognised_versions = {authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233, v_234, v_235, v_236, v_237, v_238, v_240}
     observed_by_path = {}
 
     for relative_path in sorted(mutable_certificate_pointers | mutable_if_versioned):

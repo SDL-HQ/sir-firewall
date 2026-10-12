@@ -13,9 +13,10 @@ All ten are met. The suite is 754 tests.
 Certificates emitted by this release are governed by evidence contract v4, whose
 applicability floor is 2.4.0, adding `content_evaluated`,
 `systemic_reset_count`, `configuration_hash`, `counters_checked_against_ledger`
-and `signing_key_id` to the required set. The package version bump lands with
-the merge, so nothing on the release branch has yet produced a certificate that
-declares 2.4.0. No published archive is rewritten or re-signed by this release.
+and `signing_key_id` to the required set. The package version is bumped to 2.4.0
+by this release, so it is the first release whose runs produce certificates
+governed by v4. No archive published before it declares 2.4.0, and no published
+archive is rewritten or re-signed.
 
 ## The pattern this release found
 
@@ -54,6 +55,22 @@ the generator refuses to sign what the ledger does not support. `chain_version`
 chain has one implementation, in the verifier that ships to readers. The
 contract floor is taken from the bound ledger rather than from the certificate's
 own version claim, which the signer chooses.
+
+Two consequences of the version bump are worth stating, because both are
+enforced from the ledger rather than from the certificate's own version claim. A
+certificate whose version puts it at or above the floor is refused if its bound
+ledger is `chain_version` 1, because a version 1 row hash does not cover the
+row's contents and accepting one would accept an unbound row. And a certificate
+bound to a `chain_version` 2 ledger is required to carry the five fields v4
+adds, whatever version it claims, because a ledger's chain version is covered by
+its own row hashes and so cannot be restamped.
+
+Both were found by the bump rather than by argument. Bumping the package version
+turned six tests red whose fixtures described a pre-v4 run: version 1 ledgers,
+and certificates missing the added fields. The fixtures were corrected to
+describe what a run at this version produces, and they now build their ledger
+rows through `tools/itgl.py` rather than through a private copy of the hash
+rule, so writer and verifier cannot drift apart in a fixture either.
 
 **Item 4, verification consolidation.** `tools/verify_evidence.py` checks one run
 directory with one command across five properties: signing trust, certificate,
