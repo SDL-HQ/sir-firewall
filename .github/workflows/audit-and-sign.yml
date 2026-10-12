@@ -79,6 +79,8 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      # Proof artefacts reach main through a pull request, so the job opens one.
+      pull-requests: write
     env:
       CANONICAL_PUBLICATION_CONTEXT: ${{ github.ref == 'refs/heads/main' }}
 
@@ -635,11 +637,30 @@ jobs:
             content_evaluated.txt
             itgl_env.txt
 
-      - name: Commit proof files back to repo (archive always; latest PASS + sidecars only)
+      # Proof artefacts reach main through a pull request, not a direct push.
+      #
+      # This pushed straight to main until 12 October, and the first run after
+      # the 2.4.0 merge could not publish: the Protect Main ruleset declined it
+      # with "4 of 4 required status checks are expected", because a direct push
+      # from automation arrives with no checks against it. That is item 0's
+      # freeze mechanism working, and this workflow had been relying on doing
+      # exactly what item 0 set out to prevent.
+      #
+      # A pull request keeps the ruleset intact and means every published
+      # archive arrives on a path where the required checks ran. The audit is
+      # already complete and verified by this point, so a pending pull request
+      # delays publication rather than invalidating the run, and an open pull
+      # request is visible rather than silent.
+      #
+      # This cannot recurse: the push trigger ignores proofs/**, docs/** and
+      # policy/isc_policy.signed.json, which is everything a proof branch
+      # touches, and this workflow has no pull_request trigger.
+      - name: Open a pull request with the proof files (archive always; latest PASS + sidecars only)
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
         env:
           AUDIT_JSON: ${{ steps.generate_certificate.outputs.audit_json }}
           LIVE_AUDIT_UPDATED: ${{ steps.generate_certificate.outputs.live_audit_updated }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
@@ -653,52 +674,85 @@ jobs:
           harmless="$(cat harmless_blocked.txt 2>/dev/null || echo unknown)"
           stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
+          proof_branch="proofs/${GITHUB_RUN_ID}"
+          git switch -c "$proof_branch"
+
+          git add proofs/runs/ docs/runs/ docs/latest-run.json docs/monitor-summary.json
+
+          if [ "${AUDIT_JSON:-}" = "proofs/latest-audit.json" ]; then
+            git add proofs/latest-audit.json proofs/latest-audit.html || true
+            git add docs/latest-audit.json docs/latest-audit.html || true
+            git add policy/isc_policy.signed.json || true
+            git add proofs/itgl_ledger.jsonl proofs/itgl_final_hash.txt proofs/latest-attempts.log proofs/run_summary.json || true
+          fi
+          if [ "${LIVE_AUDIT_UPDATED:-false}" = "true" ]; then
+            git add proofs/latest-live-audit.json proofs/latest-live-audit.html
+            git add docs/latest-live-audit.json docs/latest-live-audit.html
+          fi
+          # An incomplete archive is not published evidence. A file named by
+          # the signed manifest that git will not carry would make every
+          # third-party receipt check fail while CI stayed green. Only the
+          # archives this run produced can fail this step; GITHUB_RUN_ID
+          # identifies them, and a pre-existing defect in an archive this
+          # commit merely touched is reported without blocking publication.
+          python tools/check_archive_staged.py --verify-receipt
+
+          if git diff --cached --quiet; then
+            echo "Nothing to publish; no proof files changed."
+            exit 0
+          fi
+
+          git commit -m "SIR Proof: ${CERT_RESULT_STATUS:-UNAVAILABLE} | ${leaks} leaks | ${harmless} harmless | ${stamp}"
+
+          pushed=false
           for attempt in 1 2 3; do
-            echo "Git sync attempt $attempt/3..."
-            git fetch origin main
-
-            if ! git pull --rebase --autostash origin main; then
-              echo "Rebase failed on attempt $attempt. Retrying..."
-              git rebase --abort || true
-              sleep 2
-              continue
-            fi
-
-            git add proofs/runs/ docs/runs/ docs/latest-run.json docs/monitor-summary.json
-
-            if [ "${AUDIT_JSON:-}" = "proofs/latest-audit.json" ]; then
-              git add proofs/latest-audit.json proofs/latest-audit.html || true
-              git add docs/latest-audit.json docs/latest-audit.html || true
-              git add policy/isc_policy.signed.json || true
-              git add proofs/itgl_ledger.jsonl proofs/itgl_final_hash.txt proofs/latest-attempts.log proofs/run_summary.json || true
-            fi
-            if [ "${LIVE_AUDIT_UPDATED:-false}" = "true" ]; then
-              git add proofs/latest-live-audit.json proofs/latest-live-audit.html
-              git add docs/latest-live-audit.json docs/latest-live-audit.html
-            fi
-            # An incomplete archive is not published evidence. A file named by
-            # the signed manifest that git will not carry would make every
-            # third-party receipt check fail while CI stayed green. Only the
-            # archives this run produced can fail this step; GITHUB_RUN_ID
-            # identifies them, and a pre-existing defect in an archive this
-            # commit merely touched is reported without blocking publication.
-            python tools/check_archive_staged.py --verify-receipt
-
-            git commit -m "SIR Proof: ${CERT_RESULT_STATUS:-UNAVAILABLE} | ${leaks} leaks | ${harmless} harmless | ${stamp}" || echo "Nothing to commit"
-
-            if git push; then
-              echo "Push succeeded."
+            if git push --set-upstream origin "$proof_branch"; then
+              pushed=true
               break
-            else
-              echo "Push failed on attempt $attempt. Retrying..."
-              sleep 2
             fi
-
-            if [ "$attempt" -eq 3 ]; then
-              echo "ERROR: failed to push proof updates after 3 attempts"
-              exit 1
-            fi
+            echo "Branch push failed on attempt $attempt. Retrying..."
+            sleep 2
           done
+
+          if [ "$pushed" != "true" ]; then
+            echo "ERROR: failed to push the proof branch after 3 attempts; nothing was published."
+            exit 1
+          fi
+
+          {
+            echo "Proof artefacts from SIR Real Governance Audit."
+            echo
+            echo "- Result: ${CERT_RESULT_STATUS:-UNAVAILABLE}"
+            echo "- Leaks: ${leaks}"
+            echo "- Harmless blocked: ${harmless}"
+            echo "- Archive run id: ${LATEST_ARCHIVE_RUN_ID:-unknown}"
+            echo "- CI run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+            echo "This branch carries only proof artefacts under proofs/ and docs/, plus the"
+            echo "signed policy where the run re-signed it. It opens as a pull request rather"
+            echo "than pushing to main so the required status checks run against it, which is"
+            echo "what the Protect Main ruleset expects and what a direct push from automation"
+            echo "cannot satisfy."
+          } > /tmp/proof-pr-body.md
+
+          pr_url="$(gh pr create \
+            --base main \
+            --head "$proof_branch" \
+            --title "SIR Proof: ${CERT_RESULT_STATUS:-UNAVAILABLE} | ${leaks} leaks | ${harmless} harmless | ${stamp}" \
+            --body-file /tmp/proof-pr-body.md)"
+
+          echo "Opened $pr_url"
+
+          # Auto-merge keeps publication automatic while leaving the required
+          # checks in force. If the repository does not allow it, the pull
+          # request stays open and that is reported here: publication pending is
+          # visible, rather than quietly not happening.
+          if gh pr merge --squash --auto "$pr_url"; then
+            echo "Auto-merge enabled; the proof publishes once the required checks pass."
+          else
+            echo "NOTE: auto-merge could not be enabled, so $pr_url is open and awaiting a merge."
+            echo "NOTE: the audit itself is complete and verified. Publication is pending, not failed."
+          fi
 
       - name: Finalize CI status (fail if audit failed or inconclusive)
         if: always()
