@@ -219,3 +219,79 @@ def test_the_marks_and_the_count_always_agree(tmp_path):
     counted = int(result.stdout.split("items met")[0].split(":")[-1].strip().split(" of ")[0])
 
     assert ticks == counted == 1
+
+# --- the gate job must be able to run what the checklist names -----------------
+
+
+GATE_WORKFLOW = REPO / ".github/workflows/release-gate.yml"
+
+
+def _gate_run_steps() -> str:
+    """Every shell line the release-gate job runs, as one blob."""
+    import yaml
+
+    workflow = yaml.safe_load(GATE_WORKFLOW.read_text(encoding="utf-8"))
+    steps = []
+    for job in workflow["jobs"].values():
+        for step in job.get("steps", []):
+            if isinstance(step.get("run"), str):
+                steps.append(step["run"])
+    return "\n".join(steps)
+
+
+def _command_evidence() -> list:
+    checklist = json.loads((REPO / "release-checklist.json").read_text(encoding="utf-8"))
+    return [
+        entry.get("ref", "")
+        for item in checklist["items"]
+        for entry in (item.get("evidence") or [])
+        if entry.get("type") == "command"
+    ]
+
+
+def test_the_gate_installs_what_its_command_evidence_needs():
+    """The gate ran `python3 -m pytest` in a job that had no pytest.
+
+    On 12 October the gate installed cryptography alone, under a step named for
+    verification dependencies, while items 7 and 8 named command evidence that
+    shells out to pytest. Both were reported as marked met with evidence that
+    does not resolve, which is the mark doing its job and the workflow being
+    wrong. The item status was right; the job could not prove it.
+
+    This derives the requirement from the checklist rather than listing it, so
+    the next command evidence needing a package the gate does not install fails
+    here instead of on the merge path.
+    """
+    modules = {
+        ref.split("-m ", 1)[1].split()[0]
+        for ref in _command_evidence()
+        if "-m " in ref
+    }
+    assert modules, "no command evidence invokes a module; this test is now vacuous"
+
+    installs = _gate_run_steps()
+    declared = (REPO / "pyproject.toml").read_text(encoding="utf-8")
+
+    assert "pip install -e ." in installs, (
+        "the gate does not install the package, so it cannot run module-invoking "
+        f"command evidence: {sorted(modules)}"
+    )
+    for module in sorted(modules):
+        assert module in declared, (
+            f"command evidence runs `python3 -m {module}` and the gate installs the "
+            "package, but that package does not declare it as a dependency"
+        )
+
+
+def test_every_command_evidence_entry_states_an_expected_exit_code():
+    """A command whose exit code is unstated cannot fail."""
+    checklist = json.loads((REPO / "release-checklist.json").read_text(encoding="utf-8"))
+
+    for item in checklist["items"]:
+        for entry in item.get("evidence") or []:
+            if entry.get("type") != "command":
+                continue
+            assert "expect_exit" in entry, (
+                f"item {item['id']} names a command with no expected exit code: "
+                f"{entry.get('ref')!r}"
+            )

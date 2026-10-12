@@ -26,8 +26,18 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install verification dependencies
-        run: python -m pip install -U pip cryptography
+      # The documented install, which is what every other workflow uses. The gate
+      # needs it rather than cryptography alone because the command evidence
+      # items 7 and 8 name runs pytest over the tests that hold their claims, so
+      # the gate proves those tests pass rather than only that they exist. With
+      # cryptography alone the gate reported both items as marked met with
+      # evidence that does not resolve, which is the mark working and the
+      # workflow being wrong.
+      - name: Install the package and its declared dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install -U pip
+          pip install -e .
 
       # --run-commands executes the command evidence each met item names and
       # requires its stated exit code. An item whose only evidence is a
