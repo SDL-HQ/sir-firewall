@@ -152,6 +152,9 @@ def test_current_version_surfaces_match_runtime_authority():
         # The scenario-suite divergence row names the version the three published
         # archives were produced at, which is the half of the question that is known.
         "docs/backlog.md": Counter({v_230: 1, v_102: 1}),
+        # The publication step records the release whose merge exposed that a
+        # direct push to main cannot satisfy the required status checks.
+        ".github/workflows/audit-and-sign.yml": Counter({v_240: 1}),
         "docs/claims-register.md": Counter(
             {v_234: 3, v_220: 2, v_238: 1, v_102: 1, v_235: 1}
         ),
@@ -198,7 +201,7 @@ def test_current_version_surfaces_match_runtime_authority():
         "tests/test_counters_derive_from_the_ledger.py": Counter({v_238: 1}),
         # Names the release whose version bump was validated by the branch
         # dispatch that had no missing-certificate net.
-        "tests/test_audit_workflow_cannot_pass_without_verifying.py": Counter({v_240: 1}),
+        "tests/test_audit_workflow_cannot_pass_without_verifying.py": Counter({v_240: 2}),
         "tests/test_release_checklist.py": Counter({v_240: 1}),
         "tests/test_check_archive_staged.py": Counter({v_237: 2}),
         "tests/test_standalone_verifiers.py": Counter({v_234: 1}),
