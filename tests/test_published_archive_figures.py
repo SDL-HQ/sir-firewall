@@ -235,3 +235,67 @@ def test_live_figures_do_not_appear_outside_a_region(document, figure):
         "happened, add it to HISTORICAL_SENTENCES in this file and say so in the "
         "document."
     )
+
+
+def _figures_with(**overrides) -> dict:
+    """This archive's figures with some counts replaced, for prose that is rare.
+
+    The mixed counters state and an unbound correction-era certificate are both
+    states the published archive has held for one run or never. Crafting them is
+    the only way to read the sentence before a reader does.
+    """
+    figures = copy.deepcopy(FIGURES)
+    figures.update(overrides)
+    return figures
+
+
+def test_the_counters_bullet_agrees_in_number():
+    """It did not, and the first mixed state published the disagreement.
+
+    Audit 637 put `counters_checked_against_ledger` on exactly one certificate,
+    and the register read "1 of the 293 published certificates carry". The
+    bullet was written when every count in these documents was in the hundreds.
+    """
+    one = REPORT.render_proof_qualifications(
+        _figures_with(counters_true=["a"], counters_false=[], counters_absent=["b", "c"])
+    )
+    assert "certificates carries" in " ".join(one.split()), one
+    assert "certificates carry `counters" not in " ".join(one.split())
+
+    several = REPORT.render_proof_qualifications(
+        _figures_with(counters_true=["a", "b"], counters_false=["c"], counters_absent=["d"])
+    )
+    assert "certificates carry" in " ".join(several.split()), several
+
+    # absent == total is what selects the "None of the" wording, and
+    # absent + true + false == total always holds, so the list has to be the
+    # full set rather than this archive's current 292.
+    none = REPORT.render_proof_qualifications(
+        _figures_with(
+            counters_true=[],
+            counters_false=[],
+            counters_absent=[f"run-{n}" for n in range(FIGURES["total"])],
+        )
+    )
+    assert "None of the" in none and "carries" in none, none
+
+
+def test_the_unbound_sentence_agrees_in_number():
+    """A branch that only runs on a real binding failure, read before it does.
+
+    If a certificate at or above the correction ever stops matching its ledger,
+    this sentence is what a reader sees. It should not be the first draft of
+    itself at that moment.
+    """
+    era = FIGURES["at_or_above_the_correction"]
+    assert len(era) >= 3, "this archive no longer has enough correction-era runs to craft the case"
+
+    one = REPORT.render_e4_above_the_correction(
+        _figures_with(correction_era_bound=era[:-1])
+    )
+    assert "1 does not" in " ".join(one.split()), one
+
+    two = REPORT.render_e4_above_the_correction(
+        _figures_with(correction_era_bound=era[:-2])
+    )
+    assert "2 do not" in " ".join(two.split()), two

@@ -153,7 +153,7 @@ reader finds on inspection:
   They are not invalid; signature, binding and custody verify. No contract
   governs their structure. Now disclosed by behaviour:
   `tools/verify_evidence.py` reports it on every pre-2.2.0 archive.
-- **1 of the 293 published certificates carry
+- **1 of the 293 published certificates carries
   `counters_checked_against_ledger`: 1 true and 0 false.** The field arrives
   with evidence contract v4 at SIR 2.4.0. The remaining 292 do not carry it,
   and `tools/verify_evidence.py` reports their signed counters as `unknown`,
