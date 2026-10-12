@@ -348,6 +348,7 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 * [Rule-coverage report](docs/rule-coverage.md) (deterministic and full-gate benchmark coverage)
 * [OWASP LLM Top 10 2026 mapping](docs/owasp-llm-top-10-2026.md) (version-stamped control mapping)
 * [Public backlog](docs/backlog.md) (known constraints and planned hardening)
+* [Code scanning dismissals](docs/code-scanning-dismissals.md) (every CodeQL alert, and why each one was closed)
 * [External technical review preparation](docs/external-technical-review-prep.md)
 * [Engineer guide](docs/engineer-guide.md) (local runs, signing, serving)
 * [Trial guide](docs/trial-guide.md) (auditors, insurers, evidence capture)
