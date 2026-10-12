@@ -125,7 +125,10 @@ def test_current_version_surfaces_match_runtime_authority():
         "README.md": Counter({v_234: 9, v_233: 3, v_232: 2, v_230: 2, v_231: 2, v_221: 2, v_220: 2, v_235: 1, authority: 1}),
         "RETENTION.md": Counter({v_234: 1, v_233: 1, v_220: 1, v_235: 1}),
         # The release checklist names the rollback tag for the release in flight.
-        "release-checklist.json": Counter({authority: 1, v_240: 1}),
+        # Item 8's verification record points twice at the release whose notes
+        # the evidence page now frames as a dated record rather than as the
+        # current measurement.
+        "release-checklist.json": Counter({authority: 1, v_240: 1, v_235: 2}),
         # The chain-version floor table is version-keyed, so that test names
         # the released versions either side of the floor as boundary cases.
         # This entry fires if the floor moves without the test moving with it.
@@ -141,7 +144,9 @@ def test_current_version_surfaces_match_runtime_authority():
         # The scenario-suite divergence row names the version the three published
         # archives were produced at, which is the half of the question that is known.
         "docs/backlog.md": Counter({v_230: 1, v_102: 1}),
-        "docs/claims-register.md": Counter({v_234: 3, v_220: 2, authority: 1, v_102: 1}),
+        "docs/claims-register.md": Counter(
+            {v_234: 3, v_220: 2, authority: 1, v_102: 1, v_235: 1}
+        ),
         "docs/coverage.json": Counter({authority: 1}),
         "docs/evidence-perimeter.v5.md": Counter({authority: 1}),
         "docs/assurance-kit.md": Counter({v_234: 4, v_237: 1, v_240: 4, v_220: 3, v_102: 1, v_200: 1}),
@@ -161,6 +166,11 @@ def test_current_version_surfaces_match_runtime_authority():
         f"docs/release-notes-{v_236}.md": Counter({v_236: 3, v_235: 3}),
         f"docs/release-notes-{v_237}.md": Counter({v_237: 3, v_236: 2, v_235: 1}),
         f"docs/release-notes-{authority}.md": Counter({authority: 3, v_235: 1}),
+        # The release in flight. Its notes name the contract floor and the
+        # applicability boundary of the contracts that precede it.
+        f"docs/release-notes-{v_240}.md": Counter(
+            {v_240: 4, v_220: 2, v_234: 1, v_102: 1}
+        ),
         "docs/failure-modes.md": Counter({v_230: 3, v_231: 3, authority: 2}),
         "docs/rule-coverage.md": Counter({authority: 1}),
         "docs/terminology.md": Counter({v_235: 1, v_234: 1}),

@@ -599,7 +599,7 @@
       "id": 8,
       "name": "Claims register",
       "condition": "Each public technical claim remains true when the reader examines the failures.",
-      "status": "open",
+      "status": "met",
       "evidence": [
         {
           "type": "artefact",
@@ -659,7 +659,7 @@
         },
         {
           "type": "test",
-          "ref": "tests/test_claims_register.py::test_item_7_is_not_claimed_anywhere_public"
+          "ref": "tests/test_claims_register.py::test_the_downstream_call_claim_tracks_item_7"
         },
         {
           "type": "test",
@@ -689,20 +689,46 @@
           "type": "command",
           "ref": "python3 -m pytest tests/test_claims_register.py tests/test_no_model_in_the_decision_path.py -q",
           "expect_exit": 0
-        }
-      ],
-      "blocked_on": [
+        },
         {
-          "surface": "structuraldesignlabs.com homepage",
-          "claim": "the uncovered-row claim",
-          "why": "Decided on 8 October: lead with the disclosure rather than qualify, because qualifying leaves the match as the headline and the correction as a footnote. The replacement paragraph is written and queued in claude/website-changes-queued.md. The decision is not the change: the site is a separate deploy bundle and the sentence is live until it is pushed."
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_the_superseded_about_text_is_not_presented_as_current"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_the_website_row_records_how_the_deploy_was_checked"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_the_register_and_the_checklist_agree_on_what_is_open"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_no_surface_claims_that_every_run_verifies"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_the_forwarded_content_row_states_both_readings"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_the_configuration_wording_does_not_come_back"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_the_limit_travels_with_the_corrected_claim"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_claims_register.py::test_the_pack_sentence_keeps_its_guard_against_the_opposite_overclaim"
         }
       ],
-      "note": "The register is built, linked from the README and held by tests: every claim carries a status, cites something a reader can check, and records whether the feature sits inside the filed specification. Four figures are compared against the measurements that produced them, so the register cannot drift from the archive, the threat model or the workload tool. The item stays open because the condition is about the claims and not about the register, and it is not scoped to the repository: the website is a public surface and the homepage claim is live until it is deployed. The README wordings and the repository About description were corrected on 8 October rather than carried as decisions. One surface remains, listed in blocked_on, and the website pass is the step after item 7 and before this item ticks.",
+      "note": "The register is built, linked from the README and held by tests: every claim carries a status, cites something a reader can check, and records whether the feature sits inside the filed specification. Figures are compared against the measurements that produced them, so the register cannot drift from the archive, the threat model or the workload tool. The condition is about the claims and is not scoped to the repository, so this item stayed open until the website carried the corrected wording as well. Three surfaces were corrected rather than decided: the README's two wordings, the About description, and the homepage uncovered-row framing. One claim the register made about itself was wrong and is retracted in place rather than amended, and the first replacement About wording claimed too much and was corrected after it had already been published.",
       "verification": {
-        "who": "Ryan, by eye, on the live site",
+        "who": "Ryan deployed and reported it live; Claude verified the rendered pages on that hostname.",
         "what": "The live homepage paragraph matches the replacement wording queued in claude/website-changes-queued.md, and the live repository About description matches the wording recorded in docs/claims-register.md.",
-        "why_not_a_test": "No offline test can verify a live deploy, and adding a network call to the suite would break the offline property the assurance kit depends on. This item therefore ends on a human check, which is stated here rather than left to look automated. The failure mode being guarded against is ticking the item because the queue file exists."
+        "why_not_a_test": "No offline test can verify a live deploy, and adding a network call to the suite would break the offline property the assurance kit depends on. This item therefore ends on a human check, which is stated here rather than left to look automated. The failure mode being guarded against is ticking the item because the queue file exists.",
+        "performed": "12 October 2026, on www.structuraldesignlabs.com. Checked in rendered pages rather than in the bundle, which mattered: the homepage paragraph is written at runtime by site.js from coverage.json and benchmark_index.v2.json, both of which returned 200 on the live origin, so the live sentence is generated from the published data and not from the build-time fallback. The uncovered-row claim leads with the disclosure, the evidence page carries the generator and errata pointers with the 2.3.5 figures framed as a dated record, the pilot page carries the attribution exclusion, and no stale figure remains on the home, evidence or pilot pages. This field first read '9 October 2026' and named the same hostname. That was wrong: the 9 October check was against a Netlify preview deployment, and the bundle was rebuilt twice afterwards, once for unreadable directory permissions and once for a note that still claimed the 2.3.5 release notes held a measurement the page now delegates to a generator. The correction is recorded rather than overwritten, because a verification record that names a surface it did not test is exactly what this item was written to prevent."
       }
     },
     {

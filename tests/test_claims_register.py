@@ -113,13 +113,30 @@ def test_every_claim_records_its_patent_coverage(claim):
 
 
 def test_every_open_row_says_a_decision_is_required():
-    """An open row must read as a decision, not as a soft pass."""
+    """An open row must read as a decision, not as a soft pass.
+
+    This asserted that at least one row was open, as a guard against the
+    register quietly emptying itself. It emptied legitimately on 9 October, when
+    the last surface was corrected rather than decided, so the guard is now the
+    other way round: no open rows is only a valid state when the item is met and
+    the checklist agrees that nothing is blocking it.
+    """
     opens = [name for name, body in SECTIONS.items() if "**open" in body]
 
-    assert opens, "the register claims no open decisions; verify that is true"
     for name in opens:
         body = SECTIONS[name]
         assert "Decision required" in body or "open" in body.lower(), name
+
+    if not opens:
+        checklist = json.loads((ROOT / "release-checklist.json").read_text(encoding="utf-8"))
+        item8 = next(i for i in checklist["items"] if i["id"] == 8)
+        assert item8["status"] == "met", (
+            "the register has no open rows while item 8 is still open; either a "
+            "row lost its status or the item should be ticked"
+        )
+        assert not (item8.get("blocked_on") or []), (
+            "the checklist still lists blockers that no register row records"
+        )
 
 
 def _open_rows():
@@ -314,28 +331,38 @@ def test_the_superseded_about_text_is_not_presented_as_current():
     )
 
 
-def test_the_website_row_stays_open_until_the_deploy():
-    """A decision recorded is not a surface changed.
+def test_the_website_row_records_how_the_deploy_was_checked():
+    """It held the row open until the deploy. Now it holds how that was verified.
 
-    The homepage wording was decided on 8 October and queued. The claim is live
-    until the deploy, so this row closes on the deploy rather than on the
-    decision, and the checklist records a human verification for it because no
-    offline test can read a live site.
+    Until 9 October this asserted the row was still open, because a decision
+    recorded is not a surface changed. The deploy landed, so what matters now is
+    that the row says the check was done against a rendered page: the paragraph
+    is written at runtime from fetched data, so a static-HTML check would have
+    passed while the live page said something else. The checklist still has to
+    state that this ended on a human check rather than a test, and now also what
+    that check found.
     """
-    website = SECTIONS["The website homepage uncovered-row claim (structuraldesignlabs.com)"]
+    website = _flat(
+        SECTIONS["The website homepage uncovered-row claim (structuraldesignlabs.com)"]
+    )
     checklist = json.loads((ROOT / "release-checklist.json").read_text(encoding="utf-8"))
     item8 = next(i for i in checklist["items"] if i["id"] == 8)
 
-    assert "**open" in website
-    assert "Decided" in website, "the decision taken must be on the record"
+    assert "**corrected" in website
+    assert "rendered page rather than in the bundle" in website
+    assert "site.js" in website, "the row must name why a file check was not enough"
     assert "claude/website-changes-queued.md" in website
 
     verification = item8.get("verification") or {}
-    for field in ("who", "what", "why_not_a_test"):
+    for field in ("who", "what", "why_not_a_test", "performed"):
         assert verification.get(field), (
             f"item 8 ends on a human check, so {field!r} must be stated rather than "
             "left to look automated"
         )
+    assert "200" in verification["performed"], (
+        "the performed record must say the generated paragraph's data actually "
+        "loaded, not just that the page looked right"
+    )
 
 
 def _incomplete_archives():
