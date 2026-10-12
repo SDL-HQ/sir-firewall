@@ -175,8 +175,21 @@ changes the verdict.
 ## CI credentials, and how they fail
 
 `audit-and-sign.yml` checks out with `SIR_AUDIT_PUSH_TOKEN` on `main` and with
-`github.token` on every other ref. That secret is a personal access token with
-a hard expiry, and it is the only credential the audit bot has.
+`github.token` on every other ref. That secret is a fine-grained personal access
+token and it is the only credential the audit bot has.
+
+**It has no expiration date, deliberately.** An expiry would stop publication on
+a date nobody is watching, and the failure would arrive looking like the first
+mode below rather than like a diary entry coming due. The cost of the choice is
+that it is only revoked by someone revoking it, so it is worth checking exists
+and is still scoped to this repository when reviewing custody. Checked
+12 October 2026: metadata read, actions, contents and pull requests read and
+write, `SDL-HQ/sir-firewall` only, no account permissions.
+
+The credential that does expire is a different one: `Mayor-13 local push`,
+expiring 25 December 2026, which is the keychain token behind local `git push`
+and has nothing to do with CI. When it goes, your terminal stops pushing with
+the same unhelpful message as below while CI stays green.
 
 Since 12 October 2026 it also opens the proof pull request, as `GH_TOKEN` for
 `gh pr create` and `gh pr merge --auto`, so it needs **pull-requests write** as
