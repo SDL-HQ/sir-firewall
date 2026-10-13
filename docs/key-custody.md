@@ -4,7 +4,7 @@ What is true of the signing key today, established by reading the workflows and
 the tools rather than by intention. Where something is a convention rather than
 an enforced control, this document says so.
 
-Last verified 7 October 2026, against `release/2.4`.
+Last verified 7 October 2026, against commit `f669a59`.
 
 Several claims in this document are pinned by tests rather than left as prose,
 because a custody document nobody can check is worth very little. Those tests
@@ -47,7 +47,11 @@ covers.
 Until 6 October 2026 `dev` was also a signing-capable branch while the ruleset
 targeted `main` only, which meant anyone able to push to `dev` could cause a
 signature with the production key. `dev` was removed from the triggers in
-commit `8445871`.
+commit `8445871`. The branch itself was deleted on 13 October 2026, so the
+residual exposure is now structural rather than configured: a push to a branch
+that does not exist cannot reach the key. Recreating a branch of that name would
+not restore the exposure either, because the triggers no longer name it and
+`tests/test_signing_surface.py` would fail if they did.
 
 Pinned by `tests/test_signing_surface.py`:
 `test_only_one_workflow_can_reach_the_production_signing_key`,
