@@ -173,6 +173,10 @@ def build_report(*, registry_path: Path = DEFAULT_REGISTRY, root: Path = ROOT) -
                 "pack_version": str(pack.get("version") or ""),
                 "status": str(pack.get("status") or ""),
                 "visibility": str(pack.get("visibility") or ""),
+                # pack_class and maturity are carried so spec/packs/PACKS.md's
+                # posture column can be generated rather than retyped.
+                "pack_class": str(pack.get("pack_class") or ""),
+                "maturity": str(pack.get("maturity") or ""),
                 "enforcement_pack": enforcement_pack_id,
                 "block_rows": len(block_rows),
                 "deterministic_rule_matched": len(deterministic_matched),
@@ -334,16 +338,63 @@ def render_markdown_region(report: dict[str, Any]) -> str:
     return f"<!-- {BEGIN} -->\n{render_markdown(report).rstrip()}\n<!-- {END} -->"
 
 
+def render_spec_posture_region(report: dict[str, Any]) -> str:
+    """The derivable columns of spec/packs/PACKS.md's suite table.
+
+    That table carried six hand-typed columns until 13 October 2026, four of
+    them mechanically derivable and two of those measurements. Its own preamble
+    said the values were "sourced from the generated report", which was not true
+    of any of them: it was typed, and it still marked `account_recovery_fraud`,
+    `mental_health_clinical`, `scenario_injection_chain` and
+    `scenario_tool_injection` as not runner-evaluable five days after the
+    generated surfaces were corrected. A third instance of a published figure
+    whose correctness depended on someone remembering to retype it, found by an
+    independent review.
+
+    The taxonomy column is deliberately not here. PACKS.md defines taxonomy as a
+    readability label that is explicitly "not scores, rankings, or analytics",
+    assigned per suite by a person, and no mapping from the suites' own category
+    values to those labels is declared anywhere. Generating it would mean this
+    tool inventing an editorial judgement and publishing it as derived, which is
+    a worse defect than typing it. It stays hand-authored, beside the boundary
+    rules that govern it, and a test holds its membership against the registry.
+    """
+    lines = [
+        f"<!-- {BEGIN} -->",
+        "| Pack/Scenario | Pack class | Registry posture | Full-gate coverage | Runner evaluability |",
+        "| --- | --- | --- | ---: | --- |",
+    ]
+    for pack in report["packs"]:
+        posture = " / ".join(
+            part for part in (pack["status"], pack["visibility"], pack["maturity"]) if part
+        )
+        lines.append(
+            f"| `{pack['pack_id']}` | {pack['pack_class']} | {posture} | "
+            f"`{pack['full_gate_matched']}/{pack['block_rows']}` | "
+            f"{'Runner-evaluable' if pack['runner_evaluable'] else 'Not runner-evaluable'} |"
+        )
+    lines.append(f"<!-- {END} -->")
+    return "\n".join(lines)
+
+
 def replace_generated(document: str, generated: str) -> str:
     """Rewrite the one generated region in a document, or refuse to touch it.
 
     The order check exists because the slice arithmetic below is silent when it
     is wrong. With the end marker before the begin marker, a document with
-    exactly one of each satisfied every other condition here, and the result was
-    the text before the end marker replaced by the generated block and the text
-    between the two markers deleted. A corrupted published surface and a correct
-    one are the same kind of file, so nothing downstream would have noticed.
-    Found by an independent review on 13 October 2026.
+    exactly one of each satisfied every other condition here, and the prefix and
+    suffix overlapped: the output kept the text before the end marker, inserted
+    the generated block, and then repeated everything between the two markers
+    along with both markers themselves. The corruption is a duplication, not a
+    deletion. Nothing is lost, which is if anything harder to notice, and a
+    corrupted published surface and a correct one are the same kind of file.
+
+    Found by an independent review on 13 October 2026. A later review disputed
+    the first version of this paragraph, which said the intervening text was
+    deleted. The old function was run against a reversed-marker document and the
+    intervening text appeared twice in its output. The check was right and the
+    account of what it prevents was not, because it was described rather than
+    executed.
     """
     begin_candidates = (f"<!-- {BEGIN} -->", f"// {BEGIN}")
     end_candidates = (f"<!-- {END} -->", f"// {END}")
@@ -412,6 +463,11 @@ def render_published_surfaces(report: dict[str, Any]) -> dict[Path, str]:
         domain_path.read_text(encoding="utf-8"), render_html_table_body(report)
     )
 
+    spec_path = ROOT / "spec" / "packs" / "PACKS.md"
+    rendered[spec_path] = replace_generated(
+        spec_path.read_text(encoding="utf-8"), render_spec_posture_region(report)
+    )
+
     for path, (variable_name, indent) in PUBLISHED_LOOKUP_SURFACES.items():
         rendered[path] = replace_generated(
             path.read_text(encoding="utf-8"),
@@ -426,6 +482,18 @@ def update_published_surfaces(report: dict[str, Any]) -> None:
         path.write_text(content, encoding="utf-8")
 
 
+def owned_surfaces() -> set[Path]:
+    """Every file update_published_surfaces writes, by resolved path."""
+    owned = {
+        PUBLISHED_JSON,
+        ROOT / "docs" / "rule-coverage.md",
+        ROOT / "docs" / "domain-packs.html",
+        ROOT / "spec" / "packs" / "PACKS.md",
+    }
+    owned.update(PUBLISHED_LOOKUP_SURFACES)
+    return {path.resolve() for path in owned}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
@@ -433,6 +501,33 @@ def main() -> int:
     parser.add_argument("--markdown-out", type=Path, required=True)
     parser.add_argument("--update-published-surfaces", action="store_true")
     args = parser.parse_args()
+
+    # Refuse to write a bare report over a surface this tool publishes, before
+    # doing any work.
+    #
+    # --json-out and --markdown-out write a whole file. The published surfaces
+    # are not whole files: each carries a generated region inside hand-written
+    # text, and --update-published-surfaces rewrites just that region. Pointing
+    # an out flag at one of them replaces the document with the bare report,
+    # destroying the markers, and then publication rendering raises because the
+    # region it owns is gone. The destructive write happens first, so the error
+    # arrives after the damage.
+    #
+    # docs/rule-coverage.md was destroyed exactly this way on 12 October 2026,
+    # by someone passing it as --markdown-out in the belief that was how the
+    # document got regenerated. The generated region landed in the same week and
+    # closed the drift; it did not close this, and an independent review found
+    # the foot-gun still loaded on 13 October.
+    owned = owned_surfaces()
+    for flag, target in (("--json-out", args.json_out), ("--markdown-out", args.markdown_out)):
+        if target.resolve() in owned:
+            parser.error(
+                f"{flag} points at {target}, which this tool publishes as a "
+                "generated region inside hand-written text. Writing a whole "
+                "report there would destroy the document. Use "
+                "--update-published-surfaces to refresh the published surfaces, "
+                "and give the out flags paths outside them."
+            )
 
     report = build_report(registry_path=args.registry.resolve(), root=ROOT)
     args.json_out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

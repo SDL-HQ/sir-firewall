@@ -321,7 +321,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     packs_sub = packs.add_subparsers(dest="packs_cmd", required=True)
 
-    plist = packs_sub.add_parser("list", help="List registered pack_id/schema/status rows.")
+    plist = packs_sub.add_parser(
+        "list",
+        help="List active pack_id/schema/status/visibility/enforcement_pack rows.",
+    )
     plist.set_defaults(fn=_cmd_packs_list)
 
     pshow = packs_sub.add_parser("show", help="Show full registry record for one pack_id.")

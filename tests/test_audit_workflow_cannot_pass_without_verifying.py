@@ -24,6 +24,7 @@ archive holds artefacts for both passes and failures. An absent certificate is
 therefore a defect rather than a state to step over.
 """
 
+import json
 import re
 from pathlib import Path
 
@@ -51,6 +52,33 @@ def _steps():
             if isinstance(step.get("run"), str):
                 steps.append((step.get("name") or "unnamed", step["run"]))
     return steps
+
+
+def _step_conditions():
+    """Every run step's own `if:` and its job's, which _steps() discards.
+
+    _steps() returns shell bodies only. Until 13 October 2026 every test in this
+    file therefore examined what a step does and nothing about whether it runs,
+    so gating a whole step at YAML level was invisible here: a one-line
+    `if: ${{ env.CANONICAL_PUBLICATION_CONTEXT == 'true' }}` on the finalize
+    step would have reopened the branch-dispatch gap with every assertion in
+    this file still passing. CANONICAL_PUBLICATION_CONTEXT is itself a job-level
+    `env:` expression, so YAML is where someone would naturally reach for it.
+    Found by an independent review, not by this file.
+
+    Returns {step name: (step if, job if, job env)}.
+    """
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    conditions = {}
+    for job in workflow["jobs"].values():
+        for step in job.get("steps", []):
+            if isinstance(step.get("run"), str):
+                conditions[step.get("name") or "unnamed"] = (
+                    str(step.get("if") or ""),
+                    str(job.get("if") or ""),
+                    json.dumps(job.get("env") or {}, sort_keys=True),
+                )
+    return conditions
 
 
 def _verifying_steps():
@@ -370,8 +398,19 @@ def test_both_markers_recognise_the_same_three_results():
             assert result in run, f"step {name!r} does not recognise {result}"
 
 
+FINALIZE_STEP_NAME = "Finalize CI status (fail if audit failed or inconclusive)"
+
+
 def _finalize_step():
     return next(run for name, run in _steps() if name and name.startswith("Finalize CI status"))
+
+
+def test_the_finalize_step_is_named_as_the_assertions_expect():
+    """Guard the guard: the condition checks look the step up by exact name."""
+    assert FINALIZE_STEP_NAME in _step_conditions(), (
+        "the finalize step was renamed, so the YAML-condition assertions would "
+        f"raise KeyError rather than check anything. Known steps: {sorted(_step_conditions())}"
+    )
 
 
 def test_a_branch_dispatch_cannot_go_green_on_a_bad_certificate():
@@ -447,12 +486,76 @@ def test_a_branch_dispatch_cannot_go_green_on_a_bad_certificate():
         "so a certificate reporting INCONCLUSIVE would not fail the job"
     )
 
+    # The compared operand, not merely the name appearing on the line. A guard
+    # reading `if [ "$other" != "AUDIT PASSED" ]  # cert_result` satisfies a
+    # substring test while comparing something else entirely.
+    assert any(
+        re.search(r'"\$\{?cert_result\}?"\s*!=\s*"AUDIT PASSED"', line)
+        for line in result_guards
+    ), (
+        "no conditional compares $cert_result against AUDIT PASSED; the name "
+        f"appears but is not what is being tested: {result_guards}"
+    )
+
     for line in existence_guards + result_guards:
         assert "CANONICAL_PUBLICATION_CONTEXT" not in line, (
             "part of the certificate check is gated on the publication context, "
             "which leaves branch dispatches uncovered and is the defect this "
             f"exists to close: {line.strip()}"
         )
+
+    # The shell is not the only place the step can be gated. An independent
+    # review pointed out that three mutations reopened the gap while every
+    # assertion above still passed: gating the whole step at YAML level, gating
+    # a shell guard on a variable assigned from the publication context rather
+    # than naming it, and an early `exit 0` leaving the guards present but
+    # unreachable. Each is checked below.
+    step_if, job_if, job_env = _step_conditions()[FINALIZE_STEP_NAME]
+
+    assert "CANONICAL_PUBLICATION_CONTEXT" not in step_if, (
+        "the finalize step is gated at YAML level on the publication context, "
+        f"so a branch dispatch never reaches the certificate check at all: {step_if}"
+    )
+    assert "CANONICAL_PUBLICATION_CONTEXT" not in job_if, (
+        f"the whole audit job is publication-gated: {job_if}"
+    )
+    assert step_if == "always()", (
+        "the finalize step no longer runs unconditionally. It is the step that "
+        "decides whether CI is green, and a condition on it is a condition on "
+        f"the verdict: {step_if}"
+    )
+    assert "CANONICAL_PUBLICATION_CONTEXT" in job_env, (
+        "the publication context is no longer a job-level env, so what the "
+        "assertions above check for by name may have moved"
+    )
+
+    # Indirect gating. Any variable assigned from the publication context is the
+    # publication context under another name, so the guards must not mention one.
+    aliases = set(
+        re.findall(r"^\s*([A-Za-z_][A-Za-z0-9_]*)=.*CANONICAL_PUBLICATION_CONTEXT", run, re.MULTILINE)
+    )
+    for alias in aliases:
+        for line in existence_guards + result_guards:
+            assert alias not in line, (
+                f"the certificate check is gated on {alias}, which is assigned "
+                f"from the publication context: {line.strip()}"
+            )
+
+    # Unreachability. The guards above are worthless if the step returns first.
+    #
+    # No bare `exit 0` anywhere in this step, rather than none before the
+    # certificate check. The first version of this assertion compared against
+    # the earliest guard, so an `exit 0` placed between the existence guard and
+    # the result comparison passed it while making the comparison unreachable.
+    # That mutation was run and did pass. The step ends by falling off the end
+    # after echoing success, so it has no legitimate explicit `exit 0`: its only
+    # job is deciding whether CI is green, and an unconditional success return
+    # part-way through is that decision made early.
+    early_exits = re.findall(r"^[ \t]*exit 0[ \t]*$", run, re.MULTILINE)
+    assert not early_exits, (
+        "the finalize step contains an unconditional `exit 0`, which makes "
+        "every check after it unreachable while leaving it present to read"
+    )
 
 
 def test_a_run_with_no_certificate_is_not_a_pass():

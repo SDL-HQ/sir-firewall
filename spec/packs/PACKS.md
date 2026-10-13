@@ -25,7 +25,7 @@ The repository uses “pack” for three distinct artefact categories:
 
 See `tests/domain_packs/README.md` for the operator-facing distinction and fixture examples.
 
-Four registry suites currently have no same-named ISC policy pack: `account_recovery_fraud`, `mental_health_clinical`, `scenario_injection_chain`, and `scenario_tool_injection`. Selecting one through the `--pack` route produces systemic-reset blocks during policy load rather than meaningful suite evaluation. See `docs/backlog.md` for the execution-coupling and rule-coverage findings.
+Four registry suites have no same-named ISC policy pack: `account_recovery_fraud`, `mental_health_clinical`, `scenario_injection_chain`, and `scenario_tool_injection`. Each declares `generic_safety` in its `enforcement_pack` field and the runner resolves through that field, so all four evaluate every row through the `--pack` route. This paragraph described systemic-reset blocks until 13 October 2026; that stopped being true on 8 October. See `docs/backlog.md` for the rule-coverage findings, which are separate: these suites run, and their expected-block rows still leak.
 
 ### ISC policy-pack format
 
@@ -78,24 +78,62 @@ Current categories in active use:
 - `exfiltration`
 - `injection`
 
-Current pack/scenario taxonomy mapping (active and draft registry suites).
-Full-gate coverage is the published `n/n` measurement in
+Two tables. The first is generated from the registry and the coverage report
+and must not be edited by hand; the second is editorial and is maintained here.
+
+The split exists because the single six-column table that preceded it said its
+values were "sourced from the generated report" while every one of them was
+typed. It marked four suites as not runner-evaluable for five days after the
+generated surfaces were corrected, which is the third time in this release a
+published figure was wrong because it had to be retyped. The derivable columns
+are now a region this repository's generator owns.
+
+### Registry posture and coverage (generated)
+
+Full-gate coverage is the same `n/n` measurement published in
 [`docs/rule-coverage.md`](../../docs/rule-coverage.md). Runner evaluability is
 independent of coverage and records whether the standard runner can execute the
-suite. The values below are sourced from the generated report, which derives the
-property from same-named ISC enforcement-policy-pack file presence.
+suite, derived the way the runner derives it, through each entry's
+`enforcement_pack`. Regenerate with
+`python3 tools/rule_coverage_report.py --json-out <path> --markdown-out <path> --update-published-surfaces`.
 
-| Pack/Scenario | Pack class | Registry posture | Full-gate coverage | Runner evaluability | Taxonomy category |
-| --- | --- | --- | ---: | --- | --- |
-| `generic_safety` | domain | active / public / canonical | `100/100` | Runner-evaluable | `benign_control`, `direct_bypass`, `obfuscation`, `exfiltration`, `injection` |
-| `account_recovery_fraud` | domain | active / public / canonical | `0/5` | Not runner-evaluable | `benign_control`, `direct_bypass` |
-| `mental_health_clinical` | domain | active / encoded / canonical | `5/15` | Not runner-evaluable | `benign_control`, `direct_bypass` |
-| `support_operator_override` | domain | active / public / canonical | `26/26` | Runner-evaluable | `benign_control`, `direct_bypass`, `exfiltration` |
-| `data_exfiltration_pressure` | domain | active / public / canonical | `27/27` | Runner-evaluable | `benign_control`, `exfiltration` |
-| `eu_ai_act_compliance_pressure` | domain | active / public / canonical | `74/100` | Runner-evaluable | `benign_control`, `direct_bypass` |
-| `scenario_injection_chain` | scenario | active / public / canonical | `6/10` | Not runner-evaluable | `benign_control`, `injection`, `exfiltration` |
-| `scenario_tool_injection` | scenario | active / public / canonical | `1/2` | Not runner-evaluable | `benign_control`, `injection` |
-| `canary_fail` | domain | draft / internal / demo | `0/1` | Not runner-evaluable | `direct_bypass` |
+<!-- BEGIN GENERATED FULL-GATE COVERAGE -->
+| Pack/Scenario | Pack class | Registry posture | Full-gate coverage | Runner evaluability |
+| --- | --- | --- | ---: | --- |
+| `generic_safety` | domain | active / public / canonical | `100/100` | Runner-evaluable |
+| `mental_health_clinical` | domain | active / encoded / canonical | `5/15` | Runner-evaluable |
+| `account_recovery_fraud` | domain | active / public / canonical | `0/5` | Runner-evaluable |
+| `support_operator_override` | domain | active / public / canonical | `26/26` | Runner-evaluable |
+| `data_exfiltration_pressure` | domain | active / public / canonical | `27/27` | Runner-evaluable |
+| `eu_ai_act_compliance_pressure` | domain | active / public / canonical | `74/100` | Runner-evaluable |
+| `canary_fail` | domain | draft / internal / demo | `0/1` | Not runner-evaluable |
+| `scenario_injection_chain` | scenario | active / public / canonical | `6/10` | Runner-evaluable |
+| `scenario_tool_injection` | scenario | active / public / canonical | `1/2` | Runner-evaluable |
+<!-- END GENERATED FULL-GATE COVERAGE -->
+
+### Taxonomy labels (editorial)
+
+These are the readability labels defined above, assigned per suite by a person.
+They are not derived from the suites' own `category` values and no mapping
+between the two is declared, so they are not generated: a label published as
+though it were measured would be a worse defect than one that is visibly
+editorial. The boundary rules at the top of this section govern them, including
+that they are not scores, rankings, or analytics, and that row-level
+completeness is not claimed. `tests/test_packs_spec_tables.py` holds their
+membership against the registry, so a new or removed suite cannot leave this
+list silently incomplete.
+
+| Pack/Scenario | Taxonomy category |
+| --- | --- |
+| `generic_safety` | `benign_control`, `direct_bypass`, `obfuscation`, `exfiltration`, `injection` |
+| `account_recovery_fraud` | `benign_control`, `direct_bypass` |
+| `mental_health_clinical` | `benign_control`, `direct_bypass` |
+| `support_operator_override` | `benign_control`, `direct_bypass`, `exfiltration` |
+| `data_exfiltration_pressure` | `benign_control`, `exfiltration` |
+| `eu_ai_act_compliance_pressure` | `benign_control`, `direct_bypass` |
+| `scenario_injection_chain` | `benign_control`, `injection`, `exfiltration` |
+| `scenario_tool_injection` | `benign_control`, `injection` |
+| `canary_fail` | `direct_bypass` |
 
 ## Rule-to-suite explainability mapping (indicative only)
 

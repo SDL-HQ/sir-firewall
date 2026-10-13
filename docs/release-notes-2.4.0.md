@@ -395,9 +395,11 @@ nobody regenerated, with prose in place of the figure.
 *A document could be silently corrupted by the generator that owns its region.*
 `replace_generated` required exactly one opening and one closing marker and then
 did slice arithmetic that is silent when they are in the wrong order: with the
-end marker first, the text before it was replaced and everything between the two
-markers was deleted. A corrupted published surface and a correct one are the same
-kind of file. This predates the correction commit. The archive generator
+end marker first the prefix and suffix overlap, so the output keeps the text
+before the end marker, inserts the generated block, and then repeats everything
+between the two markers along with both markers. The corruption is a duplication
+rather than a deletion. A corrupted published surface and a correct one are the
+same kind of file. This predates the correction commit. The archive generator
 already had the check; the coverage generator never did.
 
 *A failed publication run could leave the published set disagreeing with
@@ -415,6 +417,98 @@ explanation of what was being checked never printed, and a certificate with no
 That is now `tools/read_certificate_result.py`, which never raises and names
 which failure it was, for the reason `tools/ci_audit_verdict.sh` is a file: a
 rule nobody can invoke cannot be exercised.
+
+**That repair was reviewed in turn, and needed eight more corrections.** Same
+method, same pinned-revision read-only review, and the pattern in what it found
+is the finding. Of the eight, two were code, three were tests weaker than their
+names, and three were prose describing a mechanism that had not been run. None
+of the three descriptions would have survived executing the thing it described.
+
+*The certificate reader normalised a malformed verdict into a pass.* It returned
+`result.strip()`, so a certificate whose result was `" \nAUDIT PASSED\t"` was
+reported as `AUDIT PASSED` and the job went green. A gate that accepts exactly
+one string should not be the thing that repairs its input. It now compares
+against the three strings `_compute_audit_result` can return and reports anything
+else as `UNEXPECTED` with the value, so a malformed field is visible rather than
+silently accepted.
+
+*The same reader raised on a certificate it claimed it could not raise on.* A
+`result` of `"\ud800"` made `print` raise `UnicodeEncodeError` and the script
+exit 1, which fails the job under `set -e` before the step can report anything.
+Failing closed is the safe direction, and the docstring said the script never
+raises while the tests asserted exit 0, so the claim and the test agreed with
+each other and not with the code. Every output path is ASCII-escaped now and the
+single-line property is asserted rather than assumed.
+
+*Four more mutations of the certificate gate survived the repaired test.* The
+test examined shell lines only, and `_steps()` discards each step's YAML `if:`,
+so gating the whole finalize step at YAML level was invisible to every test in
+that file. So were gating a shell guard on a variable assigned from the
+publication context rather than naming it, an `exit 0` leaving the guards present
+and unreachable, and comparing a different variable while leaving `cert_result`
+in a comment on the line. All four are now checked and all four fail. The
+reachability assertion needed correcting once: its first version compared against
+the earliest guard, so an `exit 0` between the two guards passed it.
+
+*The repaired `packs list` test collapsed its rows into a dictionary*, so a row
+attributing a suite to the wrong enforcement pack followed by a correct row for
+the same suite overwrote the wrong one and passed. It also asserted only two of
+the five columns while its comment promised the output contract. All five columns
+are compared against the registry now, and duplicate rows fail.
+
+*The test asserting no partial publication could itself write to the repository.*
+It took a `tmp_path` it never used, operated on the live surfaces, and compared
+file contents rather than writes, so a regression that wrote a surface whose
+content was already current passed, and running the test under such a regression
+wrote into the repository it was testing. Writes are intercepted now and a
+recorded write is the assertion, with a companion test fixing the set of surfaces
+a successful run must write so that an updater writing nothing cannot pass.
+
+*The coverage generator's own command line could destroy the document it
+publishes.* `--json-out` and `--markdown-out` write whole files; the published
+surfaces are generated regions inside hand-written text. Pointing an out flag at
+one replaced the document with the bare report and destroyed the markers, after
+which publication rendering raised on a region that no longer existed, so the
+error arrived after the damage. `docs/rule-coverage.md` was destroyed exactly
+this way on 12 October by someone who believed that was how it got regenerated.
+Adding the generated region closed the drift that prompted that; it did not close
+this. The combination is refused before any work now, per owned surface, with the
+owned set derived from what the updater writes.
+
+*A third hand-typed table was wrong, in `spec/packs/PACKS.md`.* Its preamble said
+its values were "sourced from the generated report" and all six columns were
+typed. Five days after the generated surfaces were corrected it still marked
+`account_recovery_fraud`, `mental_health_clinical`, `scenario_injection_chain`
+and `scenario_tool_injection` as not runner-evaluable. The four derivable columns
+are a generated region now. The taxonomy column is deliberately not: the file
+defines taxonomy as an editorial readability label, explicitly not a score or
+ranking, and declares no mapping from the suites' own category values to those
+labels, so generating it would publish an invented judgement as derived. It is
+split into its own table marked editorial, with its membership held against the
+registry.
+
+*Five more documents still described the superseded `sir packs list` behaviour*,
+one of them a whole section ten lines below an inventory corrected in the same
+commit, plus the command's own `--help` text. A claim in `docs/backlog.md` that
+seven candidate domains had single-row placeholder suites registered as draft
+turned out to describe files that do not exist: every suite file in the
+repository is one of the registry's nine entries.
+
+*And the workflow message was wrong about what a disagreement means.* It said a
+disagreement between the counters and the certificate is a defect in one of them.
+It usually is not: the counter script reads three files before the certificate
+exists and cannot see six of its seven inconclusive conditions, so the ordinary
+cause is the certificate seeing something the counters could not. The message
+says that now.
+
+**Three review rounds, and the distribution did not move.** Across all three, the
+code held up and the sentences about it did not. The reviews found two real
+behavioural defects in the gate's own logic and, alongside them, three tests that
+passed under the mutation they existed to prevent and six published descriptions
+of mechanisms nobody had executed. The evidence this release is about is only as
+good as its description, so a wrong description is not a lesser class of defect
+here. Running the thing being described is now the condition for describing it,
+and where that was not done the release notes say so by name.
 
 ## What is not claimed
 

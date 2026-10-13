@@ -304,15 +304,50 @@ def test_packs_list_names_the_enforcement_pack_for_every_active_registry_entry(c
     # published output contract: README.md and tests/domain_packs/README.md both
     # describe what this command prints, so adding or reordering a column should
     # fail here and be a deliberate change rather than a silent one.
-    rows = {}
+    # Parsed as a list of tuples and compared as a multiset, not collapsed into
+    # a dictionary keyed by pack_id. The first version assigned
+    # rows[parts[0]] = parts[4], so a row attributing a suite to the wrong
+    # enforcement pack followed by a correct row for the same suite overwrote
+    # the wrong one and passed, as did any duplicate. Found by an independent
+    # review on 13 October 2026.
+    parsed = []
     for line in lines:
         parts = line.split("\t")
         assert len(parts) == 5, (
             "the listing's column count changed, which is a change to a "
             f"documented output contract: {line!r}"
         )
-        rows[parts[0]] = parts[4]
+        parsed.append(tuple(parts))
 
+    listed_ids = [row[0] for row in parsed]
+    assert len(listed_ids) == len(set(listed_ids)), (
+        "the listing prints a suite more than once, so a reader cannot tell "
+        f"which row is authoritative: {sorted(listed_ids)}"
+    )
+
+    # Every column, not only the two the enforcement question needs. The
+    # registry is the source for all four printed facts, so all four are checked
+    # here; the review noted that columns two through four were unasserted and
+    # that reordering them was therefore invisible to the test that claims to
+    # hold the output contract.
+    expected_rows = {
+        str(entry["pack_id"]): (
+            str(entry["pack_id"]),
+            str(entry.get("schema") or ""),
+            str(entry.get("status") or ""),
+            str(entry.get("visibility") or ""),
+            str(entry.get("enforcement_pack") or "").strip() or str(entry["pack_id"]),
+        )
+        for entry in registry["packs"]
+        if str(entry.get("status") or "").strip() == "active"
+    }
+    assert {row[0]: row for row in parsed} == expected_rows, (
+        "a printed row disagrees with the registry in at least one column.\n"
+        f"  listed:   {sorted(parsed)}\n"
+        f"  expected: {sorted(expected_rows.values())}"
+    )
+
+    rows = {row[0]: row[4] for row in parsed}
     assert rows == expected, (
         "the listing does not agree with the registry on which suites are "
         "active or what they enforce under.\n"

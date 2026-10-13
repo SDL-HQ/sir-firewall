@@ -872,7 +872,11 @@ jobs:
           echo "CERTIFICATE_RESULT=$cert_result"
           if [ "$cert_result" != "AUDIT PASSED" ]; then
             echo "FAILING CI: the counters report a pass and the certificate reports '$cert_result'."
-            echo "These are computed from different inputs; a disagreement is a defect in one of them."
+            echo "These are computed from different inputs. The script reads three counter files"
+            echo "before the certificate exists and cannot see six of its seven inconclusive"
+            echo "conditions, so a disagreement usually means the certificate saw something the"
+            echo "counters could not, and is a reason to read the certificate rather than a"
+            echo "defect in either of them."
             exit 1
           fi
 
