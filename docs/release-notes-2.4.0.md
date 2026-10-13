@@ -8,7 +8,7 @@ refuses the merge path unless every one of them carries evidence that resolves:
 a test that exists, an artefact that exists, or a command that runs to its
 stated exit code. Prose is not evidence.
 
-All ten are met. The suite is 754 tests.
+All ten are met. The suite is 916 tests, held against that figure by `tests/test_release_notes_suite_size.py`.
 
 Certificates emitted by this release are governed by evidence contract v4, whose
 applicability floor is 2.4.0, adding `content_evaluated`,
@@ -187,6 +187,51 @@ so on every pre-2.2.0 archive. A further 105 pre-2.3.4 certificates cannot have
 their ledger binding established, disclosed in
 `docs/evidence-binding-correction.md`.
 
+## What the counters count, and what a verdict is not
+
+Added late in the release, after an independent review named it the terminology
+change most likely to improve the project's credibility. It was right, and no
+surface had defined any of these while all of them appear in the repository
+description, in every signed certificate, on every published run page and
+throughout this document.
+
+**SIR never observes model output.** It is a pre-inference gate. It decides on a
+request before a model sees it and forwards the approved request unchanged.
+Nothing downstream is read back, so no counter here can be a statement about
+what a model said or disclosed.
+
+- **`jailbreaks_leaked`** counts benchmark rows labelled `block` that the gate
+  allowed. It is not a disclosure, an exfiltration, or anything reaching a
+  model's output. "Leak" ordinarily means a downstream disclosure, which is a
+  class of event this system is structurally incapable of observing. Read it as
+  expected-block inputs the gate allowed.
+- **`harmless_blocked`** counts rows labelled `allow` that the gate blocked. It
+  is not a false-positive rate for any real workload; its denominator is the
+  allow-labelled rows of a named corpus.
+- **`AUDIT PASSED`** means this run's counters were zero and the certificate's
+  own checks were satisfied. It does not mean the rule set is adequate. A run
+  over a corpus the rules already cover produces it, and so does a run that
+  exercises nothing.
+
+The names are kept rather than corrected because they are evidence-contract
+fields and signed counters inside 292 published certificates, so a rename is a
+contract change with an archive migration behind it, under the conditions
+`docs/terminology.md` already records for the proof class name. Defining them
+costs nothing and removes the misreading now. The pack identifiers are a
+different case and are scheduled for renaming in 2.5, because `pci_payments`
+enforces template token ceilings and `hipaa_mental_health` is not the pack the
+`mental_health_clinical` suite runs under: a statute-shaped identifier on an
+artefact that enforces a token ceiling is read as a compliance claim.
+
+**And a certificate's `result` mixes two unrelated axes**, recorded in
+`docs/claims-register.md`. `INCONCLUSIVE` covers six conditions that all mean
+the run cannot be described. `AUDIT FAILED` means it is described and rule
+coverage was inadequate. `AUDIT PASSED` is then read as both a trustworthy
+record, which it is, and adequate enforcement, which the field cannot establish.
+A correctly signed record of inadequate enforcement is still valid evidence, and
+nothing in the certificate separates the two readings. Separating them is a
+contract change, so it is recorded and defined rather than fixed.
+
 ## Published claims corrected
 
 Four public surfaces said things the evidence does not support. None was decided
@@ -228,7 +273,37 @@ by a guard rather than by luck, and each one changed how the next piece of work
 was built.
 
 **Two commits reached origin red.** In both cases the suite was not re-run before
-the push. It is 754 tests and takes about 45 seconds.
+the push. It is 916 tests, about 95 seconds on the machine this release was
+built on. The count is held by `tests/test_release_notes_suite_size.py`; the
+duration is not, because it is a property of the machine rather than of the
+repository, and a figure a test cannot check should say what it depends on.
+
+**A documentation branch would have deleted a published proof.** Cut before a
+proof was published and merged after it, its tree had that run's directory and
+its `index.json` entry both absent. No adversary, every test passing, and the
+index agreeing with the archive on disk because both were reverted together, so
+a consistency check between them would have found nothing wrong. It was caught
+by reading a tree diff before merging, which is a habit and not a control.
+
+The squash merge this repository uses would not have applied the deletion,
+because a squash applies only the branch's own changes rather than its whole
+tree. The branch was rebuilt rather than relying on that, because a merge
+strategy is a setting and nothing here would have reported the difference. No
+run has been lost; the sweep below examines 300 archives and the published
+errata accounts for every failure in them.
+
+That prompted the disclosure now in `RETENTION.md`: nothing enforces append-only
+on the published archive, there is no CI check, no test and no schema
+constraint, and append-only is a convention rather than a control. The same
+sentence already existed in `docs/key-custody.md` for the key registry, and the
+archive carried the word without the candour. Judged against
+`docs/release-criteria.md` this was criterion 4, a defensible sentence inviting
+an inference the archive does not support, and it had been waved past as a
+backlog row an hour before those criteria existed to be applied to it. Closing
+it properly needs a check against history outside the branch being merged,
+because any baseline committed inside the repository is reverted by the same
+merge that removes the run, and an index-versus-disk test is not sufficient.
+That is a backlog row with the reasoning recorded.
 
 **A version guard could not see a new file until it was committed.** It built its
 file list from `git ls-files`, so a new version-bearing document was invisible to
