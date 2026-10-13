@@ -55,6 +55,43 @@ For external reviewers, treat `proofs/runs/` as SIR's current **append-only publ
 
 This posture means the archive is designed to accumulate attributable run evidence over time for public technical review. It does **not** claim WORM/object-lock immutability from GitHub/Git alone.
 
+#### Append-only, and what that word is worth here
+
+Added 13 October 2026. Nothing enforces append-only on the published archive.
+There is no continuous integration check, no test, and no schema constraint
+preventing a published run from being removed. Append-only is a convention, not
+a control, and a reader should treat it that way. The same sentence appears in
+[`docs/key-custody.md`](docs/key-custody.md) about the key registry, for the
+same reason and with the same force.
+
+The disclaimers above concern storage-level immutability and adversarial or
+legal threat models. The ordinary case is simpler and none of them covers it. A
+branch cut before a run is published, and merged after it, carries a tree in
+which that run's directory and its index entry are both absent. No adversary is
+involved, every test passes, and `index.json` agrees with the archive on disk
+because both were reverted together, so a consistency check between them finds
+nothing wrong.
+
+That state arose here on 13 October 2026. A documentation branch was prepared
+whose tree, merged as a merge commit or a rebase, would have removed one
+published run. The squash merge this repository uses would not have, because a
+squash applies only the branch's own changes rather than its whole tree. The
+branch was rebuilt rather than relying on that distinction, because a merge
+strategy is a setting and not a control, and nothing in the repository would
+have reported the difference.
+
+Two things follow for a reader. Every run published today is present and
+verifies, which `python3 tools/archive_verification_report.py` re-derives from
+the files rather than asserting, with the known defects recorded in
+[`docs/archive-errata.md`](docs/archive-errata.md). Whether any run was ever
+published and later removed is **not** established by anything in this
+repository. That history is in git, and a reader who needs the property should
+read it there rather than take this posture's name for it.
+
+Closing the gap needs a check against history outside the branch being merged,
+because any baseline committed inside the repository is reverted by the same
+merge that removes the run. Recorded in [`docs/backlog.md`](docs/backlog.md).
+
 Known defects in the published archive, including runs whose receipts or certificates do not verify, are recorded in [`docs/archive-errata.md`](docs/archive-errata.md) and can be re-derived with `python3 tools/archive_verification_report.py`.
 
 Where the signing key lives, what can sign with it, and which properties are conventions rather than enforced controls, are recorded in [`docs/key-custody.md`](docs/key-custody.md).
