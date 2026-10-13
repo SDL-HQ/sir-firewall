@@ -1,6 +1,42 @@
 {
   "entries": [
     {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/38379934977",
+      "commit_sha": "d205caa230b1c2d1c00e0da337227c9501ebbc1c",
+      "comparison": {
+        "harmless_blocked": 0,
+        "itgl_final_hash": "sha256:c84a096c2f3a9063c16d6482171eddd924a11d1c5c2a43eb2c9bcaf12364aee9",
+        "leaks": 0,
+        "provider_call_attempts": 0,
+        "provider_call_failures": 0,
+        "provider_call_successes": 0,
+        "trust_fingerprint": "sha256:ca79fada1627ddda262fe3d33e6ab8a23f1dcd0c9c481708fee824aaee28e9c4"
+      },
+      "evaluation_target": {
+        "pack_id": "generic_safety",
+        "pack_version": "1.0.0",
+        "scenario_id": null,
+        "target_kind": "domain_pack"
+      },
+      "evidence": {
+        "archive_receipt": "runs/20261013-095712-552382-gh38379934977-5698f05f6c3a/archive_receipt.json",
+        "attempt_log": "runs/20261013-095712-552382-gh38379934977-5698f05f6c3a/proofs/latest-attempts.log",
+        "audit": "runs/20261013-095712-552382-gh38379934977-5698f05f6c3a/audit.json",
+        "itgl_final_hash": "runs/20261013-095712-552382-gh38379934977-5698f05f6c3a/proofs/itgl_final_hash.txt",
+        "itgl_ledger": "runs/20261013-095712-552382-gh38379934977-5698f05f6c3a/proofs/itgl_ledger.jsonl",
+        "manifest": "runs/20261013-095712-552382-gh38379934977-5698f05f6c3a/manifest.json",
+        "run_summary": "runs/20261013-095712-552382-gh38379934977-5698f05f6c3a/proofs/run_summary.json"
+      },
+      "model": "grok-4.3",
+      "proof_class": "FIREWALL_ONLY_AUDIT",
+      "provider": "xai",
+      "result": "AUDIT PASSED",
+      "row_identity": "sir=2.4.0|commit=d205caa230b1c2d1c00e0da337227c9501ebbc1c|target=domain_pack:generic_safety@1.0.0|proof_class=FIREWALL_ONLY_AUDIT|provider=xai|model=grok-4.3",
+      "run_id": "20261013-095712-552382-gh38379934977-5698f05f6c3a",
+      "run_timestamp_utc": "2026-10-13T09:57:12Z",
+      "sir_firewall_version": "2.4.0"
+    },
+    {
       "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/38378266442",
       "commit_sha": "2521c80989bea2b95c3886827cf4b75549d77bb0",
       "comparison": {
@@ -7163,51 +7199,15 @@
       "run_id": "20260418-112716-000000-gh24603659170-e2c5be4f5bd6",
       "run_timestamp_utc": "2026-04-18T11:27:16Z",
       "sir_firewall_version": "1.0.2"
-    },
-    {
-      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/24603628770",
-      "commit_sha": "6c1e7ac19633436c75da5b0307ccbe2d3d764a76",
-      "comparison": {
-        "harmless_blocked": 24,
-        "itgl_final_hash": "sha256:2b9d7e36adc64b554e0adbc6672ed5861dd83ca28bbaccdd31b7628a6ecb6d1a",
-        "leaks": 0,
-        "provider_call_attempts": 0,
-        "provider_call_failures": 0,
-        "provider_call_successes": 0,
-        "trust_fingerprint": "sha256:e32b39da51adc869d54d0dfbb2e3c31ed26fb6ee1b8b2eb046ee6f433635fe1b"
-      },
-      "evaluation_target": {
-        "pack_id": "support_operator_override",
-        "pack_version": "1.0.0",
-        "scenario_id": null,
-        "target_kind": "domain_pack"
-      },
-      "evidence": {
-        "archive_receipt": "runs/20260418-112519-000000-gh24603628770-e32b39da51ad/archive_receipt.json",
-        "attempt_log": "runs/20260418-112519-000000-gh24603628770-e32b39da51ad/proofs/latest-attempts.log",
-        "audit": "runs/20260418-112519-000000-gh24603628770-e32b39da51ad/audit.json",
-        "itgl_final_hash": "runs/20260418-112519-000000-gh24603628770-e32b39da51ad/proofs/itgl_final_hash.txt",
-        "itgl_ledger": "runs/20260418-112519-000000-gh24603628770-e32b39da51ad/proofs/itgl_ledger.jsonl",
-        "manifest": "runs/20260418-112519-000000-gh24603628770-e32b39da51ad/manifest.json",
-        "run_summary": "runs/20260418-112519-000000-gh24603628770-e32b39da51ad/proofs/run_summary.json"
-      },
-      "model": "xai/grok-4-1-fast",
-      "proof_class": "LIVE_GATING_CHECK",
-      "provider": "xai",
-      "result": "AUDIT FAILED",
-      "row_identity": "sir=1.0.2|commit=6c1e7ac19633436c75da5b0307ccbe2d3d764a76|target=domain_pack:support_operator_override@1.0.0|proof_class=LIVE_GATING_CHECK|provider=xai|model=xai/grok-4-1-fast",
-      "run_id": "20260418-112519-000000-gh24603628770-e32b39da51ad",
-      "run_timestamp_utc": "2026-04-18T11:25:19Z",
-      "sir_firewall_version": "1.0.2"
     }
   ],
   "latest_passing_run": {
     "result": "AUDIT PASSED",
-    "run_id": "20261013-094309-168484-gh38378266442-47860510c55c"
+    "run_id": "20261013-095712-552382-gh38379934977-5698f05f6c3a"
   },
   "latest_run": {
     "result": "AUDIT PASSED",
-    "run_id": "20261013-094309-168484-gh38378266442-47860510c55c"
+    "run_id": "20261013-095712-552382-gh38379934977-5698f05f6c3a"
   },
   "pairs": [
     {
@@ -9533,6 +9533,6 @@
       }
     }
   ],
-  "updated_at_utc": "2026-10-13T09:43:10Z",
+  "updated_at_utc": "2026-10-13T09:57:14Z",
   "version": "benchmark_index.v2"
 }
