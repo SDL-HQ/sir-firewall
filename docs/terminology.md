@@ -65,3 +65,57 @@ dimension. Pair grouping keys on model and pack, not on `proof_class`.
 The filed patent specification does not use the word firewall anywhere and names
 no repository or URL, so none of this has any bearing on the patent, and a
 repository rename would carry no patent consequence.
+
+## What the counters count
+
+Added 13 October 2026, because no surface defined these and the figures appear
+in the repository description, in every signed certificate and on every
+published run page. An independent review raised it as the single terminology
+change most likely to improve the project's credibility, and it is right: the
+names import meanings the mechanism cannot support.
+
+**SIR never observes model output.** It is a pre-inference gate. It decides on a
+request before a model sees it and, when the decision is `PASS`, forwards the
+approved request unchanged. Nothing downstream is read back, so no counter here
+can be a statement about what a model said or disclosed.
+
+### `jailbreaks_leaked`
+
+**What it counts:** benchmark rows labelled `block` in their suite that the gate
+allowed.
+
+**What it does not mean:** that anything was disclosed, exfiltrated, or reached a
+model's output. The word "leak" ordinarily means a downstream disclosure, which
+is a category of event this system is structurally incapable of observing. Read
+the figure as *expected-block inputs the gate allowed*, which is a statement
+about the rule set's coverage against a labelled corpus and nothing else.
+
+The name is kept rather than corrected because it is a field in the evidence
+contract and a signed counter inside 292 published certificates. Renaming it is
+a contract change with an archive migration behind it, which is recorded as a
+candidate rather than done. Defining it costs nothing and removes the misreading
+now. The same reasoning as the proof class name above.
+
+### `harmless_blocked`
+
+**What it counts:** benchmark rows labelled `allow` in their suite that the gate
+blocked.
+
+**What it does not mean:** a false-positive rate for any real workload. The
+denominator is the allow-labelled rows of a named corpus. The 2.4.0 measurement
+of requests that quote attacker wording is the reason this distinction matters:
+the proportion of a team's legitimate requests that SIR blocks is not a property
+of their domain, it is a property of how often their requests contain attacker
+phrasing, and no benchmark corpus predicts that for them.
+
+### `AUDIT PASSED`
+
+**What it means:** the counters for this run were zero and the certificate's own
+checks were satisfied.
+
+**What it does not mean:** that the rule set is adequate, or that the
+configuration enforces what its name suggests. A run over a corpus the rules
+already cover produces this verdict, and so does a run over a corpus that
+exercises nothing. `docs/rule-coverage.md` publishes what is covered and
+`docs/claims-register.md` records what the evidence does and does not establish.
+A verdict is a statement about one run, not an endorsement of the gate.

@@ -249,6 +249,7 @@ Read `docs/runs/benchmark_index.v2.json` as an evidence index:
 - use `latest_run` for most recent execution status
 - use `latest_passing_run` for most recent pass
 - treat each row as one attributable comparison record: SIR version, commit SHA, explicit evaluation target (`domain_pack` or `scenario_pack`), proof class, provider/model, result, leaks/harmless-blocked, and evidence links
+- read what those two counters count before quoting them. `jailbreaks_leaked` is expected-block benchmark rows the gate allowed and `harmless_blocked` is allow-labelled rows it blocked. SIR never observes model output, so neither describes a disclosure, and neither is a false-positive or miss rate for a real workload. See [`terminology.md`](terminology.md)
 - use `entries[*].comparison` for raw observed metadata only
 - do not treat it as a score or ranking, and do not infer an overall “best model”
 

@@ -153,7 +153,11 @@ def test_current_version_surfaces_match_runtime_authority():
         "docs/archive-errata.md": Counter({v_234: 5, v_240: 1, v_237: 1, v_102: 1}),
         # The scenario-suite divergence row names the version the three published
         # archives were produced at, which is the half of the question that is known.
-        "docs/backlog.md": Counter({v_230: 1, v_102: 1}),
+        # Three post-2.4 rows added 13 October 2026 name the release that
+        # measured or decided what they record: the pack measurement's revision,
+        # the use-versus-mention measurement, and the counter definitions that
+        # were taken instead of a rename.
+        "docs/backlog.md": Counter({v_240: 3, v_230: 1, v_102: 1}),
         # The publication step records the release whose merge exposed that a
         # direct push to main cannot satisfy the required status checks.
         ".github/workflows/audit-and-sign.yml": Counter({v_240: 1}),
@@ -201,7 +205,9 @@ def test_current_version_surfaces_match_runtime_authority():
         ),
         "docs/failure-modes.md": Counter({v_230: 3, v_231: 3, authority: 2}),
         "docs/rule-coverage.md": Counter({authority: 1}),
-        "docs/terminology.md": Counter({v_235: 1, v_234: 1}),
+        # The counter definitions added 13 October 2026 name the release whose
+        # measurement they cite.
+        "docs/terminology.md": Counter({v_240: 1, v_235: 1, v_234: 1}),
         "docs/threat-model.md": Counter({v_234: 1}),
         "pyproject.toml": Counter({authority: 1}),
         "spec/evidence_contract.v1.json": Counter({v_220: 2}),
