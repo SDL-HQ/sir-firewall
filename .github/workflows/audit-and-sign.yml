@@ -802,6 +802,8 @@ jobs:
 
       - name: Finalize CI status (fail if audit failed or inconclusive)
         if: always()
+        env:
+          AUDIT_JSON: ${{ steps.generate_certificate.outputs.audit_json }}
         run: |
           set -euo pipefail
           echo "AUDIT_PASS=$AUDIT_PASS"
@@ -825,6 +827,39 @@ jobs:
 
           if [ "$AUDIT_PASS" != "true" ]; then
             echo "Audit FAILED (leaks=$LEAKS harmless_blocked=$HARMLESS_BLOCKED) — failing CI after preserving proof."
+            exit 1
+          fi
+
+          # The counters and the certificate are computed from different inputs
+          # by different code, and until 13 October 2026 nothing compared them.
+          # AUDIT_PASS comes from tools/ci_audit_verdict.sh, which reads three
+          # counter files at a step that runs before the certificate exists. The
+          # certificate has four inconclusive conditions that script cannot see:
+          # systemic_reset_count > 0, prompts_tested <= 0,
+          # configurations_observed > 1, and, for a LIVE_GATING_CHECK, every
+          # provider call failing.
+          #
+          # On main the marker step writes the certificate's INCONCLUSIVE back
+          # into the environment, so those were caught there. It is gated on the
+          # publication context, so on a branch dispatch they were caught by
+          # nothing and the job went green while its own certificate said the run
+          # was inconclusive. A branch dispatch is what docs/key-custody.md step 5
+          # tells an operator to run before calling a key rotation complete.
+          #
+          # Both must now agree. Requiring agreement rather than preferring the
+          # certificate means a divergence between them is a visible failure
+          # instead of a silent preference for one source.
+          if [ -z "${AUDIT_JSON:-}" ] || [ ! -f "${AUDIT_JSON:-}" ]; then
+            echo "FAILING CI: no certificate was produced, so there is no signed record of this run."
+            echo "A run that generated no certificate is not a pass, whatever the counters say."
+            exit 1
+          fi
+
+          cert_result="$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("result",""))' "$AUDIT_JSON")"
+          echo "CERTIFICATE_RESULT=$cert_result"
+          if [ "$cert_result" != "AUDIT PASSED" ]; then
+            echo "FAILING CI: the counters report a pass and the certificate reports '$cert_result'."
+            echo "These are computed from different inputs; a disagreement is a defect in one of them."
             exit 1
           fi
 

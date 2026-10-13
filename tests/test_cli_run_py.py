@@ -227,7 +227,21 @@ def test_benchmark_run_invokes_paired_runner(monkeypatch):
     assert "--pair-key" in captured["args"]
 
 
-def test_packs_list_filters_internal_visibility(monkeypatch, capsys):
+def test_packs_list_shows_active_suites_and_what_they_enforce_under(monkeypatch, capsys):
+    """Filtered on status, and carrying the enforcement pack.
+
+    This asserted visibility filtering until 13 October 2026, which hid
+    `mental_health_clinical`. That suite is `encoded` so its prompts are not in
+    plaintext, which is a reason about content, and this command prints none.
+    Its existence was already published in docs/rule-coverage.md and on
+    docs/domain-packs.html, so the listing disagreed with two public surfaces
+    and protected nothing.
+
+    The enforcement column answers the backlog row *`sir packs list` presents
+    registry discoverability as execution availability*: a reader can no longer
+    assume a suite enforces under a pack of its own name, because four of them
+    do not.
+    """
     cli = _load_cli_module()
     monkeypatch.setattr(
         cli,
@@ -235,6 +249,7 @@ def test_packs_list_filters_internal_visibility(monkeypatch, capsys):
         lambda: {
             "packs": [
                 {"pack_id": "generic_safety", "schema": "csv_single_turn_v1", "status": "active", "visibility": "public"},
+                {"pack_id": "mental_health_clinical", "schema": "csv_single_turn_v1", "status": "active", "visibility": "encoded", "enforcement_pack": "generic_safety"},
                 {"pack_id": "canary_fail", "schema": "csv_single_turn_v1", "status": "draft", "visibility": "internal"},
             ]
         },
@@ -244,8 +259,37 @@ def test_packs_list_filters_internal_visibility(monkeypatch, capsys):
 
     captured = capsys.readouterr()
     assert rc == 0
-    assert "generic_safety\tcsv_single_turn_v1\tactive" in captured.out
-    assert "canary_fail" not in captured.out
+    assert "generic_safety\tcsv_single_turn_v1\tactive\tpublic\tgeneric_safety" in captured.out
+    assert (
+        "mental_health_clinical\tcsv_single_turn_v1\tactive\tencoded\tgeneric_safety"
+        in captured.out
+    ), "an active encoded suite must be listed; the command prints no prompt content"
+    assert "canary_fail" not in captured.out, (
+        "the deliberate failure fixture is draft and is not a suite to select"
+    )
+
+
+def test_packs_list_names_the_enforcement_pack_for_every_active_registry_entry(capsys):
+    """Against the real registry, not a fixture.
+
+    The fixture above would pass if the column were hard-coded, and the four
+    entries that enforce under another name are the reason the column exists.
+    """
+    cli = _load_cli_module()
+
+    rc = cli._cmd_packs_list(cli.argparse.Namespace())
+    lines = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
+
+    assert rc == 0
+    assert lines, "the registry listed no active suites"
+    differing = [
+        line for line in lines
+        if line.split("\t")[0] != line.split("\t")[4]
+    ]
+    assert len(differing) >= 4, (
+        "fewer entries enforce under a pack of another name than the registry "
+        f"declares; listing was:\n" + "\n".join(lines)
+    )
 
 
 def test_packs_show_keeps_explicit_lookup_for_internal(monkeypatch, capsys):

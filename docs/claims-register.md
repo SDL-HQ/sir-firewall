@@ -106,9 +106,24 @@ a sentence a reader stops at.
 
 The README now reads **rule set**, and the paragraph immediately after it states
 both what the evidence establishes and what it does not, including the
-measurement and the guard against the opposite overclaim. The website carries
-the same wording and is queued in `claude/website-changes-queued.md` rather than
-changed here, because the site is a separate deploy bundle.
+measurement and the guard against the opposite overclaim.
+
+**Which surfaces carry that paragraph, decided 13 October 2026.** The README
+carries it and `tests/test_claims_register.py` holds it with four assertions.
+The website does not carry it and deliberately will not. The site keeps its own
+bounded claim, which is qualified in place, and links here for the limit. That
+is a decision rather than an omission: reproducing the paragraph on a separately
+deployed surface would duplicate text that nothing could hold in step, and the
+only guard available from this repository would be a live fetch, which couples a
+green build to a later deploy and can pass against a cached page. A link carries
+no claim content, so there is nothing to drift.
+
+The sentence this replaces said the website carried the same wording and that
+the change was queued. Checked against the live site on 13 October, that was
+false under either reading: the site carries neither the superseded
+"configuration" wording nor the limit paragraph, and its evidence page linked to
+no statement of limits at all. Adding that link is the outstanding site work,
+recorded in `claude/website-changes-queued.md`.
 
 *Coverage: inside, partly claimed.* Claim 4 recites a configuration hash from a
 policy file loaded at initialisation. Paragraph [0086] supports the broader

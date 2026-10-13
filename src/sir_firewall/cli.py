@@ -191,14 +191,36 @@ def _load_registry() -> dict:
 
 
 def _cmd_packs_list(_: argparse.Namespace) -> int:
+    """List the active registry suites, with what each one enforces under.
+
+    Filtered on status rather than on visibility. Until 13 October 2026 this
+    skipped anything whose visibility was not `public`, which hid
+    `mental_health_clinical`. That suite is `encoded` because the registry
+    validator requires it for an `encoded_high_risk` pack, so that its prompts
+    are not in plaintext. The reason is about content, and this command prints
+    no content: its existence, visibility, row count and coverage are already
+    published in docs/rule-coverage.md and on docs/domain-packs.html, so hiding
+    it here protected nothing and disagreed with two public surfaces.
+
+    `visibility` and `enforcement_pack` are printed because a listing of suite
+    identifiers invites the reader to assume a policy pack of the same name,
+    which is what the backlog row *`sir packs list` presents registry
+    discoverability as execution availability* is about. Four entries enforce
+    under a pack of another name.
+
+    `canary_fail` stays out, as draft. It exists to fail and is not a suite
+    anyone should select.
+    """
     reg = _load_registry()
     for pack in reg.get("packs", []):
-        if pack.get("visibility") != "public":
+        if pack.get("status") != "active":
             continue
         pid = pack.get("pack_id", "")
         schema = pack.get("schema", "")
         status = pack.get("status", "")
-        print(f"{pid}\t{schema}\t{status}")
+        visibility = pack.get("visibility", "")
+        enforcement = str(pack.get("enforcement_pack") or "").strip() or pid
+        print(f"{pid}\t{schema}\t{status}\t{visibility}\t{enforcement}")
     return 0
 
 

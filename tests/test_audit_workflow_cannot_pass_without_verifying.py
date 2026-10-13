@@ -112,13 +112,18 @@ def test_the_skip_wording_is_gone_everywhere():
 
 
 def test_the_finalize_net_is_still_publication_gated_and_so_not_relied_on():
-    """Records why the step guards exist rather than leaning on the net.
+    """The marker net reads a publication-only signal, so it stays gated.
 
-    The finalize step's missing-certificate check is gated on the publication
-    context, so it covers main and not a branch. That is reasonable, because the
-    signal it reads is a marker only produced when publishing. This asserts the
-    gating is still there, so that if it ever becomes unconditional someone
-    revisits whether the per-step failures are still the thing carrying this.
+    This records why the per-step guards exist rather than leaning on that net.
+    The run-marker check reads LATEST_RUN_STATUS, which only a publishing run
+    produces, so gating it is correct and making it unconditional would be
+    wrong.
+
+    Since 13 October 2026 it is no longer the only cover on a branch: the
+    finalize step also requires the certificate's own result, unconditionally,
+    which is held by test_a_branch_dispatch_cannot_go_green_on_a_bad_certificate
+    below. This assertion remains because the two are different mechanisms and
+    the gating of this one is still deliberate.
     """
     text = WORKFLOW.read_text(encoding="utf-8")
     index = text.find("Run marker was not produced")
@@ -363,3 +368,93 @@ def test_both_markers_recognise_the_same_three_results():
     for name, run in _result_mapping_steps():
         for result in ('"AUDIT PASSED"', '"AUDIT FAILED"', '"INCONCLUSIVE"'):
             assert result in run, f"step {name!r} does not recognise {result}"
+
+
+def _finalize_step():
+    return next(run for name, run in _steps() if name and name.startswith("Finalize CI status"))
+
+
+def test_a_branch_dispatch_cannot_go_green_on_a_bad_certificate():
+    """The counters and the certificate must agree, on every ref.
+
+    AUDIT_PASS comes from tools/ci_audit_verdict.sh, which reads three counter
+    files at a step that runs before the certificate exists. The certificate has
+    four inconclusive conditions that script cannot see: systemic_reset_count
+    above zero, prompts_tested at or below zero, configurations_observed above
+    one, and every provider call failing on a LIVE_GATING_CHECK.
+
+    On main the marker step wrote the certificate's INCONCLUSIVE back into the
+    environment, so those were caught. That step is gated on the publication
+    context, so on a branch dispatch nothing caught them and the job went green
+    while its own certificate said the run was inconclusive. A run with some
+    systemic resets and some content still evaluated is the ordinary shape of
+    that: content_evaluated is above zero and the leak counters are zero, which
+    the shell reads as clean.
+
+    This matters beyond tidiness because docs/key-custody.md step 5 tells an
+    operator to validate a key rotation with exactly that dispatch.
+    """
+    run = _finalize_step()
+
+    assert "AUDIT_JSON" in run, (
+        "the finalize step does not look at the certificate at all, so its "
+        "verdict rests entirely on counters computed before the certificate existed"
+    )
+    assert '"AUDIT PASSED"' in run, (
+        "the finalize step does not require the certificate's own result"
+    )
+    assert "exit 1" in run
+
+    # Unconditional. Gating this on the publication context would leave the gap
+    # exactly where it was, because branch dispatches are the uncovered case.
+    #
+    # Checked per line rather than over a slice of the step. The first version
+    # of this assertion sliced from the first occurrence of "AUDIT_JSON:-", so a
+    # mutation that put the publication context earlier on the same line sat
+    # outside the slice and the test passed. It was shown to fail only after
+    # that was corrected.
+    guarding_lines = [
+        line for line in run.splitlines()
+        if "AUDIT_JSON" in line and line.strip().startswith(("if ", "elif "))
+    ]
+    assert guarding_lines, "nothing in the finalize step branches on the certificate path"
+    for line in guarding_lines:
+        assert "CANONICAL_PUBLICATION_CONTEXT" not in line, (
+            "the certificate check is publication-gated, which leaves branch "
+            f"dispatches uncovered and is the defect this exists to close: {line.strip()}"
+        )
+
+
+def test_a_run_with_no_certificate_is_not_a_pass():
+    """Absent is not clean, in the step that decides whether CI is green."""
+    run = _finalize_step()
+
+    # Keyed to the guard rather than to the message. The first version asserted
+    # the sentence, and rewording the echo broke it while the behaviour was
+    # unchanged. A test that fails when prose moves is noise; a test that fails
+    # when the guard goes is the point.
+    assert '[ ! -f "${AUDIT_JSON:-}" ]' in run or "[ ! -f \"$AUDIT_JSON\" ]" in run, (
+        "the finalize step does not check whether a certificate file exists, so "
+        "a run that produced none would be judged on counters alone"
+    )
+    assert '[ -z "${AUDIT_JSON:-}" ]' in run, (
+        "the finalize step does not check whether a certificate path was set at all"
+    )
+
+
+def test_the_counter_verdict_and_the_certificate_are_separate_sources():
+    """Guard the guard: the point is agreement between two things, not one thing.
+
+    If the counter check were ever removed in favour of the certificate, this
+    would become a single-source verdict again and the divergence it exists to
+    surface would stop being detectable.
+    """
+    run = _finalize_step()
+
+    # The condition, not the variable. The first version asserted that
+    # "$AUDIT_PASS" appeared anywhere in the step, which the diagnostic echo at
+    # the top satisfies, so deleting the check itself left the test green.
+    assert 'if [ "$AUDIT_PASS" != "true" ]' in run, (
+        "the counter-derived verdict is no longer checked, so nothing can "
+        "disagree with the certificate and a divergence would not be visible"
+    )

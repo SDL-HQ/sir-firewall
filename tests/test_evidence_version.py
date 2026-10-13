@@ -188,8 +188,12 @@ def test_current_version_surfaces_match_runtime_authority():
         f"docs/release-notes-{v_238}.md": Counter({v_238: 3, v_235: 1}),
         # The release in flight. Its notes name the contract floor and the
         # applicability boundary of the contracts that precede it.
+        # The pre-release review section names the previous release once, as the
+        # revision the gate's decision path is byte-identical to, which is what
+        # makes the 453-by-six measurement still current without a rerun. The
+        # version is not written here in full: this file scans itself.
         f"docs/release-notes-{v_240}.md": Counter(
-            {v_240: 5, v_220: 2, v_234: 1, v_102: 1}
+            {v_240: 7, v_220: 2, v_234: 1, v_238: 1, v_102: 1}
         ),
         "docs/failure-modes.md": Counter({v_230: 3, v_231: 3, authority: 2}),
         "docs/rule-coverage.md": Counter({authority: 1}),

@@ -267,6 +267,77 @@ website archive reconstructed its directory entries from their names alone, whic
 dropped the mode bits and left every directory at `0600`, so the deploy failed
 before any page was served. The rebuild now copies each entry's own metadata.
 
+## The independent pre-release review, and what it changed
+
+2.4.0 was reviewed before release by a party that did not build it, working
+read-only from a pinned revision, with a second model contributing a further
+fourteen items. The response, with every finding confirmed or rebutted against
+source, is held outside this repository in the private operations record. What
+it changed here is below.
+
+**Most of it confirmed the backlog rather than finding defects.** Eleven of the
+fourteen follow-up items were already recorded in `docs/backlog.md`,
+`docs/archive-errata.md` or `docs/key-governance-readiness.md`. A reviewer with
+no access to those documents re-derived them and found almost nothing outside
+them.
+
+**Eight expected-block prompts that pass the gate turned out to be the published
+uncovered rows.** `account_recovery_fraud` publishes five by identifier and
+`eu_ai_act_compliance_pressure` publishes twenty-six; all eight are among them.
+The gate did what the published coverage says it will. That is the bounded claim
+working, observed by someone who did not know it was the claim.
+
+**Four corrections were made, and three are in this release.**
+
+*Runner evaluability was derived from the wrong field.* `tools/rule_coverage_report.py`
+used each suite's own `pack_id` where the runner resolves through the registry's
+`enforcement_pack`. `docs/rule-coverage.md` and `docs/domain-packs.html`
+published `account_recovery_fraud`, `mental_health_clinical`,
+`scenario_injection_chain` and `scenario_tool_injection` as not runner-evaluable,
+and stated that running such a suite evaluates no prompt content. The runner
+evaluates every row of all four. `docs/coverage.json` never carried the column,
+so the website's limits table was unaffected. The derivation now mirrors the
+runner, the markdown table is generated rather than transcribed, and
+`tests/test_runnable_suites.py` holds the two in agreement for every registry
+entry.
+
+*The benchmark run marker published unknown as a verdict.* An absent, malformed
+or unrecognised certificate result became a conclusive `FAIL`, where the
+single-run marker already refused. Neither publishes a false pass and they are
+not equally true: a conclusive failure describes a run the evidence does not
+describe. Both markers now recognise the same three results and raise on
+anything else.
+
+*A green branch dispatch did not require a conclusive certificate.* `AUDIT_PASS`
+is computed from three counter files before the certificate exists, and the
+certificate has four inconclusive conditions that computation cannot see. On
+`main` the run marker wrote the certificate's verdict back and caught them; it is
+publication-gated, so on a branch dispatch nothing did, and a job could go green
+while its own certificate said the run was inconclusive. That dispatch is what
+`docs/key-custody.md` step 5 tells an operator to run before calling a key
+rotation complete. The finalize step now requires the counters and the
+certificate to agree, unconditionally, so a divergence between two independently
+computed sources is a visible failure rather than a silent preference for one.
+
+*`sir packs list` hid an active suite and implied an enforcement pack that may
+not exist.* It filtered on visibility, which hid `mental_health_clinical`, whose
+`encoded` class exists so its prompts are not in plaintext. That is a reason
+about content and the command prints none, while the suite's existence was
+already published on two surfaces. It now filters on status and prints
+`visibility` and `enforcement_pack`, which also closes the backlog row about
+registry discoverability being read as execution availability.
+
+**The 453-prompt six-pack measurement was not repeated, and did not need to be.**
+This is stated as what was established rather than as what was skipped, because
+the two are different claims. `src/sir_firewall/deterministic_rules.py` and all
+six ISC policy packs are byte-identical to v2.3.8. `_check_jailbreak`,
+`normalize_obfuscation`, `_has_override_envelope_prompt_exposure` and the danger,
+safety and high-risk word lists are identical as source. `has_obfuscation_signal`
+is recorded on the decision and is not a blocking condition. Both properties the
+measurement established were re-verified at 2.4.0: verdicts identical across the
+six packs, and a distinct `configuration_hash` for each. Every input to that
+result is unchanged, so a rerun would reproduce it by construction.
+
 ## What is not claimed
 
 No claim about false-positive rates for any customer workload. The measured
