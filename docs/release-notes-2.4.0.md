@@ -510,6 +510,44 @@ good as its description, so a wrong description is not a lesser class of defect
 here. Running the thing being described is now the condition for describing it,
 and where that was not done the release notes say so by name.
 
+**A fourth reading changed one finding in the product's favour.** It argued that
+declaring the domain packs structural configuration without a check would be one
+more sentence a reader cannot verify, which was correct and had been missed.
+Building that check found something no review had: the packs are not inert. A
+request of 1050 tokens under template `PCI-DSS-ISC-v1` is admitted by
+`generic_safety`, which declares a ceiling of 1200, and refused by
+`pci_payments`, which declares 900, with reason `friction_limit_exceeded`. Same
+request, same rules, two verdicts, decided by the pack.
+
+The six packs differ in exactly two declared properties, per-template token
+ceilings and the presence of a structured request schema, with identical `flags`
+throughout, so "six domain packs" is three distinct ceiling maps crossed with
+schema presence rather than six policies. The reason the 453-prompt measurement
+reports no divergence is the corpus: its longest prompt is 33 tokens against a
+smallest declared ceiling of 900, a factor of 27. That is a fact about these
+suites, not about the packs.
+
+No published claim needed correcting. `docs/threat-model.md` had always said the
+measurement did not establish that the packs were inert, and that scoping holds.
+One heading was overstated: "Derived, correct, signed, and not load-bearing" is
+now bounded to this corpus, because the body was careful and the heading was
+what would get quoted. The demonstration is held by
+`tests/test_domain_packs_change_admissibility.py`, which derives every payload
+from the pack files and asserts the corpus gap, so a long prompt added to a
+suite surfaces as a change in what the measurement means rather than silently
+altering it. Making the phrase rules pack-aware was considered and rejected: it
+would put policy in two places.
+
+**And the release has written criteria now, which it did not when it started.**
+`docs/release-criteria.md` records the four things that block a tag and names who
+decides the one that is a judgment rather than a check. The fourth criterion is
+the one this release already paid for: "configuration actually enforces" was a
+true sentence, corrected anyway, because a reader skims a goal line and takes an
+inference the archive does not support. Without that clause written down, that
+correction becomes a precedent for shipping the inference and fixing the
+footnote. Three review rounds happened in part because nothing said when the
+release was finished.
+
 ## What is not claimed
 
 No claim about false-positive rates for any customer workload. The measured
@@ -530,10 +568,18 @@ zero harmless blocks and zero leaks. Today's run reports one and four. Whether
 the rules changed or the suite changed is not established. Both scenario suites
 are pinned to current behaviour so the drift cannot widen unnoticed.
 
-**No registry suite exercises what the domain packs configure.** Closing it needs
-a suite whose prompts differ in outcome across packs, which changes suite hashes
-and coverage denominators and is therefore a benchmark-content decision with an
-evidence rerun.
+**No suite exercises the structural controls the domain packs own.** The packs
+are not inert: they differ in per-template token ceilings and structured-schema
+presence, and a request sized between two packs' ceilings is admitted by one and
+refused by the other, held by
+`tests/test_domain_packs_change_admissibility.py`. What no registry suite
+contains is a prompt that approaches a ceiling, its longest being 33 tokens
+against a smallest ceiling of 900, so the published coverage figures say nothing
+about those controls. Closing that needs benchmark rows that do, which changes
+suite hashes and coverage denominators and is therefore a benchmark-content
+decision with an evidence rerun. This item was previously recorded with a
+verdict-based closing condition, a suite built to make the packs differ, which
+framed the packs as failing to do something they do.
 
 **The historical set and key revocation.** Every published certificate was
 signed by the registry entry `default`. Revoking it rather than retiring it would

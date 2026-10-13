@@ -79,7 +79,7 @@ The certificate signs both derived and asserted fields. The signature makes both
 
 Some aggregate certificate fields are derived from `run_summary.json`, but certificate generation trusts that producer artifact rather than replaying the run. Their arithmetic can be contract-checked without establishing the truth of the underlying event.
 
-### Derived, correct, signed, and not load-bearing
+### Derived, correct, signed, and not load-bearing on this corpus
 
 A third category, distinct from both of the above. A field can be computed from what the gate actually loaded, be accurate about it, be covered by the signature, and still not describe anything that affected the outcome.
 
@@ -100,7 +100,11 @@ The domain ISC pack is the known instance. `configuration_hash` covers the pack 
 
 The pack must load: a missing one makes every row a systemic reset. Which one loads changes nothing these suites measure.
 
-**This does not establish that the packs are inert.** `tests/domain_packs/README.md` records that they control ISC templates, friction limits, enforcement flags, and structured schemas. No prompt in any registry suite exercises those, so the packs may be doing exactly what they were built for on inputs nothing here tests.
+**The packs are not inert, and the reason the table reads as it does is the corpus.** Measured 13 October 2026 and held by `tests/test_domain_packs_change_admissibility.py`: the six packs differ in exactly two declared properties, per-template token ceilings and the presence of a structured request schema. All six carry identical `flags`, and `STRICT_ISC_ENFORCEMENT` has no behavioural meaning. There are three distinct ceiling maps across the six packs.
+
+Those ceilings change verdicts. A request of 1050 tokens under template `PCI-DSS-ISC-v1` is admitted by `generic_safety`, which declares a ceiling of 1200, and refused by `pci_payments`, which declares 900, with reason `friction_limit_exceeded`. Same request, same rules, two verdicts, decided by the pack.
+
+No registry prompt comes near any ceiling. The longest prompt in the eight active suites is 33 tokens and the smallest declared ceiling is 900, a factor of 27. That is why every per-prompt result above is identical under all six packs: it is a fact about the corpus, not about the packs. The heading of this section is scoped accordingly, and the test asserts the gap so that adding a long prompt to a suite surfaces as a change in what the measurement means rather than silently altering it.
 
 **It does establish that no published run's verdicts depended on its domain pack.** All 292 published archives use one of the eight suites above. A reader who treats `domain_pack` or `configuration_hash` as evidence that a particular policy produced a particular verdict is reading more than the archive supports: the same verdicts would have been produced under any of the six.
 
