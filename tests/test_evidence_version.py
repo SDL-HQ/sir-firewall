@@ -229,6 +229,9 @@ def test_current_version_surfaces_match_runtime_authority():
         # dispatch that had no missing-certificate net.
         "tests/test_audit_workflow_cannot_pass_without_verifying.py": Counter({v_240: 2}),
         "tests/test_release_checklist.py": Counter({v_240: 1}),
+        # Names the release-notes file it reads, twice: the docstring and the
+        # path constant. The figure it guards went stale inside that file.
+        "tests/test_release_notes_suite_size.py": Counter({v_240: 2}),
         "tests/test_check_archive_staged.py": Counter({v_237: 2}),
         "tests/test_standalone_verifiers.py": Counter({v_234: 1}),
         "tools/verify_certificate.py": Counter({v_234: 9}),
