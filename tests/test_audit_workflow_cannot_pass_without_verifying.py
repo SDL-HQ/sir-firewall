@@ -315,3 +315,51 @@ def test_the_proof_pull_request_is_not_opened_by_the_actions_bot():
         assert token.index("SIR_AUDIT_PUSH_TOKEN") < token.index("GITHUB_TOKEN"), (
             "the dedicated token must be preferred, not used as the fallback"
         )
+
+
+def _result_mapping_steps():
+    """Every step that turns a recorded run result into a published status."""
+    return [
+        (name, run)
+        for name, run in _steps()
+        if '"AUDIT PASSED"' in run and "status = " in run
+    ]
+
+
+def test_an_unrecognised_run_result_is_not_published_as_a_verdict():
+    """Unknown is not a verdict, in either marker.
+
+    Until 13 October 2026 the benchmark marker read:
+
+        else:
+            status = "FAIL"
+
+    so an absent, malformed or unrecognised result became a conclusive failure.
+    The single-run marker already raised SystemExit on the same input. Both
+    behaviours are safe in the sense that neither publishes a false pass, and
+    they are not equally true: a conclusive FAIL describes a run the evidence
+    does not describe, which is the defect this release is named for, reported
+    in the other direction.
+
+    Keyed to the shape rather than to one step, so a third marker added later is
+    covered by the same assertion.
+    """
+    steps = _result_mapping_steps()
+
+    assert len(steps) >= 2, [name for name, _ in steps]
+    for name, run in steps:
+        assert "raise SystemExit" in run, (
+            f"step {name!r} maps a run result to a status and never refuses one; "
+            "an unrecognised result has to stop rather than become a verdict"
+        )
+        assert not re.search(r"else:\s*\n\s*status = ", run), (
+            f"step {name!r} assigns a status in an else branch, so a result it "
+            "does not recognise is published as a conclusive verdict"
+        )
+
+
+def test_both_markers_recognise_the_same_three_results():
+    """A result one marker understands and the other does not is a divergence."""
+    for name, run in _result_mapping_steps():
+        for result in ('"AUDIT PASSED"', '"AUDIT FAILED"', '"INCONCLUSIVE"'):
+            assert result in run, f"step {name!r} does not recognise {result}"

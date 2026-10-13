@@ -32,6 +32,7 @@ sys.path.insert(0, str(_REPO_ROOT / "src"))
 sys.path.insert(0, str(_Path(__file__).resolve().parent))
 
 from sir_firewall import __version__
+import sir_firewall.core as sir_firewall_core
 from sir_firewall.core import GENESIS_HASH, _check_jailbreak, normalize_obfuscation
 from sir_firewall.deterministic_rules import find_rule_hits
 
@@ -39,6 +40,11 @@ from sir_firewall.deterministic_rules import find_rule_hits
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REGISTRY = ROOT / "spec" / "packs" / "pack_registry.v1.json"
 PUBLISHED_JSON = ROOT / "docs" / "coverage.json"
+# Where load_domain_pack() looks, resolved from the installed package rather than
+# from the repository layout, so this agrees with the runner under any install.
+# red_team_suite._isc_pack_path does the same and
+# tests/test_runnable_suites.py holds that helper against load_domain_pack.
+ISC_PACK_DIR = Path(sir_firewall_core.__file__).resolve().parent / "policy" / "isc_packs"
 PUBLIC_STATUSES = frozenset({"active"})
 PUBLIC_VISIBILITIES = frozenset({"public", "encoded"})
 BEGIN = "BEGIN GENERATED FULL-GATE COVERAGE"
@@ -145,16 +151,29 @@ def build_report(*, registry_path: Path = DEFAULT_REGISTRY, root: Path = ROOT) -
         deterministic_set = set(deterministic_matched)
         full_gate_set = set(full_gate_matched)
         pack_id = str(pack.get("pack_id") or "")
-        enforcement_policy_pack_path = (
-            root / "src" / "sir_firewall" / "policy" / "isc_packs" / f"{pack_id}.json"
-        )
-        runner_evaluable = enforcement_policy_pack_path.exists()
+        # Evaluability is whether red_team_suite.py can run this suite, so it is
+        # derived the way the runner derives it: the registry's enforcement_pack,
+        # falling back to the suite's own id when absent, resolved against the
+        # directory load_domain_pack() reads.
+        #
+        # Until 13 October 2026 this used pack_id alone. That matched the runner
+        # until the enforcement_pack resolver landed, after which it reported
+        # four suites as not runner-evaluable while the runner ran all four:
+        # account_recovery_fraud, mental_health_clinical, scenario_injection_chain
+        # and scenario_tool_injection, each of which enforces under
+        # generic_safety. docs/rule-coverage.md and docs/domain-packs.html
+        # published that, along with a sentence saying the runner evaluates no
+        # prompt content for those suites, which was false.
+        enforcement_pack_id = str(pack.get("enforcement_pack") or "").strip() or pack_id
+        enforcement_policy_pack_path = ISC_PACK_DIR / f"{enforcement_pack_id}.json"
+        runner_evaluable = enforcement_policy_pack_path.is_file()
         results.append(
             {
                 "pack_id": pack_id,
                 "pack_version": str(pack.get("version") or ""),
                 "status": str(pack.get("status") or ""),
                 "visibility": str(pack.get("visibility") or ""),
+                "enforcement_pack": enforcement_pack_id,
                 "block_rows": len(block_rows),
                 "deterministic_rule_matched": len(deterministic_matched),
                 "deterministic_rule_unmatched_ids": [row_id for row_id in block_ids if row_id not in deterministic_set],
@@ -303,6 +322,18 @@ def render_javascript_lookup(report: dict[str, Any], variable_name: str, indent:
     return "\n".join(lines)
 
 
+def render_markdown_region(report: dict[str, Any]) -> str:
+    """The markdown table, wrapped in the markers that make it owned.
+
+    docs/rule-coverage.md carried this table by hand until 13 October 2026.
+    Nothing generated it and nothing compared it with the generator, which is
+    why its runner-evaluability column stayed wrong after the enforcement_pack
+    resolver landed: correcting the derivation alone would have left the table
+    to be retyped, and the next divergence would have been just as silent.
+    """
+    return f"<!-- {BEGIN} -->\n{render_markdown(report).rstrip()}\n<!-- {END} -->"
+
+
 def replace_generated(document: str, generated: str) -> str:
     begin_candidates = (f"<!-- {BEGIN} -->", f"// {BEGIN}")
     end_candidates = (f"<!-- {END} -->", f"// {END}")
@@ -340,6 +371,11 @@ def inject_javascript_lookup(
 
 def update_published_surfaces(report: dict[str, Any]) -> None:
     PUBLISHED_JSON.write_text(render_published_json(report), encoding="utf-8")
+    coverage_doc = ROOT / "docs" / "rule-coverage.md"
+    coverage_doc.write_text(
+        replace_generated(coverage_doc.read_text(encoding="utf-8"), render_markdown_region(report)),
+        encoding="utf-8",
+    )
     domain_path = ROOT / "docs" / "domain-packs.html"
     domain_path.write_text(
         replace_generated(domain_path.read_text(encoding="utf-8"), render_html_table_body(report)),
