@@ -8,7 +8,7 @@ it is that each one **remains true when the reader examines the failures**. A
 claim that is true only while nobody checks is the thing this register exists
 to catch.
 
-Last reviewed 8 October 2026 at SIR 2.3.8, on the `release/2.4` branch.
+Last reviewed 8 October 2026 at SIR 2.3.8, ending at commit `6f4d036`.
 
 The release item this register serves stays **open** while it exists, and
 deliberately so. The condition is about the claims rather than about the
