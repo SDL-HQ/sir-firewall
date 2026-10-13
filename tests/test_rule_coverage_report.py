@@ -52,6 +52,17 @@ def test_published_coverage_regions_match_generator():
     assert expected in document
     assert document.count(module.BEGIN) == document.count(module.END) == 1
 
+    # docs/rule-coverage.md carried this table by hand until 13 October 2026,
+    # which is why its runner-evaluability column stayed wrong for the four
+    # suites that enforce under a pack of another name. It is owned now.
+    coverage_doc = (ROOT / "docs/rule-coverage.md").read_text(encoding="utf-8")
+    assert module.render_markdown_region(report) in coverage_doc, (
+        "docs/rule-coverage.md differs from fresh generator output. Run\n"
+        "  python3 tools/rule_coverage_report.py --update-published-surfaces\n"
+        "rather than editing the table, which the next publication would overwrite."
+    )
+    assert coverage_doc.count(module.BEGIN) == coverage_doc.count(module.END) == 1
+
     for path, (variable_name, indent) in module.PUBLISHED_LOOKUP_SURFACES.items():
         document = path.read_text(encoding="utf-8")
         expected = module.render_javascript_lookup(report, variable_name, indent)
@@ -223,11 +234,23 @@ def test_report_marks_pack_with_enforcement_policy_as_runner_evaluable():
 
 
 def test_report_marks_pack_without_enforcement_policy_as_not_runner_evaluable():
+    """Keyed to canary_fail, the one entry that genuinely has no policy pack.
+
+    This asserted mental_health_clinical until 13 October 2026, which encoded
+    the pre-resolver behaviour: that suite declares enforcement_pack
+    generic_safety and the runner has run it since the resolver landed. The
+    test did not miss the divergence, it pinned it, and the published
+    evaluability column was wrong for as long as it stood.
+    """
     module = _load_module()
-    pack = _by_id(module.build_report())["mental_health_clinical"]
+    pack = _by_id(module.build_report())["canary_fail"]
 
     assert pack["runner_evaluable"] is False
     assert pack["enforcement_policy_pack_path"] is None
+
+    enforced = _by_id(module.build_report())["mental_health_clinical"]
+    assert enforced["enforcement_pack"] == "generic_safety"
+    assert enforced["runner_evaluable"] is True
 
 
 def test_report_explains_missing_enforcement_policy_pack():
@@ -235,7 +258,7 @@ def test_report_explains_missing_enforcement_policy_pack():
     packs = _by_id(module.build_report())
 
     assert (
-        packs["mental_health_clinical"]["runner_evaluability_reason"]
+        packs["canary_fail"]["runner_evaluability_reason"]
         == "missing_enforcement_policy_pack"
     )
     assert packs["generic_safety"]["runner_evaluability_reason"] is None

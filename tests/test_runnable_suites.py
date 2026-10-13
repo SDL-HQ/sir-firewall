@@ -214,6 +214,58 @@ def test_the_path_the_runner_checks_is_the_path_the_gate_loads_from():
     assert not RUNNER._isc_pack_exists("a_pack_that_does_not_exist")
 
 
+
+@pytest.mark.parametrize("pack_id", PACK_IDS)
+def test_the_coverage_report_agrees_with_the_runner_on_evaluability(pack_id):
+    """A third implementation of the same rule, held against the runner's.
+
+    `tools/rule_coverage_report.py` publishes a runner-evaluability column in
+    `docs/rule-coverage.md` and `docs/domain-packs.html`. Until 13 October 2026
+    it derived that column from the suite's own `pack_id`, which matched the
+    runner only until the `enforcement_pack` resolver landed. After that it
+    published four suites as not runner-evaluable while the runner ran all four,
+    alongside a sentence stating that the runner evaluates no prompt content for
+    them. The suites were `account_recovery_fraud`, `mental_health_clinical`,
+    `scenario_injection_chain` and `scenario_tool_injection`, each enforcing
+    under `generic_safety`.
+
+    The report's own unit tests passed throughout, and that is the worse half:
+    they did not merely fail to cover the case, they asserted it.
+    `test_report_marks_pack_without_enforcement_policy_as_not_runner_evaluable`
+    was keyed to `mental_health_clinical` and asserted it was not runner-evaluable,
+    which was true before the resolver and false after. A test written against the
+    old behaviour and never revisited is indistinguishable from a test that is
+    working. So this asserts agreement over the real registry rather than a
+    constructed entry, and it is parametrised by suite so a failure names the one
+    that diverged.
+    """
+    import importlib.util as _importlib
+
+    spec = _importlib.spec_from_file_location(
+        "rule_coverage_report", ROOT / "tools/rule_coverage_report.py"
+    )
+    assert spec and spec.loader
+    report_module = _importlib.module_from_spec(spec)
+    spec.loader.exec_module(report_module)
+
+    report = report_module.build_report()
+    entry = next(p for p in report["packs"] if p["pack_id"] == pack_id)
+    registry = json.loads(REGISTRY.read_text(encoding="utf-8"))
+    declared = next(p for p in registry["packs"] if p.get("pack_id") == pack_id)
+    runner_enforcement = str(declared.get("enforcement_pack") or "").strip() or pack_id
+
+    assert entry["enforcement_pack"] == runner_enforcement, (
+        f"the coverage report resolves {pack_id} to enforcement pack "
+        f"{entry['enforcement_pack']!r} and the runner resolves it to "
+        f"{runner_enforcement!r}"
+    )
+    assert entry["runner_evaluable"] == RUNNER._isc_pack_exists(runner_enforcement), (
+        f"the coverage report publishes runner_evaluable="
+        f"{entry['runner_evaluable']} for {pack_id}, and the runner "
+        f"{'can' if RUNNER._isc_pack_exists(runner_enforcement) else 'cannot'} run it"
+    )
+
+
 # --- end to end ---------------------------------------------------------------
 
 

@@ -1069,19 +1069,31 @@ jobs:
           if not isinstance(latest, dict):
               raise SystemExit("ERROR: latest run row in proofs/runs/index.json is malformed")
 
+          # Three recognised results, and anything else stops the step.
+          #
+          # Until 13 October 2026 the else branch mapped absent, malformed and
+          # unrecognised results to a conclusive FAIL. That is this release's own
+          # defect: unknown reported as failure tells a reader the same untrue
+          # thing as unknown reported as success, because both describe a run the
+          # evidence does not describe. The single-run marker already refuses;
+          # this one now refuses in the same words.
           result = str(latest.get("result", "")).strip().upper()
           if result == "AUDIT PASSED":
               status = "PASS"
               audit_pass = True
+              inconclusive = False
+          elif result == "AUDIT FAILED":
+              status = "FAIL"
+              audit_pass = False
               inconclusive = False
           elif result == "INCONCLUSIVE":
               status = "INCONCLUSIVE"
               audit_pass = False
               inconclusive = True
           else:
-              status = "FAIL"
-              audit_pass = False
-              inconclusive = False
+              raise SystemExit(
+                  f"ERROR: unsupported latest run result in proofs/runs/index.json: {result!r}"
+              )
 
           timestamp_utc = latest.get("date")
           if not isinstance(timestamp_utc, str) or not timestamp_utc.strip():

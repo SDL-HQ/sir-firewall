@@ -75,18 +75,32 @@ evaluability** records whether the standard runner can execute the suite at all.
 A suite can therefore have non-zero gate coverage while still not being
 runner-evaluable.
 
-When a suite is not runner-evaluable, the standard runner encounters a policy-load
-block for every row, evaluates no prompt content, and exits zero. Evaluability is
-derived here from the presence of
-`src/sir_firewall/policy/isc_packs/<pack_id>.json`, using the same path
-construction as `load_domain_pack()`, because it is not yet a declared registry
-property. The execution coupling and its required remediation are tracked in the
-**Benchmark suite identity coupled to ISC policy pack identity** row of
+Evaluability is derived from the registry's `enforcement_pack`, falling back to
+the suite's own identifier where none is declared, resolved against the directory
+`load_domain_pack()` reads. That is the resolution `red_team_suite.py` performs,
+and `tests/test_runnable_suites.py` holds the two in agreement for every registry
+entry.
+
+A suite that is not runner-evaluable is refused at selection: the runner reports
+that the entry enforces under a pack that does not exist and stops before the
+first row, rather than producing a run in which every row is a systemic reset.
+`canary_fail` is the exception and the only active entry in that state, because
+it exists to fail and is deliberately allowed past selection so the failure can
+be observed.
+
+The execution coupling between suite identity and policy identity is tracked in
+the **Benchmark suite identity coupled to ISC policy pack identity** row of
 [`docs/backlog.md`](backlog.md).
 
-Among active suites, the computed non-runner-evaluable set is
-`account_recovery_fraud`, `mental_health_clinical`,
-`scenario_injection_chain`, and `scenario_tool_injection`.
+**Corrected 13 October 2026.** Until that date this column was derived from each
+suite's own `pack_id`. That matched the runner until the `enforcement_pack`
+resolver landed, after which this document and `docs/domain-packs.html` published
+`account_recovery_fraud`, `mental_health_clinical`, `scenario_injection_chain`
+and `scenario_tool_injection` as not runner-evaluable, and stated that running
+them evaluates no prompt content. All four enforce under `generic_safety` and the
+runner evaluates every row of each. The table above is now generated rather than
+transcribed, for the same reason: nothing had been comparing it with the
+generator.
 
 ## Evaluation order
 
@@ -107,17 +121,19 @@ lower than full-gate content coverage, as the `generic_safety` result shows.
 
 ## Generated table
 
+<!-- BEGIN GENERATED FULL-GATE COVERAGE -->
 | Pack | Status | Visibility | Block rows | Deterministic rules | Deterministic unmatched | Full gate | Full-gate unmatched | Runner evaluability |
 |---|---|---|---:|---:|---|---:|---|---|
 | `generic_safety` | active | public | 100 | 89/100 | `gs-014`, `gs-015`, `gs-016`, `gs-017`, `gs-018`, `gs-019`, `gs-021`, `gs-022`, `gs-023`, `gs-024`, `gs-025` | 100/100 | — | Runner-evaluable |
-| `mental_health_clinical` | active | encoded | 15 | 2/15 | `mh-block-001`, `mh-block-003`, `mh-block-004`, `mh-block-005`, `mh-block-006`, `mh-block-007`, `mh-block-008`, `mh-block-009`, `mh-block-010`, `mh-block-012`, `mh-block-013`, `mh-block-014`, `mh-block-015` | 5/15 | `mh-block-003`, `mh-block-006`, `mh-block-007`, `mh-block-008`, `mh-block-009`, `mh-block-010`, `mh-block-012`, `mh-block-013`, `mh-block-014`, `mh-block-015` | Not runner-evaluable |
-| `account_recovery_fraud` | active | public | 5 | 0/5 | `arf-002`, `arf-003`, `arf-005`, `arf-006`, `arf-008` | 0/5 | `arf-002`, `arf-003`, `arf-005`, `arf-006`, `arf-008` | Not runner-evaluable |
+| `mental_health_clinical` | active | encoded | 15 | 2/15 | `mh-block-001`, `mh-block-003`, `mh-block-004`, `mh-block-005`, `mh-block-006`, `mh-block-007`, `mh-block-008`, `mh-block-009`, `mh-block-010`, `mh-block-012`, `mh-block-013`, `mh-block-014`, `mh-block-015` | 5/15 | `mh-block-003`, `mh-block-006`, `mh-block-007`, `mh-block-008`, `mh-block-009`, `mh-block-010`, `mh-block-012`, `mh-block-013`, `mh-block-014`, `mh-block-015` | Runner-evaluable |
+| `account_recovery_fraud` | active | public | 5 | 0/5 | `arf-002`, `arf-003`, `arf-005`, `arf-006`, `arf-008` | 0/5 | `arf-002`, `arf-003`, `arf-005`, `arf-006`, `arf-008` | Runner-evaluable |
 | `support_operator_override` | active | public | 26 | 26/26 | — | 26/26 | — | Runner-evaluable |
 | `data_exfiltration_pressure` | active | public | 27 | 27/27 | — | 27/27 | — | Runner-evaluable |
 | `eu_ai_act_compliance_pressure` | active | public | 100 | 74/100 | `eua-116`, `eua-126`, `eua-127`, `eua-128`, `eua-129`, `eua-130`, `eua-131`, `eua-132`, `eua-133`, `eua-134`, `eua-135`, `eua-136`, `eua-137`, `eua-138`, `eua-139`, `eua-140`, `eua-141`, `eua-142`, `eua-143`, `eua-144`, `eua-145`, `eua-146`, `eua-147`, `eua-148`, `eua-149`, `eua-150` | 74/100 | `eua-116`, `eua-126`, `eua-127`, `eua-128`, `eua-129`, `eua-130`, `eua-131`, `eua-132`, `eua-133`, `eua-134`, `eua-135`, `eua-136`, `eua-137`, `eua-138`, `eua-139`, `eua-140`, `eua-141`, `eua-142`, `eua-143`, `eua-144`, `eua-145`, `eua-146`, `eua-147`, `eua-148`, `eua-149`, `eua-150` | Runner-evaluable |
 | `canary_fail` | draft | internal | 1 | 0/1 | `canary-001` | 0/1 | `canary-001` | Not runner-evaluable |
-| `scenario_injection_chain` | active | public | 10 | 5/10 | `t007_fictional_wrapper`, `t010_softened_bypass_language`, `t011_paraphrased_safety_removal`, `t012_punctuation_split_intent`, `t013_structural_injection_variant` | 6/10 | `t007_fictional_wrapper`, `t010_softened_bypass_language`, `t011_paraphrased_safety_removal`, `t012_punctuation_split_intent` | Not runner-evaluable |
-| `scenario_tool_injection` | active | public | 2 | 1/2 | `t005_function_jailbreak` | 1/2 | `t005_function_jailbreak` | Not runner-evaluable |
+| `scenario_injection_chain` | active | public | 10 | 5/10 | `t007_fictional_wrapper`, `t010_softened_bypass_language`, `t011_paraphrased_safety_removal`, `t012_punctuation_split_intent`, `t013_structural_injection_variant` | 6/10 | `t007_fictional_wrapper`, `t010_softened_bypass_language`, `t011_paraphrased_safety_removal`, `t012_punctuation_split_intent` | Runner-evaluable |
+| `scenario_tool_injection` | active | public | 2 | 1/2 | `t005_function_jailbreak` | 1/2 | `t005_function_jailbreak` | Runner-evaluable |
+<!-- END GENERATED FULL-GATE COVERAGE -->
 
 ## EU AI Act correspondence
 
