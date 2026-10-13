@@ -292,11 +292,13 @@ def test_reversed_region_markers_are_refused_rather_than_silently_corrupting(tmp
     """A region that closes before it opens has no extent.
 
     replace_generated checked that exactly one of each marker was present and
-    then did slice arithmetic that is silent when the order is wrong: with the
-    end marker first, the text before it was replaced by the generated block and
-    everything between the two markers was deleted. A corrupted published
-    surface and a correct one are the same kind of file, so nothing downstream
-    would have reported it. Found by an independent review on 13 October 2026.
+    then did slice arithmetic that is silent when the order is wrong. With the
+    end marker first the prefix and suffix overlap, so the output keeps the text
+    before the end marker, inserts the generated block, and then repeats
+    everything between the two markers along with both markers. The corruption
+    is a duplication, not a deletion: the first description of this said the
+    intervening text was deleted, and running the old code showed it appearing
+    twice instead.
     """
     module = _load_module()
 
@@ -332,44 +334,173 @@ def test_a_correctly_ordered_region_is_still_rewritten():
     assert "stale" not in updated
 
 
-def test_no_surface_is_written_when_another_surface_cannot_be_rendered(tmp_path, monkeypatch):
+def _recorded_writes(monkeypatch):
+    """Intercept every write so this file can assert about writes, not content.
+
+    The first version of the test below compared file contents before and after,
+    on the live repository paths, while taking an unused tmp_path that advertised
+    isolation it did not have. Two consequences, both found by an independent
+    review on 13 October 2026: a regression that wrote a surface whose content
+    was already current passed the comparison, and running the test under such a
+    regression wrote into the repository it was testing.
+
+    Nothing reaches the filesystem here. A recorded write is the assertion.
+    """
+    writes = []
+
+    def recording_write_text(self, data, *args, **kwargs):
+        writes.append((Path(self), data))
+        return len(data)
+
+    monkeypatch.setattr(Path, "write_text", recording_write_text)
+    return writes
+
+
+def test_every_surface_is_written_when_all_of_them_render(monkeypatch):
+    """The companion to the test below, which would otherwise pass on a no-op.
+
+    With writes intercepted, an updater that writes nothing at all satisfies
+    "nothing was written when a surface failed". This fixes the expected set so
+    that only the partial case is a failure.
+    """
+    module = _load_module()
+    report = module.build_report()
+    expected = set(module.render_published_surfaces(report))
+
+    writes = _recorded_writes(monkeypatch)
+    module.update_published_surfaces(report)
+
+    assert {path for path, _ in writes} == expected, (
+        "the updater did not write exactly the surfaces it renders"
+    )
+    assert len(writes) == len(expected), (
+        f"a surface was written more than once: {[str(p) for p, _ in writes]}"
+    )
+
+
+def test_no_surface_is_written_when_another_surface_cannot_be_rendered(monkeypatch):
     """Rendering every surface before writing any is the point of the split.
 
-    The previous version wrote coverage.json first and then each surface in
-    turn, so a marker error in a later surface left the earlier ones updated and
-    the rest stale. That is a publication set that disagrees with itself and
+    The previous implementation wrote coverage.json first and then each surface
+    in turn, so a marker error in a later surface left the earlier ones updated
+    and the rest stale. That is a publication set that disagrees with itself and
     gives no sign of it, which is the same failure shape as a figure nobody
     regenerated.
     """
     module = _load_module()
     report = module.build_report()
+    surface_count = len(module.render_published_surfaces(report))
+    assert surface_count >= 3, "too few surfaces for a partial update to mean anything"
 
-    # Every path the updater would write, with the content it holds now.
-    rendered = module.render_published_surfaces(report)
-    before = {path: path.read_text(encoding="utf-8") for path in rendered}
-
-    # Break the last surface the updater reaches, leaving the earlier ones
-    # renderable, and confirm nothing at all is written.
-    broken = sorted(rendered)[-1]
-    original = broken.read_text(encoding="utf-8")
-
+    # Fail the last surface the updater reaches, leaving the earlier ones
+    # renderable, so a write-as-you-go implementation would have written them.
     calls = {"n": 0}
     real_replace = module.replace_generated
 
     def replace_generated(document, generated):
         calls["n"] += 1
-        if calls["n"] > len(rendered) - 2:
+        if calls["n"] >= surface_count - 1:
             raise ValueError("deliberately unrenderable surface")
         return real_replace(document, generated)
 
     monkeypatch.setattr(module, "replace_generated", replace_generated)
+    writes = _recorded_writes(monkeypatch)
 
     with pytest.raises(ValueError, match="deliberately unrenderable"):
         module.update_published_surfaces(report)
 
-    for path, content in before.items():
-        assert path.read_text(encoding="utf-8") == content, (
-            f"{path} was written even though the run could not render every "
-            "surface, which leaves the publication set partially updated"
+    assert writes == [], (
+        "a surface was written even though the run could not render every "
+        "surface, which leaves the published set disagreeing with itself: "
+        f"{[str(path) for path, _ in writes]}"
+    )
+
+
+@pytest.mark.parametrize("flag", ["--json-out", "--markdown-out"])
+def test_the_cli_refuses_to_write_a_whole_report_over_a_published_surface(tmp_path, flag):
+    """The invocation that destroyed docs/rule-coverage.md on 12 October 2026.
+
+    --json-out and --markdown-out write whole files. Each published surface is a
+    generated region inside hand-written text. Pointing an out flag at one
+    replaced the document with the bare report and destroyed the markers, after
+    which publication rendering raised on a region that no longer existed, so
+    the error arrived after the damage. Adding the generated region closed the
+    drift that made someone reach for --markdown-out; it did not close this.
+
+    Asserted per owned surface, so a new published surface is covered by being
+    published rather than by being added here.
+    """
+    module = _load_module()
+
+    for surface in sorted(module.owned_surfaces()):
+        before = surface.read_text(encoding="utf-8")
+        args = {
+            "--json-out": str(tmp_path / "report.json"),
+            "--markdown-out": str(tmp_path / "report.md"),
+        }
+        args[flag] = str(surface)
+
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(module.ROOT / "tools" / "rule_coverage_report.py"),
+                "--json-out", args["--json-out"],
+                "--markdown-out", args["--markdown-out"],
+                "--update-published-surfaces",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=module.ROOT,
         )
-    assert broken.read_text(encoding="utf-8") == original
+
+        assert completed.returncode != 0, (
+            f"{flag} {surface} was accepted, so a published surface can be "
+            "overwritten with a bare report"
+        )
+        assert "publishes as a generated region" in completed.stderr, completed.stderr
+        assert surface.read_text(encoding="utf-8") == before, (
+            f"{surface} was modified by an invocation that was supposed to be "
+            "refused, which means the refusal happens after the write"
+        )
+
+
+def test_the_ordinary_cli_invocation_still_works(tmp_path):
+    """The refusal must not refuse the case it exists to protect."""
+    module = _load_module()
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(module.ROOT / "tools" / "rule_coverage_report.py"),
+            "--json-out", str(tmp_path / "report.json"),
+            "--markdown-out", str(tmp_path / "report.md"),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=module.ROOT,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))["packs"]
+    assert (tmp_path / "report.md").read_text(encoding="utf-8").strip()
+
+
+def test_every_published_surface_is_covered_by_the_refusal():
+    """owned_surfaces must name the surfaces update_published_surfaces writes.
+
+    The refusal is only as complete as this set. Derived from the updater's own
+    rendering rather than from a list typed beside it.
+    """
+    module = _load_module()
+    report = module.build_report()
+
+    written = {path.resolve() for path in module.render_published_surfaces(report)}
+
+    assert written == module.owned_surfaces(), (
+        "owned_surfaces disagrees with what the updater writes, so a surface is "
+        "either unprotected or wrongly refused.\n"
+        f"  written but not owned: {sorted(written - module.owned_surfaces())}\n"
+        f"  owned but not written: {sorted(module.owned_surfaces() - written)}"
+    )

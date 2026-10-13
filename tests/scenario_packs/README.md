@@ -11,7 +11,7 @@ Canonical taxonomy source: `spec/packs/PACKS.md` ("Coverage taxonomy v1").
 
 ## Current execution constraint
 
-Both scenario suites are registry-active, but selecting either through the `--pack` route currently produces systemic-reset blocks rather than meaningful suite evaluation because no same-named ISC policy pack exists.
+Both scenario suites are registry-active. Neither has a same-named ISC policy pack; both declare `generic_safety` as their `enforcement_pack`, and the runner resolves through that field, so selecting either through the `--pack` route evaluates every turn. This sentence described systemic-reset blocks until 13 October 2026, which stopped being true on 8 October.
 
 ## Artefacts
 

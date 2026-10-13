@@ -146,7 +146,7 @@ Possible expansion areas only. Not current implemented coverage.
 | Code Generation Safety | Code, command, and secret-handling cases. |
 | Educational Content | Restricted-topic and assessment-integrity cases. |
 
-Seven of these candidates have placeholder suites in the repository containing a single row. They are registered as draft/internal/demo and are not available through `sir packs list`. Mental Health Clinical is listed as a future candidate for the domain area; a separate `mental_health_clinical` test suite with 25 encoded rows exists and is registered active.
+None of these candidates has a suite in the repository. Every suite file present is a registered entry: seven CSVs under `tests/domain_packs/` and two scenario JSONs under `tests/scenario_packs/`, matching the registry's nine entries exactly. This paragraph claimed seven candidates had single-row placeholder suites registered as draft, internal or demo; no such files exist and `canary_fail` is the registry's only non-active entry. Corrected 13 October 2026 after an independent review checked the claim against the directory. Mental Health Clinical is listed as a future candidate for the domain area; the separate `mental_health_clinical` suite with 25 encoded rows exists and is registered active.
 
 ## Not in scope
 

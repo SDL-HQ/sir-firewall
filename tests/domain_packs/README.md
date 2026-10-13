@@ -48,9 +48,11 @@ contract.
 
 - `canary_fail` — draft/internal benchmark infrastructure check; it has no companion document by design.
 
-## Current execution constraint
+## Enforcement pack resolution
 
-Four registry suites have no same-named ISC policy counterpart: `account_recovery_fraud`, `mental_health_clinical`, `scenario_injection_chain`, and `scenario_tool_injection`. Selecting one through the `--pack` route produces systemic-reset blocks during policy load rather than meaningful suite evaluation. See `docs/backlog.md` for the execution-coupling and rule-coverage findings.
+Four registry suites have no same-named ISC policy counterpart: `account_recovery_fraud`, `mental_health_clinical`, `scenario_injection_chain`, and `scenario_tool_injection`. Each declares `generic_safety` as its `enforcement_pack`, and the runner resolves through that field, so selecting any of them through the `--pack` route evaluates every row. A measured run on 13 October 2026 reported zero systemic resets for all four, with 5, 10, 4 and 1 leaks and 0, 0, 1 and 0 harmless blocks.
+
+This section said the opposite until 13 October 2026, and said it ten lines below an inventory that had already been corrected. The claim stopped being true on 8 October, when enforcement packs were declared in the registry. See `docs/backlog.md` for the rule-coverage findings, which are a separate matter: these suites run, and their expected-block rows still leak.
 
 ## Artefacts
 
