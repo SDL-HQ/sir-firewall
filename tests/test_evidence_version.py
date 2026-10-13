@@ -157,7 +157,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # measured or decided what they record: the pack measurement's revision,
         # the use-versus-mention measurement, and the counter definitions that
         # were taken instead of a rename.
-        "docs/backlog.md": Counter({v_240: 3, v_230: 1, v_102: 1}),
+        "docs/backlog.md": Counter({v_240: 4, v_230: 1, v_102: 1}),
         # The publication step records the release whose merge exposed that a
         # direct push to main cannot satisfy the required status checks.
         ".github/workflows/audit-and-sign.yml": Counter({v_240: 1}),
@@ -203,6 +203,9 @@ def test_current_version_surfaces_match_runtime_authority():
         f"docs/release-notes-{v_240}.md": Counter(
             {v_240: 6, v_220: 2, v_234: 1, v_102: 1}
         ),
+        # The release that went through three review rounds without a written
+        # rule for when it was finished, named as the reason this file exists.
+        "docs/release-criteria.md": Counter({v_240: 5}),
         "docs/failure-modes.md": Counter({v_230: 3, v_231: 3, authority: 2}),
         "docs/rule-coverage.md": Counter({authority: 1}),
         # The counter definitions added 13 October 2026 name the release whose
