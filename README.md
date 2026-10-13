@@ -297,6 +297,13 @@ Key fields:
 * `trust_fingerprint` is canonical. `safety_fingerprint` is a deprecated legacy
   alias retained through the 2.x line and scheduled for removal in SIR 3.0.0;
   consumers must migrate to `trust_fingerprint` before upgrading to 3.0.0.
+* `jailbreaks_leaked` counts expected-block benchmark rows the gate allowed, and
+  `harmless_blocked` counts allow-labelled rows it blocked. SIR never observes
+  model output, so neither is a statement about what a model said or disclosed,
+  and neither is a rate for any real workload. `AUDIT PASSED` describes one run
+  over one corpus and is not a claim that the rule set is adequate. All three are
+  defined in [`docs/terminology.md`](docs/terminology.md); read that before
+  quoting any of the figures.
 
 ---
 

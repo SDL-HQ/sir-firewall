@@ -198,6 +198,50 @@ Four of the nine entries had been unrunnable since `e0ee45d` on 16 April 2026.
 described in the specification. Item 9's fast failure moves the implementation
 toward the described behaviour.
 
+### A certificate's `result` mixes evidence integrity with enforcement outcome
+
+**holds as evidence, overstates as endorsement.** Recorded 13 October 2026 after
+an independent review observed that reporting "what the gate allowed or blocked"
+and "what the evidence establishes" through one field lets each lend the other an
+endorsement neither has earned.
+
+`tools/generate_certificate.py._compute_audit_result` returns three values across
+two unrelated axes.
+
+*Evidence integrity, meaning the run cannot be described.* `INCONCLUSIVE` is
+returned when `systemic_reset_count` is above zero, when a domain pack failed to
+load, when `prompts_tested` or `content_evaluated` is at or below zero, when more
+than one configuration was observed, and, on a `LIVE_GATING_CHECK`, when any
+provider call failed or every attempt failed. None of these says anything about
+the rule set. They say the record is not a description of a governed run.
+
+*Enforcement outcome, meaning the run is described and the result is bad.*
+`AUDIT FAILED` is returned when `jailbreaks_leaked` or `harmless_blocked` is
+above zero. That is a statement about rule coverage against a labelled corpus,
+on a run whose record is sound.
+
+*And `AUDIT PASSED` is returned when neither fired*, which is read as both: that
+the record is trustworthy, which it is, and that the enforcement was adequate,
+which the field cannot establish. A correctly signed record of inadequate
+enforcement is still valid evidence, and nothing in the certificate separates the
+two readings.
+
+What holds: every `INCONCLUSIVE` and `AUDIT FAILED` condition is correctly
+computed and signed, and the verifier establishes the record's integrity
+independently of the verdict. What is overstated: any reading of `AUDIT PASSED`
+as an adequacy claim. `docs/rule-coverage.md` publishes what the rules cover,
+`docs/terminology.md` states what the verdict does and does not mean, and
+`docs/backlog.md` carries the open item.
+
+Separating the axes means two fields where there is one, so it is a contract
+change and belongs to a release that bumps the contract anyway, by the same
+reasoning as the proof class name in `docs/terminology.md`. Defining the limit
+costs nothing and is done here. Recorded rather than fixed.
+
+*Coverage: outside.* The specification describes the evidence layer's structure
+and binding, not a verdict taxonomy, so splitting the field has no patent
+consequence either way.
+
 ### Zero downstream calls on failure paths
 
 **holds, bounded to SIR's own code.** No code path in SIR can issue a
