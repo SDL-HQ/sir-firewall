@@ -32,7 +32,7 @@ These runtime configurations are loaded by `load_domain_pack()`. They control al
 
 ### Current benchmark test suites
 
-These substantive prompt sets are active registry entries. Public entries are discoverable through `sir packs list`; `mental_health_clinical` has `encoded` visibility. Only `generic_safety`, `support_operator_override`, `data_exfiltration_pressure`, and `eu_ai_act_compliance_pressure` currently have same-named ISC policy packs and evaluate through the `--pack` route. The other four active suites listed below currently produce systemic-reset blocks instead of meaningful suite evaluation.
+These substantive prompt sets are active registry entries, and every one of them is listed by `sir packs list`, which filters on `status`. Only `generic_safety`, `support_operator_override`, `data_exfiltration_pressure`, and `eu_ai_act_compliance_pressure` have same-named ISC policy packs. The other four declare `generic_safety` as their `enforcement_pack`, and the runner resolves through that field, so all eight evaluate every row through the `--pack` route. This paragraph said the other four produce systemic-reset blocks instead of suite evaluation, which stopped being true on 8 October 2026 and was corrected on 13 October after a measured run of all four reported zero systemic resets.
 
 | Benchmark suite | Size |
 |---|---:|
@@ -43,7 +43,7 @@ These substantive prompt sets are active registry entries. Public entries are di
 | account_recovery_fraud | 8 rows |
 | scenario_injection_chain | 15 turns |
 
-**Other registered suites:** `mental_health_clinical` has 25 rows and `encoded` visibility because its risk class is `encoded_high_risk`; its prompts are stored base64-encoded and it is not listed by `sir packs list` by design. `scenario_tool_injection` has 5 turns and is active and public. `canary_fail` is a draft/internal benchmark infrastructure check.
+**Other registered suites:** `mental_health_clinical` has 25 rows and `encoded` visibility because its risk class is `encoded_high_risk`; its prompts are stored base64-encoded, and it is listed by `sir packs list` like every other active entry. `scenario_tool_injection` has 5 turns and is active and public. `canary_fail` is a draft/internal benchmark infrastructure check.
 
 **Non-registry fixtures:** `structured_account_recovery_benchmark.json` has 13 cases and is loaded directly by `tests/test_structured_benchmark_pack.py`. `tool_result_ingress_benchmark.json` has 4 cases and is loaded directly by `tests/test_tool_result_benchmark_pack.py`. Both are exploratory fixtures outside the registry and outside `sir packs list`.
 

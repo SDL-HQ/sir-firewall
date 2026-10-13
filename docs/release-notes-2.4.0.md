@@ -310,7 +310,7 @@ anything else.
 
 *A green branch dispatch did not require a conclusive certificate.* `AUDIT_PASS`
 is computed from three counter files before the certificate exists, and the
-certificate has four inconclusive conditions that computation cannot see. On
+certificate has six inconclusive conditions that computation cannot see. On
 `main` the run marker wrote the certificate's verdict back and caught them; it is
 publication-gated, so on a branch dispatch nothing did, and a job could go green
 while its own certificate said the run was inconclusive. That dispatch is what
@@ -327,16 +327,94 @@ already published on two surfaces. It now filters on status and prints
 `visibility` and `enforcement_pack`, which also closes the backlog row about
 registry discoverability being read as execution availability.
 
-**The 453-prompt six-pack measurement was not repeated, and did not need to be.**
-This is stated as what was established rather than as what was skipped, because
-the two are different claims. `src/sir_firewall/deterministic_rules.py` and all
-six ISC policy packs are byte-identical to v2.3.8. `_check_jailbreak`,
-`normalize_obfuscation`, `_has_override_envelope_prompt_exposure` and the danger,
-safety and high-risk word lists are identical as source. `has_obfuscation_signal`
-is recorded on the decision and is not a blocking condition. Both properties the
-measurement established were re-verified at 2.4.0: verdicts identical across the
-six packs, and a distinct `configuration_hash` for each. Every input to that
-result is unchanged, so a rerun would reproduce it by construction.
+**The 453-prompt six-pack measurement was repeated at this revision.** 453
+prompts from the eight active registry suites were evaluated under each of the
+six ISC policy packs, 2718 gate evaluations in total. No prompt's status, reason
+or triggered rules differed across the six, and the six packs produced six
+distinct `configuration_hash` values. The 8 October figure reproduces.
+
+The first version of this section argued that a rerun was unnecessary instead of
+running one, on the grounds that every input to the original was unchanged. That
+argument was wrong twice. It was incomplete, because the configuration identity
+hashes the source of several normalisation helpers that the argument did not
+enumerate, and it was unnecessary, because the rerun takes about one second. An
+estimated cost was used to avoid work that was cheaper than the estimate. The
+measurement is now a measurement.
+
+**The commit making those corrections was itself reviewed, and needed six
+more.** The review was run against a pinned revision of the correction commit,
+read-only, before any of it was released. Four of the six were introduced or
+left behind by that commit; two are older code the review reached while reading
+it. A seventh item below was introduced by the fix for the first one and found
+by mutating it.
+
+*Two tests passed under mutations of the behaviour they exist to prevent.* The
+branch-dispatch test checked publication gating only on lines mentioning
+`AUDIT_JSON`, which is the certificate's existence guard and not its result
+comparison, so gating the comparison alone passed the test and reopened the gap
+it closed. The `packs list` test is named for every active registry entry and
+asserted that at least four rows differed from their own identifier, so dropping
+a same-named active suite passed. Both are now derived from the thing they
+describe, the first from the two guards that make up the check and the second
+from the registry, and both fail under the mutations that passed. Three
+mutations of the same commit had already been run and two of those passed on the
+first attempt, so this is the second time in one release that mutation testing
+found a test asserting the wrong thing. The difference is who ran it: the first
+two were found here, and these two were not, because the mutations that would
+have caught them were not the ones chosen.
+
+*Correcting one of those tests produced a test that failed on unmutated code.*
+The first correction asserted that no conditional anywhere in the finalize step
+is gated on the publication context, which reads like the general form of the
+defect and is false: the step already carries a correct publication-gated
+conditional requiring the run marker's status. It is scoped to the certificate
+check now. A wider invariant is not a safer one when the code does not hold it,
+and only running the mutation showed which it was.
+
+*Two numbers in the published description of the certificate gate were wrong.*
+The release notes, the workflow comment and a test docstring all said the
+certificate has four inconclusive conditions the counter script cannot see.
+`_compute_audit_result` has seven conditions, six of which that script cannot
+see, and the three descriptions omitted a failed domain-pack load and an
+all-attempts-failed provider path entirely. The same sentences described the
+live provider condition as every provider call failing, where the code is any.
+The number came from counting the conditions its author had in mind rather than
+the conditions in the function.
+
+*Four documents described the behaviour `sir packs list` had before this commit
+changed it.* `README.md`, `tests/domain_packs/README.md`,
+`tests/domain_packs/mental_health_clinical.md` and the introduction to the
+suite table in `docs/backlog.md` all still said the command filters on
+visibility, and two of them still said four active suites produce systemic-reset
+blocks rather than evaluating their rows. That stopped being true on 8 October.
+A run of all four now reports zero systemic resets and the published per-suite
+figures. The commit that changed the behaviour is the commit that left the
+documentation describing the old behaviour, which is the same defect as a figure
+nobody regenerated, with prose in place of the figure.
+
+*A document could be silently corrupted by the generator that owns its region.*
+`replace_generated` required exactly one opening and one closing marker and then
+did slice arithmetic that is silent when they are in the wrong order: with the
+end marker first, the text before it was replaced and everything between the two
+markers was deleted. A corrupted published surface and a correct one are the same
+kind of file. This predates the correction commit. The archive generator
+already had the check; the coverage generator never did.
+
+*A failed publication run could leave the published set disagreeing with
+itself.* Both generators wrote each surface as they rendered the next, so a
+marker error in a later surface left the earlier ones updated and the rest
+stale. This also predates the correction commit, and the review named it in the
+coverage generator only; the archive generator had the same shape and is fixed
+with it. Every refusal the inputs can cause is now reached before the first
+write. Neither is atomic and neither claims to be.
+
+*A malformed certificate failed CI with a stack trace.* The finalize step parsed
+the certificate with an inline `python -c` that raised under `set -e`, so the
+explanation of what was being checked never printed, and a certificate with no
+`result` printed an empty string, making two different failures look the same.
+That is now `tools/read_certificate_result.py`, which never raises and names
+which failure it was, for the reason `tools/ci_audit_verdict.sh` is a file: a
+rule nobody can invoke cannot be exercised.
 
 ## What is not claimed
 

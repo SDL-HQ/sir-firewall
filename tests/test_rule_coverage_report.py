@@ -286,3 +286,90 @@ def test_cli_writes_machine_readable_json_and_markdown(tmp_path, monkeypatch):
     assert "| Pack | Status | Visibility |" in table
     assert "`generic_safety`" in table
     assert "| Runner evaluability |" in table
+
+
+def test_reversed_region_markers_are_refused_rather_than_silently_corrupting(tmp_path):
+    """A region that closes before it opens has no extent.
+
+    replace_generated checked that exactly one of each marker was present and
+    then did slice arithmetic that is silent when the order is wrong: with the
+    end marker first, the text before it was replaced by the generated block and
+    everything between the two markers was deleted. A corrupted published
+    surface and a correct one are the same kind of file, so nothing downstream
+    would have reported it. Found by an independent review on 13 October 2026.
+    """
+    module = _load_module()
+
+    document = (
+        "intro that must survive\n"
+        f"<!-- {module.END} -->\n"
+        "body between the markers\n"
+        f"<!-- {module.BEGIN} -->\n"
+        "tail\n"
+    )
+
+    with pytest.raises(ValueError, match="reverse order"):
+        module.replace_generated(document, "GENERATED")
+
+
+def test_a_correctly_ordered_region_is_still_rewritten():
+    """The order check must not refuse the ordinary case."""
+    module = _load_module()
+
+    document = (
+        "intro\n"
+        f"<!-- {module.BEGIN} -->\n"
+        "stale\n"
+        f"<!-- {module.END} -->\n"
+        "tail\n"
+    )
+
+    updated = module.replace_generated(document, "GENERATED")
+
+    assert "intro\n" in updated
+    assert "tail\n" in updated
+    assert "GENERATED" in updated
+    assert "stale" not in updated
+
+
+def test_no_surface_is_written_when_another_surface_cannot_be_rendered(tmp_path, monkeypatch):
+    """Rendering every surface before writing any is the point of the split.
+
+    The previous version wrote coverage.json first and then each surface in
+    turn, so a marker error in a later surface left the earlier ones updated and
+    the rest stale. That is a publication set that disagrees with itself and
+    gives no sign of it, which is the same failure shape as a figure nobody
+    regenerated.
+    """
+    module = _load_module()
+    report = module.build_report()
+
+    # Every path the updater would write, with the content it holds now.
+    rendered = module.render_published_surfaces(report)
+    before = {path: path.read_text(encoding="utf-8") for path in rendered}
+
+    # Break the last surface the updater reaches, leaving the earlier ones
+    # renderable, and confirm nothing at all is written.
+    broken = sorted(rendered)[-1]
+    original = broken.read_text(encoding="utf-8")
+
+    calls = {"n": 0}
+    real_replace = module.replace_generated
+
+    def replace_generated(document, generated):
+        calls["n"] += 1
+        if calls["n"] > len(rendered) - 2:
+            raise ValueError("deliberately unrenderable surface")
+        return real_replace(document, generated)
+
+    monkeypatch.setattr(module, "replace_generated", replace_generated)
+
+    with pytest.raises(ValueError, match="deliberately unrenderable"):
+        module.update_published_surfaces(report)
+
+    for path, content in before.items():
+        assert path.read_text(encoding="utf-8") == content, (
+            f"{path} was written even though the run could not render every "
+            "surface, which leaves the publication set partially updated"
+        )
+    assert broken.read_text(encoding="utf-8") == original

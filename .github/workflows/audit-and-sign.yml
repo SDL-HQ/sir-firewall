@@ -816,17 +816,17 @@ jobs:
           echo "CONTENT_EVALUATED=${CONTENT_EVALUATED:-unknown}"
 
           if [ "${CANONICAL_PUBLICATION_CONTEXT:-false}" = "true" ] && [ -z "${LATEST_RUN_STATUS:-}" ]; then
-            echo "Run marker was not produced; certificate state could not be determined — failing CI."
+            echo "Run marker was not produced; certificate state could not be determined. Failing CI."
             exit 1
           fi
 
           if [ "${INCONCLUSIVE:-false}" = "true" ]; then
-            echo "Audit INCONCLUSIVE — failing CI after preserving proof."
+            echo "Audit INCONCLUSIVE. Failing CI after preserving proof."
             exit 1
           fi
 
           if [ "$AUDIT_PASS" != "true" ]; then
-            echo "Audit FAILED (leaks=$LEAKS harmless_blocked=$HARMLESS_BLOCKED) — failing CI after preserving proof."
+            echo "Audit FAILED (leaks=$LEAKS harmless_blocked=$HARMLESS_BLOCKED). Failing CI after preserving proof."
             exit 1
           fi
 
@@ -834,10 +834,15 @@ jobs:
           # by different code, and until 13 October 2026 nothing compared them.
           # AUDIT_PASS comes from tools/ci_audit_verdict.sh, which reads three
           # counter files at a step that runs before the certificate exists. The
-          # certificate has four inconclusive conditions that script cannot see:
-          # systemic_reset_count > 0, prompts_tested <= 0,
-          # configurations_observed > 1, and, for a LIVE_GATING_CHECK, every
-          # provider call failing.
+          # certificate has six inconclusive conditions that script cannot see:
+          # systemic_reset_count > 0, a domain pack that failed to load,
+          # prompts_tested <= 0, configurations_observed > 1, and, for a
+          # LIVE_GATING_CHECK, any provider call failing or every attempt
+          # failing. It shares a seventh, content_evaluated <= 0, which both
+          # refuse. The first version of this comment said four and said every
+          # provider call rather than any, because it was written by counting
+          # the conditions its author had in mind instead of the conditions in
+          # tools/generate_certificate.py._compute_audit_result.
           #
           # On main the marker step writes the certificate's INCONCLUSIVE back
           # into the environment, so those were caught there. It is gated on the
@@ -855,7 +860,15 @@ jobs:
             exit 1
           fi
 
-          cert_result="$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("result",""))' "$AUDIT_JSON")"
+          # tools/read_certificate_result.py rather than an inline one-liner, for
+          # the reason tools/ci_audit_verdict.sh is a file: a rule nobody can
+          # invoke cannot be exercised. The first version let json.load raise
+          # under set -e, so a malformed certificate failed the job with a stack
+          # trace instead of the message below. The script never raises and
+          # prints UNREADABLE or ABSENT instead, so the disagreement message is
+          # what a reader sees. tests/test_certificate_result_reader.py executes
+          # it directly.
+          cert_result="$(python tools/read_certificate_result.py "$AUDIT_JSON")"
           echo "CERTIFICATE_RESULT=$cert_result"
           if [ "$cert_result" != "AUDIT PASSED" ]; then
             echo "FAILING CI: the counters report a pass and the certificate reports '$cert_result'."
@@ -863,7 +876,7 @@ jobs:
             exit 1
           fi
 
-          echo "Audit PASSED — CI green."
+          echo "Audit PASSED. CI green."
 
   benchmark-dispatch:
     if: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.operation || 'run') == 'benchmark' }}

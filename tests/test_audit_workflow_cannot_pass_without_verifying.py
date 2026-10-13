@@ -379,9 +379,11 @@ def test_a_branch_dispatch_cannot_go_green_on_a_bad_certificate():
 
     AUDIT_PASS comes from tools/ci_audit_verdict.sh, which reads three counter
     files at a step that runs before the certificate exists. The certificate has
-    four inconclusive conditions that script cannot see: systemic_reset_count
-    above zero, prompts_tested at or below zero, configurations_observed above
-    one, and every provider call failing on a LIVE_GATING_CHECK.
+    six inconclusive conditions that script cannot see: systemic_reset_count
+    above zero, a domain pack that failed to load, prompts_tested at or below
+    zero, configurations_observed above one, and, on a LIVE_GATING_CHECK, any
+    provider call failing or every attempt failing. A seventh,
+    content_evaluated at or below zero, is shared and both refuse it.
 
     On main the marker step wrote the certificate's INCONCLUSIVE back into the
     environment, so those were caught. That step is gated on the publication
@@ -405,23 +407,51 @@ def test_a_branch_dispatch_cannot_go_green_on_a_bad_certificate():
     )
     assert "exit 1" in run
 
-    # Unconditional. Gating this on the publication context would leave the gap
-    # exactly where it was, because branch dispatches are the uncovered case.
+    # Unconditional. Gating any of this on the publication context would leave
+    # the gap exactly where it was, because branch dispatches are the uncovered
+    # case.
     #
-    # Checked per line rather than over a slice of the step. The first version
-    # of this assertion sliced from the first occurrence of "AUDIT_JSON:-", so a
-    # mutation that put the publication context earlier on the same line sat
-    # outside the slice and the test passed. It was shown to fail only after
-    # that was corrected.
-    guarding_lines = [
+    # Two corrections are recorded in this block. The first version sliced the
+    # step from the first occurrence of "AUDIT_JSON:-", so a mutation that put
+    # the publication context earlier on the same line sat outside the slice and
+    # passed. The second version checked per line but only lines containing
+    # AUDIT_JSON, which is the existence guard and not the result comparison, so
+    # a mutation gating only `cert_result != "AUDIT PASSED"` on the publication
+    # context passed while reopening the branch-dispatch gap. That was found by
+    # an independent review, not by this test.
+    #
+    # Both parts of the certificate check are required to exist, and neither may
+    # be publication-gated.
+    #
+    # Scoped to the certificate check rather than to every conditional in the
+    # step. The first attempt at this correction asserted that no conditional
+    # anywhere in the finalize step mentions the publication context, which
+    # sounded like the general form of the defect and was simply false: the step
+    # already carries a correct publication-gated conditional, requiring the run
+    # marker's status when a marker was supposed to exist. That assertion failed
+    # on unmutated code, which is how it was found. A broader invariant is not a
+    # safer one when the code does not hold it.
+    conditionals = [
         line for line in run.splitlines()
-        if "AUDIT_JSON" in line and line.strip().startswith(("if ", "elif "))
+        if line.strip().startswith(("if ", "elif "))
     ]
-    assert guarding_lines, "nothing in the finalize step branches on the certificate path"
-    for line in guarding_lines:
+
+    existence_guards = [line for line in conditionals if "AUDIT_JSON" in line]
+    assert existence_guards, (
+        "nothing in the finalize step branches on whether a certificate exists"
+    )
+
+    result_guards = [line for line in conditionals if "cert_result" in line]
+    assert result_guards, (
+        "nothing in the finalize step branches on the certificate's own result, "
+        "so a certificate reporting INCONCLUSIVE would not fail the job"
+    )
+
+    for line in existence_guards + result_guards:
         assert "CANONICAL_PUBLICATION_CONTEXT" not in line, (
-            "the certificate check is publication-gated, which leaves branch "
-            f"dispatches uncovered and is the defect this exists to close: {line.strip()}"
+            "part of the certificate check is gated on the publication context, "
+            "which leaves branch dispatches uncovered and is the defect this "
+            f"exists to close: {line.strip()}"
         )
 
 

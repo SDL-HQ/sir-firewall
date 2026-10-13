@@ -2,7 +2,7 @@
 
 ## Status
 
-Registered `active` with `encoded` visibility, `canonical` maturity, and risk class `encoded_high_risk`. The pack is excluded from `sir packs list` by design because its visibility is not `public`; the registry validator requires `encoded` visibility for `encoded_high_risk` packs.
+Registered `active` with `encoded` visibility, `canonical` maturity, and risk class `encoded_high_risk`; the registry validator requires `encoded` visibility for `encoded_high_risk` packs. Listed by `sir packs list`, which filters on `status`. It filtered on `visibility` until 13 October 2026 and so excluded this suite, which was described here as by design: the `encoded` class exists so the prompts are not stored in plaintext, and that is a reason about content, which this command prints none of. The suite's existence, row count and coverage were already published in `docs/rule-coverage.md` and on `docs/domain-packs.html` throughout.
 
 Runnable. Enforced under the `generic_safety` ISC policy pack, declared as `enforcement_pack` in `spec/packs/pack_registry.v1.json`.
 
