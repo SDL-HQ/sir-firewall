@@ -753,22 +753,34 @@ def update_published_surfaces(figures: dict, *, dry_run: bool = False) -> list[P
     is what the drift test uses: a test that repaired the documents in order to
     pass would pass on its second run whatever the first one found.
     """
-    changed = []
+    # Everything is rendered before anything is written. The previous version
+    # wrote each surface as it rendered the next, so a bad region in the third
+    # surface left the first two updated and the rest stale. A publication set
+    # that disagrees with itself looks exactly like one that agrees, which is
+    # why the partial case has to be made unreachable rather than detectable.
+    # The same defect in tools/rule_coverage_report.py was found by an
+    # independent review on 13 October 2026; this is the second instance of it.
+    #
+    # Not atomic: a failure inside the write loop still leaves a partial set.
+    # What this removes is every refusal the inputs can cause.
+    pending: list[tuple[Path, str]] = []
     for path, regions in SURFACES:
         document = path.read_text(encoding="utf-8")
         updated = document
         for name, render in regions.items():
             updated = replace_region(updated, name, render(figures))
         if updated != document:
-            if not dry_run:
-                path.write_text(updated, encoding="utf-8")
-            changed.append(path)
+            pending.append((path, updated))
+
     payload = json.dumps(figures, indent=2, ensure_ascii=False) + "\n"
     if not FIGURES_JSON.is_file() or FIGURES_JSON.read_text(encoding="utf-8") != payload:
-        if not dry_run:
-            FIGURES_JSON.write_text(payload, encoding="utf-8")
-        changed.append(FIGURES_JSON)
-    return changed
+        pending.append((FIGURES_JSON, payload))
+
+    if not dry_run:
+        for path, content in pending:
+            path.write_text(content, encoding="utf-8")
+
+    return [path for path, _ in pending]
 
 
 def measure(runs_dir: Path) -> list[dict]:

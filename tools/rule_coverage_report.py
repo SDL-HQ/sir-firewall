@@ -335,6 +335,16 @@ def render_markdown_region(report: dict[str, Any]) -> str:
 
 
 def replace_generated(document: str, generated: str) -> str:
+    """Rewrite the one generated region in a document, or refuse to touch it.
+
+    The order check exists because the slice arithmetic below is silent when it
+    is wrong. With the end marker before the begin marker, a document with
+    exactly one of each satisfied every other condition here, and the result was
+    the text before the end marker replaced by the generated block and the text
+    between the two markers deleted. A corrupted published surface and a correct
+    one are the same kind of file, so nothing downstream would have noticed.
+    Found by an independent review on 13 October 2026.
+    """
     begin_candidates = (f"<!-- {BEGIN} -->", f"// {BEGIN}")
     end_candidates = (f"<!-- {END} -->", f"// {END}")
     begins = [marker for marker in begin_candidates if marker in document]
@@ -344,8 +354,16 @@ def replace_generated(document: str, generated: str) -> str:
     begin, end = begins[0], ends[0]
     if document.count(begin) != 1 or document.count(end) != 1:
         raise ValueError("document must contain exactly one generated coverage region")
-    start = document.rfind("\n", 0, document.index(begin)) + 1
-    return document[:start] + generated + document[document.index(end) + len(end) :]
+    begin_at = document.index(begin)
+    end_at = document.index(end)
+    if end_at < begin_at:
+        raise ValueError(
+            "generated coverage region markers are in reverse order: the end "
+            "marker precedes the begin marker, so the region has no extent and "
+            "rewriting it would delete the text between them"
+        )
+    start = document.rfind("\n", 0, begin_at) + 1
+    return document[:start] + generated + document[end_at + len(end) :]
 
 
 def inject_javascript_lookup(
@@ -369,26 +387,43 @@ def inject_javascript_lookup(
     return document[: match.start()] + generated + document[match.end() :]
 
 
-def update_published_surfaces(report: dict[str, Any]) -> None:
-    PUBLISHED_JSON.write_text(render_published_json(report), encoding="utf-8")
+def render_published_surfaces(report: dict[str, Any]) -> dict[Path, str]:
+    """Every surface's full new content, with nothing written yet.
+
+    Separate from writing because the previous version wrote each surface as it
+    rendered the next, starting with coverage.json. A marker error in the fourth
+    surface therefore left the first three updated and the rest stale, which is
+    a publication set that disagrees with itself and gives no sign of it. Every
+    way this can refuse is now reached before the first byte is written.
+
+    This is not atomic and does not claim to be: a failure inside the write loop
+    below, such as a full disk, still leaves a partial set. What it removes is
+    the predictable case, where the input itself is what makes the run refuse.
+    """
+    rendered: dict[Path, str] = {PUBLISHED_JSON: render_published_json(report)}
+
     coverage_doc = ROOT / "docs" / "rule-coverage.md"
-    coverage_doc.write_text(
-        replace_generated(coverage_doc.read_text(encoding="utf-8"), render_markdown_region(report)),
-        encoding="utf-8",
+    rendered[coverage_doc] = replace_generated(
+        coverage_doc.read_text(encoding="utf-8"), render_markdown_region(report)
     )
+
     domain_path = ROOT / "docs" / "domain-packs.html"
-    domain_path.write_text(
-        replace_generated(domain_path.read_text(encoding="utf-8"), render_html_table_body(report)),
-        encoding="utf-8",
+    rendered[domain_path] = replace_generated(
+        domain_path.read_text(encoding="utf-8"), render_html_table_body(report)
     )
+
     for path, (variable_name, indent) in PUBLISHED_LOOKUP_SURFACES.items():
-        path.write_text(
-            replace_generated(
-                path.read_text(encoding="utf-8"),
-                render_javascript_lookup(report, variable_name, indent),
-            ),
-            encoding="utf-8",
+        rendered[path] = replace_generated(
+            path.read_text(encoding="utf-8"),
+            render_javascript_lookup(report, variable_name, indent),
         )
+
+    return rendered
+
+
+def update_published_surfaces(report: dict[str, Any]) -> None:
+    for path, content in render_published_surfaces(report).items():
+        path.write_text(content, encoding="utf-8")
 
 
 def main() -> int:

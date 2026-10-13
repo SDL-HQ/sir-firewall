@@ -251,7 +251,7 @@ should not differ between one machine and another. If it does, that is a defect
 in the suite rather than in your environment; `tests/test_tools_run_from_a_clone.py`
 and `tests/test_declared_dependencies.py` exist to keep it that way.
 
-`sir packs list` reports public registry entries. Each entry declares the ISC policy pack it is enforced under, separately from its own identifier, and selecting a suite whose declared pack does not exist fails at resolution rather than producing a run in which every row is a systemic reset. See `tests/domain_packs/README.md`.
+`sir packs list` reports every active registry entry, and prints each one's visibility and the ISC policy pack it is enforced under. It filtered on `visibility` until 13 October 2026, which hid the one `encoded` suite while two public surfaces already named it; the command prints no prompt content, so visibility was never the right filter for it. An entry declares its enforcement pack separately from its own identifier, four of the eight declare a pack of another name, and selecting a suite whose declared pack does not exist fails at resolution rather than producing a run in which every row is a systemic reset. See `tests/domain_packs/README.md`.
 
 ---
 

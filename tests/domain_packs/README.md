@@ -9,7 +9,7 @@ Canonical taxonomy source: `spec/packs/PACKS.md` ("Coverage taxonomy v1").
 Three categories of file carry the word "pack" in this project:
 
 1. **ISC policy packs** — `src/sir_firewall/policy/isc_packs/*.json`. These are runtime gate configurations loaded by `load_domain_pack()`. They control ISC templates, friction limits, enforcement flags, and structured schemas.
-2. **Registry-managed benchmark suites** — `tests/domain_packs/*.csv` and `tests/scenario_packs/*.json`. These are prompt sets intended for runner evaluation and are listed in `spec/packs/pack_registry.v1.json`. They are discoverable through `sir packs list` when their visibility is `public`. Each registry entry names the ISC policy pack it is enforced under in its `enforcement_pack` field, separately from its own `pack_id`, and a suite whose declared enforcement pack does not exist is refused at selection rather than producing a run in which every row is a systemic reset. `canary_fail` is the single entry that declares `enforcement_expected_to_fail`, because its pack-load failure is the fixture that proves a run evaluating no content cannot resemble a clean one.
+2. **Registry-managed benchmark suites** — `tests/domain_packs/*.csv` and `tests/scenario_packs/*.json`. These are prompt sets intended for runner evaluation and are listed in `spec/packs/pack_registry.v1.json`. Every entry whose `status` is `active` is listed by `sir packs list`, with its visibility and enforcement pack. That command filtered on `visibility` until 13 October 2026; it prints no prompt content, so visibility was never the right filter for it. Each registry entry names the ISC policy pack it is enforced under in its `enforcement_pack` field, separately from its own `pack_id`, and a suite whose declared enforcement pack does not exist is refused at selection rather than producing a run in which every row is a systemic reset. `canary_fail` is the single entry that declares `enforcement_expected_to_fail`, because its pack-load failure is the fixture that proves a run evaluating no content cannot resemble a clean one.
 3. **Non-registry exploratory fixtures** — `structured_account_recovery_benchmark.json` and `tool_result_ingress_benchmark.json`. Dedicated tests load these files directly; they are not registry-managed and are not discoverable through `sir packs list`.
 
 `hipaa_mental_health` is an ISC policy pack, while `mental_health_clinical` is a separate benchmark suite. They are related in subject but are different artefacts with no naming correspondence, and the suite is enforced under `generic_safety` by declaration. Measurement on 8 October 2026 found that no verdict in any registry suite changes with the enforcement pack: 453 prompts across 8 suites produce an identical per-prompt result under all 6 ISC policy packs, while the signed `configuration_hash` differs for each. The pack must load, and which one loads changes nothing these suites measure.
@@ -35,14 +35,14 @@ contract.
 ### Active public registry suites
 
 - [Generic Safety](./generic_safety.md) — taxonomy: `benign_control`, `direct_bypass`, `obfuscation`, `exfiltration`, `injection`
-- [Account Recovery and Fraud](./account_recovery_fraud.md) — taxonomy: `benign_control`, `direct_bypass`; registry-active, but `--pack` currently produces systemic-reset blocks
+- [Account Recovery and Fraud](./account_recovery_fraud.md) — taxonomy: `benign_control`, `direct_bypass`; enforced under `generic_safety`, and `--pack` evaluates every row
 - [Support / Operator Override](./support_operator_override.md) — taxonomy: `benign_control`, `direct_bypass`, `exfiltration`
 - [Data Exfiltration Pressure](./data_exfiltration_pressure.md) — taxonomy: `benign_control`, `exfiltration`
 - [EU AI Act Compliance Pressure](./eu_ai_act_compliance_pressure.md) — taxonomy: `benign_control`, `direct_bypass`
 
 ### Active encoded registry suite
 
-- [Mental Health Clinical](./mental_health_clinical.md) — active, `encoded` visibility; taxonomy: `benign_control`, `direct_bypass`; explicit `--pack` selection currently produces systemic-reset blocks
+- [Mental Health Clinical](./mental_health_clinical.md) — active, `encoded` visibility; taxonomy: `benign_control`, `direct_bypass`; enforced under `generic_safety`, and `--pack` evaluates every row
 
 ### Draft/internal packs
 
