@@ -278,3 +278,136 @@ def test_an_unrevoked_implicit_key_still_verifies(tmp_path):
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "carries no signing_key_id" in result.stdout
+
+
+def _baseline_record(tmp_path, key, run_id="20260405-040322-000000-aed41b22e195"):
+    """A signed baseline record naming the revoked key.
+
+    Signed through tools/document_signing.py, the same module the real
+    generator uses, so the refusal under test is the revocation rather than a
+    hand-rolled signature that could never have verified.
+    """
+    import json as _json
+    import sys as _sys
+
+    _sys.path.insert(0, str(ROOT / "tools"))
+    import document_signing  # noqa: PLC0415
+
+    record = {
+        "record_kind": "sir_ungated_baseline",
+        "record_version": 1,
+        "run_id": run_id,
+        "timestamp_utc": "2026-04-05T04:03:22Z",
+        "sir_firewall_version": "2.5.0",
+        "commit_sha": "",
+        "repository": "SDL-HQ/sir-firewall",
+        "ci_run_url": "",
+        "mode": "live",
+        "provider": "xai",
+        "model": "grok-4.3",
+        "pack_id": "generic_safety",
+        "pack_version": "1.0.0",
+        "suite_path": "tests/domain_packs/generic_safety.csv",
+        "prompt_set_hash": "sha256:" + "1" * 64,
+        "prompt_set_hash_kind": "suite_hash",
+        "ledger": {
+            "path": "proofs/itgl_ledger.jsonl",
+            "chain_version": 2,
+            "row_count": 1,
+            "itgl_final_hash": "sha256:" + "2" * 64,
+        },
+        "counters": {
+            "prompts_forwarded": 1,
+            "expected_block_prompts_forwarded": 1,
+            "expected_allow_prompts_forwarded": 0,
+            "provider_call_attempts": 1,
+            "provider_call_successes": 1,
+            "provider_call_failures": 0,
+        },
+        "signing_key_id": "sdl-2026-10-06",
+    }
+
+    from cryptography.hazmat.primitives import serialization as _serialization
+
+    pem = key.private_bytes(
+        encoding=_serialization.Encoding.PEM,
+        format=_serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=_serialization.NoEncryption(),
+    ).decode("ascii")
+    signed = document_signing.sign_document(record, pem)
+
+    path = tmp_path / "baseline.json"
+    path.write_text(_json.dumps(signed), encoding="utf-8")
+    return path
+
+
+def _verify_record(record_path, registry_path, pubkey_path):
+    import subprocess
+    import sys as _sys
+
+    return subprocess.run(
+        [
+            _sys.executable,
+            str(ROOT / "tools/verify_baseline_record.py"),
+            str(record_path),
+            "--key-registry",
+            str(registry_path),
+            "--pubkey",
+            str(pubkey_path),
+        ],
+        capture_output=True,
+        text=True,
+        env={"PATH": "/usr/bin:/bin"},
+    )
+
+
+def test_a_baseline_record_is_refused_when_its_key_is_revoked(tmp_path):
+    """The second signed document type reaches the same revocation rule.
+
+    Added 15 October 2026 with the baseline record. CodeQL raised the same
+    clear-text-logging alert at the record verifier's revocation message as it
+    raised three times at the certificate verifier's, and
+    docs/code-scanning-dismissals.md turns on the printed value being published
+    rather than secret. That argument is only worth anything if the path is
+    tested, so it is tested here rather than asserted there.
+    """
+    key, registry, pem = _revoked_registry(tmp_path, key_id="sdl-2026-10-06")
+    pubkey = tmp_path / "pub.pem"
+    pubkey.write_text(pem, encoding="utf-8")
+    record = _baseline_record(tmp_path, key)
+
+    result = _verify_record(record, registry, pubkey)
+
+    assert result.returncode == 10, result.stdout + result.stderr
+    assert "revoked-key verification failure" in result.stderr
+
+
+def test_that_record_refusal_explains_which_rule_fired(tmp_path):
+    """The counterweight. The scanner's suggested fix is to delete the reason,
+    which would leave a consumer unable to tell one revocation from another."""
+    key, registry, pem = _revoked_registry(tmp_path, key_id="sdl-2026-10-06")
+    pubkey = tmp_path / "pub.pem"
+    pubkey.write_text(pem, encoding="utf-8")
+    record = _baseline_record(tmp_path, key)
+
+    stderr = _verify_record(record, registry, pubkey).stderr
+
+    assert "revoked" in stderr
+    assert len(stderr.strip()) >= 60, stderr
+
+
+def test_no_key_material_reaches_the_record_refusal(tmp_path):
+    """The direction CodeQL is worried about, at the new call site."""
+    key, registry, pem = _revoked_registry(tmp_path, key_id="sdl-2026-10-06")
+    pubkey = tmp_path / "pub.pem"
+    pubkey.write_text(pem, encoding="utf-8")
+    record = _baseline_record(tmp_path, key)
+
+    output = _verify_record(record, registry, pubkey)
+    combined = output.stdout + output.stderr
+
+    assert "BEGIN PUBLIC KEY" not in combined
+    assert "BEGIN PRIVATE KEY" not in combined
+    for line in pem.splitlines():
+        if line and "-----" not in line:
+            assert line not in combined, "a line of key material reached the output"
