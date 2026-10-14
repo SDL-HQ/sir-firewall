@@ -196,6 +196,89 @@ class Report:
         return "\n".join(lines)
 
 
+BASELINE_RECORD_CODES = {
+    0: ("established", "signature, ledger binding and recomputed counters all verify"),
+    2: ("failed", "the document is not a valid baseline record"),
+    3: ("failed", "payload hash does not match the signed payload"),
+    4: ("failed", "the signature is not valid base64"),
+    5: ("failed", "signature verification failed"),
+    7: ("failed", "the bound ledger does not support the record"),
+    10: ("failed", "the signing key is revoked for this record"),
+}
+
+# Codes reached only after the signature verified, so signing trust can be read
+# off them. The same rule as SIGNATURE_VERIFIED_CODES for certificates.
+BASELINE_SIGNATURE_VERIFIED_CODES = frozenset({0, 7})
+
+
+def _verify_baseline_archive(*, run_directory, record, ledger, manifest, receipt, args):
+    """An archive describing an ungated baseline run.
+
+    The properties are not the certificate's. There is no evidence contract and
+    no audit result to establish, because the record claims neither: what can be
+    established is that the document is authentic, that the rows it binds are an
+    ungated baseline's, and that its counters are those rows'. The report says
+    so in those words rather than reporting a firewall certificate property as
+    unknown, which would read as a check that failed to run.
+    """
+    report = Report()
+
+    argv = [str(TOOLS / "verify_baseline_record.py"), str(record)]
+    argv += ["--ledger", str(ledger)] if ledger.is_file() else []
+    if args.allow_unregistered_key:
+        if args.pubkey:
+            argv += ["--pubkey", args.pubkey]
+    else:
+        argv += ["--key-registry", args.key_registry, "--require-registry"]
+    code, output = _run(argv)
+    state, detail = _classify(code, BASELINE_RECORD_CODES, "verify_baseline_record.py")
+    last_line = output.strip().splitlines()[-1] if output.strip() else None
+    report.add("baseline record", state, detail, evidence=last_line)
+
+    if code in BASELINE_SIGNATURE_VERIFIED_CODES:
+        report.add(
+            "signing trust",
+            "established",
+            "the signature verified against a key the registry honours for this record",
+        )
+    else:
+        report.add(
+            "signing trust",
+            "failed" if state == "failed" else "unknown",
+            "the record's signature did not verify through the key registry",
+        )
+
+    if manifest.is_file() or receipt.is_file():
+        receipt_argv = [str(TOOLS / "verify_archive_receipt.py"), str(run_directory)]
+        if not args.allow_unregistered_key:
+            receipt_argv += ["--key-registry", args.key_registry, "--require-registry"]
+        receipt_code, receipt_output = _run(receipt_argv)
+        receipt_state, receipt_detail = _classify(
+            receipt_code, RECEIPT_CODES, "verify_archive_receipt.py"
+        )
+        report.add(
+            "archive custody",
+            receipt_state,
+            receipt_detail,
+            evidence=receipt_output.strip().splitlines()[-1] if receipt_output.strip() else None,
+        )
+    else:
+        report.add(
+            "archive custody",
+            "unknown",
+            "this archive carries no manifest or receipt, so file custody was not checked",
+        )
+
+    # Deliberately not reported: an evidence contract, and an audit result. A
+    # baseline record claims neither, so there is nothing to establish and
+    # nothing to report as unknown.
+    print(
+        report.to_json(run_directory) if args.json else report.to_text(run_directory),
+        file=sys.stdout,
+    )
+    return report.verdict()
+
+
 def main() -> int:
     args = _parse_args()
     run_directory = Path(args.run_directory)
@@ -205,12 +288,42 @@ def main() -> int:
         return UNREADABLE
 
     certificate = run_directory / "audit.json"
+    baseline_record = run_directory / "baseline.json"
     ledger = run_directory / "proofs/itgl_ledger.jsonl"
     manifest = run_directory / "manifest.json"
     receipt = run_directory / "archive_receipt.json"
 
+    # Which document this archive holds decides what can be established about
+    # it. From SIR 2.5 an ungated baseline is described by baseline.json, which
+    # carries no audit result and no proof class, and a gated run by audit.json.
+    #
+    # Both present, or neither, is a failure rather than unknown. An archive
+    # with both describes one run two ways, and nothing here can say which is
+    # the run; an archive with neither has no signed document to check at all.
+    # Reporting either as "not established" would put them beside an archive
+    # whose ledger merely predates a field, which is a different thing.
+    if certificate.is_file() and baseline_record.is_file():
+        print(
+            f"ERROR: {run_directory} holds both audit.json and baseline.json. One run is "
+            "described by one signed document: a gated run by a certificate, an ungated "
+            "baseline by a baseline record.",
+            file=sys.stderr,
+        )
+        return FAILED
+    if baseline_record.is_file():
+        return _verify_baseline_archive(
+            run_directory=run_directory,
+            record=baseline_record,
+            ledger=ledger,
+            manifest=manifest,
+            receipt=receipt,
+            args=args,
+        )
     if not certificate.is_file():
-        print(f"ERROR: no certificate at {certificate}", file=sys.stderr)
+        print(
+            f"ERROR: no signed document at {certificate} or {baseline_record}",
+            file=sys.stderr,
+        )
         return UNREADABLE
     try:
         cert = json.loads(certificate.read_text(encoding="utf-8"))

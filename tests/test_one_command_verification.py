@@ -229,7 +229,10 @@ def test_a_directory_that_is_not_a_run_is_unreadable(tmp_path):
     code, _, stderr = _verify(tmp_path)
 
     assert code == UNREADABLE
-    assert "no certificate" in stderr
+    # From SIR 2.5 an archive holds one of two signed documents, so the message
+    # names both rather than only the certificate.
+    assert "no signed document" in stderr
+    assert "audit.json" in stderr and "baseline.json" in stderr
 
 
 def test_the_four_exit_codes_are_distinct_and_documented():

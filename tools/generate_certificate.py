@@ -36,8 +36,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
 
 # Run directly from a clone without an editable install. These inserts must
 # precede the package imports below; previously only the tools directory was
@@ -50,6 +48,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sir_firewall.evidence_paths import canonical_ledger_path
 from sir_firewall.model_selection import DEFAULT_MODEL, DEFAULT_PROVIDER
 
+from document_signing import sign_document
 from itgl import (
     LedgerVerificationError,
     counter_disagreements,
@@ -417,8 +416,6 @@ def main(ledger_path: Optional[str] = None, allow_detached_ledger: bool = False)
     if not private_key_pem:
         raise RuntimeError("SDL_PRIVATE_KEY_PEM secret missing")
 
-    private_key = serialization.load_pem_private_key(private_key_pem.encode("utf-8"), password=None)
-
     summary = _load_summary()
 
     suite_path = str(summary.get("suite_path") or os.getenv("SIR_SUITE_PATH") or "tests/domain_packs/generic_safety.csv")
@@ -736,13 +733,11 @@ def main(ledger_path: Optional[str] = None, allow_detached_ledger: bool = False)
     # Backward-compat alias for older consumers
     cert["safety_fingerprint"] = trust_fingerprint
 
-    # Sign payload (everything except signature + payload_hash)
-    payload_obj = {k: v for k, v in cert.items() if k not in ("signature", "payload_hash")}
-    payload = json.dumps(payload_obj, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-
-    cert["payload_hash"] = "sha256:" + hashlib.sha256(payload).hexdigest()
-    signature = private_key.sign(payload, padding.PKCS1v15(), hashes.SHA256())
-    cert["signature"] = base64.b64encode(signature).decode("ascii")
+    # Signed through tools/document_signing.py, which the baseline record also
+    # uses. The scheme is unchanged: the payload is every field except the two
+    # below, in this document's own field order rather than sorted, which is
+    # what every published certificate was signed over.
+    cert = sign_document(cert, private_key_pem)
 
     os.makedirs("proofs", exist_ok=True)
     os.makedirs("proofs/archive", exist_ok=True)
