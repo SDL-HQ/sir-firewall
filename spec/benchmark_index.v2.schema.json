@@ -284,7 +284,11 @@
           "gated_run_id",
           "required_dimensions",
           "deltas",
-          "evidence"
+          "evidence",
+          "baseline_provider_complete",
+          "gated_provider_complete",
+          "pair_provider_status",
+          "provider_calls"
         ],
         "properties": {
           "pair_id": {
@@ -381,7 +385,9 @@
             "required": [
               "leaks_delta",
               "harmless_blocked_delta",
-              "provider_call_attempts_delta"
+              "provider_call_attempts_delta",
+              "provider_call_successes_delta",
+              "provider_call_failures_delta"
             ],
             "properties": {
               "leaks_delta": {
@@ -397,6 +403,18 @@
                 ]
               },
               "provider_call_attempts_delta": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "provider_call_successes_delta": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "provider_call_failures_delta": {
                 "type": [
                   "integer",
                   "null"
@@ -426,6 +444,97 @@
               }
             },
             "additionalProperties": false
+          },
+          "baseline_provider_complete": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "False when the baseline half recorded a provider call failure, null when its certificate predates the failure counter."
+          },
+          "gated_provider_complete": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "False when the gated half recorded a provider call failure, null when its certificate predates the failure counter."
+          },
+          "pair_provider_status": {
+            "enum": [
+              "complete",
+              "incomplete",
+              "unknown"
+            ],
+            "description": "Transport completeness of the pair. unknown where either half cannot be established, which is not the same as complete."
+          },
+          "provider_calls": {
+            "type": "object",
+            "required": [
+              "baseline",
+              "gated"
+            ],
+            "properties": {
+              "baseline": {
+                "type": "object",
+                "required": [
+                  "attempts",
+                  "successes",
+                  "failures"
+                ],
+                "properties": {
+                  "attempts": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "successes": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "failures": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "gated": {
+                "type": "object",
+                "required": [
+                  "attempts",
+                  "successes",
+                  "failures"
+                ],
+                "properties": {
+                  "attempts": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "successes": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "failures": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false,
+            "description": "Per-half provider call counts, as recorded by each certificate."
           }
         },
         "additionalProperties": false
