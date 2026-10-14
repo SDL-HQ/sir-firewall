@@ -34,6 +34,7 @@ LOCAL_MODULES = {
     "local_audit",
     "verify_certificate",
     "verify_baseline_record",
+    "pair_validation",
     "certificate_results",
     "document_signing",
     "tools",
