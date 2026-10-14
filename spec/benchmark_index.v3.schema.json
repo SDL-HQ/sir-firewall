@@ -1,0 +1,1084 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdl-hq.github.io/sir-firewall/spec/benchmark_index.v3.schema.json",
+  "title": "SIR Benchmark Index v3",
+  "description": "The benchmark index from SIR 2.5 onward. v3 exists because an ungated baseline stops producing an audit certificate and produces a signed baseline record instead, and a v2 entry requires a result and a proof class that a baseline has not got. Entries and pairs therefore declare their kind, and what each kind must and must not carry is checked here rather than left to a reader. benchmark_index.v2 stays as published; every row in it can be expressed in v3 unchanged.",
+  "type": "object",
+  "required": [
+    "version",
+    "supersedes",
+    "updated_at_utc",
+    "entries",
+    "pairs"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": "benchmark_index.v3"
+    },
+    "supersedes": {
+      "const": "benchmark_index.v2"
+    },
+    "updated_at_utc": {
+      "type": "string"
+    },
+    "latest_run": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "run_id",
+        "result"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "result": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Pointer to the latest gate run, carrying its result. A baseline record has no result and is never named here."
+    },
+    "latest_passing_run": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "run_id",
+        "result"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "result": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Pointer to the latest gate run whose certificate passed. Never a baseline record."
+    },
+    "entries": {
+      "type": "array",
+      "description": "Row-level run evidence, one entry per archived run, of either kind.",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "entry_kind",
+              "run_id",
+              "run_timestamp_utc",
+              "sir_firewall_version",
+              "commit_sha",
+              "result",
+              "proof_class",
+              "evaluation_target",
+              "provider",
+              "model",
+              "comparison",
+              "ci_run_url",
+              "evidence",
+              "row_identity"
+            ],
+            "properties": {
+              "run_id": {
+                "type": "string"
+              },
+              "run_timestamp_utc": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "sir_firewall_version": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "commit_sha": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "result": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "proof_class": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "evaluation_target": {
+                "type": "object",
+                "required": [
+                  "target_kind",
+                  "pack_id",
+                  "pack_version"
+                ],
+                "properties": {
+                  "target_kind": {
+                    "type": "string",
+                    "enum": [
+                      "domain_pack",
+                      "scenario_pack"
+                    ]
+                  },
+                  "pack_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "pack_version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "scenario_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "provider": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "model": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "row_identity": {
+                "type": "string"
+              },
+              "comparison": {
+                "type": "object",
+                "required": [
+                  "leaks",
+                  "harmless_blocked",
+                  "provider_call_attempts",
+                  "provider_call_successes",
+                  "provider_call_failures",
+                  "trust_fingerprint",
+                  "itgl_final_hash"
+                ],
+                "properties": {
+                  "leaks": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "harmless_blocked": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "provider_call_attempts": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "provider_call_successes": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "provider_call_failures": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "trust_fingerprint": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "itgl_final_hash": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "ci_run_url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "evidence": {
+                "type": "object",
+                "required": [
+                  "audit",
+                  "manifest",
+                  "archive_receipt",
+                  "run_summary",
+                  "itgl_ledger",
+                  "itgl_final_hash",
+                  "attempt_log"
+                ],
+                "properties": {
+                  "audit": {
+                    "type": "string"
+                  },
+                  "manifest": {
+                    "type": "string"
+                  },
+                  "archive_receipt": {
+                    "type": "string"
+                  },
+                  "run_summary": {
+                    "type": "string"
+                  },
+                  "itgl_ledger": {
+                    "type": "string"
+                  },
+                  "itgl_final_hash": {
+                    "type": "string"
+                  },
+                  "attempt_log": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "evidence_error": {
+                "type": "string"
+              },
+              "entry_kind": {
+                "const": "audit_certificate"
+              }
+            },
+            "additionalProperties": false,
+            "description": "A gated run, described by its signed audit certificate. Identical to a benchmark_index.v2 entry apart from the declared kind, so a historical row carries into v3 without being restated."
+          },
+          {
+            "type": "object",
+            "description": "An ungated baseline run, described by its signed baseline record. It carries no result and no proof class, because no gate ran and there is no audit outcome to report. Both fields are forbidden rather than nullable: a null result in a field a reader expects to hold a verdict is how the published 54 came to be read as failed audits.",
+            "required": [
+              "entry_kind",
+              "run_id",
+              "run_timestamp_utc",
+              "sir_firewall_version",
+              "commit_sha",
+              "evaluation_target",
+              "provider",
+              "model",
+              "forwarding",
+              "ci_run_url",
+              "evidence",
+              "row_identity"
+            ],
+            "properties": {
+              "entry_kind": {
+                "const": "ungated_baseline_record"
+              },
+              "run_id": {
+                "type": "string"
+              },
+              "run_timestamp_utc": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "sir_firewall_version": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "commit_sha": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "evaluation_target": {
+                "type": "object",
+                "required": [
+                  "target_kind",
+                  "pack_id",
+                  "pack_version"
+                ],
+                "properties": {
+                  "target_kind": {
+                    "type": "string",
+                    "enum": [
+                      "domain_pack",
+                      "scenario_pack"
+                    ]
+                  },
+                  "pack_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "pack_version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "scenario_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "provider": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "model": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "row_identity": {
+                "type": "string"
+              },
+              "forwarding": {
+                "type": "object",
+                "description": "What the baseline forwarded, recomputed from the record's ledger rows. In a scenario a row is a turn and each provider call carries the cumulative history of the earlier turns, so these count calls and turns, not distinct content exposures.",
+                "required": [
+                  "prompts_forwarded",
+                  "expected_block_prompts_forwarded",
+                  "expected_allow_prompts_forwarded",
+                  "provider_call_attempts",
+                  "provider_call_successes",
+                  "provider_call_failures"
+                ],
+                "properties": {
+                  "prompts_forwarded": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "expected_block_prompts_forwarded": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "expected_allow_prompts_forwarded": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "provider_call_attempts": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "provider_call_successes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "provider_call_failures": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              },
+              "ci_run_url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "evidence": {
+                "type": "object",
+                "required": [
+                  "baseline",
+                  "manifest",
+                  "archive_receipt",
+                  "run_summary",
+                  "itgl_ledger",
+                  "itgl_final_hash",
+                  "attempt_log"
+                ],
+                "properties": {
+                  "baseline": {
+                    "type": "string",
+                    "description": "Path to baseline.json. An archive holds this or audit.json, never both."
+                  },
+                  "manifest": {
+                    "type": "string"
+                  },
+                  "archive_receipt": {
+                    "type": "string"
+                  },
+                  "run_summary": {
+                    "type": "string"
+                  },
+                  "itgl_ledger": {
+                    "type": "string"
+                  },
+                  "itgl_final_hash": {
+                    "type": "string"
+                  },
+                  "attempt_log": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "evidence_error": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "pairs": {
+      "type": "array",
+      "description": "Paired benchmark units, of either form.",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "pair_form",
+              "pair_id",
+              "pair_key",
+              "pair_status",
+              "baseline_run_id",
+              "gated_run_id",
+              "required_dimensions",
+              "deltas",
+              "evidence",
+              "baseline_provider_complete",
+              "gated_provider_complete",
+              "pair_provider_status",
+              "provider_calls"
+            ],
+            "properties": {
+              "pair_id": {
+                "type": "string"
+              },
+              "pair_key": {
+                "type": "string"
+              },
+              "pair_status": {
+                "type": "string",
+                "enum": [
+                  "valid_complete",
+                  "incomplete_missing_baseline",
+                  "incomplete_missing_gated",
+                  "invalid_mismatched_dimensions",
+                  "invalid_evidence_gap",
+                  "historical_unpaired"
+                ]
+              },
+              "baseline_run_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "gated_run_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "baseline_definition": {
+                "type": "string",
+                "const": "same prompt set evaluated without SIR pre-inference gate intervention"
+              },
+              "required_dimensions": {
+                "type": "object",
+                "required": [
+                  "provider",
+                  "model",
+                  "target_kind",
+                  "pack_id",
+                  "pack_version",
+                  "commit_sha"
+                ],
+                "properties": {
+                  "provider": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "model": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "target_kind": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "pack_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "pack_version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "commit_sha": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "non_comparable_reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "deltas": {
+                "type": "object",
+                "required": [
+                  "leaks_delta",
+                  "harmless_blocked_delta",
+                  "provider_call_attempts_delta",
+                  "provider_call_successes_delta",
+                  "provider_call_failures_delta"
+                ],
+                "properties": {
+                  "leaks_delta": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "harmless_blocked_delta": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "provider_call_attempts_delta": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "provider_call_successes_delta": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "provider_call_failures_delta": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "evidence": {
+                "type": "object",
+                "required": [
+                  "baseline_entry_ref",
+                  "gated_entry_ref"
+                ],
+                "properties": {
+                  "baseline_entry_ref": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "gated_entry_ref": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "baseline_provider_complete": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "False when the baseline half recorded a provider call failure, null when its certificate predates the failure counter."
+              },
+              "gated_provider_complete": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "False when the gated half recorded a provider call failure, null when its certificate predates the failure counter."
+              },
+              "pair_provider_status": {
+                "enum": [
+                  "complete",
+                  "incomplete",
+                  "unknown"
+                ],
+                "description": "Transport completeness of the pair. unknown where either half cannot be established, which is not the same as complete."
+              },
+              "provider_calls": {
+                "type": "object",
+                "required": [
+                  "baseline",
+                  "gated"
+                ],
+                "properties": {
+                  "baseline": {
+                    "type": "object",
+                    "required": [
+                      "attempts",
+                      "successes",
+                      "failures"
+                    ],
+                    "properties": {
+                      "attempts": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "successes": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "failures": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "gated": {
+                    "type": "object",
+                    "required": [
+                      "attempts",
+                      "successes",
+                      "failures"
+                    ],
+                    "properties": {
+                      "attempts": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "successes": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "failures": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Per-half provider call counts, as recorded by each certificate."
+              },
+              "pair_form": {
+                "const": "certificate_pair_legacy"
+              }
+            },
+            "additionalProperties": false,
+            "description": "A pair published before 2.5, both halves certificates. Identical to a benchmark_index.v2 pair apart from the declared form. Its leaks_delta is kept as published and is the negative of the number of expected-block prompts the gated run blocked; docs/archive-errata.md E7 records why it is not a measure of harm prevented."
+          },
+          {
+            "type": "object",
+            "description": "A pair from 2.5 onward: an ungated baseline record and a gated certificate. It carries no leaks_delta and no harmless_blocked_delta. Both are recoverable from the figures here and the gated certificate, and neither name was true of what it held.",
+            "required": [
+              "pair_form",
+              "pair_id",
+              "pair_key",
+              "pair_status",
+              "baseline_run_id",
+              "gated_run_id",
+              "required_dimensions",
+              "provider_calls",
+              "deltas",
+              "evidence",
+              "baseline_provider_complete",
+              "gated_provider_complete",
+              "pair_provider_status"
+            ],
+            "properties": {
+              "pair_form": {
+                "const": "record_and_certificate"
+              },
+              "pair_id": {
+                "type": "string"
+              },
+              "pair_key": {
+                "type": "string"
+              },
+              "pair_status": {
+                "type": "string",
+                "enum": [
+                  "valid_complete",
+                  "incomplete_missing_baseline",
+                  "incomplete_missing_gated",
+                  "invalid_mismatched_dimensions",
+                  "invalid_evidence_gap",
+                  "historical_unpaired"
+                ]
+              },
+              "baseline_definition": {
+                "type": "string"
+              },
+              "baseline_run_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "gated_run_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "non_comparable_reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "required_dimensions": {
+                "type": "object",
+                "description": "Prompt-set identity and run attribution. pack_id is the registry pack that selected the prompt set, never the enforcement pack: a real scenario pair matches on its scenario hash while the two halves name different enforcement packs, and comparing those rejects the pair.",
+                "required": [
+                  "provider",
+                  "model",
+                  "target_kind",
+                  "pack_id",
+                  "pack_version",
+                  "prompt_set_hash",
+                  "prompt_set_hash_kind",
+                  "commit_sha"
+                ],
+                "properties": {
+                  "provider": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "model": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "target_kind": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "pack_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "pack_version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "prompt_set_hash": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "prompt_set_hash_kind": {
+                    "enum": [
+                      "suite_hash",
+                      "scenario_hash",
+                      null
+                    ]
+                  },
+                  "commit_sha": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "gate_figures": {
+                "type": "object",
+                "description": "What the gate did to the expected-block prompts, recomputed from the baseline record and the gated certificate. Present only on a valid_complete pair: a gated run whose own result is INCONCLUSIVE decided an unknown share of its prompts, and subtracting across it credits system failures to the gate.",
+                "required": [
+                  "expected_block_prompts",
+                  "expected_block_prompts_with_gate_decision",
+                  "expected_block_prompts_reset",
+                  "expected_block_prompts_blocked_by_gate",
+                  "expected_block_prompts_passed_by_gate"
+                ],
+                "properties": {
+                  "expected_block_prompts": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "The prompt set's own label count, from the baseline record."
+                  },
+                  "expected_block_prompts_with_gate_decision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Of those, the ones the gate decided on content."
+                  },
+                  "expected_block_prompts_reset": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Of those, the ones a system failure stopped before any content decision."
+                  },
+                  "expected_block_prompts_blocked_by_gate": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Gate-conformance figure. Says nothing about harm."
+                  },
+                  "expected_block_prompts_passed_by_gate": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "The gated certificate's own jailbreaks_leaked."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "provider_calls": {
+                "type": "object",
+                "required": [
+                  "baseline",
+                  "gated"
+                ],
+                "properties": {
+                  "baseline": {
+                    "type": "object",
+                    "required": [
+                      "attempts",
+                      "successes",
+                      "failures"
+                    ],
+                    "properties": {
+                      "attempts": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "successes": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "failures": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "gated": {
+                    "type": "object",
+                    "required": [
+                      "attempts",
+                      "successes",
+                      "failures"
+                    ],
+                    "properties": {
+                      "attempts": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "successes": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "failures": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              },
+              "deltas": {
+                "type": "object",
+                "description": "Gated minus baseline, the direction the published pairs already use. Provider call attempts is the observed quantity: requests that did not reach the provider because the gate stopped them.",
+                "required": [
+                  "provider_call_attempts_delta"
+                ],
+                "properties": {
+                  "provider_call_attempts_delta": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "provider_call_successes_delta": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "provider_call_failures_delta": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "baseline_provider_complete": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "gated_provider_complete": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "pair_provider_status": {
+                "enum": [
+                  "complete",
+                  "incomplete",
+                  "unknown"
+                ],
+                "description": "Transport completeness of the pair. unknown where either half cannot be established, which is not the same as complete."
+              },
+              "evidence": {
+                "type": "object",
+                "required": [
+                  "baseline_entry_ref",
+                  "gated_entry_ref"
+                ],
+                "properties": {
+                  "baseline_entry_ref": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Path to the baseline record, baseline.json, not audit.json."
+                  },
+                  "gated_entry_ref": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "pair_status": {
+                      "const": "valid_complete"
+                    }
+                  },
+                  "required": [
+                    "pair_status"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "gate_figures"
+                  ]
+                },
+                "else": {
+                  "not": {
+                    "required": [
+                      "gate_figures"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
