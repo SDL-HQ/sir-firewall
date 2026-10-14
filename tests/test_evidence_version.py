@@ -157,7 +157,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # measured or decided what they record: the pack measurement's revision,
         # the use-versus-mention measurement, and the counter definitions that
         # were taken instead of a rename.
-        "docs/backlog.md": Counter({v_240: 4, v_230: 1, v_102: 1}),
+        "docs/backlog.md": Counter({v_240: 7, v_230: 1, v_102: 1}),
         # The publication step records the release whose merge exposed that a
         # direct push to main cannot satisfy the required status checks.
         ".github/workflows/audit-and-sign.yml": Counter({v_240: 1}),
