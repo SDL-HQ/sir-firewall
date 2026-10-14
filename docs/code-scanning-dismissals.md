@@ -8,8 +8,10 @@ exists so a reviewer can check the reasoning rather than take it on trust, and
 so that the dismissals rest on tests rather than on an argument made once in a
 conversation.
 
-As at 12 October 2026: **0 open, 5 closed.** One was fixed. Four were dismissed
-as false positives, and all four are the same finding in four places.
+As at 15 October 2026: **1 open, 5 closed.** One was fixed. Five are the same
+finding in five places, four of them dismissed as false positives and one
+raised on 15 October against the new baseline record verifier, awaiting the
+same disposition.
 
 | Alert | Rule | Location | Closed as |
 |---|---|---|---:|
@@ -18,6 +20,27 @@ as false positives, and all four are the same finding in four places.
 | #4 | Clear-text logging of sensitive information | `tools/rotate_keys.py:158` | **fixed** |
 | #5 | Clear-text logging of sensitive information | `tools/rotate_keys.py:169` | false positive |
 | #6 | Clear-text logging of sensitive information | `tools/verify_certificate.py:233` | false positive |
+| #7 | Clear-text logging of sensitive information | `tools/verify_baseline_record.py:317` | open, false positive |
+
+## #7, raised 15 October 2026 against the baseline record verifier
+
+The same finding as #2, #3 and #6, at a fifth place, and it turns on the same
+fact. The ungated baseline record is the second kind of signed document SIR
+issues, and `tools/verify_baseline_record.py` refuses one whose signing key was
+revoked by printing the revocation reason, exactly as the certificate verifier
+does. The printed value names the rule that fired and the anchor it was
+compared against, and that anchor, `last_trusted_run_id`, is committed in
+plaintext in `spec/pubkeys/key_registry.v1.json`.
+
+The suggested remediation is to delete the reason from the message. That would
+leave a consumer holding exit code 10 with no way to tell which revocation rule
+refused their archive, which is the distinction exit 10 exists to draw.
+
+Three tests were added with the alert, so this disposition rests on the same
+footing as the others rather than on the paragraph above: the record verifier
+refuses a revoked key at exit 10, that refusal explains which rule fired, and
+no line of key material reaches its output. They are in
+`tests/test_no_key_material_in_diagnostics.py` beside the certificate's.
 
 ## The four false positives
 
@@ -44,7 +67,7 @@ id in the clear by design, because an identifier is not a secret and
 ### The dismissals rest on tests, not on the argument above
 
 `tests/test_no_key_material_in_diagnostics.py` holds the property in both
-directions, across eight tests:
+directions, across eleven tests, the last three added for #7:
 
 - no key material reaches a revocation reason, on every refusal path,
 - every refusal still explains itself, so the fix for the alert cannot be to
