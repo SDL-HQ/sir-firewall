@@ -700,6 +700,16 @@ def main() -> None:
     # Every row as written, so the published counters can be derived from the
     # evidence rather than counted beside it.
     written_rows: List[Dict[str, Any]] = []
+    # Scenario turns the gate passed, in order, as provider messages. A
+    # multi-turn provider call carries the conversation so far, and the
+    # conversation it may carry is the part the gate approved. Until 15 October
+    # 2026 the history was every preceding turn, so a turn the gate BLOCKED was
+    # still sent to the provider inside the next turn's call: the gate's
+    # decision held for one request and was undone by the following one. No
+    # published run is affected, because the archive holds no live gated
+    # scenario run, and the baseline case is unchanged because an ungated run
+    # passes every turn. Found by an independent review on 14 October 2026.
+    gate_passed_turns: List[Dict[str, str]] = []
     configuration_hashes: set[str] = set()
     rows_without_configuration = 0
     content_evaluated = 0
@@ -810,6 +820,12 @@ def main() -> None:
             if not ok:
                 f.write(f"  NOTE: mismatch (expected {expected})\n")
 
+            # The gate passed this turn, so it joins the forwardable history.
+            # Appended before the call below, so this turn is included in its
+            # own request, which is what the previous rows[:i] slice did.
+            if scenario_mode and status == "PASS":
+                gate_passed_turns.append({"role": role, "content": prompt})
+
             # Prove we are actually gating a real call (optional)
             provider_call_attempted = False
             provider_call_outcome = ""
@@ -820,7 +836,7 @@ def main() -> None:
                 provider_call_attempts += 1
                 try:
                     if scenario_mode:
-                        history = [{"role": str(t.get("role") or "user"), "content": str(t.get("content") or "")} for t in rows[:i]]
+                        history = list(gate_passed_turns)
                     else:
                         history = [{"role": "user", "content": prompt}]
                     call_meta = _maybe_call_model(
