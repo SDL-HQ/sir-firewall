@@ -18,7 +18,12 @@ dependencies = [
   "pytest",
   "hypothesis",
   "PyYAML",
-  "pandas"
+  "pandas",
+  # Published indexes are validated against their own schemas by
+  # tests/test_benchmark_index_matches_its_schema.py. Until 15 October 2026
+  # nothing did, and proofs/runs/benchmark_index.v2.json had been failing
+  # spec/benchmark_index.v2.schema.json with 108 errors.
+  "jsonschema"
 ]
 
 [project.optional-dependencies]
