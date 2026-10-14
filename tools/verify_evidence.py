@@ -77,6 +77,8 @@ CERTIFICATE_CODES = {
                    "not established; the signature and payload hash were still checked"),
     10: ("failed", "the signing key is revoked for this archive"),
     11: ("failed", "the signed counters are not supported by the bound ledger"),
+    12: ("failed", "this document is not a SIR audit certificate, so nothing about it "
+                   "was verified, including its signature"),
 }
 
 # verify_certificate.py codes reached only after the signature verified. Signing
