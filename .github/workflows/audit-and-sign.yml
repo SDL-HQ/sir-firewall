@@ -25,7 +25,7 @@ on:
           - run
           - benchmark
       mode:
-        description: 'audit = deterministic/no provider calls; live = provider-call path.'
+        description: 'audit = deterministic/no provider calls; live = provider-call path. A benchmark requires live.'
         required: false
         default: audit
         type: choice
@@ -994,6 +994,17 @@ jobs:
         run: |
           set -euo pipefail
           mode="${BENCHMARK_MODE:-audit}"
+          # A benchmark's baseline half requires live mode from SIR 2.5: with
+          # the gate out of the path and no provider calls, an ungated run
+          # observes nothing that its prompt set does not already state. The
+          # workflow input still defaults to audit, which is correct for a
+          # single run, so the benchmark path refuses it here rather than
+          # letting the runner refuse it after the job has started publishing.
+          if [ "$mode" != "live" ]; then
+            echo "ERROR: benchmark requires mode=live; got mode='$mode'." >&2
+            echo "An ungated baseline in audit mode runs no gate and calls no provider." >&2
+            exit 1
+          fi
           provider="${DISPATCH_PROVIDER:-xai}"
           pack="${DISPATCH_PACK:-generic_safety}"
           model="${DISPATCH_MODEL:-grok-4.3}"

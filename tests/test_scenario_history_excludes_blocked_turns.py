@@ -222,7 +222,9 @@ def test_an_ungated_baseline_forwards_every_turn(tmp_path, monkeypatch):
         ungated_baseline=True,
     )
 
-    assert [row["status"] for row in rows] == ["PASS", "PASS"], rows
+    # FORWARDED, not PASS: no gate decided these rows. From SIR 2.5 a baseline
+    # row records that its content was sent with nothing deciding on it.
+    assert [row["status"] for row in rows] == ["FORWARDED", "FORWARDED"], rows
     assert len(calls) == 2, calls
     assert _contents(calls[0]) == [BLOCKED_TURN]
     assert _contents(calls[1]) == [BLOCKED_TURN, ALLOWED_SECOND]

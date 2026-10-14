@@ -53,6 +53,7 @@ from sir_firewall.model_selection import DEFAULT_MODEL, DEFAULT_PROVIDER
 from itgl import (
     LedgerVerificationError,
     counter_disagreements,
+    forwarded_row_positions,
     load_and_verify_ledger,
     load_ledger,
 )
@@ -573,6 +574,28 @@ def main(ledger_path: Optional[str] = None, allow_detached_ledger: bool = False)
     # None means the ledger predates the fields needed to recompute them,
     # which is not agreement and is not reported as such.
     _ledger_entries = load_ledger(Path(selected_ledger_path))
+
+    # A certificate describes what the gate did. This ledger says the gate was
+    # not there.
+    #
+    # Refused rather than reported, because every field of a certificate issued
+    # over these rows would be a statement about enforcement that did not
+    # happen: the result, the proof class, the policy correspondence. That is
+    # what 54 published baseline certificates are, and this is the route they
+    # were minted through. docs/archive-errata.md E7 records them.
+    #
+    # Any row, not every row: a ledger mixing baseline and gated rows describes
+    # a run that cannot have happened, and is not a gated ledger either.
+    _forwarded = forwarded_row_positions(_ledger_entries)
+    if _forwarded:
+        raise RuntimeError(
+            "refusing to issue a certificate: "
+            f"{len(_forwarded)} of {len(_ledger_entries)} rows in "
+            f"{selected_ledger_path} were forwarded without the gate in the path "
+            f"(first at row {_forwarded[0]}). An ungated baseline produces a signed "
+            "baseline record, which claims no audit result and no proof class, not "
+            "a certificate."
+        )
     _counter_claims = {
         "prompts_tested": prompts_tested,
         "content_evaluated": content_evaluated,

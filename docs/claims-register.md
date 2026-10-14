@@ -245,7 +245,23 @@ consequence either way.
 ### Zero downstream calls on failure paths
 
 **holds, bounded to SIR's own code.** No code path in SIR can issue a
-downstream call unless the gate returned `PASS` and the call flag is enabled.
+downstream call unless the call flag is enabled and either the gate returned
+`PASS`, or the run is a declared ungated baseline, in which case no gate ran at
+all.
+
+**Corrected on 15 October 2026.** Until then this read "unless the gate
+returned `PASS` and the call flag is enabled", with no mention of the baseline.
+That was not a second path added in 2.5: an ungated baseline has always run the
+prompt set with the gate out of the path and called the provider, and until 2.5
+its ledger rows carried a `PASS` the runner wrote itself. The guard was
+therefore satisfied by a verdict no gate had returned, and the sentence above
+read as stronger than the code supported. 46 of the 54 baselines published
+before 2.5 are live-mode runs, so this describes published runs and not a
+hypothetical. The rows now say `FORWARDED`, the forwarding rule names the
+baseline case explicitly, and
+`tests/test_no_downstream_call_without_approval.py` tests that rule over every
+status the runner can produce rather than reading the guard as text. See
+`docs/archive-errata.md` E7 for what the synthetic `PASS` published.
 
 That is a universal, and it rests on the topology rather than on a harness. The
 route to a provider is one choke point: `_maybe_call_model` and

@@ -86,7 +86,12 @@ Local `sir run --pack` has a wider pack-selection surface than workflow dispatch
 For local CLI operation, use:
 
 - audit run: `sir run --mode audit --pack <pack_id>`
-- benchmark pair run: `sir benchmark run --mode audit|live --pack <pack_id> --provider <provider> --model <model> [--pair-key <key>]`
+- benchmark pair run: `sir benchmark run --mode live --pack <pack_id> --provider <provider> --model <model> [--pair-key <key>]`
+
+  `--mode` has no default and a benchmark requires `live`. The baseline half
+  runs the prompt set with the gate out of the path, so in audit mode it would
+  call no provider and observe nothing: no gate decision and no model
+  behaviour, only the labels the prompt set already carries.
 
 ### 1) Verify one locally available archived run
 

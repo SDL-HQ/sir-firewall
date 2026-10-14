@@ -7,7 +7,11 @@ no network.
 ## The claims
 
 **Structural, bounded to SIR's own code.** No code path in SIR can issue a
-downstream call unless the gate returned `PASS` and the call flag is enabled.
+downstream call unless the call flag is enabled and either the gate returned
+`PASS`, or the run is a declared ungated baseline, in which case no gate ran at
+all. The baseline half of that sentence is a correction made on 15 October
+2026, not an exemption added then; `docs/claims-register.md` records why the
+earlier wording was stronger than the code supported.
 
 **Observed, bounded to the paths exercised.** On each failure path listed below
 as reachable through the runner, the harness observed zero downstream calls.
