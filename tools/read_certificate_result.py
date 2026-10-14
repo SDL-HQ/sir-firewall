@@ -12,7 +12,7 @@ it, and should say which outcome it was rather than printing an empty string
 for all of them.
 
 What this validates, and what it does not. It checks that `result` is exactly
-one of the three strings tools/generate_certificate.py can produce. It checks
+one of the results declared in tools/certificate_results.py. It checks
 nothing else about the certificate: signature, contract, ledger binding and
 counter agreement are established by earlier steps, and a certificate saying
 AUDIT PASSED while failing those is their business, not this script's.
@@ -41,9 +41,10 @@ from __future__ import annotations
 import json
 import sys
 
-# The complete set tools/generate_certificate.py._compute_audit_result returns.
-# A result outside this set is not a verdict, whatever it says.
-KNOWN_RESULTS = ("AUDIT PASSED", "AUDIT FAILED", "INCONCLUSIVE")
+# The set is declared once, in tools/certificate_results.py, and every reader
+# takes it from there. A result outside it is not a verdict, whatever it says.
+# This script is run by path, so its own directory is first on sys.path.
+from certificate_results import KNOWN_RESULTS  # noqa: E402
 
 
 def read_result(path: str) -> str:

@@ -33,6 +33,7 @@ LOCAL_MODULES = {
     "generate_certificate",
     "local_audit",
     "verify_certificate",
+    "certificate_results",
     "tools",
 }
 

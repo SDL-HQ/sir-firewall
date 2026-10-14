@@ -432,12 +432,33 @@ def test_the_proof_pull_request_is_not_opened_by_the_actions_bot():
 
 
 def _result_mapping_steps():
-    """Every step that turns a recorded run result into a published status."""
+    """Every step that turns a recorded run result into the published marker.
+
+    Keyed to what the step writes rather than to the result strings it names.
+    The previous key was the literal "AUDIT PASSED" plus a `status = `
+    assignment, which stopped matching anything the moment the mapping moved to
+    tools/certificate_results.py, and a guard that matches nothing passes.
+    """
     return [
         (name, run)
         for name, run in _steps()
-        if '"AUDIT PASSED"' in run and "status = " in run
+        if "docs/latest-run.json" in run and "write_text" in run
     ]
+
+
+def _marker_program(run: str) -> str:
+    """The Python a marker step runs, exactly as the runner would see it."""
+    match = re.search(r"python - <<'PY'\n(.*?)\n\s*PY\s*$", run, re.S)
+    assert match, "marker step no longer runs a python heredoc; update this extractor"
+    lines = match.group(1).splitlines()
+    indent = min(len(l) - len(l.lstrip()) for l in lines if l.strip())
+    return "\n".join(l[indent:] for l in lines) + "\n"
+
+
+def test_there_are_two_result_markers():
+    """Guard the guard: the tests below iterate these, and an empty list passes."""
+    names = [name for name, _ in _result_mapping_steps()]
+    assert len(names) == 2, names
 
 
 def test_an_unrecognised_run_result_is_not_published_as_a_verdict():
@@ -455,16 +476,13 @@ def test_an_unrecognised_run_result_is_not_published_as_a_verdict():
     does not describe, which is the defect this release is named for, reported
     in the other direction.
 
-    Keyed to the shape rather than to one step, so a third marker added later is
-    covered by the same assertion.
+    The behaviour itself is exercised in
+    test_each_marker_publishes_exactly_the_declared_results; this checks the
+    shape, so the failure message says where to look.
     """
-    steps = _result_mapping_steps()
-
-    assert len(steps) >= 2, [name for name, _ in steps]
-    for name, run in steps:
-        assert "raise SystemExit" in run, (
-            f"step {name!r} maps a run result to a status and never refuses one; "
-            "an unrecognised result has to stop rather than become a verdict"
+    for name, run in _result_mapping_steps():
+        assert "except UnrecognisedResult" in run and "raise SystemExit" in run, (
+            f"step {name!r} does not refuse a result outside the declared set"
         )
         assert not re.search(r"else:\s*\n\s*status = ", run), (
             f"step {name!r} assigns a status in an else branch, so a result it "
@@ -472,11 +490,136 @@ def test_an_unrecognised_run_result_is_not_published_as_a_verdict():
         )
 
 
-def test_both_markers_recognise_the_same_three_results():
-    """A result one marker understands and the other does not is a divergence."""
+def test_every_marker_takes_its_results_from_the_declared_set():
+    """One declaration, so a fourth value is authorised in one place.
+
+    Replaces test_both_markers_recognise_the_same_three_results, which checked
+    that each marker contained the three result strings. Codex added a fourth
+    accepted branch to a marker in memory, kept the original three, and that
+    test still passed: it tested presence, not the accepted set. A marker that
+    compares a result against a literal of its own is a second declaration,
+    whatever the literal is.
+    """
     for name, run in _result_mapping_steps():
-        for result in ('"AUDIT PASSED"', '"AUDIT FAILED"', '"INCONCLUSIVE"'):
-            assert result in run, f"step {name!r} does not recognise {result}"
+        assert "from certificate_results import" in run and "status_for(" in run, (
+            f"step {name!r} does not map results through tools/certificate_results.py"
+        )
+        for literal in ('"AUDIT PASSED"', '"AUDIT FAILED"', '"INCONCLUSIVE"'):
+            assert literal not in run, (
+                f"step {name!r} names {literal} itself, which is a second "
+                "declaration of the recognised results"
+            )
+        import ast
+
+        compared = [
+            node.lineno
+            for node in ast.walk(ast.parse(_marker_program(run)))
+            if isinstance(node, ast.Compare)
+            and any(
+                isinstance(operand, ast.Name) and operand.id == "result"
+                for operand in [node.left, *node.comparators]
+            )
+        ]
+        assert not compared, (
+            f"step {name!r} compares the result itself rather than through "
+            f"status_for, at program lines {compared}"
+        )
+
+
+# Values a marker must refuse. Near misses of declared values first, because
+# the markers used to normalise with strip().upper() and would have accepted
+# them; then the candidate a 2.5 baseline result might take, which has to be
+# declared in tools/certificate_results.py before any reader accepts it.
+_UNDECLARED_RESULTS = (
+    "audit passed",
+    " AUDIT PASSED",
+    "AUDIT PASSED\n",
+    "Inconclusive",
+    "BASELINE COMPLETE",
+    "",
+    None,
+    17,
+)
+
+
+def _run_marker(tmp_path, run: str, result) -> tuple[int, dict | None, str]:
+    """Execute a marker's own program against a run whose result is `result`."""
+    import os
+    import shutil
+    import subprocess
+    import sys
+
+    work = tmp_path / "work"
+    if work.exists():
+        shutil.rmtree(work)
+    (work / "tools").mkdir(parents=True)
+    shutil.copy(ROOT / "tools" / "certificate_results.py", work / "tools")
+    (work / "proofs" / "runs").mkdir(parents=True)
+
+    certificate = {"result": result, "jailbreaks_leaked": 0, "harmless_blocked": 0}
+    (work / "audit.json").write_text(json.dumps(certificate), encoding="utf-8")
+    index = {"runs": [{"result": result, "run_id": "r", "date": "2026-10-14T00:00:00Z"}]}
+    (work / "proofs" / "runs" / "index.json").write_text(json.dumps(index), encoding="utf-8")
+    env_file = work / "github_env"
+    env_file.write_text("", encoding="utf-8")
+
+    env = {
+        **os.environ,
+        "AUDIT_JSON": str(work / "audit.json"),
+        "GITHUB_ENV": str(env_file),
+        "GITHUB_SHA": "0" * 40,
+        "GITHUB_REPOSITORY": "SDL-HQ/sir-firewall",
+        "GITHUB_RUN_ID": "1",
+    }
+    completed = subprocess.run(
+        [sys.executable, "-"],
+        input=_marker_program(run),
+        cwd=work,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    marker = work / "docs" / "latest-run.json"
+    published = json.loads(marker.read_text(encoding="utf-8")) if marker.is_file() else None
+    return completed.returncode, published, completed.stderr
+
+
+def test_each_marker_publishes_exactly_the_declared_results(tmp_path):
+    """Behaviour, not text: run each marker and see what it accepts.
+
+    Every declared result is published with its declared status, and every
+    undeclared one stops the step with nothing published. An extra branch in a
+    marker, a normalisation step, or a mapping that disagrees with the
+    declaration each fails here, whatever the step's text looks like.
+    """
+    import sys
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    try:
+        from certificate_results import RESULT_STATUS
+    finally:
+        sys.path.pop(0)
+
+    for name, run in _result_mapping_steps():
+        for result, expected in RESULT_STATUS.items():
+            code, published, stderr = _run_marker(tmp_path, run, result)
+            assert code == 0, f"step {name!r} refused declared result {result!r}: {stderr}"
+            assert published is not None, f"step {name!r} accepted {result!r} and published nothing"
+            assert (
+                published["status"],
+                published["audit_pass"],
+                published["inconclusive"],
+            ) == tuple(expected), f"step {name!r} published {result!r} as {published}"
+
+        for result in _UNDECLARED_RESULTS:
+            code, published, stderr = _run_marker(tmp_path, run, result)
+            assert code != 0 and published is None, (
+                f"step {name!r} accepted undeclared result {result!r} and published {published}"
+            )
+            assert "unsupported" in stderr, (
+                f"step {name!r} stopped on {result!r} for a reason other than the result: {stderr}"
+            )
 
 
 FINALIZE_STEP_NAME = "Finalize CI status (fail if audit failed or inconclusive)"
