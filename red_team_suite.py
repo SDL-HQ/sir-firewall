@@ -46,8 +46,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "tools"))
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 from itgl import (  # noqa: E402
     CURRENT_CHAIN_VERSION,
+    FORWARDED_STATUS,
     compute_ledger_hash,
     derive_counters,
+    ungated_row_final_hash,
 )
 
 from sir_firewall import validate_sir
@@ -380,17 +382,78 @@ def _scenario_hash(scenario_id: str, turns: List[Dict[str, str]]) -> str:
     return "sha256:" + hashlib.sha256(blob).hexdigest()
 
 
-def _ungated_prompt_final_hash(*, prompt: str, template_id: str, pack_id: str, scenario_id: str, turn_id: str) -> str:
-    payload = {
-        "mode": "ungated_baseline",
-        "prompt_hash": _prompt_hash(prompt),
-        "template_id": template_id or "",
-        "pack_id": pack_id or "",
-        "scenario_id": scenario_id or "",
-        "turn_id": turn_id or "",
-    }
-    raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=False, sort_keys=True).encode("utf-8")
-    return hashlib.sha256(raw).hexdigest()
+# What a run summary drops when the run was an ungated baseline.
+#
+# Each of these describes a gate decision, a policy the gate enforced under, or
+# a proof class naming firewall activity. A baseline has none of them, and a
+# zero in a field named for leaks reads as a run in which nothing leaked.
+# Removed rather than zeroed, for the reason docs/archive-errata.md E7 records.
+BASELINE_SUMMARY_OMITTED_FIELDS = (
+    "proof_class",
+    "jailbreaks_leaked",
+    "harmless_blocked",
+    "content_evaluated",
+    "content_allow_prompts",
+    "content_block_prompts",
+    "content_false_positive_rate",
+    "legitimate_requests_denied_by_system_failure",
+    "systemic_reset_count",
+    "systemic_reset_counts_by_reason",
+    "systemic_reset_domain_pack_load_failed_count",
+    "configuration_hash",
+    "configurations_observed",
+    "rows_without_configuration",
+    "prompts_tested",
+)
+
+
+def _may_be_forwarded(*, status: str, ungated_baseline: bool) -> bool:
+    """Whether this row's content may be sent to the provider.
+
+    One definition, used by the single provider call site and by the scenario
+    history that call carries, so the two cannot disagree about which rows are
+    forwardable.
+
+    Two ways a row qualifies, and they are not the same statement:
+
+    - the gate returned PASS. This is the approving verdict SIR's published
+      claim rests on.
+    - the run is a declared ungated baseline and the row was forwarded. No gate
+      ran at all here. Before 2.5 a baseline row carried a synthetic PASS, so
+      this path existed and was indistinguishable from the first one; the
+      published claim read as though a verdict had approved these calls, and
+      what approved them was the runner writing PASS without asking. The carve
+      out is now explicit, which is what makes the claim checkable.
+
+    Both conditions are required on the baseline path: the run must declare
+    itself ungated and the row must say it was forwarded. A FORWARDED row in a
+    gated run forwards nothing, which is what stops a stray status from opening
+    the route.
+    """
+    if status == "PASS":
+        return True
+    return bool(ungated_baseline) and status == FORWARDED_STATUS
+
+
+def _write_gate_counter_files(
+    *, jailbreaks_leaked: int, harmless_blocked: int, content_evaluated: int
+) -> None:
+    """The three compatibility counter files, for CI scripts that read them.
+
+    A file rather than three inline writes because an ungated baseline must
+    write none of them, and a caller that has to remember three filenames to
+    skip will eventually remember two. content_evaluated is read by
+    tools/ci_audit_verdict.sh, which fails closed on its absence: the
+    inconclusive signal must not depend on certificate generation alone,
+    because everything upstream of the certificate used to report a clean pass
+    for a run that evaluated nothing.
+    """
+    with open("leaks_count.txt", "w", encoding="utf-8") as handle:
+        handle.write(str(jailbreaks_leaked))
+    with open("harmless_blocked.txt", "w", encoding="utf-8") as handle:
+        handle.write(str(harmless_blocked))
+    with open("content_evaluated.txt", "w", encoding="utf-8") as handle:
+        handle.write(str(content_evaluated))
 
 
 def _policy_flags(pack_id: str = "") -> Dict[str, bool]:
@@ -619,6 +682,22 @@ def main() -> None:
 
     if args.mode == "live" and args.no_model_calls:
         raise SystemExit("ERROR: --mode live cannot be used with --no-model-calls.")
+    # An ungated baseline observes the provider or it observes nothing.
+    #
+    # No gate runs, so the only thing a baseline can record is what the
+    # provider was sent and what came back at the transport level. In audit
+    # mode there are no provider calls either, and the run's whole content is
+    # the suite's own labels, which the suite file already holds. Eight of the
+    # 54 baselines published before 2.5 were of that kind.
+    #
+    # Refused here, before any file is written or any provider is reached, so
+    # the refusal cannot leave a half-written ledger behind.
+    if args.ungated_baseline and args.mode != "live":
+        raise SystemExit(
+            "ERROR: --ungated-baseline requires --mode live. An ungated baseline in "
+            "audit mode runs no gate and calls no provider, so it observes nothing "
+            "that its prompt set does not already state."
+        )
     provider_arg = getattr(args, "provider", DEFAULT_PROVIDER)
     model_arg = getattr(args, "model", DEFAULT_MODEL)
     try:
@@ -700,7 +779,7 @@ def main() -> None:
     # Every row as written, so the published counters can be derived from the
     # evidence rather than counted beside it.
     written_rows: List[Dict[str, Any]] = []
-    # Scenario turns the gate passed, in order, as provider messages. A
+    # Scenario turns that may be forwarded, in order, as provider messages. A
     # multi-turn provider call carries the conversation so far, and the
     # conversation it may carry is the part the gate approved. Until 15 October
     # 2026 the history was every preceding turn, so a turn the gate BLOCKED was
@@ -709,7 +788,7 @@ def main() -> None:
     # published run is affected, because the archive holds no live gated
     # scenario run, and the baseline case is unchanged because an ungated run
     # passes every turn. Found by an independent review on 14 October 2026.
-    gate_passed_turns: List[Dict[str, str]] = []
+    forwardable_turns: List[Dict[str, str]] = []
     configuration_hashes: set[str] = set()
     rows_without_configuration = 0
     content_evaluated = 0
@@ -718,6 +797,11 @@ def main() -> None:
     # published beside it so no rate appears without the sample it is over.
     content_allow_prompts = 0
     content_block_prompts = 0
+    # An ungated baseline's own counters: the prompt set's labels, over rows
+    # that were forwarded rather than judged. Named for forwarding so that no
+    # reader takes them for a gate figure.
+    expected_block_prompts_forwarded = 0
+    expected_allow_prompts_forwarded = 0
     # Rows labelled allow that were denied because the system failed, not because
     # the gate judged their content. These are real denials of legitimate
     # requests and belong in any honest false-positive discussion.
@@ -761,8 +845,13 @@ def main() -> None:
 
             isc = _build_isc_envelope(prompt, template_id)
             if args.ungated_baseline:
+                # Not a verdict. The gate was not called, and FORWARDED says so:
+                # this row's content was sent to the provider with nothing
+                # deciding on it. Before 2.5 this read PASS, which the gate had
+                # never said, and every expected-block prompt then counted as a
+                # leak; docs/archive-errata.md E7 records what that published.
                 verdict = {
-                    "status": "PASS",
+                    "status": FORWARDED_STATUS,
                     "domain_pack": effective_pack_id or selected_pack_id or "",
                 }
             else:
@@ -805,7 +894,17 @@ def main() -> None:
             expected_status = "PASS" if expected == "allow" else "BLOCKED"
             ok = (status == expected_status)
 
-            if not systemic_reset_reason:
+            if args.ungated_baseline:
+                # Counted by what was forwarded, below. Every counter in this
+                # block describes a decision the gate made about content, and a
+                # baseline has none of those. content_evaluated is the sharpest
+                # case: incrementing it would assert that something assessed
+                # this prompt.
+                if expected == "block":
+                    expected_block_prompts_forwarded += 1
+                elif expected == "allow":
+                    expected_allow_prompts_forwarded += 1
+            elif not systemic_reset_reason:
                 content_evaluated += 1
                 if expected == "allow":
                     content_allow_prompts += 1
@@ -816,27 +915,39 @@ def main() -> None:
                 if expected == "allow" and status == "BLOCKED":
                     harmless_blocked += 1
 
-            f.write(f"[{rid}] expected={expected_status} got={status}\n")
-            if not ok:
-                f.write(f"  NOTE: mismatch (expected {expected})\n")
+            if args.ungated_baseline:
+                # No gate decided this row, so there is no outcome to compare
+                # the label against. Reporting a mismatch for every row would
+                # describe a disagreement with a decision nobody made.
+                f.write(f"[{rid}] forwarded ungated, label={expected}\n")
+            else:
+                f.write(f"[{rid}] expected={expected_status} got={status}\n")
+                if not ok:
+                    f.write(f"  NOTE: mismatch (expected {expected})\n")
 
-            # The gate passed this turn, so it joins the forwardable history.
+            # This turn may be forwarded, so it joins the history the next call
+            # carries. On a gated run that means the gate passed it; on a
+            # declared baseline no gate ran and every turn qualifies.
             # Appended before the call below, so this turn is included in its
             # own request, which is what the previous rows[:i] slice did.
-            if scenario_mode and status == "PASS":
-                gate_passed_turns.append({"role": role, "content": prompt})
+            if scenario_mode and _may_be_forwarded(
+                status=status, ungated_baseline=args.ungated_baseline
+            ):
+                forwardable_turns.append({"role": role, "content": prompt})
 
             # Prove we are actually gating a real call (optional)
             provider_call_attempted = False
             provider_call_outcome = ""
-            if status == "PASS" and do_model_calls:
+            if do_model_calls and _may_be_forwarded(
+                status=status, ungated_baseline=args.ungated_baseline
+            ):
                 # Counting rule (deterministic): increment once per attempted downstream call.
                 # Retries/timeouts are separate attempts and must each increment this counter.
                 provider_call_attempted = True
                 provider_call_attempts += 1
                 try:
                     if scenario_mode:
-                        history = list(gate_passed_turns)
+                        history = list(forwardable_turns)
                     else:
                         history = [{"role": "user", "content": prompt}]
                     call_meta = _maybe_call_model(
@@ -889,12 +1000,31 @@ def main() -> None:
             # Build per-prompt ledger entry
             final_hash_raw = _final_hash_from_verdict(verdict)
             if args.ungated_baseline and not final_hash_raw:
-                final_hash_raw = _ungated_prompt_final_hash(
-                    prompt=prompt,
-                    template_id=template_id,
-                    pack_id=(pack_id or ""),
-                    scenario_id=scenario_id,
-                    turn_id=rid or "",
+                # Computed from the fields this row will carry, through the
+                # function a verifier uses, so the digest is reconstructible
+                # from the row by construction rather than by coincidence.
+                #
+                # Two inputs moved with 2.5. The pack id is now the row's
+                # domain_pack and the turn id is now the row's prompt_id;
+                # before, the runner passed variables that were not written to
+                # the row under those names, and a reader could reconstruct the
+                # digest only where the values happened to agree. They did for
+                # all 6,100 rows published before 2.5, which is why nobody
+                # noticed. No published row is affected: those ledgers are
+                # chain version 1 and this rule applies to chain version 2.
+                final_hash_raw = ungated_row_final_hash(
+                    {
+                        "prompt_hash": _prompt_hash(prompt),
+                        "isc_template": str(template_id),
+                        "domain_pack": str(
+                            verdict.get("domain_pack")
+                            or effective_pack_id
+                            or selected_pack_id
+                            or ""
+                        ),
+                        "scenario_id": scenario_id if scenario_mode else "",
+                        "prompt_id": rid or "",
+                    }
                 )
             if not final_hash_raw:
                 # Fail closed on ledger integrity: write a marker but keep file consistent.
@@ -1003,7 +1133,38 @@ def main() -> None:
     # the two is wrong and there is no way to tell which from here, so the run
     # fails rather than publishing a number the evidence does not support.
     _derived = derive_counters(written_rows)
-    if _derived is not None:
+    if _derived is not None and args.ungated_baseline:
+        # derive_counters returns a baseline ledger's forwarding counters and
+        # none of the gate counters, so the cross-check compares what this run
+        # actually counted. A gated-shaped comparison here would report every
+        # gate counter as a disagreement.
+        _claimed = {
+            "prompts_forwarded": prompts_tested,
+            "expected_block_prompts_forwarded": expected_block_prompts_forwarded,
+            "expected_allow_prompts_forwarded": expected_allow_prompts_forwarded,
+            "provider_call_attempts": provider_call_attempts,
+            "provider_call_successes": provider_call_successes,
+            "provider_call_failures": provider_call_failures,
+        }
+        _disagreements = {
+            key: {"counted": _claimed[key], "ledger": value}
+            for key, value in _derived.items()
+            if _claimed.get(key) != value
+        }
+        if _disagreements:
+            print(
+                "RUN RESULT: REFUSED - the counters do not match the ledger: "
+                f"{json.dumps(_disagreements, sort_keys=True)}",
+                file=sys.stderr,
+            )
+            raise SystemExit(3)
+        prompts_tested = _derived["prompts_forwarded"]
+        expected_block_prompts_forwarded = _derived["expected_block_prompts_forwarded"]
+        expected_allow_prompts_forwarded = _derived["expected_allow_prompts_forwarded"]
+        provider_call_attempts = _derived["provider_call_attempts"]
+        provider_call_successes = _derived["provider_call_successes"]
+        provider_call_failures = _derived["provider_call_failures"]
+    elif _derived is not None:
         _claimed = {
             "prompts_tested": prompts_tested,
             "content_evaluated": content_evaluated,
@@ -1047,17 +1208,25 @@ def main() -> None:
         provider_call_successes = _derived["provider_call_successes"]
         provider_call_failures = _derived["provider_call_failures"]
 
-    # Back-compat counters for CI scripts that expect these files
-    with open("leaks_count.txt", "w", encoding="utf-8") as f:
-        f.write(str(jailbreaks_leaked))
-    with open("harmless_blocked.txt", "w", encoding="utf-8") as f:
-        f.write(str(harmless_blocked))
-    # Read by the CI verdict step, which fails closed on it. The inconclusive
-    # signal must not depend on certificate generation alone: everything
-    # upstream of the certificate used to report a clean pass for a run that
-    # evaluated nothing.
-    with open("content_evaluated.txt", "w", encoding="utf-8") as f:
-        f.write(str(content_evaluated))
+    # Back-compat counters for CI scripts that expect these files.
+    #
+    # A baseline writes none of them. All three describe gate decisions, and
+    # tools/ci_audit_verdict.sh reads them to compute an audit verdict; a
+    # baseline writing content_evaluated=150 would assert that 150 prompts
+    # reached a content decision when none did. Their absence is the safe
+    # direction: that script fails closed on a missing counter file and reports
+    # INCONCLUSIVE rather than a pass.
+    if args.ungated_baseline:
+        print(
+            "Counter files not written: an ungated baseline has no gate counters to write."
+        )
+    else:
+        _write_gate_counter_files(
+            jailbreaks_leaked=jailbreaks_leaked,
+            harmless_blocked=harmless_blocked,
+            content_evaluated=content_evaluated,
+        )
+
 
     # Preferred machine-readable summary for certificate generation
     summary_ts = _utc_now_iso()
@@ -1162,9 +1331,56 @@ def main() -> None:
         summary["turns_tested"] = prompts_tested
     summary["run_id"] = run_id
     summary["ledger_path"] = str(ledger_path)
+
+    if args.ungated_baseline:
+        # The summary is the handoff to whatever signs this run, so it must not
+        # hand on a figure the run cannot support. Every gate counter is removed
+        # rather than zeroed: a zero in a field named for leaks reads as a run
+        # in which nothing leaked, and the proof class names firewall activity
+        # that did not occur. What remains is identity, provider counters and
+        # the forwarding counts.
+        #
+        # The document that replaces the certificate for these runs is the
+        # baseline record. Until it exists, tools/generate_certificate.py
+        # refuses this ledger outright, so nothing is signed from this summary.
+        summary = {
+            key: value
+            for key, value in summary.items()
+            if key not in BASELINE_SUMMARY_OMITTED_FIELDS
+        }
+        summary["baseline_forwarding"] = {
+            "prompts_forwarded": prompts_tested,
+            "expected_block_prompts_forwarded": expected_block_prompts_forwarded,
+            "expected_allow_prompts_forwarded": expected_allow_prompts_forwarded,
+            "provider_call_attempts": provider_call_attempts,
+            "provider_call_successes": provider_call_successes,
+            "provider_call_failures": provider_call_failures,
+        }
     with open(os.path.join("proofs", "run_summary.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
     shutil.copy2(ledger_path, LEDGER_PATH)
+
+    if args.ungated_baseline:
+        # A baseline has no gate figures to print, and printing zeros for them
+        # would be the same false statement the ledger no longer makes. The
+        # exit below is not reached: content_evaluated is nothing for a run
+        # that evaluated nothing by design, and INCONCLUSIVE is a verdict about
+        # a gate run.
+        print(f"Suite: {suite_or_scenario_path}")
+        print(f"  Requests forwarded ungated                      {prompts_tested}")
+        print(f"    labelled block                                {expected_block_prompts_forwarded}")
+        print(f"    labelled allow                                {expected_allow_prompts_forwarded}")
+        print(f"  Provider calls attempted                        {provider_call_attempts}")
+        print(f"  Provider calls succeeded                        {provider_call_successes}")
+        print(f"  Provider calls failed                           {provider_call_failures}")
+        print(f"Proof log: {log_path}")
+        print("Summary: proofs/run_summary.json")
+        print(f"ITGL ledger: {ledger_path}")
+        print(
+            "RUN RESULT: none. No gate ran, so this run has no audit result. "
+            "The prompt set was forwarded without SIR in the path."
+        )
+        return
 
     rate = (
         "not measurable"

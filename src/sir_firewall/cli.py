@@ -341,7 +341,11 @@ def build_parser() -> argparse.ArgumentParser:
         "run",
         help="Run an ungated baseline + gated run pair and write a pair artifact.",
     )
-    b_run.add_argument("--mode", choices=["audit", "live"], default="audit")
+    # No default. A paired benchmark's baseline half requires live mode from
+    # SIR 2.5, because an ungated run with no provider calls observes nothing,
+    # and a live run spends provider credit. Defaulting either way makes one of
+    # those happen without the operator saying so.
+    b_run.add_argument("--mode", choices=["audit", "live"], required=True)
     b_run.add_argument("--pack", default=None)
     b_run.add_argument("--suite", default=None)
     b_run.add_argument("--scenario", default=None)

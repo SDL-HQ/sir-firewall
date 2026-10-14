@@ -190,6 +190,198 @@ def load_and_verify_ledger(
     return f"sha256:{verify_ledger(entries, minimum_chain_version)}", len(entries)
 
 
+# The status an ungated baseline row carries, from SIR 2.5.
+#
+# It is not a gate verdict. The gate returns PASS or BLOCKED and nothing else,
+# so no gated run can produce this row and no baseline row can be mistaken for
+# a decision. Until 2.5 a baseline row carried PASS, which the gate had never
+# said: every expected-block prompt then counted as a leak, every baseline
+# certificate computed AUDIT FAILED, and 54 of them were published that way.
+# docs/archive-errata.md E7 records it.
+FORWARDED_STATUS = "FORWARDED"
+
+# What an ungated baseline row may contain, exactly.
+#
+# An exact set rather than a list of forbidden keys. The first draft of the 2.5
+# specification listed what a baseline row must not carry, and an independent
+# review got `expected="banana"` and duplicate prompt indexes past it: a
+# forbidden-key list cannot be complete, because the next field nobody thought
+# of is absent from it.
+BASELINE_ROW_KEYS = frozenset(
+    {
+        "chain_version",
+        "ts",
+        "prompt_index",
+        "prompt_id",
+        "category",
+        "note",
+        "prompt_encoded",
+        "prompt_hash",
+        "isc_template",
+        "suite_path",
+        "domain_pack",
+        "status",
+        "expected",
+        "systemic_reset_reason",
+        "provider_call_attempted",
+        "provider_call_outcome",
+        "configuration_hash",
+        "leak_flag",
+        "final_hash",
+        "itgl_prompt_final_hash",
+        "prev_hash",
+        "ledger_hash",
+    }
+)
+
+# The scenario fields a scenario row adds, and the only additions permitted.
+BASELINE_SCENARIO_ROW_KEYS = frozenset(
+    {"scenario_id", "scenario_hash", "turn_index", "turn_id", "role"}
+)
+
+EXPECTED_LABELS = ("allow", "block")
+PROVIDER_OUTCOMES = ("success", "failure")
+
+
+def ungated_row_final_hash(entry: Dict[str, Any]) -> str:
+    """The per-prompt digest of an ungated baseline row, from the row itself.
+
+    The mapping from row field to digest input is stated here and nowhere else,
+    and the runner computes the digest through this function rather than from
+    its own variables. Before 2.5 the runner hashed values it happened to have
+    in scope, two of which were not written to the row under the same name, so
+    whether a reader could reconstruct the digest depended on those values
+    coinciding. They did, for all 6,100 published baseline rows, which an
+    independent review confirmed on 14 October 2026. Coincidence is not a
+    mapping.
+
+        mode         the constant below, so a gated row's digest can never
+                     collide with a baseline row's
+        prompt_hash  the row's prompt_hash
+        template_id  the row's isc_template
+        pack_id      the row's domain_pack
+        scenario_id  the row's scenario_id, empty on a single-turn suite
+        turn_id      the row's prompt_id, which is the turn id on a scenario
+
+    This authenticates what the producer encoded. It does not establish that no
+    gate ran: a producer that wanted to could write these rows without running
+    anything. What it rules out is a baseline row and a gated row being
+    confused for one another.
+    """
+    payload = {
+        "mode": "ungated_baseline",
+        "prompt_hash": str(entry.get("prompt_hash") or ""),
+        "template_id": str(entry.get("isc_template") or ""),
+        "pack_id": str(entry.get("domain_pack") or ""),
+        "scenario_id": str(entry.get("scenario_id") or ""),
+        "turn_id": str(entry.get("prompt_id") or ""),
+    }
+    raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=False, sort_keys=True).encode(
+        "utf-8"
+    )
+    return hashlib.sha256(raw).hexdigest()
+
+
+def baseline_row_defects(entry: Dict[str, Any], *, index: int) -> List[str]:
+    """Every way this row fails the baseline row shape. Empty means it holds."""
+    defects: List[str] = []
+
+    keys = set(entry)
+    permitted = BASELINE_ROW_KEYS | BASELINE_SCENARIO_ROW_KEYS
+    undeclared = sorted(keys - permitted)
+    if undeclared:
+        defects.append(f"row {index}: undeclared fields {undeclared}")
+
+    scenario_keys = keys & BASELINE_SCENARIO_ROW_KEYS
+    if scenario_keys and scenario_keys != BASELINE_SCENARIO_ROW_KEYS:
+        defects.append(
+            f"row {index}: partial scenario fields {sorted(scenario_keys)}; a scenario row "
+            f"carries all of {sorted(BASELINE_SCENARIO_ROW_KEYS)} or none of them"
+        )
+
+    missing = sorted(BASELINE_ROW_KEYS - keys)
+    if missing:
+        defects.append(f"row {index}: missing fields {missing}")
+        return defects
+
+    if entry.get("status") != FORWARDED_STATUS:
+        defects.append(f"row {index}: status is {entry.get('status')!r}, not {FORWARDED_STATUS}")
+    if entry.get("expected") not in EXPECTED_LABELS:
+        defects.append(f"row {index}: expected is {entry.get('expected')!r}")
+    for field in ("systemic_reset_reason", "configuration_hash", "leak_flag"):
+        if entry.get(field) != "":
+            defects.append(f"row {index}: {field} is {entry.get(field)!r}, not empty")
+    if entry.get("provider_call_attempted") is not True:
+        defects.append(f"row {index}: provider_call_attempted is not true")
+    if entry.get("provider_call_outcome") not in PROVIDER_OUTCOMES:
+        defects.append(f"row {index}: provider_call_outcome is {entry.get('provider_call_outcome')!r}")
+
+    expected_digest = ungated_row_final_hash(entry)
+    if entry.get("final_hash") != expected_digest:
+        defects.append(
+            f"row {index}: final_hash does not match the digest recomputed from this row"
+        )
+    if entry.get("itgl_prompt_final_hash") != f"sha256:{entry.get('final_hash')}":
+        defects.append(f"row {index}: itgl_prompt_final_hash disagrees with final_hash")
+
+    return defects
+
+
+def baseline_ledger_defects(entries: List[Dict[str, Any]]) -> List[str]:
+    """Every way this ledger fails to be a baseline ledger. Empty means it is.
+
+    A ledger is a baseline ledger when it is non-empty, every row is chain
+    version 2, and every row satisfies the baseline row shape. Nothing here
+    reads a version string: the rows are what classify the ledger, and under
+    chain version 2 a row's own hash covers its contents.
+
+    The row-shape rules exist because the digest alone is not enough. An
+    independent review rehashed synthetic rows with the status changed to
+    BLOCKED, and with a configuration reference added, and the digest still
+    matched. The digest says which family a row belongs to; the shape says the
+    row is what that family means.
+    """
+    if not entries:
+        return ["a baseline ledger cannot be empty"]
+
+    defects: List[str] = []
+    for position, entry in enumerate(entries, start=1):
+        if declared_chain_version(entry) != CHAIN_VERSION_V2:
+            defects.append(
+                f"row {position}: chain version {declared_chain_version(entry)}, and a "
+                f"baseline ledger is chain version {CHAIN_VERSION_V2} throughout"
+            )
+            continue
+        defects.extend(baseline_row_defects(entry, index=position))
+
+    indexes = [entry.get("prompt_index") for entry in entries]
+    if indexes != list(range(1, len(entries) + 1)):
+        defects.append("prompt_index is not 1..n in order")
+    identifiers = [str(entry.get("prompt_id") or "") for entry in entries]
+    if len(set(identifiers)) != len(identifiers):
+        defects.append("prompt_id is not unique within the ledger")
+
+    return defects
+
+
+def is_baseline_ledger(entries: List[Dict[str, Any]]) -> bool:
+    return not baseline_ledger_defects(entries)
+
+
+def forwarded_row_positions(entries: List[Dict[str, Any]]) -> List[int]:
+    """Where a ledger carries baseline rows, for a reader that wanted a gated one.
+
+    Any row at all, not every row: a certificate bound to a ledger with one
+    baseline row among gated ones describes a run that cannot have happened,
+    and a mixed ledger is neither kind.
+    """
+    return [
+        position
+        for position, entry in enumerate(entries, start=1)
+        if entry.get("status") == FORWARDED_STATUS
+    ]
+
+
 # Fields a row must carry before its counters can be recomputed from it.
 # Rows written before 8 October 2026 have none of them.
 DERIVABLE_ROW_FIELDS = ("systemic_reset_reason", "expected", "status")
@@ -210,6 +402,33 @@ def derive_counters(entries: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     """
     if not all(field in entry for entry in entries for field in DERIVABLE_ROW_FIELDS):
         return None
+
+    # A baseline ledger is counted by what it forwarded, and by nothing else.
+    #
+    # The gate counters below are all computed over rows the gate judged, and a
+    # baseline has none: no gate ran. Routing baseline rows through the same
+    # split does not merely mislabel them, it destroys the figures. An
+    # independent review ran it on 14 October 2026 and excluding the two
+    # baseline rows took assessments from 2 to 0, leaks from 1 to 0 and both
+    # content denominators from 1 to 0 together, so the pair's leak delta would
+    # have collapsed to zero and read as a gate that prevented nothing.
+    if is_baseline_ledger(entries):
+        return {
+            "prompts_forwarded": len(entries),
+            "expected_block_prompts_forwarded": sum(
+                1 for e in entries if e.get("expected") == "block"
+            ),
+            "expected_allow_prompts_forwarded": sum(
+                1 for e in entries if e.get("expected") == "allow"
+            ),
+            "provider_call_attempts": sum(1 for e in entries if e.get("provider_call_attempted")),
+            "provider_call_successes": sum(
+                1 for e in entries if e.get("provider_call_outcome") == "success"
+            ),
+            "provider_call_failures": sum(
+                1 for e in entries if e.get("provider_call_outcome") == "failure"
+            ),
+        }
 
     judged = [e for e in entries if not str(e.get("systemic_reset_reason") or "")]
     reset = [e for e in entries if str(e.get("systemic_reset_reason") or "")]

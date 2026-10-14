@@ -44,6 +44,7 @@ from itgl import (
     CHAIN_VERSION_V2,
     LedgerVerificationError,
     counter_disagreements,
+    forwarded_row_positions,
     ledger_chain_version,
     load_and_verify_ledger,
     load_ledger,
@@ -548,6 +549,26 @@ def main() -> int:
             )
         except (LedgerVerificationError, OSError, UnicodeError) as exc:
             print(f"ERROR: ledger binding verification failed: {exc}", file=sys.stderr)
+            return LEDGER_BINDING_FAILURE
+
+        # A certificate bound to rows the gate never saw.
+        #
+        # The chain can be intact and the terminal hash can match while the
+        # rows say the gate was not in the path, which is the shape of the 54
+        # baseline certificates published before 2.5. This is a binding
+        # failure, not a missing check: the binding was made, and what it binds
+        # contradicts the document.
+        forwarded = forwarded_row_positions(load_ledger(ledger_path))
+        if forwarded:
+            print(
+                "ERROR: ledger binding verification failed: "
+                f"{len(forwarded)} of {row_count} rows in {ledger_path} were forwarded "
+                f"without the gate in the path (first at row {forwarded[0]}). A "
+                "certificate describes what the gate did, and these rows record that "
+                "it was not there. An ungated baseline is described by a signed "
+                "baseline record.",
+                file=sys.stderr,
+            )
             return LEDGER_BINDING_FAILURE
         cert_hash = cert.get("itgl_final_hash")
         if ledger_hash != cert_hash:

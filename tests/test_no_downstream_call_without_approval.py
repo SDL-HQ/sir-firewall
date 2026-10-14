@@ -21,8 +21,17 @@ Each of the two functions has exactly one definition and exactly one caller, and
 `tests/test_no_model_in_the_decision_path.py` holds separately. So the claim
 this file supports is bounded and exact:
 
-    No code path in SIR can issue a downstream call unless the gate returned
-    PASS and the call flag is enabled.
+    No code path in SIR can issue a downstream call unless the call flag is
+    enabled and either the gate returned PASS, or the run is a declared ungated
+    baseline, in which case no gate ran at all.
+
+The baseline half of that sentence arrived on 15 October 2026 and is a
+correction, not a new exemption. An ungated baseline has always bypassed the
+gate and called the provider; until 2.5 its rows carried a PASS the runner
+wrote itself, so the guard saw an approving verdict where there had been no
+decision, and the published claim read as stronger than it was. The row now
+says FORWARDED and the rule says so out loud. docs/claims-register.md carries
+the correction.
 
 It does not extend past SIR's own process. An integrator who catches the
 exception and calls the model anyway is outside it, because SIR is input-only
@@ -60,6 +69,17 @@ RUNNER = ROOT / "red_team_suite.py"
 GATE = ROOT / "src/sir_firewall"
 
 TREE = ast.parse(RUNNER.read_text(encoding="utf-8"))
+
+
+def _load_runner_module():
+    """The runner as a module, for the one assertion here about behaviour."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("red_team_suite_for_choke_test", RUNNER)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 # The two functions on the route to a provider. Each must stay a choke point.
 CHOKE_POINTS = ("_maybe_call_model", "_call_provider_model")
@@ -163,19 +183,62 @@ def test_each_choke_point_has_one_definition_and_one_caller(name):
     )
 
 
-def test_the_provider_call_is_guarded_on_the_verdict_and_the_call_flag():
-    """Both guards, named. Either one alone is a weaker claim than we publish."""
+def test_the_provider_call_is_guarded_on_the_forwarding_rule_and_the_call_flag():
+    """Both guards, named. Either one alone is a weaker claim than we publish.
+
+    Until 15 October 2026 the first guard was the literal `status == "PASS"`.
+    It is now `_may_be_forwarded(...)`, which is PASS or a declared ungated
+    baseline's forwarded row, and the rule is tested as behaviour below rather
+    than read as text here.
+    """
     call = _calls_to("_maybe_call_model")[0]
     guards = _guards_above(call)
 
     assert guards, "the single provider call site sits under no condition at all"
     combined = " ".join(guards)
-    assert "status == 'PASS'" in combined or 'status == "PASS"' in combined, (
-        f"the call is not guarded on an approving verdict; guards found: {guards}"
+    assert "_may_be_forwarded" in combined, (
+        f"the call is not guarded on the forwarding rule; guards found: {guards}"
     )
     assert "do_model_calls" in combined, (
         f"the call is not guarded on the call flag; guards found: {guards}"
     )
+
+
+def test_the_forwarding_rule_has_one_definition_and_decides_every_case():
+    """The rule itself, over every status this runner can produce.
+
+    The guard is a function call now, so the claim rests on what that function
+    returns. BLOCKED never forwards, in either kind of run. FORWARDED forwards
+    only in a run that declared itself an ungated baseline, so a stray status
+    in a gated run opens nothing. PASS always forwards, which is the published
+    claim's own case.
+
+    The honest reading of the baseline row: no gate ran, and nothing approved
+    the call. Before 2.5 that path existed and was invisible, because the
+    runner wrote PASS itself and the guard could not tell the difference.
+    """
+    runner = _load_runner_module()
+
+    cases = {
+        ("PASS", False): True,
+        ("PASS", True): True,
+        ("BLOCKED", False): False,
+        ("BLOCKED", True): False,
+        ("FORWARDED", False): False,
+        ("FORWARDED", True): True,
+        ("UNKNOWN", False): False,
+        ("UNKNOWN", True): False,
+        ("", True): False,
+    }
+    observed = {
+        (status, baseline): runner._may_be_forwarded(
+            status=status, ungated_baseline=baseline
+        )
+        for status, baseline in cases
+    }
+    assert observed == cases
+
+    assert len(_definitions("_may_be_forwarded")) == 1
 
 
 def test_the_guarded_block_is_not_an_else_branch():
