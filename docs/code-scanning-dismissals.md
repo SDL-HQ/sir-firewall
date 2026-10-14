@@ -8,10 +8,9 @@ exists so a reviewer can check the reasoning rather than take it on trust, and
 so that the dismissals rest on tests rather than on an argument made once in a
 conversation.
 
-As at 15 October 2026: **1 open, 5 closed.** One was fixed. Five are the same
-finding in five places, four of them dismissed as false positives and one
-raised on 15 October against the new baseline record verifier, awaiting the
-same disposition.
+As at 15 October 2026: **0 open, 6 closed.** One was fixed. Five are the same
+finding in five places, all dismissed as false positives, the fifth raised on
+15 October against the new baseline record verifier and dismissed the same day.
 
 | Alert | Rule | Location | Closed as |
 |---|---|---|---:|
@@ -20,9 +19,9 @@ same disposition.
 | #4 | Clear-text logging of sensitive information | `tools/rotate_keys.py:158` | **fixed** |
 | #5 | Clear-text logging of sensitive information | `tools/rotate_keys.py:169` | false positive |
 | #6 | Clear-text logging of sensitive information | `tools/verify_certificate.py:233` | false positive |
-| #7 | Clear-text logging of sensitive information | `tools/verify_baseline_record.py:317` | open, false positive |
+| #7 | Clear-text logging of sensitive information | `tools/verify_baseline_record.py:317` | false positive |
 
-## #7, raised 15 October 2026 against the baseline record verifier
+## #7, raised and dismissed 15 October 2026, baseline record verifier
 
 The same finding as #2, #3 and #6, at a fifth place, and it turns on the same
 fact. The ungated baseline record is the second kind of signed document SIR
@@ -41,6 +40,11 @@ footing as the others rather than on the paragraph above: the record verifier
 refuses a revoked key at exit 10, that refusal explains which rule fired, and
 no line of key material reaches its output. They are in
 `tests/test_no_key_material_in_diagnostics.py` beside the certificate's.
+
+Dismissed as a false positive on 15 October 2026 by the repository owner, after
+checking the flagged expression and finding no secret in it. The tests above
+landed with the code that raised the alert rather than after the dismissal, so
+a reviewer can check the basis rather than the conclusion.
 
 ## The four false positives
 
