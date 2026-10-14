@@ -483,8 +483,13 @@ jobs:
           python - <<'PY'
           import json
           import os
+          import sys
           from datetime import datetime, timezone
           from pathlib import Path
+
+          # The recognised results are declared once, in tools/certificate_results.py.
+          sys.path.insert(0, str(Path("tools").resolve()))
+          from certificate_results import UnrecognisedResult, status_for
 
           audit_path_raw = os.environ.get("AUDIT_JSON", "").strip()
           if not audit_path_raw:
@@ -507,25 +512,9 @@ jobs:
               )
 
           result = certificate.get("result")
-          if not isinstance(result, str):
-              raise SystemExit(
-                  f"ERROR: current-run certificate result must be a string: {result!r}"
-              )
-
-          result = result.strip().upper()
-          if result == "AUDIT PASSED":
-              status = "PASS"
-              audit_pass = True
-              inconclusive = False
-          elif result == "AUDIT FAILED":
-              status = "FAIL"
-              audit_pass = False
-              inconclusive = False
-          elif result == "INCONCLUSIVE":
-              status = "INCONCLUSIVE"
-              audit_pass = False
-              inconclusive = True
-          else:
+          try:
+              status, audit_pass, inconclusive = status_for(result)
+          except UnrecognisedResult:
               raise SystemExit(
                   f"ERROR: unsupported current-run certificate result: {result!r}"
               )
@@ -1113,8 +1102,13 @@ jobs:
           python - <<'PY'
           import json
           import os
+          import sys
           from datetime import datetime, timezone
           from pathlib import Path
+
+          # The recognised results are declared once, in tools/certificate_results.py.
+          sys.path.insert(0, str(Path("tools").resolve()))
+          from certificate_results import UnrecognisedResult, status_for
 
           index_path = Path("proofs/runs/index.json")
           out_path = Path("docs/latest-run.json")
@@ -1128,28 +1122,18 @@ jobs:
           if not isinstance(latest, dict):
               raise SystemExit("ERROR: latest run row in proofs/runs/index.json is malformed")
 
-          # Three recognised results, and anything else stops the step.
+          # The declared results, and anything else stops the step.
           #
           # Until 13 October 2026 the else branch mapped absent, malformed and
-          # unrecognised results to a conclusive FAIL. That is this release's own
-          # defect: unknown reported as failure tells a reader the same untrue
+          # unrecognised results to a conclusive FAIL. That was the defect being
+          # fixed then: unknown reported as failure tells a reader the same untrue
           # thing as unknown reported as success, because both describe a run the
-          # evidence does not describe. The single-run marker already refuses;
-          # this one now refuses in the same words.
-          result = str(latest.get("result", "")).strip().upper()
-          if result == "AUDIT PASSED":
-              status = "PASS"
-              audit_pass = True
-              inconclusive = False
-          elif result == "AUDIT FAILED":
-              status = "FAIL"
-              audit_pass = False
-              inconclusive = False
-          elif result == "INCONCLUSIVE":
-              status = "INCONCLUSIVE"
-              audit_pass = False
-              inconclusive = True
-          else:
+          # evidence does not describe. Both markers now refuse through the same
+          # function, so they cannot disagree about what is recognised.
+          result = latest.get("result")
+          try:
+              status, audit_pass, inconclusive = status_for(result)
+          except UnrecognisedResult:
               raise SystemExit(
                   f"ERROR: unsupported latest run result in proofs/runs/index.json: {result!r}"
               )
@@ -1198,7 +1182,9 @@ jobs:
               if gated_path.is_file():
                   gated_bytes = gated_path.read_bytes()
                   payload = json.loads(gated_bytes)
-                  result = str(payload.get("result", "")).strip().upper()
+                  # Exact comparison, as in tools/certificate_results.py: a
+                  # malformed result is not evidence of a passing run.
+                  result = payload.get("result") if isinstance(payload, dict) else None
                   gated_pass = (
                       result == "AUDIT PASSED"
                       and canonical_path.is_file()
