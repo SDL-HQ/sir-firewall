@@ -239,6 +239,19 @@ def main() -> int:
 
     try:
         cert = _load_json(Path(args.cert), "certificate")
+        # A document declaring another type is not a certificate failing its
+        # contract, and reporting it as one tells a reader the wrong thing. The
+        # baseline record has its own contract,
+        # spec/baseline_record.v1.schema.json, applied by
+        # tools/verify_baseline_record.py.
+        if "record_kind" in cert:
+            print(
+                "ERROR: this document is not a SIR audit certificate: it declares "
+                f"record_kind={cert.get('record_kind')!r}. No evidence contract governs it "
+                "here; verify it with the tool for its own type.",
+                file=sys.stderr,
+            )
+            return 3
         certificate_version = _version_tuple(cert.get("sir_firewall_version"))
         if args.contract:
             contract_path = Path(args.contract)

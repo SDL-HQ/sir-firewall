@@ -33,7 +33,9 @@ LOCAL_MODULES = {
     "generate_certificate",
     "local_audit",
     "verify_certificate",
+    "verify_baseline_record",
     "certificate_results",
+    "document_signing",
     "tools",
 }
 
