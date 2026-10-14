@@ -887,6 +887,13 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      # Same reason as audit-and-sign: this job publishes by opening a pull
+      # request rather than pushing to main, because the Protect Main ruleset
+      # requires status checks that a direct push from automation cannot
+      # satisfy. The audit job was converted on 12 October 2026; this one was
+      # not, and the first paired benchmark afterwards failed on
+      # GH013: Repository rule violations.
+      pull-requests: write
     env:
       CANONICAL_PUBLICATION_CONTEXT: ${{ github.ref == 'refs/heads/main' }}
 
@@ -1285,65 +1292,102 @@ jobs:
             proofs/latest-live-audit.html
             proofs/runs/*-gh${{ github.run_id }}*/
 
-      - name: Commit benchmark files back to repo (archive + benchmark index/pairs)
+      - name: Publish benchmark files by pull request (archive + benchmark index/pairs)
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
         env:
           BENCHMARK_GATED_PASS: ${{ steps.compute_benchmark_gated_pass.outputs.gated_pass }}
           BENCHMARK_LIVE_POINTER_UPDATED: ${{ steps.compute_benchmark_live_pointer.outputs.updated }}
+          GH_TOKEN: ${{ secrets.SIR_AUDIT_PUSH_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           git config user.name "SIR Audit Bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          benchmark_branch="benchmarks/${GITHUB_RUN_ID}"
+          git switch -c "$benchmark_branch"
 
+          # Published figures about the archive are derived, not transcribed.
+          # A benchmark dispatch adds archives, so every figure that counts
+          # archives has moved. Regenerating before the commit is what makes
+          # the benchmark internally consistent: the archives and the documents
+          # that describe them land together.
+          if ! python tools/archive_verification_report.py --update-published-surfaces; then
+            echo "ERROR: the published archive figures could not be regenerated, so these"
+            echo "ERROR: archives would publish beside figures that do not describe them."
+            echo "ERROR: The benchmark itself is complete. Publication is blocked until the"
+            echo "ERROR: generator can account for every record it measured."
+            exit 1
+          fi
+
+          git add proofs/runs/ docs/runs/ docs/monitor-summary.json docs/latest-run.json
+          git add docs/archive-errata.md docs/claims-register.md README.md
+          git add docs/archive-figures.json
+          if [ "${BENCHMARK_GATED_PASS:-false}" = "true" ]; then
+            git add proofs/latest-audit.json proofs/latest-audit.html
+            git add docs/latest-audit.json docs/latest-audit.html
+          fi
+          if [ "${BENCHMARK_LIVE_POINTER_UPDATED:-false}" = "true" ]; then
+            git add proofs/latest-live-audit.json proofs/latest-live-audit.html
+            git add docs/latest-live-audit.json docs/latest-live-audit.html
+          fi
+
+          # An incomplete archive is not published evidence. A file named by
+          # the signed manifest that git will not carry would make every
+          # third-party receipt check fail while CI stayed green. Only the
+          # archives this run produced can fail this step; GITHUB_RUN_ID
+          # identifies them, and a pre-existing defect in an archive this
+          # commit merely touched is reported without blocking publication.
+          python tools/check_archive_staged.py --verify-receipt
+
+          if git diff --cached --quiet; then
+            echo "Nothing to publish; no benchmark files changed."
+            exit 0
+          fi
+
+          git commit -m "SIR Benchmark: paired benchmark dispatch ${stamp}"
+
+          pushed=false
           for attempt in 1 2 3; do
-            echo "Git sync attempt $attempt/3..."
-            git fetch origin main
-
-            if ! git pull --rebase --autostash origin main; then
-              echo "Rebase failed on attempt $attempt. Retrying..."
-              git rebase --abort || true
-              sleep 2
-              continue
-            fi
-
-            # Same reason as the audit job: a benchmark dispatch adds archives,
-            # so the figures that count archives have moved.
-            if ! python tools/archive_verification_report.py --update-published-surfaces; then
-              echo "ERROR: the published archive figures could not be regenerated."
-              exit 1
-            fi
-
-            git add proofs/runs/ docs/runs/ docs/monitor-summary.json docs/latest-run.json
-            git add docs/archive-errata.md docs/claims-register.md README.md
-            git add docs/archive-figures.json
-            if [ "${BENCHMARK_GATED_PASS:-false}" = "true" ]; then
-              git add proofs/latest-audit.json proofs/latest-audit.html
-              git add docs/latest-audit.json docs/latest-audit.html
-            fi
-            if [ "${BENCHMARK_LIVE_POINTER_UPDATED:-false}" = "true" ]; then
-              git add proofs/latest-live-audit.json proofs/latest-live-audit.html
-              git add docs/latest-live-audit.json docs/latest-live-audit.html
-            fi
-
-            # An incomplete archive is not published evidence. A file named by
-            # the signed manifest that git will not carry would make every
-            # third-party receipt check fail while CI stayed green. Only the
-            # archives this run produced can fail this step; GITHUB_RUN_ID
-            # identifies them, and a pre-existing defect in an archive this
-            # commit merely touched is reported without blocking publication.
-            python tools/check_archive_staged.py --verify-receipt
-            git commit -m "SIR Benchmark: paired benchmark dispatch $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "Nothing to commit"
-
-            if git push; then
-              echo "Push succeeded."
+            if git push --set-upstream origin "$benchmark_branch"; then
+              pushed=true
               break
-            else
-              echo "Push failed on attempt $attempt. Retrying..."
-              sleep 2
             fi
-
-            if [ "$attempt" -eq 3 ]; then
-              echo "ERROR: failed to push benchmark updates after 3 attempts"
-              exit 1
-            fi
+            echo "Branch push failed on attempt $attempt. Retrying..."
+            sleep 2
           done
+
+          if [ "$pushed" != "true" ]; then
+            echo "ERROR: failed to push the benchmark branch after 3 attempts; nothing was published."
+            exit 1
+          fi
+
+          {
+            echo "Paired benchmark artefacts from SIR Real Governance Audit."
+            echo
+            echo "- Gated pass: ${BENCHMARK_GATED_PASS:-false}"
+            echo "- Live pointer updated: ${BENCHMARK_LIVE_POINTER_UPDATED:-false}"
+            echo "- CI run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+            echo "This branch carries only benchmark artefacts under proofs/ and docs/. It"
+            echo "opens as a pull request rather than pushing to main so the required status"
+            echo "checks run against it, which is what the Protect Main ruleset expects and"
+            echo "what a direct push from automation cannot satisfy. The audit job was"
+            echo "converted to this pattern on 12 October 2026; this job was not, and the"
+            echo "first paired benchmark afterwards failed with GH013 after the run had"
+            echo "already completed, so the evidence it produced was never published."
+          } > /tmp/benchmark-pr-body.md
+
+          pr_url="$(gh pr create \
+            --base main \
+            --head "$benchmark_branch" \
+            --title "SIR Benchmark: paired benchmark dispatch ${stamp}" \
+            --body-file /tmp/benchmark-pr-body.md)"
+
+          echo "Opened $pr_url"
+
+          if gh pr merge --squash --auto "$pr_url"; then
+            echo "Auto-merge enabled; the benchmark publishes once the required checks pass."
+          else
+            echo "NOTE: auto-merge could not be enabled, so $pr_url is open and awaiting a merge."
+            echo "NOTE: the benchmark itself is complete. Publication is pending, not failed."
+          fi

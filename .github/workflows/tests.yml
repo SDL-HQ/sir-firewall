@@ -23,6 +23,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          # Tags, not just the tip. tests/test_release_notes_suite_size.py tells
+          # a released note from one still being written by whether its version
+          # is tagged, and a shallow checkout has no tags, so it would read
+          # every published figure as a live claim about this tree.
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6

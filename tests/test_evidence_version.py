@@ -156,8 +156,10 @@ def test_current_version_surfaces_match_runtime_authority():
         # Three post-2.4 rows added 13 October 2026 name the release that
         # measured or decided what they record: the pack measurement's revision,
         # the use-versus-mention measurement, and the counter definitions that
-        # were taken instead of a rename.
-        "docs/backlog.md": Counter({v_240: 7, v_230: 1, v_102: 1}),
+        # were taken instead of a rename. The benchmark publication row names it
+        # once more from 14 October 2026, as the merge after which the first
+        # direct push from automation was declined.
+        "docs/backlog.md": Counter({v_240: 8, v_230: 1, v_102: 1}),
         # The publication step records the release whose merge exposed that a
         # direct push to main cannot satisfy the required status checks.
         ".github/workflows/audit-and-sign.yml": Counter({v_240: 1}),
@@ -200,8 +202,14 @@ def test_current_version_surfaces_match_runtime_authority():
         # a result at this revision and no longer reference a baseline release.
         # That dropped one mention of this release and the only mention of the
         # previous one.
+        #
+        # Two more mentions arrived on 14 October 2026, when both statements of
+        # the suite's size were anchored to the tag they describe rather than
+        # left in the present tense. A published note that describes this tree
+        # goes stale with the next test added, and correcting it would rewrite
+        # what the release said.
         f"docs/release-notes-{v_240}.md": Counter(
-            {v_240: 6, v_220: 2, v_234: 1, v_102: 1}
+            {v_240: 8, v_220: 2, v_234: 1, v_102: 1}
         ),
         # The release that went through three review rounds without a written
         # rule for when it was finished, named as the reason this file exists.
@@ -226,12 +234,13 @@ def test_current_version_surfaces_match_runtime_authority():
         "tests/test_contract_floor_is_not_self_asserted.py": Counter({v_240: 2, v_235: 5}),
         "tests/test_counters_derive_from_the_ledger.py": Counter({v_238: 1}),
         # Names the release whose version bump was validated by the branch
-        # dispatch that had no missing-certificate net.
-        "tests/test_audit_workflow_cannot_pass_without_verifying.py": Counter({v_240: 2}),
+        # dispatch that had no missing-certificate net, and the merge after
+        # which the first direct push from automation was declined.
+        "tests/test_audit_workflow_cannot_pass_without_verifying.py": Counter({v_240: 3}),
         "tests/test_release_checklist.py": Counter({v_240: 1}),
-        # Names the release-notes file it reads, twice: the docstring and the
-        # path constant. The figure it guards went stale inside that file.
-        "tests/test_release_notes_suite_size.py": Counter({v_240: 2}),
+        # Names the release whose notes first carried the figure, the tag that
+        # froze it, and the pattern that recognises a figure anchored to a tag.
+        "tests/test_release_notes_suite_size.py": Counter({v_240: 3}),
         "tests/test_check_archive_staged.py": Counter({v_237: 2}),
         "tests/test_standalone_verifiers.py": Counter({v_234: 1}),
         "tools/verify_certificate.py": Counter({v_234: 9}),
