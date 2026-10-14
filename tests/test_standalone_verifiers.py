@@ -43,6 +43,10 @@ def test_verifiers_run_from_minimal_bundle_without_package_install(tmp_path):
         "itgl_final_hash": ledger_hash,
         "itgl_row_count": row_count,
         "prompts_tested": row_count,
+        # The verifier establishes document type before it verifies anything,
+        # from 15 October 2026, so a certificate fixture carries the audit's own
+        # result as a real one does.
+        "result": "AUDIT PASSED",
         "detached_ledger": False,
     }
     payload = json.dumps(certificate, separators=(",", ":")).encode()

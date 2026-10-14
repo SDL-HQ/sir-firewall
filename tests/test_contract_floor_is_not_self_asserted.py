@@ -146,6 +146,11 @@ def _certificate(rows, claimed_version, **overrides):
         "itgl_final_hash": f"sha256:{rows[-1]['ledger_hash']}",
         "itgl_row_count": len(rows),
         "signing_key_id": "ephemeral",
+        # A certificate's own audit outcome. The verifier establishes document
+        # type before it verifies anything, from 15 October 2026, because it
+        # used to report any signed JSON as a verified certificate. These
+        # fixtures are certificates, so they carry one.
+        "result": "AUDIT PASSED",
         "configuration_hash": "sha256:" + "0" * 64,
         "counters_checked_against_ledger": True,
         **{k: v for k, v in derived.items() if k != "systemic_reset_counts_by_reason"},

@@ -177,6 +177,9 @@ def _keyless_certificate(tmp_path, key, run_id="20260405-040322-000000-aed41b22e
         "timestamp_utc": "2026-04-05T04:03:22Z",
         "detached_ledger": True,
         "prompts_tested": 1,
+        # The verifier establishes document type before it verifies anything,
+        # from 15 October 2026, so a certificate fixture carries a result.
+        "result": "AUDIT PASSED",
     }
     payload = _json.dumps(cert, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
     cert["payload_hash"] = "sha256:" + _hashlib.sha256(payload).hexdigest()

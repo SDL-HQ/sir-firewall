@@ -115,6 +115,63 @@ CONTRACT_V4_ADDED_FIELDS = (
 
 MISSING_REQUIRED_FIELDS = 2
 
+# What makes a document a SIR audit certificate, as opposed to any other signed
+# JSON this repository produces.
+#
+# Until 15 October 2026 this verifier never asked. It checked the signature and
+# the payload hash and reported on whatever it was given, so a published
+# archive_receipt.json passed it at exit 0 under --no-ledger --require-registry:
+# a real signature over a real document, reported as a verified certificate.
+# The receipt says which files an archive contains and nothing about a gate
+# run, so nothing about that verdict was true except the signature.
+#
+# The two fields below are the claim that makes a document this kind of
+# document: an audit outcome, over a counted set of prompts. Both are carried
+# by every published certificate, checked across the whole archive, so
+# requiring them changes no published outcome. An archive receipt carries
+# neither, and the 2.5 baseline record will carry neither, because a baseline
+# has no audit outcome.
+#
+# Deliberately short. policy_hash and the fingerprints are also on every
+# published certificate, and they describe what the run enforced under rather
+# than what the document is. Requiring them here would make this check a second
+# contract, in a verifier that already has one, and the two would drift.
+#
+# This is a type check, not a contract check. Which fields a certificate of a
+# given era must carry is CONTRACT_V4_ADDED_FIELDS and the evidence contract,
+# applied later and against the ledger. A document that fails this check is not
+# an incomplete certificate; it is not one at all.
+CERTIFICATE_IDENTIFYING_FIELDS = (
+    "result",
+    "prompts_tested",
+)
+
+# Documents belonging to another type declare themselves. A baseline record
+# carries record_kind, and no certificate does. Checked separately from the
+# fields above so that a document which somehow carried both is refused rather
+# than resolved in a certificate's favour.
+FOREIGN_RECORD_KEYS = ("record_kind",)
+
+# Where each check sits, and why they are not together.
+#
+# A foreign declaration is read first, before the signature, because a document
+# that says it is something else is not this tool's business whatever its
+# signature does.
+#
+# The identifying fields are read after the signature verifies, and the reason
+# is the published negative example `tampered-required-field-removed.json`: a
+# real certificate with prompts_tested stripped out and the signature left
+# alone. Checked first, the identity rule calls that document "not a
+# certificate", which is the wrong account of it; it was signed as one, and the
+# payload hash proves the field was removed afterwards. Tamper detection gives
+# the sharper answer, so it goes first and keeps its exit code.
+#
+# What matters for type separation is that nothing is reported as verified
+# before the type is established, and the placement below holds that: the
+# identity check sits above every success path and above ledger binding.
+
+NOT_A_CERTIFICATE = 12
+
 LEDGER_BINDING_FAILURE = 7
 # A signed counter the ledger does not support. Distinct from 7 because the
 # chain and the terminal hash can both be intact while the numbers on the
@@ -300,7 +357,9 @@ def _parse_args() -> argparse.Namespace:
             "  If signing_key_id is present and key registry is readable, that key is used.\n"
             "  Otherwise verifier falls back to --pubkey unless --require-registry is set.\n\n"
             "Exit code 7 means ledger chain or certificate-binding verification failed.\n"
-            "Exit code 9 means binding was not checked because no ledger was found."
+            "Exit code 9 means binding was not checked because no ledger was found.\n"
+            "Exit code 12 means the document is not a SIR audit certificate, and nothing\n"
+            "about it was verified, including its signature."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -388,6 +447,19 @@ def main() -> int:
     args = _parse_args()
 
     cert, _source = _load_cert(args.cert)
+
+    # Document type first, before anything is said about the signature. A
+    # signature establishes who wrote a document, never what the document is,
+    # and this tool's output is read as a statement about an audit.
+    foreign = [key for key in FOREIGN_RECORD_KEYS if key in cert]
+    if foreign:
+        print(
+            "ERROR: this document is not a SIR audit certificate: it declares "
+            + ", ".join(f"{key}={cert.get(key)!r}" for key in foreign)
+            + ". Verify it with the tool for its own type.",
+            file=sys.stderr,
+        )
+        return NOT_A_CERTIFICATE
     key_candidates = _load_pubkey_with_registry(
         cert, args.pubkey, args.key_registry, require_registry=args.require_registry
     )
@@ -439,6 +511,21 @@ def main() -> int:
             file=sys.stderr,
         )
         return 5
+
+    missing_identity = [
+        field for field in CERTIFICATE_IDENTIFYING_FIELDS if field not in cert
+    ]
+    if missing_identity:
+        print(
+            "ERROR: this document is not a SIR audit certificate: it does not carry "
+            + ", ".join(missing_identity)
+            + ". Its signature verified, which establishes who wrote it and not "
+            "what it is. No audit is described here, and nothing about one has "
+            "been verified. Verify it with the tool for its own type.",
+            file=sys.stderr,
+        )
+        return NOT_A_CERTIFICATE
+
 
     ledger_path = Path(args.ledger) if args.ledger else (None if args.no_ledger else _discover_ledger(cert, args.cert))
     if not args.no_ledger and ledger_path is None:

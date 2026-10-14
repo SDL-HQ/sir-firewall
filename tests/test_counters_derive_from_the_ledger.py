@@ -162,6 +162,11 @@ def signed_world(tmp_path_factory):
         "itgl_final_hash": f"sha256:{rows[-1]['ledger_hash']}",
         "itgl_row_count": len(rows),
         "signing_key_id": "ephemeral",
+        # A certificate's own audit outcome. The verifier establishes document
+        # type before it verifies anything, from 15 October 2026, because it
+        # used to report any signed JSON as a verified certificate. These
+        # fixtures are certificates, so they carry one.
+        "result": "AUDIT PASSED",
         # The ledger below is chain version 2, so the verifier requires the
         # contract v4 fields of any certificate bound to it. See
         # tests/test_contract_floor_is_not_self_asserted.py for why the
