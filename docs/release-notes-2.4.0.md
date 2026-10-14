@@ -8,7 +8,7 @@ refuses the merge path unless every one of them carries evidence that resolves:
 a test that exists, an artefact that exists, or a command that runs to its
 stated exit code. Prose is not evidence.
 
-All ten are met. The suite is 916 tests, held against that figure by `tests/test_release_notes_suite_size.py`.
+All ten are met. The suite was 916 tests at the v2.4.0 tag, held against that figure by `tests/test_release_notes_suite_size.py`.
 
 Certificates emitted by this release are governed by evidence contract v4, whose
 applicability floor is 2.4.0, adding `content_evaluated`,
@@ -273,8 +273,8 @@ by a guard rather than by luck, and each one changed how the next piece of work
 was built.
 
 **Two commits reached origin red.** In both cases the suite was not re-run before
-the push. It is 916 tests, about 95 seconds on the machine this release was
-built on. The count is held by `tests/test_release_notes_suite_size.py`; the
+the push. It was 916 tests at the v2.4.0 tag, about 95 seconds on the machine
+this release was built on. The count is held by `tests/test_release_notes_suite_size.py`; the
 duration is not, because it is a property of the machine rather than of the
 repository, and a figure a test cannot check should say what it depends on.
 

@@ -163,33 +163,57 @@ def test_the_finalize_net_is_still_publication_gated_and_so_not_relied_on():
         "a branch, the comments in the verifying steps need updating"
     )
 
-# --- proof artefacts reach main through a pull request ------------------------
+# --- published archives reach main through a pull request ---------------------
 
 
-def _publication_step():
-    import yaml
+def _publication_steps():
+    """Every step that stages an archive and publishes it.
 
+    There are two, one per publishing job. Until 14 October 2026 this helper
+    returned the first step it found, so every guard below ran against the
+    audit job alone. The benchmark job was still pushing to main directly, and
+    the first paired benchmark after the 2.4.0 merge failed on "GH013:
+    Repository rule violations" with the run already complete: the evidence it
+    had produced was never published. Collecting every publishing step is what
+    makes a second publication path inherit this contract rather than sit
+    outside it.
+    """
     workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
-    for job in workflow["jobs"].values():
+    found = []
+    for job_name, job in workflow["jobs"].items():
         for step in job.get("steps", []):
             run = step.get("run")
             if isinstance(run, str) and "check_archive_staged.py" in run:
-                return job, step
-    return None, None
+                found.append((job_name, job, step))
+    return found
 
 
-def test_the_publication_step_exists():
+PUBLICATION_STEPS = _publication_steps()
+PUBLICATION_IDS = [job_name for job_name, _job, _step in PUBLICATION_STEPS]
+PUBLICATION_CASE = pytest.mark.parametrize(
+    "job_name,job,step", PUBLICATION_STEPS, ids=PUBLICATION_IDS or ["none"]
+)
+
+
+def test_every_publishing_job_is_covered():
     """Guard the guard. A rename must not make the rest of this vacuous."""
-    job, step = _publication_step()
-
-    assert step is not None, "no step stages and publishes the proof archive"
-    assert "pull request" in (step.get("name") or "").lower(), (
-        "the publication step no longer says it opens a pull request: "
-        f"{step.get('name')!r}"
+    assert len(PUBLICATION_STEPS) == 2, (
+        "this file expects two publishing steps, the audit job's and the "
+        f"benchmark job's, and found {PUBLICATION_IDS}. A new publishing path "
+        "must be held to the guards below, not counted around them"
     )
 
 
-def test_the_proof_archive_is_not_pushed_straight_to_main():
+@PUBLICATION_CASE
+def test_the_publication_step_says_what_it_does(job_name, job, step):
+    assert "pull request" in (step.get("name") or "").lower(), (
+        f"the publication step in {job_name} no longer says it opens a pull "
+        f"request: {step.get('name')!r}"
+    )
+
+
+@PUBLICATION_CASE
+def test_the_archive_is_not_pushed_straight_to_main(job_name, job, step):
     """The first run after the 2.4.0 merge could not publish.
 
     It pushed to main directly and the Protect Main ruleset declined it with
@@ -201,48 +225,105 @@ def test_the_proof_archive_is_not_pushed_straight_to_main():
     Publishing through a pull request keeps the ruleset intact and puts every
     published archive on a path where the required checks ran.
     """
-    _job, step = _publication_step()
     run = step["run"]
 
-    assert "gh pr create" in run, "the proof archive is not published as a pull request"
-    assert "--set-upstream origin" in run and "proof_branch" in run, (
-        "the proof commit is not pushed to a branch of its own"
+    assert "gh pr create" in run, (
+        f"{job_name} does not publish its archive as a pull request"
     )
-    # A bare `git push` on the proof branch is fine; pushing to main is not.
+
+    branches = re.findall(r'git (?:switch -c|checkout -b) "\$(\w+)"', run)
+    assert branches, (
+        f"{job_name} does not create a branch of its own to publish from"
+    )
+    for branch in branches:
+        assert f'--set-upstream origin "${branch}"' in run, (
+            f"{job_name} creates ${branch} but does not push it"
+        )
+
+    # A push that names no branch of its own goes to main. That is the GH013
+    # path, and it is what the benchmark job did until 14 October 2026.
+    for line in run.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#") or stripped.startswith("echo "):
+            continue
+        if "git push" not in stripped:
+            continue
+        remainder = stripped.split("git push", 1)[1]
+        assert remainder.startswith(" --set-upstream origin"), (
+            f"{job_name} runs {stripped!r}. A push that names no branch of its "
+            "own targets main, which the Protect Main ruleset declines"
+        )
+
     for forbidden in ("git push origin main", "git pull --rebase origin main"):
         assert forbidden not in run, (
-            f"the publication step contains {forbidden!r}, which is the direct-push "
-            "path the Protect Main ruleset declines"
+            f"the publication step in {job_name} contains {forbidden!r}, which "
+            "is the direct-push path the Protect Main ruleset declines"
         )
 
 
-def test_the_job_can_open_a_pull_request():
+@PUBLICATION_CASE
+def test_the_job_can_open_a_pull_request(job_name, job, step):
     """Permissions, so the step fails at review rather than in production."""
-    job, _step = _publication_step()
     permissions = job.get("permissions") or {}
 
     assert permissions.get("pull-requests") == "write", (
-        "the job opens a pull request but lacks pull-requests: write"
+        f"{job_name} opens a pull request but lacks pull-requests: write"
     )
     assert permissions.get("contents") == "write"
 
 
-def test_a_pending_publication_is_reported_rather_than_hidden():
+@PUBLICATION_CASE
+def test_a_pending_publication_is_reported_rather_than_hidden(job_name, job, step):
     """Auto-merge may be unavailable, and then nothing publishes.
 
     That is acceptable only if it is visible. A step that opened a pull request
     nobody merges and said nothing would be the same shape as the skip this
     file was written for: the run looks complete and the archive is not there.
     """
-    _job, step = _publication_step()
     run = step["run"]
 
-    assert "--auto" in run, "auto-merge is not attempted, so publication needs a human every run"
+    assert "--auto" in run, (
+        f"{job_name} does not attempt auto-merge, so publication needs a human "
+        "every run"
+    )
     assert "Publication is pending, not failed" in run, (
         "a pull request that could not auto-merge must say so in the log"
     )
     assert "Nothing to publish" in run, (
-        "a run that changed no proof files should say so rather than committing nothing silently"
+        "a run that changed no files should say so rather than committing "
+        "nothing silently"
+    )
+
+
+@PUBLICATION_CASE
+def test_a_failed_push_is_not_reported_as_nothing_to_publish(job_name, job, step):
+    """The retry loop must not be able to turn a failure into a clean exit.
+
+    The benchmark job's first conversion kept its old sync-and-retry loop and
+    put the commit inside it. A second pass round that loop finds its own
+    commit already made, so `git diff --cached --quiet` is true and the step
+    exits 0 saying "Nothing to publish", with the push never having succeeded
+    and no pull request opened. That is item 1's shape again: a run that
+    published nothing, reporting as a run with nothing to publish.
+    """
+    run = step["run"]
+
+    lines = run.splitlines()
+    loop_depth = 0
+    depth_at_commit = None
+    for line in lines:
+        stripped = line.strip()
+        if re.match(r"^(for|while|until)\b.*\bdo$", stripped):
+            loop_depth += 1
+        elif stripped == "done":
+            loop_depth -= 1
+        elif stripped.startswith("git commit"):
+            depth_at_commit = loop_depth
+
+    assert depth_at_commit == 0, (
+        f"{job_name} commits inside a retry loop (depth {depth_at_commit}). A "
+        "second pass finds nothing staged and exits 0 as though there had been "
+        "nothing to publish"
     )
 
 
