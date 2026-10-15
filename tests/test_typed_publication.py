@@ -273,3 +273,101 @@ def test_an_archive_cannot_gain_a_second_document(published_pair):
 
     assert refused.returncode != 0
     assert "already contains a signed document" in refused.stderr
+
+
+# --- the superseded index must not contradict the typed one -----------------
+
+
+def _write_pair_artifact(published_pair):
+    """The unsigned artefact the paired runner writes, for a 2.5 pair."""
+    pairs = published_pair["runs_dir"] / "pairs"
+    pairs.mkdir(parents=True, exist_ok=True)
+    artifact = {
+        "pair_id": "20261015-000000-aaaaaaaaaaaa",
+        "pair_key": "provider=xai|model=xai/grok-3-beta",
+        "baseline_run_id": published_pair["baseline_run_id"],
+        "gated_run_id": published_pair["gated_run_id"],
+        "pair_status": "valid_complete",
+    }
+    (pairs / f"{artifact['pair_id']}.json").write_text(
+        json.dumps(artifact, indent=2), encoding="utf-8"
+    )
+    return pairs
+
+
+def test_the_superseded_index_omits_a_pair_it_cannot_express(published_pair):
+    """Two published indexes must not disagree about one pair.
+
+    benchmark_index.v2.json's pair reader assumes both halves are
+    certificates: it reads runs/<id>/audit.json for each side. Handed a pair
+    from 2.5 it read a file that does not exist for the baseline half,
+    reported the pair invalid_evidence_gap, and published an evidence link to
+    that nonexistent file, while v3 reported the same pair valid_complete. A
+    reader comparing the two cannot tell which is current. Found by an
+    independent implementation review on 15 October 2026.
+
+    The omission is named in the document, with the count and the reason, so
+    the difference between the two indexes' pair counts is explained where a
+    reader finds it rather than left as a discrepancy.
+
+    Mutations applied to tools/publish_run.py, both detected: putting the pair
+    through the legacy reader again, 1 failure (this test); dropping the
+    omission record from the document, 1 failure (this test).
+    """
+    publisher = _module("publish_run_v2_omission", "tools/publish_run.py")
+    runs_dir = published_pair["runs_dir"]
+    pairs_dir = _write_pair_artifact(published_pair)
+
+    v2 = publisher._build_benchmark_index_v2(runs_dir=runs_dir, runs=[], pairs_dir=pairs_dir)
+    v3 = publisher._build_benchmark_index_v3(runs_dir, pairs_dir, keep=200)
+
+    assert v2["pairs"] == []
+    assert v2["pairs_omitted"] == ["20261015-000000-aaaaaaaaaaaa"]
+    assert "cannot be expressed in this index" in v2["pairs_omitted_reason"]
+    assert v2["superseded_by"] == publisher.BENCHMARK_INDEX_V3_VERSION
+
+    # The pair is in v3, as the omission reason says.
+    assert [p["pair_form"] for p in v3["pairs"]] == ["record_and_certificate"]
+
+
+def test_no_index_publishes_an_evidence_link_to_a_file_that_is_not_there(published_pair):
+    """The legacy reader's link was runs/<baseline>/audit.json, which a 2.5
+    baseline archive does not have.
+
+    Checked against both indexes rather than only the one that had the defect,
+    because the property is about what either may publish.
+    """
+    publisher = _module("publish_run_links", "tools/publish_run.py")
+    runs_dir = published_pair["runs_dir"]
+    pairs_dir = _write_pair_artifact(published_pair)
+
+    for index in (
+        publisher._build_benchmark_index_v2(runs_dir=runs_dir, runs=[], pairs_dir=pairs_dir),
+        publisher._build_benchmark_index_v3(runs_dir, pairs_dir, keep=200),
+    ):
+        for pair in index["pairs"]:
+            for name, reference in (pair.get("evidence") or {}).items():
+                relative = str(reference).split("runs/", 1)[-1]
+                assert (runs_dir / relative).is_file(), (index["version"], name, reference)
+
+
+def test_a_legacy_certificate_pair_still_appears_in_the_superseded_index(published_pair):
+    """Guard the guard: the omission is scoped to pairs with a record.
+
+    Mutation applied to tools/publish_run.py: omitting every pair, 1 failure
+    (this test).
+    """
+    publisher = _module("publish_run_legacy_pair", "tools/publish_run.py")
+    runs_dir = published_pair["runs_dir"]
+    pairs_dir = _write_pair_artifact(published_pair)
+
+    # Make the baseline half look like a pre-2.5 certificate archive.
+    baseline = runs_dir / published_pair["baseline_run_id"]
+    certificate = runs_dir / published_pair["gated_run_id"] / "audit.json"
+    (baseline / "baseline.json").unlink()
+    (baseline / "audit.json").write_bytes(certificate.read_bytes())
+
+    v2 = publisher._build_benchmark_index_v2(runs_dir=runs_dir, runs=[], pairs_dir=pairs_dir)
+
+    assert v2["pairs_omitted"] == []
+    assert len(v2["pairs"]) == 1

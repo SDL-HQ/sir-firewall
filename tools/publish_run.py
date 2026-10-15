@@ -42,6 +42,11 @@ from sir_firewall.evidence_paths import canonical_ledger_path
 
 
 EVIDENCE_CONTRACT_VERSION = "v1"
+# The two signed documents an archive can hold. Named here because this module
+# decides which one an archive has in several places.
+CERTIFICATE_DOCUMENT = "audit.json"
+RECORD_DOCUMENT = "baseline.json"
+
 BENCHMARK_INDEX_V1_VERSION = "benchmark_index.v1"
 BENCHMARK_INDEX_V2_VERSION = "benchmark_index.v2"
 
@@ -712,9 +717,29 @@ def _load_pair_artifacts(pairs_dir: Path) -> List[Dict[str, Any]]:
 
 
 def _build_benchmark_index_v2(runs_dir: Path, runs: List[Dict[str, Any]], pairs_dir: Path) -> Dict[str, Any]:
+    """The superseded index, which cannot express a pair with a baseline record.
+
+    Its pair reader assumes both halves are certificates: it reads
+    runs/<id>/audit.json for each side. Handed a pair from SIR 2.5, it read a
+    file that does not exist for the baseline half, reported the pair as
+    invalid_evidence_gap, and published an evidence link to that nonexistent
+    file, while benchmark_index.v3.json reported the same pair valid_complete.
+    Two published indexes disagreeing about one pair is worse than one of them
+    being silent, because a reader cannot tell which is current. Found by an
+    independent implementation review on 15 October 2026.
+
+    So a pair this index cannot express is omitted from it, and the count of
+    omissions and the reason are stated in the document rather than left as a
+    discrepancy between two files. v3 is where those pairs are.
+    """
     index_v1 = _build_benchmark_index_v1(runs_dir=runs_dir, runs=runs)
     pair_entries: List[Dict[str, Any]] = []
+    omitted: List[str] = []
     for artifact in _load_pair_artifacts(pairs_dir):
+        baseline_run_id = _non_empty_str(artifact.get("baseline_run_id")) or ""
+        if (runs_dir / baseline_run_id / RECORD_DOCUMENT).is_file():
+            omitted.append(_non_empty_str(artifact.get("pair_id")) or baseline_run_id)
+            continue
         try:
             pair_entries.append(_build_pair_entry_from_artifact(runs_dir=runs_dir, pair_artifact=artifact))
         except ValueError as exc:
@@ -722,11 +747,20 @@ def _build_benchmark_index_v2(runs_dir: Path, runs: List[Dict[str, Any]], pairs_
             continue
     return {
         "version": BENCHMARK_INDEX_V2_VERSION,
+        "superseded_by": BENCHMARK_INDEX_V3_VERSION,
         "updated_at_utc": _utc_now_z(),
         "latest_run": index_v1.get("latest_run"),
         "latest_passing_run": index_v1.get("latest_passing_run"),
         "entries": index_v1.get("entries", []),
         "pairs": pair_entries,
+        # Named rather than silent: a reader comparing this index's pair count
+        # with v3's sees why they differ.
+        "pairs_omitted": sorted(omitted),
+        "pairs_omitted_reason": (
+            "a pair whose baseline half is an ungated baseline record cannot be "
+            "expressed in this index, whose pair entries carry a result and a proof "
+            f"class for both halves. Those pairs are in {BENCHMARK_INDEX_V3_VERSION}.json."
+        ),
     }
 
 

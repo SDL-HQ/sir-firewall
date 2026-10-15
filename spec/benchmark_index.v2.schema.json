@@ -4,10 +4,12 @@
   "title": "SIR Benchmark Index v2",
   "type": "object",
   "required": [
-    "version",
-    "updated_at_utc",
     "entries",
-    "pairs"
+    "pairs",
+    "pairs_omitted",
+    "pairs_omitted_reason",
+    "updated_at_utc",
+    "version"
   ],
   "properties": {
     "version": {
@@ -539,6 +541,21 @@
         },
         "additionalProperties": false
       }
+    },
+    "superseded_by": {
+      "type": "string",
+      "description": "The index version that supersedes this one. This document cannot express a pair whose baseline half is an ungated baseline record, because its pair entries carry a result and a proof class for both halves."
+    },
+    "pairs_omitted": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Pair identifiers this index cannot express and has left out, by pair_id. Named rather than silent, so a reader comparing this index's pair count with the superseding index's sees why they differ. Until 15 October 2026 such a pair was put through the certificate-pair reader instead, which read a nonexistent audit.json for the baseline half, reported the pair as an evidence gap, and published an evidence link to that file."
+    },
+    "pairs_omitted_reason": {
+      "type": "string",
+      "description": "Why those pairs are not in this document, and where they are."
     }
   },
   "additionalProperties": false
