@@ -34,15 +34,16 @@ output.
 ## Current figures
 
 <!-- BEGIN GENERATED ARCHIVE FIGURES: measured-totals -->
-Measured across all 329 published run archives under `proofs/runs/`:
+Measured across all 331 published run archives under `proofs/runs/`:
 
 | Check | Result | Count |
 |---|---|---|
-| `verify_certificate.py` | verified (exit 0) | 61 |
+| `verify_certificate.py` | verified (exit 0) | 62 |
 | `verify_certificate.py` | verified; no ledger in the archive, so no binding was checked (exit 0) | 39 |
 | `verify_certificate.py` | SIGNATURE VERIFICATION FAILED (exit 5) | 6 |
 | `verify_certificate.py` | ledger binding not established (no row count, or predates the 2.3.4 correction) (exit 9) | 223 |
-| `verify_archive_receipt.py` | verified (exit 0) | 185 |
+| `verify_certificate.py` | no certificate in archive; this archive holds a baseline record (exit none) | 1 |
+| `verify_archive_receipt.py` | verified (exit 0) | 187 |
 | `verify_archive_receipt.py` | archive incomplete or signature failed (exit 2) | 105 |
 | `verify_archive_receipt.py` | no archive receipt (legacy archive) (exit 3) | 39 |
 <!-- END GENERATED ARCHIVE FIGURES: measured-totals -->
@@ -198,7 +199,7 @@ Two causes, and they account for all 223.
 
 *118 carry no `itgl_row_count`.* The field postdates SIR 2.3.4, so the signed
 row count cannot be compared with the ledger. The terminal hash binding is
-checked for these and holds. Across the whole archive 268 certificates carry no
+checked for these and holds. Across the whole archive 269 certificates carry no
 `itgl_row_count`; the figure here is the subset that reaches exit 9 for that
 reason and no other.
 
@@ -217,7 +218,7 @@ certificate does not identify its ledger.
 <!-- BEGIN GENERATED ARCHIVE FIGURES: e4-above-the-correction -->
 **Why this is exit 9 and not exit 7.** A binding that was never made is not a
 binding that disagrees. Every certificate from SIR 2.3.4 onward matches the
-ledger shipped with it, 61 of 61, so a mismatch at or above the correction is a
+ledger shipped with it, 62 of 62, so a mismatch at or above the correction is a
 real failure and is still reported as one. Below it, reporting a documented and
 disclosed format boundary as a tampering failure would describe 105 published
 archives as broken.
