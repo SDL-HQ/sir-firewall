@@ -250,9 +250,32 @@ def main() -> int:
         action="store_true",
         help="Overwrite existing output directory when non-empty.",
     )
+    # Default: the repository this script lives in, which is what every real
+    # invocation wants. The flag exists so a test can export from a tree it
+    # built, rather than staging an archive into the real proofs/runs and
+    # removing it afterwards.
+    #
+    # That staging is how two synthetic baseline archives came to sit in
+    # proofs/runs on 15 October 2026: the suite was interrupted and the
+    # `finally` that removes them never ran. The audit workflow runs pytest and
+    # `git add proofs/runs/` in the same job, so a stray archive is one
+    # interruption away from the published evidence. Nothing published has ever
+    # carried one, and the check that stopped it was incidental: the figure
+    # generator refuses when proofs/runs and docs/runs hold different runs. A
+    # test should not need an incidental guard to keep it out of the archive.
+    ap.add_argument(
+        "--runs-root",
+        default=None,
+        help=(
+            "Where to find proofs/runs/<run_id> (default: the repository containing "
+            "this script). The bundle's own files always come from that repository, "
+            "because a review bundle ships this repository's verifiers."
+        ),
+    )
     args = ap.parse_args()
 
     repo_root = Path(__file__).resolve().parent.parent
+    runs_root = Path(args.runs_root).resolve() if args.runs_root else repo_root
     out_dir = Path(args.out).resolve()
 
     if out_dir.exists() and not out_dir.is_dir():
@@ -270,13 +293,13 @@ def main() -> int:
 
     if args.run_id:
         run_rel = f"proofs/runs/{args.run_id}"
-        run_dir = repo_root / run_rel
+        run_dir = runs_root / run_rel
         if not run_dir.exists() or not run_dir.is_dir():
             raise SystemExit(
-                f"ERROR: requested --run-id directory not found: {run_rel} "
+                f"ERROR: requested --run-id directory not found: {run_dir} "
                 "(omit --run-id to export only baseline review artifacts)"
             )
-        _copy_tree(repo_root, out_dir, run_rel)
+        _copy_tree(runs_root, out_dir, run_rel)
 
     _write_manifest(out_dir, EXPLICIT_FILES, args.run_id)
     _write_human_audit_report(out_dir, args.run_id)
