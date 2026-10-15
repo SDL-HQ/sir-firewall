@@ -39,6 +39,22 @@ count is what pytest reported for this file:
 
 and the restored copy passed 21 of 21.
 
+The row_version mutations were measured across this file and
+tests/test_baseline_record.py together, since the field is enforced in the row
+rules here and declared in the document there. Counts for the two files:
+
+   11. the row-level row_version rule removed              5 failed
+   12. row_version dropped from the row key set            6 failed, 40 errors
+   13. the runner stops writing it                         5 failed, 40 errors
+   14. the document's declared-version rule removed        3 failed
+   15. the generator stops declaring it                    8 failed
+   16. row_version added to the per-prompt digest          6 failed, 40 errors
+   17. the document-versus-rows check disabled             1 failed
+
+and the restored copies passed 60 of 60. Mutation 16 is the one worth reading:
+it fails because 6,100 published baseline rows stop agreeing with the digest
+mapping, which is the whole reason the field is covered by the chain instead.
+
 Mutation 9 was undetected on its first measurement. The test that should have
 caught it cleared the row's outcome as well as its attempt flag, so the outcome
 rule refused the row and the attempt rule could be deleted without a failure.
@@ -369,6 +385,52 @@ def test_a_rehashed_row_that_attempted_no_call_is_refused(baseline_rows):
     assert itgl.baseline_ledger_defects(rows)
 
 
+@pytest.mark.parametrize("value", [2, 99, 0, -1])
+def test_a_rehashed_row_at_a_format_this_release_cannot_read_is_refused(baseline_rows, value):
+    """row_version is not an input to the per-prompt digest, by design.
+
+    The digest's mapping is anchored to the 6,100 published baseline rows that
+    predate the field, so adding an input would change every one of their
+    digests. The version is authenticated by the chain instead: under chain
+    version 2 the row hash covers it, and the chain's terminal hash is signed
+    on the record. These rows are rehashed, so the chain is valid and the
+    digest still matches; only the shape rule refuses them.
+    """
+    rows = copy.deepcopy(baseline_rows)
+    rows[0]["row_version"] = value
+    rows = _rehash(rows)
+
+    assert itgl.verify_ledger(rows, itgl.CHAIN_VERSION_V2)
+    assert rows[0]["final_hash"] == itgl.ungated_row_final_hash(rows[0])
+    assert itgl.baseline_ledger_defects(rows)
+
+
+def test_a_rehashed_row_with_a_true_row_version_is_refused(baseline_rows):
+    """bool is a subclass of int and True == 1."""
+    rows = copy.deepcopy(baseline_rows)
+    rows[0]["row_version"] = True
+    rows = _rehash(rows)
+
+    assert itgl.verify_ledger(rows, itgl.CHAIN_VERSION_V2)
+    assert itgl.baseline_ledger_defects(rows)
+
+
+def test_the_row_version_is_covered_by_the_chain_and_not_by_the_digest(baseline_rows):
+    """Both halves of that choice, so neither can be changed silently.
+
+    Covered by the chain: altering the version without rehashing breaks
+    linkage. Not covered by the digest: the same alteration leaves final_hash
+    matching, which is why the 6,100 published rows still agree with the
+    mapping.
+    """
+    rows = copy.deepcopy(baseline_rows)
+    rows[0]["row_version"] = 99
+
+    assert rows[0]["final_hash"] == itgl.ungated_row_final_hash(rows[0])
+    with pytest.raises(itgl.LedgerVerificationError, match="invalid ledger_hash"):
+        itgl.verify_ledger(rows, itgl.CHAIN_VERSION_V2)
+
+
 def test_the_runner_writes_only_the_outcomes_the_row_rules_permit():
     """A third outcome value would make the published definition wrong.
 
@@ -549,6 +611,7 @@ def test_the_verifier_refuses_a_certificate_bound_to_a_baseline_ledger(tmp_path)
             "systemic_reset_reason": "",
             "provider_call_attempted": True,
             "provider_call_outcome": "success",
+            "row_version": itgl.BASELINE_ROW_VERSION,
             "configuration_hash": "",
             "leak_flag": "",
         }

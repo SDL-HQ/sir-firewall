@@ -47,6 +47,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from document_signing import sign_document  # noqa: E402
 from itgl import (  # noqa: E402
+    BASELINE_ROW_VERSION,
     CHAIN_VERSION_V2,
     baseline_ledger_defects,
     derive_counters,
@@ -212,6 +213,7 @@ def build_record(summary: Dict[str, Any], *, ledger_rows, ledger_path: str) -> D
         "ledger": {
             "path": str(ledger_path),
             "chain_version": CHAIN_VERSION_V2,
+            "row_version": BASELINE_ROW_VERSION,
             "row_count": row_count,
             "itgl_final_hash": terminal_hash,
         },

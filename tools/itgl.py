@@ -225,6 +225,7 @@ BASELINE_ROW_KEYS = frozenset(
         "systemic_reset_reason",
         "provider_call_attempted",
         "provider_call_outcome",
+        "row_version",
         "configuration_hash",
         "leak_flag",
         "final_hash",
@@ -241,6 +242,24 @@ BASELINE_SCENARIO_ROW_KEYS = frozenset(
 
 EXPECTED_LABELS = ("allow", "block")
 PROVIDER_OUTCOMES = ("success", "failure")
+
+# The baseline row format's own version, carried on every baseline row.
+#
+# Added before any baseline record was published, which is the only moment it
+# is cheap. A baseline row is covered by the chain, and under chain version 2
+# the row hash covers every field except the two chain fields, so a version
+# written into the row is authenticated by the chain and by the terminal hash
+# the record signs. A producer cannot restamp it to have a later format's rows
+# judged by this format's rules: that is the defect
+# tests/test_contract_floor_is_not_self_asserted.py exists for, one level down.
+#
+# What this buys: a future release that changes the baseline row format states
+# which format a row is in, and a verifier built for one version refuses the
+# other instead of misreading it. Without it, the format could only be told
+# apart by a second predicate over the row's shape, and that predicate would
+# have to be maintained forever against every format that ever shipped.
+BASELINE_ROW_VERSION = 1
+SUPPORTED_BASELINE_ROW_VERSIONS = (BASELINE_ROW_VERSION,)
 
 
 def ungated_row_final_hash(entry: Dict[str, Any]) -> str:
@@ -262,6 +281,14 @@ def ungated_row_final_hash(entry: Dict[str, Any]) -> str:
         pack_id      the row's domain_pack
         scenario_id  the row's scenario_id, empty on a single-turn suite
         turn_id      the row's prompt_id, which is the turn id on a scenario
+
+    `row_version` is deliberately **not** an input. This digest identifies a
+    row's content, and its mapping is anchored to the 6,100 published baseline
+    rows that predate the field; adding an input would change every one of
+    their digests and the mapping would no longer agree with the archive. The
+    version does not need to be here to be authenticated: chain version 2's row
+    hash covers every field except the two chain fields, so the version is
+    covered there, and the chain's terminal hash is signed on the record.
 
     This authenticates what the producer encoded. It does not establish that no
     gate ran: a producer that wanted to could write these rows without running
@@ -315,6 +342,17 @@ def baseline_row_defects(entry: Dict[str, Any], *, index: int) -> List[str]:
         defects.append(f"row {index}: provider_call_attempted is not true")
     if entry.get("provider_call_outcome") not in PROVIDER_OUTCOMES:
         defects.append(f"row {index}: provider_call_outcome is {entry.get('provider_call_outcome')!r}")
+
+    # bool is a subclass of int and True == 1, so a membership test alone
+    # accepts true where 1 is required.
+    row_version = entry.get("row_version")
+    if isinstance(row_version, bool) or not isinstance(row_version, int):
+        defects.append(f"row {index}: row_version is {row_version!r}, not an integer")
+    elif row_version not in SUPPORTED_BASELINE_ROW_VERSIONS:
+        defects.append(
+            f"row {index}: unsupported row_version {row_version}; this release reads "
+            f"{list(SUPPORTED_BASELINE_ROW_VERSIONS)}"
+        )
 
     expected_digest = ungated_row_final_hash(entry)
     if entry.get("final_hash") != expected_digest:

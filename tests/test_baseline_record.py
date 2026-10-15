@@ -316,6 +316,120 @@ def test_a_record_with_overstated_counters_is_refused(baseline_run):
     assert "counter binding failed" in output
 
 
+# The row_version mutations were measured across this file and
+# tests/test_baseline_rows_are_not_gate_verdicts.py together, and that file's
+# header carries the counts. Mutation 17 there, disabling the
+# document-versus-rows check, was undetected on its first measurement: the test
+# below searched the verifier's source for the refusal message, and replacing
+# the guard with a constant left the message in place. It reads the syntax tree
+# now.
+
+
+def test_the_record_declares_the_row_format_its_ledger_holds(baseline_run):
+    """The generator writes it, and it is the version this release writes."""
+    assert baseline_run["record"]["ledger"]["row_version"] == itgl.BASELINE_ROW_VERSION
+    rows = itgl.load_ledger(baseline_run["tmp_path"] / baseline_run["summary"]["ledger_path"])
+    assert rows
+    assert all(row["row_version"] == itgl.BASELINE_ROW_VERSION for row in rows)
+
+
+@pytest.mark.parametrize("value", [2, 99, 0, -1])
+def test_a_record_declaring_a_row_format_this_release_cannot_read_is_refused(
+    baseline_run, value
+):
+    """A verifier that read it anyway would apply this format's rules to another.
+
+    That is the defect tests/test_contract_floor_is_not_self_asserted.py exists
+    for, one level down: the artefact choosing the rule that judges it. The
+    version is inside the chain and the chain's terminal hash is signed, so it
+    cannot be restamped after signing; what it can be is wrong at signing time,
+    and then the refusal is the only thing that stops a figure computed by the
+    wrong rules.
+    """
+    record = copy.deepcopy(baseline_run["record"])
+    record["ledger"]["row_version"] = value
+    record = _resign(record, baseline_run["private_pem"])
+
+    code, output = _verify(
+        _write(baseline_run, record), baseline_run["pubkey"], cwd=baseline_run["tmp_path"]
+    )
+    assert code == verifier.NOT_A_BASELINE_RECORD, output
+    assert "row version" in output or "row_version" in output
+
+
+def test_a_record_declaring_a_true_row_version_is_refused(baseline_run):
+    """bool is a subclass of int and True == 1, so a membership test alone
+    accepts true where 1 is required."""
+    record = copy.deepcopy(baseline_run["record"])
+    record["ledger"]["row_version"] = True
+    record = _resign(record, baseline_run["private_pem"])
+
+    code, output = _verify(
+        _write(baseline_run, record), baseline_run["pubkey"], cwd=baseline_run["tmp_path"]
+    )
+    assert code == verifier.NOT_A_BASELINE_RECORD, output
+    assert "row_version" in output
+
+
+def test_the_document_versus_rows_check_is_unreachable_while_one_format_exists():
+    """And this assertion is how it stops being forgotten.
+
+    tools/verify_baseline_record.py compares the row version the document
+    declares against the version its rows carry. While exactly one version is
+    supported that comparison cannot fail: a document declaring anything else
+    is refused before it, and a row carrying anything else is refused by
+    itgl.baseline_ledger_defects. The check is written anyway, because the
+    moment a second version is supported it is the only thing between a
+    document declaring one format over rows in the other and a figure computed
+    by the wrong rules.
+
+    When SUPPORTED_BASELINE_ROW_VERSIONS gains its second entry this fails,
+    and the case for the check gets written then rather than remembered.
+    """
+    assert itgl.SUPPORTED_BASELINE_ROW_VERSIONS == (itgl.BASELINE_ROW_VERSION,), (
+        "a second baseline row format is supported, so the document-versus-rows "
+        "check in tools/verify_baseline_record.py is now reachable and needs a test "
+        "that exercises it: a record declaring one supported version over rows "
+        "carrying the other"
+    )
+    # Read from the syntax tree, not by searching for the message. A first
+    # measurement replaced the guard with `if False:` and left the message in
+    # place, and a text search passed: the mutation was undetected. What has to
+    # hold is that the branch is taken from the comparison's own result.
+    import ast
+
+    source = (ROOT / "tools/verify_baseline_record.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    assignments = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Assign)
+        and any(isinstance(t, ast.Name) and t.id == "disagreeing" for t in node.targets)
+    ]
+    assert len(assignments) == 1, "expected one place that computes the row-version disagreement"
+
+    guarded = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.If)
+        and isinstance(node.test, ast.Name)
+        and node.test.id == "disagreeing"
+    ]
+    assert len(guarded) == 1, (
+        "the document-versus-rows check is not guarded by its own result; it is the "
+        "forward protection row_version exists to provide, and it cannot be covered "
+        "behaviourally while one format is supported"
+    )
+    returns = [
+        node
+        for node in ast.walk(guarded[0])
+        if isinstance(node, ast.Return)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "LEDGER_BINDING_FAILURE"
+    ]
+    assert returns, "the check does not refuse the record when the two disagree"
+
+
 def test_a_record_bound_to_another_ledger_is_refused(baseline_run, tmp_path):
     """A signed terminal hash that is not this ledger's."""
     rows = itgl.load_ledger(

@@ -99,6 +99,36 @@ every prompt labelled for blocking count as a leak, and the run's result
 compute as a failed audit. `docs/archive-errata.md` records the 54 published
 certificates that resulted.
 
+### `row_version`
+
+The baseline row format's own version, on every baseline row and declared once
+in the record's `ledger` block. Added with 2.5, before any baseline record was
+published, which is the only moment it is cheap: a row format with no version
+can only be told apart by a predicate over its shape, and that predicate has to
+be maintained forever against every format that ever shipped.
+
+It is authenticated by the chain, not by the per-prompt digest. Under chain
+version 2 a row's own hash covers every field except the two chain fields, so
+the version is covered there, and the chain's terminal hash is signed on the
+record. It is deliberately **not** an input to `ungated_row_final_hash`: that
+digest identifies a row's content and its mapping is anchored to the 6,100
+published baseline rows that predate the field, so adding an input would change
+every one of their digests and the mapping would stop agreeing with the
+archive.
+
+A gated row does not carry it. The 305 published certificates' rows are a
+format of their own, and adding a field to them would change nothing about how
+they are read while making every archived row shape disagree with the current
+one.
+
+What it buys: a verifier built for one row format refuses another instead of
+reading it by the wrong rules. `tools/verify_baseline_record.py` refuses a
+record declaring a version it does not read, `tools/itgl.py` refuses a row
+carrying one, and the two are compared against each other. That last comparison
+cannot fail while one version is supported, and is written anyway, because the
+moment a second one is it is all that stands between a document declaring one
+format over rows in the other and a figure computed by the wrong rules.
+
 ### What a baseline record's counters count
 
 Six, all recomputed from the rows by `tools/verify_baseline_record.py` and none
