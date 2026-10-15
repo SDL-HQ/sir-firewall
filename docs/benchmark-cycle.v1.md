@@ -304,8 +304,9 @@ For repeatable comparison rows:
 ## Naming and output conventions
 
 - Canonical cycle label: `benchmark_cycle.v1` (documentation contract label).
-- Machine index stays `benchmark_index.v1` (`proofs/runs/benchmark_index.v1.json`).
-- Use `row_identity` as the strict comparability key. Rows are comparable only when `row_identity` dimensions align (`sir`, `commit`, `target`, `proof_class`, `provider`, `model`).
+- The current machine index is `benchmark_index.v3` (`proofs/runs/benchmark_index.v3.json`). `benchmark_index.v1.json` and `.v2.json` remain published and are superseded; they describe gate runs only, because their entries carry a result and a proof class. This line named v1 as current until 15 October 2026, while the assurance kit named v2 and the archive view read v3, which left a reader three documents and no way to tell which was current.
+- Use `row_identity` as the strict comparability key **for certificate entries**. Those rows are comparable only when `row_identity` dimensions align (`sir`, `commit`, `target`, `proof_class`, `provider`, `model`).
+- A baseline record entry has no `row_identity` and is not compared row to row, because it carries no `proof_class` and no result: the key would require a field the document is forbidden to hold. A baseline reaches a comparison only as one half of a pair, and a pair is matched on its required attribution dimensions, which are provider, model, target kind, pack id, pack version, prompt-set hash and its kind, and commit. `proof_class` is deliberately not among them.
 - Keep domain-pack and scenario-pack rows separate via `evaluation_target.target_kind`; never blend them into one row interpretation.
 
 ## Interpretation rules

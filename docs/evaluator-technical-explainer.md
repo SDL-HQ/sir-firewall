@@ -50,7 +50,7 @@ SIR produces evidence artefacts, including:
 - mutable latest-pass pointers (`proofs/latest-audit.json`, `proofs/latest-audit.html`). These describe gate runs only; an ungated baseline record is never a latest pointer, because it carries no result
 - current status pointer (`docs/latest-run.json`, served as `/latest-run.json`) with PASS/FAIL/INCONCLUSIVE status
 - per-run archive evidence (`docs/runs/<run_id>/...` and its `proofs/runs/<run_id>/...` source) with manifest, audit snapshot, identity-matched ledger, and archive receipt; the selected per-run bundle is the claim-level source
-- benchmark index mapping (`docs/runs/benchmark_index.v2.json`, served as `/runs/benchmark_index.v2.json`) as evidence-linked comparison rows
+- benchmark index mapping (`docs/runs/benchmark_index.v3.json`, served as `/runs/benchmark_index.v3.json`) as evidence-linked comparison rows, each entry declaring its `entry_kind`. `benchmark_index.v1.json` and `.v2.json` remain published and are superseded
 
 Public Pages and published GitHub artefacts distribute shared evidence for review. Mutable pointers locate candidates; the selected per-run bundle is the claim-level source.
 Explanatory documentation describes how to read those surfaces; it does not replace them.

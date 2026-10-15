@@ -59,7 +59,8 @@ The entries below classify each included artifact as:
 | `proofs/runs/index.json` | Source of truth | Are run archive entries present for pass and non-pass runs? |
 | `proofs/runs/index.html` | Supporting context | Is there a human-readable run index view matching `index.json`? |
 | `proofs/runs/<run_id>/` (optional via `--run-id`) | Source of truth | Can a specific run be inspected via `manifest.json`, `audit.json`, and `archive_receipt.json`? |
-| `spec/evidence_contract.v1.json` | Source of truth | Do certificate structures align with the declared evidence contract? |
+| `spec/evidence_contract.v1.json` to `v4.json`, selected by the certificate's own version | Source of truth | Do certificate structures align with the declared evidence contract? |
+| `spec/baseline_record.v1.schema.json` | Source of truth | Does an ungated baseline record align with the contract for its own kind? |
 | `tools/verify_certificate.py` | Supporting context | Can certificate signature/integrity checks be reproduced offline? |
 | `tools/verify_archive_receipt.py` | Supporting context | Can archive receipt/manifest integrity checks be reproduced offline? |
 | `tools/verify_itgl.py` | Supporting context | Can ITGL chain integrity checks be reproduced offline? |

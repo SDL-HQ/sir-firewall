@@ -9,7 +9,7 @@ It separates:
 - what current durability does and does not guarantee
 - what hardening options are planned but not yet guaranteed by repo-only retention
 
-The version-selected machine-readable certificate contracts are `spec/evidence_contract.v1.json` (2.2.0–2.3.3), `spec/evidence_contract.v2.json` (2.3.4), and `spec/evidence_contract.v3.json` (2.3.5+).
+The version-selected machine-readable certificate contracts are `spec/evidence_contract.v1.json` (2.2.0–2.3.3), `spec/evidence_contract.v2.json` (2.3.4), `spec/evidence_contract.v3.json` (2.3.5–2.3.x), and `spec/evidence_contract.v4.json` (2.4.0+). An ungated baseline record is not a certificate and is governed by `spec/baseline_record.v1.schema.json` instead.
 
 ---
 
