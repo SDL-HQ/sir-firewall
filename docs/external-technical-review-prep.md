@@ -37,7 +37,7 @@ A reviewer should assess the following technical areas.
 3. Benchmark contract and benchmark evidence
    - benchmark-cycle v1 contract discipline
    - row comparability semantics (`row_identity`, proof-class separation)
-   - current per-run and paired evidence in `docs/runs/benchmark_index.v2.json`
+   - current per-run and paired evidence in `docs/runs/benchmark_index.v3.json` (`.v1.json` and `.v2.json` are published and superseded)
    - D5 first-cycle execution, including its blocked live sentinel row, as explicitly historical context rather than current execution status
 
 4. Verification flow quality
@@ -85,8 +85,8 @@ Use the single current order first: `README.md`, `docs/evaluator-technical-expla
 
 10. Canonical technical truth surfaces and verification tools
    - public Pages surfaces referenced in `README.md` (`latest-audit.*`, `latest-run.json`, `runs/index.html`)
-   - current paired benchmark index: `docs/runs/benchmark_index.v2.json`
-   - certificate contract: `spec/evidence_contract.v1.json`
+   - current paired benchmark index: `docs/runs/benchmark_index.v3.json`
+   - signed document contracts, selected by the document's own version: `spec/evidence_contract.v1.json` through `v4.json` for certificates, and `spec/baseline_record.v1.schema.json` for an ungated baseline record
    - certificate verification: `tools/verify_certificate.py`
    - archive receipt verification: `tools/verify_archive_receipt.py`
    - ITGL verification: `tools/verify_itgl.py`

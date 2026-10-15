@@ -285,8 +285,9 @@ For current scope boundary, failure modes, and residual-risk semantics, use `doc
 
 Evidence is defined by the versioned contract:
 
-* Evidence contract: `spec/evidence_contract.v1.json`
+* Evidence contracts, selected by the certificate's own `sir_firewall_version`: `spec/evidence_contract.v1.json` (2.2.0–2.3.3), `spec/evidence_contract.v2.json` (2.3.4), `spec/evidence_contract.v3.json` (2.3.5–2.3.x), `spec/evidence_contract.v4.json` (2.4.0+). This list named v1 alone until 15 October 2026, which pointed a reader at the contract that governs the oldest archives rather than the one that governs a current certificate.
 * Contract validator: `tools/validate_certificate_contract.py`
+* An ungated baseline record is not a certificate: `spec/baseline_record.v1.schema.json` governs it, and `tools/verify_baseline_record.py` verifies it
 
 Key fields:
 

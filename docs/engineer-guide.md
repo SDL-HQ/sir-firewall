@@ -204,7 +204,7 @@ Publishing a run archive creates:
 * `proofs/runs/<run_id>/manifest.json`
 * `proofs/runs/<run_id>/audit.json`
 * `proofs/runs/<run_id>/archive_receipt.json` (signed)
-* `proofs/runs/benchmark_index.v2.json` (machine-readable benchmark/index summary)
+* `proofs/runs/benchmark_index.v1.json`, `.v2.json` and `.v3.json` (machine-readable benchmark index summaries; v3 is current and the other two are superseded)
 
 It requires `SDL_PRIVATE_KEY_PEM` to be set.
 
@@ -229,7 +229,7 @@ If `archive_receipt.json` carries a `signing_key_id` that does not exist in the 
 
 Benchmark/index semantics:
 
-* `proofs/runs/benchmark_index.v2.json` is an evidence map, not a score.
+* `proofs/runs/benchmark_index.v3.json` is an evidence map, not a score. It is the current index; `.v1.json` and `.v2.json` remain published and are superseded.
 * It records attributable per-run comparison rows: `sir_firewall_version`, `commit_sha`, explicit `evaluation_target` (`domain_pack` or `scenario_pack` + pack identifiers), `proof_class`, `provider`, `model`, `result`, `leaks`, `harmless_blocked`, and evidence links.
 * It includes both `latest_run` and `latest_passing_run` pointers so fail/pass truth stays explicit.
 * `comparison` is raw run metadata for side-by-side reading only (counts, hashes, and provider call totals), not a ranking model.

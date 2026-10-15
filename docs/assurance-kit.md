@@ -259,7 +259,7 @@ The root-level `proofs/itgl_ledger.jsonl`, `proofs/itgl_final_hash.txt`, `proofs
 
 ### 5) Interpret benchmark index honestly
 
-Read `docs/runs/benchmark_index.v2.json` as an evidence index:
+Read `docs/runs/benchmark_index.v3.json` as an evidence index. It is the current one; `.v1.json` and `.v2.json` remain published and are superseded, and describe gate runs only. v3 is the only one that can hold a baseline record entry, so read it when a pair is in question:
 
 - use `latest_run` for most recent execution status
 - use `latest_passing_run` for most recent pass

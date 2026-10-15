@@ -130,8 +130,18 @@ def test_current_version_surfaces_match_runtime_authority():
         # is added, this fires so the floors in it are confirmed rather than assumed.
         "CLAUDE.md": Counter({v_220: 2, v_234: 1, v_235: 2, v_240: 1}),
         "AGENTS.md": Counter({v_220: 2, v_234: 1, v_235: 2, v_240: 1}),
-        "README.md": Counter({v_234: 9, v_233: 3, v_232: 2, v_230: 2, v_231: 2, v_221: 2, v_220: 2, v_235: 1, authority: 1}),
-        "RETENTION.md": Counter({v_234: 1, v_233: 1, v_220: 1, v_235: 1}),
+        # The evidence-semantics section named only the v1 contract until 15
+        # October 2026, which pointed a reader at the contract governing the
+        # oldest archives rather than the one governing a current certificate.
+        # It now names all four with their applicability ranges, which is five
+        # further mentions: one each of v_220, v_233, v_234, v_235 and the
+        # authority. If a fifth contract is added this fires, so its floor is
+        # confirmed here rather than assumed. Named by symbol, because this
+        # file counts its own mentions.
+        "README.md": Counter({v_234: 10, v_233: 4, v_232: 2, v_230: 2, v_231: 2, v_221: 2, v_220: 3, v_235: 2, authority: 2}),
+        # RETENTION's contract list omitted v4 for the same reason and gains
+        # the one version its range names.
+        "RETENTION.md": Counter({v_234: 1, v_233: 1, v_220: 1, v_235: 1, v_240: 1}),
         # The release checklist names the rollback tag for the release in flight.
         # Item 8's verification record points twice at the release whose notes
         # the evidence page now frames as a dated record rather than as the
@@ -224,8 +234,10 @@ def test_current_version_surfaces_match_runtime_authority():
         "docs/failure-modes.md": Counter({v_230: 3, v_231: 3, authority: 2}),
         "docs/rule-coverage.md": Counter({authority: 1}),
         # The counter definitions added 13 October 2026 name the release whose
-        # measurement they cite.
-        "docs/terminology.md": Counter({v_240: 1, v_235: 1, v_234: 1}),
+        # measurement they cite. The second v_240 is the contract applicability
+        # list, corrected on 15 October 2026: it said v_235 and above selected
+        # contract v3, which stopped being true when v4 arrived at v_240.
+        "docs/terminology.md": Counter({v_240: 2, v_235: 1, v_234: 1}),
         "docs/threat-model.md": Counter({v_234: 1}),
         "pyproject.toml": Counter({authority: 1}),
         "spec/evidence_contract.v1.json": Counter({v_220: 2}),
