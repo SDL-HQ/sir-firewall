@@ -490,3 +490,104 @@ def test_an_archive_holding_both_documents_is_a_failure(tmp_path):
     )
     assert completed.returncode == 2, completed.stdout + completed.stderr
     assert "both audit.json and baseline.json" in completed.stderr
+
+
+# --- 4. the shipped rules and the published schema agree on behaviour -------
+
+
+def _schema_rejects(record) -> bool:
+    return bool(list(Draft202012Validator(SCHEMA).iter_errors(record)))
+
+
+def _verifier_rejects(record) -> bool:
+    return bool(verifier._structural_defects(record))
+
+
+FIELD_MUTATIONS = (
+    # (field, value, what the schema says about it)
+    ("record_version", True, "const 1, and True == 1 in Python"),
+    ("record_version", 2, "const 1"),
+    ("record_version", "1", "const 1, not the string"),
+    ("run_id", "", "minLength 1"),
+    ("run_id", 17, "type string"),
+    ("provider", {"name": "xai"}, "type string"),
+    ("provider", "", "minLength 1"),
+    ("model", "", "minLength 1"),
+    ("pack_id", "", "minLength 1"),
+    ("suite_path", "", "minLength 1"),
+    ("timestamp_utc", "", "minLength 1"),
+    ("sir_firewall_version", "", "minLength 1"),
+    ("signing_key_id", "", "minLength 1"),
+    ("signature", "", "minLength 1"),
+    ("prompt_set_hash", "not-a-hash", "pattern sha256:<64 hex>"),
+    ("prompt_set_hash", "sha256:ABCDEF", "pattern, lower case and 64 wide"),
+    ("payload_hash", "not-a-hash", "pattern sha256:<64 hex>"),
+    ("mode", "audit", "const live"),
+    ("record_kind", "sir_audit_certificate", "const sir_ungated_baseline"),
+    ("prompt_set_hash_kind", "pack_hash", "enum of two"),
+)
+
+
+def test_the_shipped_field_rules_agree_with_the_published_schema(baseline_run):
+    """Behaviour, not sets. This is the test that was missing.
+
+    The required and forbidden sets were held equal to the schema and the
+    field rules were held by nothing, so the verifier accepted a record the
+    schema rejects on five fields: record_version true, an empty run_id, an
+    object for provider, an empty model, and "not-a-hash" for
+    prompt_set_hash. Found by an independent implementation review on
+    15 October 2026.
+
+    record_version is the one worth naming. The check was `!= RECORD_VERSION`
+    with RECORD_VERSION 1, and bool is a subclass of int with True == 1, so
+    `record_version: true` passed a check for 1.
+
+    Four mutations applied to tools/verify_baseline_record.py, each detected,
+    with the counts measured: dropping the field-rule pass, 2 failures (this
+    test and test_every_field_the_schema_constrains_has_a_shipped_rule);
+    accepting a bool where an integer is required, 1 failure (this test);
+    dropping the pattern check, 1 failure (this test); dropping the minLength
+    check, 1 failure (this test). The cases inside this test are a loop, so
+    one assertion failing stops it: the count is tests, not cases.
+    """
+    valid = dict(baseline_run["record"])
+    assert not _schema_rejects(valid), "the fixture's record does not satisfy its own schema"
+    assert not _verifier_rejects(valid), verifier._structural_defects(valid)
+
+    for field, value, why in FIELD_MUTATIONS:
+        mutated = dict(valid)
+        mutated[field] = value
+        assert _schema_rejects(mutated), f"the schema accepts {field}={value!r} ({why})"
+        assert _verifier_rejects(mutated), (
+            f"the verifier accepts {field}={value!r}, which the schema rejects ({why})"
+        )
+
+
+def test_every_field_the_schema_constrains_has_a_shipped_rule(baseline_run):
+    """A field the schema constrains and the verifier does not is the same gap.
+
+    Checked by construction rather than by listing: for each constrained
+    field, a value the schema rejects must also be rejected here. Fields whose
+    only constraint is "string" are exempt, because any JSON string satisfies
+    both.
+    """
+    valid = dict(baseline_run["record"])
+    exempt = set()
+    unenforced = []
+
+    for field, rules in SCHEMA["properties"].items():
+        if field in ("ledger", "counters") or field not in valid:
+            continue
+        if rules.get("type") == "string" and not rules.get("minLength") and not rules.get("pattern"):
+            exempt.add(field)
+            continue
+        probe = 0 if rules.get("type") == "string" else "not-an-integer"
+        mutated = dict(valid)
+        mutated[field] = probe
+        if _schema_rejects(mutated) and not _verifier_rejects(mutated):
+            unenforced.append(field)
+
+    assert not unenforced, f"the schema constrains these and the verifier does not: {unenforced}"
+    # The fields the schema leaves as a bare string. Listed so that a field
+    # losing its constraint shows up here rather than passing silently.
+    assert exempt == {"commit_sha", "ci_run_url", "pack_version", "repository"}, sorted(exempt)
