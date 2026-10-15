@@ -347,3 +347,27 @@ def test_the_published_page_names_the_verifier_for_each_document(tmp_path):
     assert "tools/verify_baseline_record.py docs/runs/run-record/baseline.json" in rendered
     assert "tools/verify_certificate.py docs/runs/run-gated/audit.json" in rendered
     assert "tools/verify_certificate.py docs/runs/run-record/" not in rendered
+
+
+def test_the_published_page_is_the_prepared_source_page(tmp_path):
+    """docs/runs/index.html is proofs/runs/index.html after preparation.
+
+    The published page is a copy, so it can drift: a change to the source page
+    that is not republished leaves the public surface rendering the old rules,
+    and nothing else here would notice. tests/test_live_result_semantics.py
+    holds the same property for the certificate pages.
+    """
+    prepared = tmp_path / "index.html"
+    prepared.write_text(PAGE.read_text(encoding="utf-8"), encoding="utf-8")
+    subprocess.run(
+        [sys.executable, str(ROOT / "tools" / "prepare_run_archive_page.py"), str(prepared)],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    )
+
+    published = ROOT / "docs" / "runs" / "index.html"
+    assert published.read_text(encoding="utf-8") == prepared.read_text(encoding="utf-8"), (
+        "docs/runs/index.html is not proofs/runs/index.html after preparation; "
+        "republish it with tools/prepare_run_archive_page.py"
+    )
