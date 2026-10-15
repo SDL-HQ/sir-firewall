@@ -397,3 +397,152 @@ def test_the_one_command_verifier_agrees_with_its_own_report(published_pair):
         report = json.loads(completed.stdout)
         assert report["exit_code"] == completed.returncode, (role, report["exit_code"])
         assert report["verdict"] in ("ESTABLISHED", "NOT ESTABLISHED", "FAILED"), role
+
+
+# --- the one-command verifier must not overstate what it established --------
+
+
+def _verify_evidence(archive, *extra):
+    completed = subprocess.run(
+        [sys.executable, str(ROOT / "tools/verify_evidence.py"), str(archive), "--json", *extra],
+        capture_output=True,
+        text=True,
+        cwd=str(ROOT),
+        check=False,
+    )
+    report = json.loads(completed.stdout) if completed.stdout.strip() else {}
+    states = {entry["property"]: entry for entry in report.get("properties", [])}
+    return completed.returncode, states
+
+
+def _verify_record(record, *extra, pubkey=None, cwd=None):
+    """The record verifier with the fixture's own key.
+
+    --key-registry is pointed at a path that does not exist, so registry
+    resolution finds nothing and the verifier falls back to --pubkey. Without
+    that, the published registry resolves signing_key_id "default" to the real
+    key and the fixture's signature fails, which leaves every
+    signature-dependent behaviour uncheckable.
+    """
+    argv = [sys.executable, str(ROOT / "tools/verify_baseline_record.py"), str(record)]
+    argv += ["--key-registry", "no/such/registry.json"]
+    if pubkey is not None:
+        argv += ["--pubkey", str(pubkey)]
+    return subprocess.run(
+        [*argv, *extra],
+        capture_output=True,
+        text=True,
+        cwd=str(cwd or ROOT),
+        check=False,
+    )
+
+
+def test_a_record_names_its_own_ledger_and_no_ledger_stops_that(published_pair):
+    """The fallback is right for a reviewer and wrong for a per-archive report.
+
+    tools/verify_baseline_record.py resolves the ledger the record names when
+    no --ledger is given, which is what a reviewer holding a record beside its
+    ledger needs. tools/verify_evidence.py reports on one archive directory,
+    and its baseline branch passed no ledger argument at all when the archive
+    had none, so the fallback applied and an archive with no ledger could be
+    reported on against a ledger elsewhere on disk. The certificate branch has
+    always passed --no-ledger for this reason. Found by an independent
+    implementation review on 15 October 2026.
+
+    This case proves the two halves of the mechanism: the fallback exists, and
+    --no-ledger suppresses it. That the one-command verifier now passes
+    --no-ledger is held by
+    test_the_one_command_verifier_passes_a_ledger_or_says_it_has_none, which is
+    an assertion about the call it builds rather than about a verdict, because
+    the fixture's key cannot be resolved through the published registry that
+    verifier insists on.
+
+    Mutation applied to tools/verify_baseline_record.py: dropping the
+    --no-ledger branch, 2 failures (this test and
+    test_the_record_verifier_can_check_a_document_without_a_ledger).
+    """
+    archive = published_pair["runs_dir"] / published_pair["baseline_run_id"]
+    record = archive / "baseline.json"
+    pubkey = published_pair["pubkey"]
+
+    # The path the record names is relative, so the fallback resolves it
+    # against the working directory rather than against the archive. Run from
+    # the tree the archive sits in, the record finds its ledger and the
+    # binding is established without any --ledger argument.
+    verified = _verify_record(record, pubkey=pubkey, cwd=published_pair["tmp_path"])
+    assert verified.returncode == 0, verified.stdout + verified.stderr
+    assert "bound to" in verified.stdout
+
+    # Run from anywhere else, the same record resolves nothing. Which ledger a
+    # record is checked against therefore depends on where the tool was run,
+    # which is the reason a per-archive report must say which it used.
+    elsewhere = _verify_record(record, pubkey=pubkey, cwd=ROOT)
+    assert elsewhere.returncode != 0
+    assert "was not found at" in elsewhere.stderr
+
+    # --no-ledger suppresses the resolution, and says what is then unestablished.
+    without = _verify_record(
+        record, "--no-ledger", pubkey=pubkey, cwd=published_pair["tmp_path"]
+    )
+    assert without.returncode == 0, without.stdout + without.stderr
+    assert "not established" in without.stdout
+    assert "bound to" not in without.stdout
+
+
+def test_the_one_command_verifier_passes_a_ledger_or_says_it_has_none(published_pair):
+    """Never neither, which is what let the record's own path be used.
+
+    Mutation applied to tools/verify_evidence.py: passing no ledger argument
+    when the archive has none, 1 failure (this test).
+    """
+    source = (ROOT / "tools/verify_evidence.py").read_text(encoding="utf-8")
+    # The baseline branch only, by function: the certificate branch in main()
+    # has its own copy of both of these and has always had them, so an
+    # unscoped search would pass on that copy.
+    baseline = source.split("def _verify_baseline_archive(", 1)[1].split("\ndef main(", 1)[0]
+    assert "verify_baseline_record.py" in baseline, "the slice is not the baseline branch"
+    assert "verify_certificate.py" not in baseline, "the slice reaches the certificate branch"
+
+    assert '["--ledger", str(ledger)] if ledger.is_file() else ["--no-ledger"]' in baseline
+    # The whole condition line, not the message: `if False and ...` keeps the
+    # message and disables the downgrade, and an earlier version of this
+    # assertion passed against exactly that.
+    assert '\n    if not ledger.is_file() and state == "established":\n' in baseline
+    assert "no ledger in this run directory" in baseline
+
+
+def test_signing_trust_is_unknown_after_a_public_key_fallback(published_pair):
+    """--allow-unregistered-key means the registry did not resolve the key.
+
+    The baseline branch reported "the signature verified against a key the
+    registry honours for this record" whenever the signature verified, whatever
+    route resolved the key. The certificate branch reports unknown and says
+    what it does establish: that someone signed it, not that SDL did.
+
+    Mutation applied to tools/verify_evidence.py: reporting established
+    whenever the signature verified, 1 failure (this test).
+    """
+    archive = published_pair["runs_dir"] / published_pair["baseline_run_id"]
+
+    code, states = _verify_evidence(
+        archive, "--allow-unregistered-key", "--pubkey", str(published_pair["pubkey"])
+    )
+
+    assert states["signing trust"]["state"] == "unknown", states["signing trust"]
+    assert "not that SDL did" in states["signing trust"]["detail"]
+
+
+def test_the_record_verifier_can_check_a_document_without_a_ledger(published_pair):
+    """--no-ledger, as the certificate verifier has, and it says what is missing."""
+    record = published_pair["runs_dir"] / published_pair["baseline_run_id"] / "baseline.json"
+    pubkey = published_pair["pubkey"]
+
+    completed = _verify_record(record, "--no-ledger", pubkey=pubkey)
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert "not established" in completed.stdout
+    assert "does not establish that no gate ran" in completed.stdout
+
+    both = _verify_record(record, "--no-ledger", "--ledger", str(record), pubkey=pubkey)
+    assert both.returncode != 0
+    assert "mutually exclusive" in both.stdout + both.stderr

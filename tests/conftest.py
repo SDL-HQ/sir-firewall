@@ -38,8 +38,22 @@ def _module(name, relative):
     return module
 
 
-def _signing_key_pem():
+def _signing_key_pem(public_out: Path | None = None):
+    """A throwaway signing key. With public_out, its public half is written too.
+
+    The public half is what lets a test verify a document this fixture signed:
+    the key is not in the published registry, so a verifier resolving through
+    the registry refuses it, which is correct and leaves signature-dependent
+    behaviour uncheckable without the key.
+    """
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    if public_out is not None:
+        public_out.write_bytes(
+            key.public_key().public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
+        )
     return key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
@@ -151,7 +165,8 @@ def published_pair(tmp_path, monkeypatch):
     """A real baseline record and a real certificate, both published."""
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("XAI_API_KEY", "test-key")
-    monkeypatch.setenv("SDL_PRIVATE_KEY_PEM", _signing_key_pem())
+    pubkey = tmp_path / "signing-key.pub.pem"
+    monkeypatch.setenv("SDL_PRIVATE_KEY_PEM", _signing_key_pem(public_out=pubkey))
 
     baseline_summary, record, record_flag = _run_half(
         tmp_path, monkeypatch, ungated_baseline=True
@@ -168,4 +183,5 @@ def published_pair(tmp_path, monkeypatch):
         "baseline_run_id": baseline_run_id,
         "gated_run_id": gated_run_id,
         "runs_dir": tmp_path / "proofs/runs",
+        "pubkey": pubkey,
     }

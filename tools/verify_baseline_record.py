@@ -235,6 +235,15 @@ def _parse_args() -> argparse.Namespace:
         "--ledger",
         help="The ledger this record binds. Defaults to the path the record names.",
     )
+    parser.add_argument(
+        "--no-ledger",
+        action="store_true",
+        help=(
+            "Check the document and its signature without a ledger. The binding, the "
+            "row classification and the counters are then not established, and the "
+            "success line says so. Mirrors tools/verify_certificate.py."
+        ),
+    )
     parser.add_argument("--pubkey", default=None, help=f"PEM public key (default: {DEFAULT_PUBKEY_PATH})")
     parser.add_argument("--key-registry", default=str(DEFAULT_KEY_REGISTRY))
     parser.add_argument(
@@ -346,6 +355,26 @@ def main() -> int:
         return SIGNATURE_FAILED
 
     # 4. The bound ledger.
+    if args.no_ledger:
+        if args.ledger:
+            print(
+                "ERROR: --no-ledger and --ledger are mutually exclusive.", file=sys.stderr
+            )
+            return NOT_A_BASELINE_RECORD
+        if not args.quiet:
+            print(
+                f"OK: {record['record_kind']} for run {record['run_id']} is structurally "
+                "valid and its signature verifies. No ledger was supplied, so the ledger "
+                "binding, the row classification and the counters are not established, "
+                "and this does not establish that no gate ran."
+            )
+        return 0
+
+    # The record names its own ledger path, so without an explicit --ledger a
+    # record can be verified against a ledger anywhere on disk. That is correct
+    # for a reviewer checking a record they hold beside its ledger, and wrong
+    # for a tool reporting on one archive directory, which is why
+    # tools/verify_evidence.py now always passes one or the other.
     ledger_path = Path(args.ledger or record["ledger"]["path"])
     if not ledger_path.is_file():
         print(
