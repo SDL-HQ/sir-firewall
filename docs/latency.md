@@ -123,12 +123,12 @@ Instrumented n = 500; instrumented total p50 = **386.9 µs**, versus **352.9 µs
 | `generic_safety` | `HIPAA-ISC-v1` | 1500 | 6000 |
 | `generic_safety` | `EU-AI-Act-ISC-v1` | 2000 | 8000 |
 | `generic_safety` | `PCI-DSS-ISC-v1` | 1200 | 4800 |
-| `hipaa_mental_health` | `HIPAA-ISC-v1` | 1200 | 4800 |
-| `hipaa_mental_health` | `EU-AI-Act-ISC-v1` | 1800 | 7200 |
-| `hipaa_mental_health` | `PCI-DSS-ISC-v1` | 1000 | 4000 |
-| `pci_payments` | `PCI-DSS-ISC-v1` | 900 | 3600 |
-| `pci_payments` | `EU-AI-Act-ISC-v1` | 1600 | 6400 |
-| `pci_payments` | `HIPAA-ISC-v1` | 1200 | 4800 |
+| `hipaa_template_reduced_limits` | `HIPAA-ISC-v1` | 1200 | 4800 |
+| `hipaa_template_reduced_limits` | `EU-AI-Act-ISC-v1` | 1800 | 7200 |
+| `hipaa_template_reduced_limits` | `PCI-DSS-ISC-v1` | 1000 | 4000 |
+| `pci_template_reduced_limits` | `PCI-DSS-ISC-v1` | 900 | 3600 |
+| `pci_template_reduced_limits` | `EU-AI-Act-ISC-v1` | 1600 | 6400 |
+| `pci_template_reduced_limits` | `HIPAA-ISC-v1` | 1200 | 4800 |
 | `support_operator_override` | `HIPAA-ISC-v1` | 1500 | 6000 |
 | `support_operator_override` | `EU-AI-Act-ISC-v1` | 2000 | 8000 |
 | `support_operator_override` | `PCI-DSS-ISC-v1` | 1200 | 4800 |
@@ -186,9 +186,11 @@ before reaching this common check.
 The generated table lists all 18 pack/template combinations across the six
 installed enforcement packs. There is no global 8,000-character limit: current
 effective ceilings range from 3,600 to 8,000 characters. Four packs share
-6,000/8,000/4,800-character HIPAA/EU/PCI limits; `hipaa_mental_health` uses
-4,800/7,200/4,000, while `pci_payments` uses 4,800/6,400/3,600 (shown in each
-pack's declared template order above).
+6,000/8,000/4,800-character HIPAA/EU/PCI limits; `hipaa_template_reduced_limits`
+uses 4,800/7,200/4,000, while `pci_template_reduced_limits` uses
+4,800/6,400/3,600 (shown in each pack's declared template order above). Those
+two were called `hipaa_mental_health` and `pci_payments` until 2.5.0; see
+`docs/terminology.md`.
 
 Despite its name, policy-pack `max_tokens` has **no effect on model output**.
 Provider output budgets are configured separately by the runner. Here the field

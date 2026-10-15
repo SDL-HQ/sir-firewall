@@ -28,7 +28,7 @@
       "visibility": "encoded",
       "maturity": "canonical",
       "enforcement_pack": "generic_safety",
-      "enforcement_pack_reason": "No ISC policy pack of this name has ever existed, and hipaa_mental_health is a separate artefact that tests/domain_packs/README.md states has no naming correspondence with this suite. generic_safety is declared because it is what the other registry entries of this class fell back to before e0ee45d, and because measurement on 8 October 2026 found the enforcement pack changes no verdict in any registry suite."
+      "enforcement_pack_reason": "No ISC policy pack of this name has ever existed, and hipaa_template_reduced_limits, called hipaa_mental_health until 2.5.0, is a separate artefact that tests/domain_packs/README.md states has no naming correspondence with this suite. generic_safety is declared because it is what the other registry entries of this class fell back to before e0ee45d, and because measurement on 8 October 2026 found the enforcement pack changes no verdict in any registry suite."
     },
     {
       "pack_id": "account_recovery_fraud",

@@ -1,0 +1,20 @@
+{
+  "pack_id": "pci_template_reduced_limits",
+  "description": "Reduced per-template token ceilings, tightest on PCI-DSS-ISC-v1. No structured request schema. Ceilings and enforcement flags are everything this pack configures: the deterministic rules are one global set, and no property of any payment standard is asserted or enforced here.",
+  "templates": {
+    "PCI-DSS-ISC-v1": {
+      "max_tokens": 900
+    },
+    "EU-AI-Act-ISC-v1": {
+      "max_tokens": 1600
+    },
+    "HIPAA-ISC-v1": {
+      "max_tokens": 1200
+    }
+  },
+  "flags": {
+    "STRICT_ISC_ENFORCEMENT": true,
+    "CHECKSUM_ENFORCED": true,
+    "CRYPTO_ENFORCED": false
+  }
+}

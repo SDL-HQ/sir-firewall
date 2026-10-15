@@ -102,7 +102,7 @@ The pack must load: a missing one makes every row a systemic reset. Which one lo
 
 **The packs are not inert, and the reason the table reads as it does is the corpus.** Measured 13 October 2026 and held by `tests/test_domain_packs_change_admissibility.py`: the six packs differ in exactly two declared properties, per-template token ceilings and the presence of a structured request schema. All six carry identical `flags`, and `STRICT_ISC_ENFORCEMENT` has no behavioural meaning. There are three distinct ceiling maps across the six packs.
 
-Those ceilings change verdicts. A request of 1050 tokens under template `PCI-DSS-ISC-v1` is admitted by `generic_safety`, which declares a ceiling of 1200, and refused by `pci_payments`, which declares 900, with reason `friction_limit_exceeded`. Same request, same rules, two verdicts, decided by the pack.
+Those ceilings change verdicts. A request of 1050 tokens under template `PCI-DSS-ISC-v1` is admitted by `generic_safety`, which declares a ceiling of 1200, and refused by `pci_template_reduced_limits`, which declares 900, with reason `friction_limit_exceeded`. Same request, same rules, two verdicts, decided by the pack.
 
 No registry prompt comes near any ceiling. The longest prompt in the eight active suites is 33 tokens and the smallest declared ceiling is 900, a factor of 27. That is why every per-prompt result above is identical under all six packs: it is a fact about the corpus, not about the packs. The heading of this section is scoped accordingly, and the test asserts the gap so that adding a long prompt to a suite surfaces as a change in what the measurement means rather than silently altering it.
 

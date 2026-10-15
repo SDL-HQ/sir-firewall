@@ -368,37 +368,37 @@
       "effective_character_limit": 4800
     },
     {
-      "pack": "hipaa_mental_health",
+      "pack": "hipaa_template_reduced_limits",
       "template": "HIPAA-ISC-v1",
       "max_tokens": 1200,
       "effective_character_limit": 4800
     },
     {
-      "pack": "hipaa_mental_health",
+      "pack": "hipaa_template_reduced_limits",
       "template": "EU-AI-Act-ISC-v1",
       "max_tokens": 1800,
       "effective_character_limit": 7200
     },
     {
-      "pack": "hipaa_mental_health",
+      "pack": "hipaa_template_reduced_limits",
       "template": "PCI-DSS-ISC-v1",
       "max_tokens": 1000,
       "effective_character_limit": 4000
     },
     {
-      "pack": "pci_payments",
+      "pack": "pci_template_reduced_limits",
       "template": "PCI-DSS-ISC-v1",
       "max_tokens": 900,
       "effective_character_limit": 3600
     },
     {
-      "pack": "pci_payments",
+      "pack": "pci_template_reduced_limits",
       "template": "EU-AI-Act-ISC-v1",
       "max_tokens": 1600,
       "effective_character_limit": 6400
     },
     {
-      "pack": "pci_payments",
+      "pack": "pci_template_reduced_limits",
       "template": "HIPAA-ISC-v1",
       "max_tokens": 1200,
       "effective_character_limit": 4800

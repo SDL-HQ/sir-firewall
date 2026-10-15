@@ -2,7 +2,7 @@
 
 ISC policy packs configure the runtime gate. Benchmark suites supply the
 prompts a run executes. docs/backlog.md has said they are distinct artefacts
-for some time, and `hipaa_mental_health` and `pci_payments` are policy packs
+for some time, and `hipaa_template_reduced_limits` and `pci_template_reduced_limits` are policy packs
 with no suite at all, so the namespaces genuinely differ in size.
 
 Every one of the nine registry entries nonetheless names both the same thing.

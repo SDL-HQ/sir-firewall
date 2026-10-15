@@ -8,7 +8,7 @@ Runnable. Enforced under the `generic_safety` ISC policy pack, declared as `enfo
 
 From `e0ee45d` on 16 April 2026 until 8 October 2026 this suite could not be run, for the reason described in `account_recovery_fraud.md`. It has never produced a published run. Current result: 25 prompts, 10 leaks, 0 harmless blocked.
 
-`generic_safety` is declared rather than `hipaa_mental_health` because, as recorded below and in `README.md`, those are different artefact classes with no naming correspondence. Measurement on 8 October 2026 found that the enforcement pack changes no verdict in any registry suite, so the choice does not affect this suite's result.
+`generic_safety` is declared rather than `hipaa_template_reduced_limits` because, as recorded below and in `README.md`, those are different artefact classes with no naming correspondence. Measurement on 8 October 2026 found that the enforcement pack changes no verdict in any registry suite, so the choice does not affect this suite's result.
 
 Earlier revisions of this document stated that such a run "completes and exits zero". That stopped being true when item 1 landed in `6852e05`: a run that content-evaluated nothing exits 2 and reports INCONCLUSIVE.
 
@@ -30,4 +30,4 @@ This pack provides an encoded benchmark surface for mental-health and clinical r
 
 - The encoding is deliberate; this document describes only suite shape, counts, categories, and expected outcomes.
 - `mental_health_clinical` is a registry-managed benchmark suite.
-- `hipaa_mental_health` is a related-in-subject ISC policy pack. They are different artefact classes, have no naming correspondence, and no mapping connects them.
+- `hipaa_template_reduced_limits`, called `hipaa_mental_health` until 2.5.0, is an ISC policy pack that reduces template ceilings. They are different artefact classes, have no naming correspondence, and no mapping connects them.

@@ -40,14 +40,14 @@ def test_selected_pack_id_controls_enforcement_context(tmp_path, monkeypatch):
     monkeypatch.setattr(
         rts,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite_path), "", "pci_payments", "1.0.0", "csv_single_turn_v1", "pci_payments"),
+        lambda **_kwargs: (str(suite_path), "", "pci_template_reduced_limits", "1.0.0", "csv_single_turn_v1", "pci_template_reduced_limits"),
     )
     monkeypatch.setattr(
         argparse.ArgumentParser,
         "parse_args",
         lambda _self: argparse.Namespace(
             mode="audit",
-            pack="pci_payments",
+            pack="pci_template_reduced_limits",
             suite=None,
             scenario=None,
             provider="xai",
@@ -62,7 +62,7 @@ def test_selected_pack_id_controls_enforcement_context(tmp_path, monkeypatch):
 
     ledger_path = tmp_path / "proofs" / "itgl_ledger.jsonl"
     first_entry = json.loads(ledger_path.read_text(encoding="utf-8").splitlines()[0])
-    assert first_entry["domain_pack"] == "pci_payments"
+    assert first_entry["domain_pack"] == "pci_template_reduced_limits"
 
 
 def test_run_summary_flags_use_effective_pack_context(tmp_path, monkeypatch):
@@ -75,14 +75,14 @@ def test_run_summary_flags_use_effective_pack_context(tmp_path, monkeypatch):
     monkeypatch.setattr(
         rts,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite_path), "", "pci_payments", "1.0.0", "csv_single_turn_v1", "pci_payments"),
+        lambda **_kwargs: (str(suite_path), "", "pci_template_reduced_limits", "1.0.0", "csv_single_turn_v1", "pci_template_reduced_limits"),
     )
     monkeypatch.setattr(
         argparse.ArgumentParser,
         "parse_args",
         lambda _self: argparse.Namespace(
             mode="audit",
-            pack="pci_payments",
+            pack="pci_template_reduced_limits",
             suite=None,
             scenario=None,
             provider="xai",
@@ -110,9 +110,9 @@ def test_run_summary_flags_use_effective_pack_context(tmp_path, monkeypatch):
     # is explicit rather than incidental.
     assert summary["content_evaluated"] == 0
     assert exit_code == 2
-    assert summary["selected_pack_id"] == "pci_payments"
-    assert summary["effective_pack_id"] == "pci_payments"
-    assert summary["pack_id"] == "pci_payments"
+    assert summary["selected_pack_id"] == "pci_template_reduced_limits"
+    assert summary["effective_pack_id"] == "pci_template_reduced_limits"
+    assert summary["pack_id"] == "pci_template_reduced_limits"
     assert summary["selected_pack_version"] == "1.0.0"
     assert summary["flags"] == {"CRYPTO_ENFORCED": True, "CHECKSUM_ENFORCED": False}
     assert summary["governance_scope"] == "deployment"
@@ -271,14 +271,14 @@ def test_red_team_suite_passes_selected_pack_identity_context_to_validate_sir(tm
     monkeypatch.setattr(
         rts,
         "_resolve_suite_and_pack",
-        lambda **_kwargs: (str(suite_path), "", "pci_payments", "1.0.0", "csv_single_turn_v1", "pci_payments"),
+        lambda **_kwargs: (str(suite_path), "", "pci_template_reduced_limits", "1.0.0", "csv_single_turn_v1", "pci_template_reduced_limits"),
     )
     monkeypatch.setattr(
         argparse.ArgumentParser,
         "parse_args",
         lambda _self: argparse.Namespace(
             mode="audit",
-            pack="pci_payments",
+            pack="pci_template_reduced_limits",
             suite=None,
             scenario=None,
             model="xai/grok-3-beta",
