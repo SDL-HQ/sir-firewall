@@ -199,7 +199,7 @@ Two causes, and they account for all 223.
 
 *118 carry no `itgl_row_count`.* The field postdates SIR 2.3.4, so the signed
 row count cannot be compared with the ledger. The terminal hash binding is
-checked for these and holds. Across the whole archive 269 certificates carry no
+checked for these and holds. Across the whole archive 268 certificates carry no
 `itgl_row_count`; the figure here is the subset that reaches exit 9 for that
 reason and no other.
 
@@ -303,9 +303,14 @@ benchmark.
 
 <!-- BEGIN GENERATED ARCHIVE FIGURES: e7-counts -->
 **Counts.** 54 published certificates carry `benchmark_execution.gate_mode` set
-to `ungated`, from 18 April 2026 to 23 September 2026. That marker is set by
-the issuer and is used here only to identify the affected records; no check is
-relaxed because of it. Appendix C lists them.
+to `ungated`, from 18 April 2026 to 23 September 2026. The marker is the
+issuer's own metadata and is the display key here, not what defines the set:
+these are the archives on which three independent signals agree, the marker, a
+published pair artefact naming the run as its baseline half, and the
+ungated-baseline digest on every row of its bound ledger. All three select the
+same 54, and a disagreement would stop these figures being generated rather
+than be resolved in the marker's favour. No check is relaxed because of any of
+them. Appendix C lists them.
 <!-- END GENERATED ARCHIVE FIGURES: e7-counts -->
 
 **Cause.** The baseline half of a benchmark ran through the certificate
@@ -504,8 +509,11 @@ All 39 of them:
 
 ## Appendix C. Published certificates carrying the legacy ungated marker
 
-These are the records described in E7. The marker is
-`benchmark_execution.gate_mode` set to `ungated`, which the issuer set.
+These are the records described in E7, listed under the display key the marker
+gives them: `benchmark_execution.gate_mode` set to `ungated`, which the issuer
+set. The set itself is not the marker's word. It is the archives on which three
+independent signals agree, and `tools/archive_verification_report.py` refuses to
+generate any of these figures if they ever disagree.
 
 <!-- BEGIN GENERATED ARCHIVE FIGURES: appendix-c -->
 - `20260418-152959-000000-gh24607820167-1ebb76ec1902`
