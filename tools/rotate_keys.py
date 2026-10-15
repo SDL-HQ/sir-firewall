@@ -65,28 +65,49 @@ def _new_keypair(key_size: int = DEFAULT_KEY_SIZE) -> tuple[str, str]:
     return priv_pem, pub_pem
 
 
+# Every signed document an archive can hold. Both carry signing_key_id and
+# run_id, and the anchor below is about the key rather than the kind.
+SIGNED_DOCUMENTS = ("audit.json", "baseline.json")
+
+
 def _last_trusted_run_id(archive_root: Path, key_id: str) -> str | None:
-    """Highest-numbered published run this key signed.
+    """Highest-numbered published run this key signed, in either document kind.
 
     Recorded when the key is retired, not when it is revoked. During an incident
     you will not know, or will not trust, which run was the last good one, and
     the answer stops being derivable the moment anyone can sign. Writing it down
     at rotation turns a later revocation into a one-field change.
+
+    Until 15 October 2026 this scanned audit.json alone. From SIR 2.5 a key also
+    signs ungated baseline records at baseline.json, so a key whose
+    highest-numbered published document was a record would have been anchored at
+    an earlier run than it actually signed. The published registry would then
+    state a last trusted run the key had gone past, and after revocation
+    key_registry.revocation_allows_proof would refuse that record for being
+    "after the last trusted run" when it was published before the revocation.
+
+    It fails closed rather than open, which is the right direction and not a
+    reason to leave it: the anchor is a published statement about custody, and a
+    legitimately pre-revocation record would stop verifying. A paired benchmark
+    publishes the baseline first, so the gated certificate usually carries the
+    higher number and the old scan happened to be right. Usually is not a
+    mechanism.
     """
     best_number, best_run_id = -1, None
-    for path in glob.glob(str(archive_root / "*" / "audit.json")):
-        try:
-            cert = json.loads(Path(path).read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        if cert.get("signing_key_id") != key_id:
-            continue
-        match = RUN_NUMBER_RE.search(str(cert.get("run_id") or ""))
-        if not match:
-            continue
-        number = int(match.group(1))
-        if number > best_number:
-            best_number, best_run_id = number, cert.get("run_id")
+    for name in SIGNED_DOCUMENTS:
+        for path in glob.glob(str(archive_root / "*" / name)):
+            try:
+                document = json.loads(Path(path).read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            if document.get("signing_key_id") != key_id:
+                continue
+            match = RUN_NUMBER_RE.search(str(document.get("run_id") or ""))
+            if not match:
+                continue
+            number = int(match.group(1))
+            if number > best_number:
+                best_number, best_run_id = number, document.get("run_id")
     return best_run_id
 
 

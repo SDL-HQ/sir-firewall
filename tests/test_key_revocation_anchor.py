@@ -220,3 +220,86 @@ def test_no_rotation_may_weaken_the_signing_key():
             f"active key {key_id} is {size}-bit, weaker than a retired key "
             f"at {strongest_retired}-bit"
         )
+
+
+def _rotate_keys_module():
+    import importlib.util
+
+    module_path = REPO / "tools" / "rotate_keys.py"
+    spec = importlib.util.spec_from_file_location("rotate_keys", module_path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _archive(root, run_id, document_name, key_id="k"):
+    import json
+
+    run_dir = root / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / document_name).write_text(
+        json.dumps({"run_id": run_id, "signing_key_id": key_id}), encoding="utf-8"
+    )
+
+
+def test_the_revocation_anchor_sees_a_baseline_record(tmp_path):
+    """A key also signs baseline records, and the anchor is about the key.
+
+    The anchor is the last run published before a key was revoked, and
+    revocation_allows_proof refuses any proof whose run number is above it.
+    Computed from certificates alone, a key whose highest-numbered published
+    document was an ungated baseline record would be anchored at an earlier
+    run than it actually signed. The registry would then publish a last
+    trusted run the key had gone past, and that record would be refused after
+    revocation for being after the anchor, although it was published before
+    the revocation.
+
+    It fails closed, which is the right direction and not a reason to leave
+    it. A paired benchmark publishes the baseline first, so the gated
+    certificate usually carries the higher number and the old scan happened to
+    be right.
+
+    Mutation applied to tools/rotate_keys.py: scanning audit.json alone, 1
+    failure (this test).
+    """
+    rotate = _rotate_keys_module()
+    archive_root = tmp_path / "runs"
+
+    _archive(archive_root, "20261015-000001-000000-gh100-aaaaaaaaaaaa", "audit.json")
+    _archive(archive_root, "20261015-000002-000000-gh200-bbbbbbbbbbbb", "baseline.json")
+
+    anchor = rotate._last_trusted_run_id(archive_root, "k")
+
+    assert anchor == "20261015-000002-000000-gh200-bbbbbbbbbbbb"
+
+
+def test_the_anchor_still_prefers_the_highest_run_whichever_kind_it_is(tmp_path):
+    """Order of the document kinds must not decide the anchor."""
+    rotate = _rotate_keys_module()
+    archive_root = tmp_path / "runs"
+
+    _archive(archive_root, "20261015-000009-000000-gh900-cccccccccccc", "audit.json")
+    _archive(archive_root, "20261015-000002-000000-gh200-bbbbbbbbbbbb", "baseline.json")
+
+    assert rotate._last_trusted_run_id(archive_root, "k") == (
+        "20261015-000009-000000-gh900-cccccccccccc"
+    )
+
+
+def test_the_anchor_ignores_documents_another_key_signed(tmp_path):
+    """Guard the guard: the scan is per key, in both kinds."""
+    rotate = _rotate_keys_module()
+    archive_root = tmp_path / "runs"
+
+    _archive(archive_root, "20261015-000001-000000-gh100-aaaaaaaaaaaa", "audit.json")
+    _archive(
+        archive_root,
+        "20261015-000009-000000-gh900-cccccccccccc",
+        "baseline.json",
+        key_id="other",
+    )
+
+    assert rotate._last_trusted_run_id(archive_root, "k") == (
+        "20261015-000001-000000-gh100-aaaaaaaaaaaa"
+    )
