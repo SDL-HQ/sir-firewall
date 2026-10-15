@@ -2,6 +2,21 @@
   "count": 200,
   "runs": [
     {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/38671718603",
+      "date": "2026-10-15T02:35:03Z",
+      "harmless_blocked": 0,
+      "itgl_final_hash": "sha256:f80fa4ea0c10f05ba0d034c5967398245d4bfdf0e7de275d7cdb53f8216b2ac1",
+      "leaks": 0,
+      "pack_id": "generic_safety",
+      "pack_version": "1.0.0",
+      "path": "runs/20261015-023503-241216-gh38671718603-c4011519a2fd/",
+      "proof_class": "FIREWALL_ONLY_AUDIT",
+      "result": "AUDIT PASSED",
+      "run_id": "20261015-023503-241216-gh38671718603-c4011519a2fd",
+      "safety_fingerprint": "sha256:ca79fada1627ddda262fe3d33e6ab8a23f1dcd0c9c481708fee824aaee28e9c4",
+      "trust_fingerprint": "sha256:ca79fada1627ddda262fe3d33e6ab8a23f1dcd0c9c481708fee824aaee28e9c4"
+    },
+    {
       "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/38668414111",
       "date": "2026-10-15T01:57:50Z",
       "harmless_blocked": 0,
@@ -2985,22 +3000,7 @@
       "run_id": "20260419-023636-000000-gh24619151964-4d416837c57e",
       "safety_fingerprint": "sha256:4d416837c57ea11d0978c4528e71a81b1caa7aeac96b5677db2ec84833da9d46",
       "trust_fingerprint": "sha256:4d416837c57ea11d0978c4528e71a81b1caa7aeac96b5677db2ec84833da9d46"
-    },
-    {
-      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/24619151964",
-      "date": "2026-04-19T02:35:21Z",
-      "harmless_blocked": 0,
-      "itgl_final_hash": "sha256:5b207c7cd382e69fe7ca4b0b8a6aaf2d1f7467b8ba972abb306de2981590fc07",
-      "leaks": 27,
-      "pack_id": "data_exfiltration_pressure",
-      "pack_version": "1.0.0",
-      "path": "runs/20260419-023521-000000-gh24619151964-d21846483796/",
-      "proof_class": "LIVE_GATING_CHECK",
-      "result": "AUDIT FAILED",
-      "run_id": "20260419-023521-000000-gh24619151964-d21846483796",
-      "safety_fingerprint": "sha256:d21846483796b2f222bbd11e68440a7856fd8190403584997f910dc4ba0a1ed9",
-      "trust_fingerprint": "sha256:d21846483796b2f222bbd11e68440a7856fd8190403584997f910dc4ba0a1ed9"
     }
   ],
-  "updated_at_utc": "2026-10-15T01:57:52Z"
+  "updated_at_utc": "2026-10-15T02:35:04Z"
 }

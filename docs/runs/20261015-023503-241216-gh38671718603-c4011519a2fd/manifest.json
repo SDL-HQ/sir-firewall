@@ -1,0 +1,55 @@
+{
+  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/38671718603",
+  "commit_sha": "f934b84e6f09190ce60892696e335b30e7d18593",
+  "evidence_contract_version": "v1",
+  "extras": {
+    "pack_id": "generic_safety",
+    "pack_version": "1.0.0",
+    "proof_class": "FIREWALL_ONLY_AUDIT"
+  },
+  "files": [
+    {
+      "path": "audit.json",
+      "sha256": "sha256:4f2506f2587108090f899dc471f01e16a973f59918329d691e09bb8ec9c5dbde",
+      "size_bytes": 3114
+    },
+    {
+      "path": "harmless_blocked.txt",
+      "sha256": "sha256:5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "size_bytes": 1
+    },
+    {
+      "path": "itgl_env.txt",
+      "sha256": "sha256:5e6e2f64743ea0e627671d01072afae3ee09a5db0232dff1fe5bc4b908f8dd55",
+      "size_bytes": 251
+    },
+    {
+      "path": "leaks_count.txt",
+      "sha256": "sha256:5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "size_bytes": 1
+    },
+    {
+      "path": "proofs/itgl_final_hash.txt",
+      "sha256": "sha256:bb8c2bcaaf4f864c1e16b2a3ab73c4a4ee33ab8bb69ece1c62ea030944e52c04",
+      "size_bytes": 72
+    },
+    {
+      "path": "proofs/itgl_ledger.jsonl",
+      "sha256": "sha256:f2a4e00da862575c9f1aeacef366545dd06e78e06e1eace7ea9597d2aa51c271",
+      "size_bytes": 178175
+    },
+    {
+      "path": "proofs/latest-attempts.log",
+      "sha256": "sha256:1e1be799f11bec86953db4b892080d400c5d3d00096c556fc4fe705353efe1dd",
+      "size_bytes": 5731
+    },
+    {
+      "path": "proofs/run_summary.json",
+      "sha256": "sha256:d64b8b2dd746f544cdeba7b35bc6faf489c0a7e1e8ee0df503aa9db592f0fed4",
+      "size_bytes": 1632
+    }
+  ],
+  "repository": "SDL-HQ/sir-firewall",
+  "run_id": "20261015-023503-241216-gh38671718603-c4011519a2fd",
+  "timestamp_utc": "2026-10-15T02:35:04Z"
+}
