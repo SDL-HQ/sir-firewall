@@ -119,3 +119,16 @@ def test_the_reader_does_not_carry_its_own_copy():
     source = (TOOLS / "read_certificate_result.py").read_text(encoding="utf-8")
     assert "from certificate_results import KNOWN_RESULTS" in source
     assert '"AUDIT FAILED"' not in source and '"INCONCLUSIVE"' not in source
+
+
+def test_the_monitor_summary_does_not_carry_its_own_copy():
+    """The monitor counts the declared results, and nothing it names itself.
+
+    Until 15 October 2026 it wrote the three count keys out as literals and
+    normalised the result with strip().upper(), so it both recognised a result
+    the markers refuse and silently dropped one they would accept.
+    """
+    source = (TOOLS / "generate_monitor_summary.py").read_text(encoding="utf-8")
+    assert "from certificate_results import" in source
+    for declared in RESULT_STATUS:
+        assert f'"{declared}"' not in source, declared
