@@ -29,7 +29,8 @@ Current retained artefacts are in version control under `proofs/` and `docs/`, i
   - `proofs/itgl_final_hash.txt`
 - per-run archive folders:
   - `proofs/runs/<run_id>/manifest.json`
-  - `proofs/runs/<run_id>/audit.json`
+  - exactly one signed document: `proofs/runs/<run_id>/audit.json` for a gated
+    run, or `proofs/runs/<run_id>/baseline.json` for an ungated baseline record
   - `proofs/runs/<run_id>/archive_receipt.json`
   - copied run evidence for that run
 - archive indexes:
@@ -147,7 +148,10 @@ In short: current retention supports technical review and cryptographic verifica
 
 Today, the following evidence survives in-repo when retained and committed:
 
-- signed certificate payloads and signatures (`latest-audit.json`, per-run `audit.json`)
+- signed document payloads and signatures: certificates (`latest-audit.json`,
+  per-run `audit.json`) and ungated baseline records (per-run `baseline.json`).
+  Each archive holds one of the two, and the manifest and receipt cover it
+  either way, so retention is by archive rather than by document kind
 - hash-linked run evidence (`itgl_ledger.jsonl`, `itgl_final_hash.txt`)
 - run manifests and archive receipts (`manifest.json`, `archive_receipt.json`)
 - pass/fail/inconclusive run-state surfaces (`latest-run.json` + per-run archives)

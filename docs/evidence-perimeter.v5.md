@@ -3,10 +3,51 @@
 Date (UTC): 2026-09-08
 
 ## Method note
-Paired benchmark means an ungated baseline run and an SIR-gated run executed against the same prompt set, then compared at result and prompt ID level.
+Paired benchmark means an ungated baseline run and an SIR-gated run executed against the same prompt set, then compared.
+
+From SIR 2.5 the comparison is not between two results. The ungated half
+produces a signed baseline record carrying no result and no proof class, and
+the gated half produces an audit certificate; a pair states what the gate did
+to the prompts the suite labels for blocking, counted from the two documents.
+Before 2.5 both halves were certificates and the comparison was read at result
+level, which is the error `docs/archive-errata.md` records: the baseline's
+result described a gate that was not in the path.
 
 ## Gate outcome versus run publication status
 Gate request status is the per-prompt deterministic decision: `PASS` or `BLOCKED`. Run publication status is the per-run aggregate: `AUDIT PASSED`, `AUDIT FAILED`, or `INCONCLUSIVE`. These are distinct levels.
+
+A third row status exists and is not a gate outcome. From SIR 2.5 an ungated
+baseline's ledger rows carry `FORWARDED`, meaning a provider call was attempted
+with that row's content. The gate returns `PASS` or `BLOCKED` and nothing else,
+so a `FORWARDED` row cannot have come from a gated run, and a ledger of them
+has no run publication status at all.
+
+## The two signed documents
+An archive holds exactly one: `audit.json`, an audit certificate for a gated
+run, or `baseline.json`, an ungated baseline record. A certificate is verified
+by `tools/verify_certificate.py` and a record by
+`tools/verify_baseline_record.py`; each establishes the document's type before
+anything else, so neither can report on the other kind.
+`tools/verify_evidence.py` on the archive directory dispatches on which
+document is there, and refuses an archive holding both or neither.
+
+What a verified baseline record establishes: that the document is of that kind,
+that it was signed by a key the registry still honours for it, and that its
+counters are what its ledger's rows support.
+
+What it does not establish, stated because a reader will otherwise supply it:
+
+- That no gate ran. The rows authenticate what the producer encoded. A producer
+  could write baseline-shaped rows for a run it gated, and nothing in the
+  verifier would know. What the type separation rules out is a baseline record
+  being read as an audit, and an audit's ledger being read as a baseline's.
+- That every provider call made is recorded. Calls are counted by the runner
+  that made them.
+- Anything about the provider's responses beyond the transport outcome.
+  Responses are not read back and not judged.
+- In a scenario, distinct content exposure. Each call carries the cumulative
+  history of earlier turns, so the counters count calls and turns.
+- Attribution beyond what the issuer recorded, as for certificates.
 
 ## INCONCLUSIVE
 A live run is `INCONCLUSIVE` when it did not produce complete provider evidence, even where gate metrics were otherwise clean. This is triggered when `provider_call_failures` is greater than zero, or when provider-call attempts were made with zero successes. `INCONCLUSIVE` is not a gate failure.
@@ -16,6 +57,12 @@ Provider complete means `provider_call_failures == 0`. For paired runs, baseline
 
 ## Pair status versus provider status
 `pair_status` indicates structural comparability of a baseline and gated pair. It does not by itself indicate that provider evidence completed. The baseline and gated provider-completeness fields must be checked separately.
+
+A pair publishes the gate's figures only when `pair_status` is
+`valid_complete`, which requires the gated run's result to be `AUDIT PASSED` or
+`AUDIT FAILED`. An `INCONCLUSIVE` gated run makes the pair
+`invalid_evidence_gap` and it carries no gate figures: a run whose own evidence
+is incomplete cannot be the measured side of a comparison.
 
 ## Controlled run selection
 GitHub workflow dispatch constrains provider, model, and pack selection through fail-closed preflight validation against the committed run-selection registry at `spec/execution/run_selection_registry.v1.json`. Local `sir run` and `sir benchmark run` execution instead authorises provider and model selection against the committed allowlist in `src/sir_firewall/model_selection.py`, with `red_team_suite.py` revalidating the selection before any provider call. Invalid combinations do not proceed on either path.
