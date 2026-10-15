@@ -267,17 +267,33 @@ def test_the_counters_bullet_agrees_in_number():
     )
     assert "certificates carry" in " ".join(several.split()), several
 
-    # absent == total is what selects the "None of the" wording, and
-    # absent + true + false == total always holds, so the list has to be the
-    # full set rather than this archive's current 292.
+    # absent == the denominator is what selects the "None of the" wording, and
+    # absent + true + false == that denominator always holds, so the list has
+    # to be the full set rather than this archive's current 292.
+    #
+    # The denominator is certificates, not archives. This read FIGURES["total"]
+    # and passed only because the bullet it exercises read the archive total
+    # too: the defect and the case built to read it agreed with each other. The
+    # first published baseline record on 15 October 2026 made the two differ,
+    # and the full claims-register re-examination on 16 October found the pair
+    # by adding the three states and comparing the sum against the denominator.
+    denominator = FIGURES["certificates_total"]
+    assert (
+        len(FIGURES["counters_absent"])
+        + len(FIGURES["counters_true"])
+        + len(FIGURES["counters_false"])
+        == denominator
+    ), "the three counter states no longer partition the certificates"
+
     none = REPORT.render_proof_qualifications(
         _figures_with(
             counters_true=[],
             counters_false=[],
-            counters_absent=[f"run-{n}" for n in range(FIGURES["total"])],
+            counters_absent=[f"run-{n}" for n in range(denominator)],
         )
     )
     assert "None of the" in none and "carries" in none, none
+    assert f"None of the {denominator} published certificates" in " ".join(none.split()), none
 
 
 def test_the_unbound_sentence_agrees_in_number():

@@ -8,24 +8,45 @@ it is that each one **remains true when the reader examines the failures**. A
 claim that is true only while nobody checks is the thing this register exists
 to catch.
 
-Last reviewed in full on 8 October 2026 at SIR 2.3.8, ending at commit
-`6f4d036`, with rows added on 15 October 2026 for the 2.5 evidence work. Those
-rows are dated in place; everything else was last examined at the date above.
+Last reviewed in full on 16 October 2026 for the 2.5 release, against the code
+and the published archive as they then stood. The previous full review was
+8 October 2026 at SIR 2.3.8, ending at commit `6f4d036`.
 
-**A full re-examination against 2.5 is outstanding, and this is the only place
-that says so.** Release checklist item 8 reports met, and what its tests check
-is that every row carries a status, cites something checkable, records its
-patent coverage, and says a decision is required where it is open. None of them
-checks that a row was re-examined against the code as it now stands. That is
-the right division: a test can hold the register's shape and cannot hold a
-reader's judgement. But it means "10 of 10" is not a statement that these
-claims have been re-verified at this release, and a reader should not take it
-as one.
+**What "reviewed in full" means here, and what it does not.** Every one of the
+16 rows was re-read against the thing it cites. Where the citation was
+executable it was executed: every test file and tool named below was run, the
+`sir packs list` output was produced rather than described, and every figure
+drawn from the archive was recomputed from `docs/archive-figures.json` and its
+three counter states added to check they partition the certificates. Where the
+citation was a live external surface it was fetched. Where it was a judgement
+about the design it was re-read, and this note says which rows those were.
 
-The re-examination is deliberately held until after the first paired benchmark
-is dispatched. 2.5 changes what the evidence is, and the dispatch moves the
-published figures again; re-reading every claim against figures that are about
-to change would have to be done twice. It is recorded in `docs/backlog.md`.
+One defect was found and fixed. The generated bullet about
+`counters_checked_against_ledger` gave its denominator as the number of
+archives in a sentence about certificates, and those are different sets: the
+three counter states partition the certificates, and the archive is larger by
+the published baseline records. Adding the three states and comparing the sum
+against the stated denominator is what exposed it. This is the defect corrected
+in the neighbouring bullet on 15 October 2026, surviving one function away in
+`_counters_bullet`, with a case in `tests/test_published_archive_figures.py`
+built on the same wrong denominator, so the test and the defect agreed with
+each other and neither showed. Both are corrected, and
+`tests/test_claims_register.py` now renders the real generators against a
+figures dict whose two totals differ by a number appearing nowhere else, so a
+sentence about certificates that reaches the archive total by any route fails,
+and the reverse for a sentence about archives.
+
+**One row could not be re-verified: the GitHub repository About description.**
+It is a surface outside the repository and this session had no GitHub access,
+so the row's claim about what that text now says rests on the 8 October check
+and not on a 16 October one. Recorded here rather than counted as reviewed.
+
+**Release checklist item 8 reports met, and that is still not a statement that
+these claims were re-verified.** Its tests check that every row carries a
+status, cites something checkable, records its patent coverage, and says a
+decision is required where it is open. A test can hold the register's shape and
+cannot hold a reader's judgement. The date above is the judgement; the checklist
+is the shape.
 
 The release item this register serves stays **open** while it exists, and
 deliberately so. The condition is about the claims rather than about the
@@ -39,6 +60,39 @@ wordings and the repository About description were corrected on 8 October, the
 website homepage, the last of them deployed on 12 October. None of the three
 was decided in the sense the
 decisions list meant; all three were corrected.
+
+## What each row was checked against, 16 October 2026
+
+How the row was re-verified, so a reader can tell an executed check from a
+read one. "Executed" means the named artefact was run in this pass and its
+result observed, not that a test exists.
+
+| Row | Checked by | Result |
+|---|---|---|
+| Deterministic pre-inference gate, rules-only | executed `tests/test_no_model_in_the_decision_path.py`; independently measured that every import under `src/sir_firewall/` resolves to the standard library or `cryptography`, across all tracked Python files | holds |
+| "for a given policy" reads rule set | executed `tests/test_claims_register.py` against `docs/threat-model.md`; the 2.5 pack rename changed two pack names and no pack configuration, so the measurement is unaffected | holds |
+| Configuration enforces what it claims | executed the three register tests that hold the corrected wording and its travelling limit | holds |
+| Archive always contains artefacts for passes and failures | generated region, regenerated from `docs/archive-figures.json` in this pass | holds |
+| A proof-producing system | generated region; the three counter states were added and compared against the stated denominator | **one defect, fixed**: the counters bullet gave the archive count as the denominator in a sentence about certificates |
+| `sir packs list` | executed the command; all eight listed entries declare an enforcement pack in their own column | holds |
+| A certificate's `result` mixes two axes | re-read against `_compute_audit_result` and `docs/backlog.md`; still an open contract change, still described accurately | holds |
+| An ungated baseline published as an audit | executed `tests/test_the_54_are_an_agreement_of_three_signals.py`; the three signals still agree at 54 | holds |
+| Zero downstream calls on failure paths | executed `tests/test_no_downstream_call_without_approval.py` | holds |
+| "approved calls preserve the evaluated content" | executed the register test holding both readings | holds |
+| Deterministic and explainable | executed; the `litellm` half re-measured directly, three call sites in `red_team_suite.py`, declared in the `live` extra and absent from `dependencies`, which the 2.5 dependency change strengthens rather than weakens | holds |
+| The boundaries list | executed `tests/test_runnable_suites.py`; `t014_hypothetical_safe_request` is still blocked and the suite still reports `harmless_blocked: 1` of 5, rate 0.2, `jailbreaks_leaked: 4` of 10 | holds |
+| The assurance kit's worked example | executed `tests/test_canonical_example_run.py` | holds |
+| The GitHub repository About description | **not re-verified.** No GitHub access in this session; the row rests on the 8 October check | outstanding |
+| The website homepage uncovered-row claim | fetched the live page on 16 October 2026. It reads "For the EU AI Act pack, the published coverage JSON names 26 uncovered rows", and `docs/coverage.json` gives `eu_ai_act_compliance_pressure` exactly 26 full-gate uncovered rows. It is also the largest of the eight pack counts, so the page names the worst case rather than a flattering one | holds |
+| "Seven models, two providers, identical failure sets" | re-read; the external post remains uncorrected and this register continues to say so | holds as recorded |
+
+Two citations in this register resolve to nothing a repository reader can
+open: `claude/patent-coverage-boundary-2026-10-05.md`, which the Coverage
+column says it follows, and `claude/website-changes-queued.md`. Both are
+working documents outside the repository. For a register whose condition is
+that it survives a reader who goes looking, a pointer that reader cannot follow
+is a gap, and it is recorded in `docs/backlog.md` rather than resolved here,
+because publishing them is a disclosure decision and not an editorial one.
 
 ## How to read this
 
@@ -185,7 +239,7 @@ reader finds on inspection:
   They are not invalid; signature, binding and custody verify. No contract
   governs their structure. Now disclosed by behaviour:
   `tools/verify_evidence.py` reports it on every pre-2.2.0 archive.
-- **45 of the 339 published certificates carry
+- **45 of the 337 published certificates carry
   `counters_checked_against_ledger`: 45 true and 0 false.** The field arrives
   with evidence contract v4 at SIR 2.4.0. The remaining 292 do not carry it,
   and `tools/verify_evidence.py` reports their signed counters as `unknown`,

@@ -466,3 +466,93 @@ def test_the_resolved_patent_condition_is_recorded():
     assert "enforced_policy_matches_signed_policy" in contract["required"], (
         "the field no longer survives v4; the register's patent note is now wrong"
     )
+
+
+def _report_module():
+    name = "archive_verification_report"
+    spec = importlib.util.spec_from_file_location(
+        name, ROOT / "tools/archive_verification_report.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules.setdefault(name, module)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_a_generated_sentence_about_certificates_counts_certificates():
+    """Archives and certificates are different sets, and both are published.
+
+    The first published baseline record on 15 October 2026 made the archive
+    larger than the set of certificates, and three generated figures were found
+    calling a record a certificate. `render_proof_qualifications` was corrected
+    then. `_counters_bullet`, one function away, was not, so the register read
+    "43 of the 337 published certificates" while 43 true plus 0 false plus 292
+    absent is 335. Found on 16 October 2026 by adding the three states and
+    comparing the sum against the denominator, which is the check this test now
+    performs on every release.
+
+    This renders the real functions against a figures dict whose two totals
+    differ by a number appearing nowhere else, rather than reading the source
+    for the name of a key. A renderer that hardcoded the right answer, or took
+    the archive total by another route, fails here too.
+
+    Mutations measured on 16 October 2026, each run against the full file:
+
+    - `_counters_bullet` back to `figures["total"]`: 1 failed.
+    - `render_proof_qualifications` back to `figures["total"]`: 1 failed.
+    - `render_archive_total` switched to `certificates_total`, so a sentence
+      about runs counts certificates: 1 failed.
+
+    Each is caught here and only here. `test_the_counter_states_sum_to_the_
+    denominator` reads the committed figures and the committed register, so it
+    catches a wrong denominator that has been published rather than one still
+    in the renderer. The two are complementary: this test fails on the code,
+    that one fails on the document, and a release needs both because the
+    document is only regenerated when someone runs the tool.
+    """
+    module = _report_module()
+    figures = json.loads((ROOT / "docs/archive-figures.json").read_text(encoding="utf-8"))
+
+    # A gap no real figure can collide with, so a match is the key and not a
+    # coincidence of the current archive.
+    certificates_total = figures["certificates_total"]
+    archive_total = certificates_total + 4919
+    figures = dict(figures, total=archive_total, certificates_total=certificates_total)
+
+    rendered = module.rendered_regions(figures)["docs/claims-register.md"]
+
+    for region, text in rendered.items():
+        flat = re.sub(r"\s+", " ", text)
+        for sentence in re.split(r"(?<=\.) ", flat):
+            if "published certificates" in sentence:
+                assert str(archive_total) not in sentence, (
+                    f"{region} counts archives in a sentence about certificates: "
+                    f"{sentence[:160]}"
+                )
+            if "runs including failed" in sentence or "published run archives" in sentence:
+                assert str(certificates_total) not in sentence, (
+                    f"{region} counts certificates in a sentence about archives: "
+                    f"{sentence[:160]}"
+                )
+
+    counters = rendered["proof-qualifications"]
+    assert f"of the {certificates_total} published certificates" in re.sub(
+        r"\s+", " ", counters
+    ), "the counters bullet no longer names the certificate total"
+
+
+def test_the_counter_states_sum_to_the_denominator():
+    """Absent, false and true partition the certificates. Nothing else does."""
+    figures = json.loads((ROOT / "docs/archive-figures.json").read_text(encoding="utf-8"))
+    states = sum(
+        len(figures[key])
+        for key in ("counters_absent", "counters_false", "counters_true")
+    )
+
+    assert states == figures["certificates_total"], (
+        f"the three counter states total {states} against "
+        f"{figures['certificates_total']} certificates and "
+        f"{figures['total']} archives; the denominator in the register follows "
+        "this sum, so a mismatch means one of them is counting the wrong set"
+    )
+    assert f"{len(figures['counters_true'])} of the {figures['certificates_total']} published certificates" in FLAT
