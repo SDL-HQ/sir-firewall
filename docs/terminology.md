@@ -66,6 +66,49 @@ The filed patent specification does not use the word firewall anywhere and names
 no repository or URL, so none of this has any bearing on the patent, and a
 repository rename would carry no patent consequence.
 
+## Two policy packs renamed in 2.5.0
+
+Decided 13 October 2026, done in 2.5.0.
+
+| Until 2.4.0 | From 2.5.0 |
+|---|---|
+| `pci_payments` | `pci_template_reduced_limits` |
+| `hipaa_mental_health` | `hipaa_template_reduced_limits` |
+
+An ISC policy pack configures which templates are admissible, the per-template
+token ceiling, the enforcement flags, and whether a structured request schema is
+declared. It does not change which phrases the gate blocks: the deterministic
+rules are one global set. So a pack named for a payment standard or for a class
+of clinical workload claimed a property it has no mechanism to deliver, and a
+reader meets an identifier before any perimeter document. The new names state
+the one thing each pack does, and name the ISC template it clamps hardest.
+`hipaa_mental_health` additionally shared a subject with the
+`mental_health_clinical` benchmark suite while having no connection to it, which
+`tests/domain_packs/README.md` had to say out loud.
+
+The rename was cheap for a reason that was measured rather than assumed. Neither
+identifier appears in any published archive: every published run used
+`generic_safety`, `data_exfiltration_pressure`, `eu_ai_act_compliance_pressure`
+or `support_operator_override`. `policy_hash` is computed over the baseline
+policy document and not over the pack directory, so no other pack's hash moves.
+There is no dual-naming obligation of the kind the proof class name carries,
+because no archive displays either name.
+
+The other four pack names are not renamed, and the reason is the opposite
+measurement: they appear in 1,082, 151, 194 and 130 published archives
+respectively, as `pack_id`, `selected_pack_id` and `effective_pack_id` inside
+signed certificates. Renaming those is the permanent dual-naming cost recorded
+above for `FIREWALL_ONLY_AUDIT`, not a one-time migration.
+
+That leaves a naming defect this rename does not fix, recorded rather than
+acted on. `generic_safety`, `data_exfiltration_pressure` and
+`support_operator_override` are byte-identical in configuration: the same
+ceilings, the same flags and the same structured request schema. Three evocative
+names describe one configuration. `eu_ai_act_compliance_pressure` differs from
+them in exactly one respect, declaring no structured schema. Six installed packs
+are therefore four distinct configurations, and the three identical ones promise
+threat-specific behaviour they do not have. `docs/backlog.md` carries this.
+
 ## The two signed documents
 
 Added 15 October 2026, with SIR 2.5. Until then an archive held one kind of

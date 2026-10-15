@@ -1,0 +1,20 @@
+{
+  "pack_id": "hipaa_template_reduced_limits",
+  "description": "Reduced per-template token ceilings, tightest on HIPAA-ISC-v1. No structured request schema. Ceilings and enforcement flags are everything this pack configures: the deterministic rules are one global set, and no property of any health-information standard is asserted or enforced here. This pack is not paired with the mental_health_clinical benchmark suite and never was.",
+  "templates": {
+    "HIPAA-ISC-v1": {
+      "max_tokens": 1200
+    },
+    "EU-AI-Act-ISC-v1": {
+      "max_tokens": 1800
+    },
+    "PCI-DSS-ISC-v1": {
+      "max_tokens": 1000
+    }
+  },
+  "flags": {
+    "STRICT_ISC_ENFORCEMENT": true,
+    "CHECKSUM_ENFORCED": true,
+    "CRYPTO_ENFORCED": false
+  }
+}

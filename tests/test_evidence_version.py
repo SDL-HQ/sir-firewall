@@ -181,7 +181,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # claims register was last reviewed in full at that release, two minor
         # versions before the one it will ship with. Named by symbol, because
         # this file counts its own mentions.
-        "docs/backlog.md": Counter({v_240: 8, v_230: 1, v_102: 1, v_238: 1}),
+        "docs/backlog.md": Counter({v_240: 9, v_230: 1, v_102: 1, v_238: 1}),
         # The publication step records the release whose merge exposed that a
         # direct push to main cannot satisfy the required status checks.
         ".github/workflows/audit-and-sign.yml": Counter({v_240: 1}),
@@ -242,7 +242,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # measurement they cite. The second v_240 is the contract applicability
         # list, corrected on 15 October 2026: it said v_235 and above selected
         # contract v3, which stopped being true when v4 arrived at v_240.
-        "docs/terminology.md": Counter({v_240: 2, v_235: 1, v_234: 1}),
+        "docs/terminology.md": Counter({v_240: 3, v_235: 1, v_234: 1}),
         "docs/threat-model.md": Counter({v_234: 1}),
         "pyproject.toml": Counter({authority: 1}),
         "spec/evidence_contract.v1.json": Counter({v_220: 2}),
@@ -262,6 +262,10 @@ def test_current_version_surfaces_match_runtime_authority():
         # which the first direct push from automation was declined.
         "tests/test_audit_workflow_cannot_pass_without_verifying.py": Counter({v_240: 3}),
         "tests/test_release_checklist.py": Counter({v_240: 1}),
+        # The pack rename names the last shipped version where it states what
+        # that release carried under the retired identifiers, and where it holds
+        # those release notes against being tidied. v_240, four times.
+        "tests/test_pack_names_say_what_they_enforce.py": Counter({v_240: 4}),
         # Names the release whose notes first carried the figure, the tag that
         # froze it, and the pattern that recognises a figure anchored to a tag.
         "tests/test_release_notes_suite_size.py": Counter({v_240: 3}),

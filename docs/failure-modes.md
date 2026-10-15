@@ -51,8 +51,8 @@ estimate. Current effective hard character ceilings are:
 | `data_exfiltration_pressure` | 6,000 | 8,000 | 4,800 |
 | `eu_ai_act_compliance_pressure` | 6,000 | 8,000 | 4,800 |
 | `generic_safety` | 6,000 | 8,000 | 4,800 |
-| `hipaa_mental_health` | 4,800 | 7,200 | 4,000 |
-| `pci_payments` | 4,800 | 6,400 | 3,600 |
+| `hipaa_template_reduced_limits` | 4,800 | 7,200 | 4,000 |
+| `pci_template_reduced_limits` | 4,800 | 6,400 | 3,600 |
 | `support_operator_override` | 6,000 | 8,000 | 4,800 |
 
 The multiplication assumes roughly four characters per token. That is an
