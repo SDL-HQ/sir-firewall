@@ -103,6 +103,7 @@
       "required": [
         "path",
         "chain_version",
+        "row_version",
         "row_count",
         "itgl_final_hash"
       ],
@@ -114,6 +115,10 @@
         "chain_version": {
           "const": 2,
           "description": "Chain version 2 covers a row's contents in its own hash. A version 1 row's status is not evidence of anything, so a baseline record cannot be issued over one."
+        },
+        "row_version": {
+          "const": 1,
+          "description": "The baseline row format every row of the bound ledger is in. Declared here and carried on each row, both covered by the chain whose terminal hash this document signs, and the verifier refuses a ledger whose rows disagree with this value. A future row format bumps both, so a verifier built for one version refuses the other instead of reading it by the wrong rules."
         },
         "row_count": {
           "type": "integer",

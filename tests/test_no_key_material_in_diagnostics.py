@@ -313,6 +313,7 @@ def _baseline_record(tmp_path, key, run_id="20260405-040322-000000-aed41b22e195"
         "ledger": {
             "path": "proofs/itgl_ledger.jsonl",
             "chain_version": 2,
+            "row_version": 1,
             "row_count": 1,
             "itgl_final_hash": "sha256:" + "2" * 64,
         },

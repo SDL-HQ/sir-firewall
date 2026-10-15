@@ -45,6 +45,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "tools"))
 # this; tests/test_tools_run_from_a_clone.py covers this file too.
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 from itgl import (  # noqa: E402
+    BASELINE_ROW_VERSION,
     CURRENT_CHAIN_VERSION,
     FORWARDED_STATUS,
     compute_ledger_hash,
@@ -1115,6 +1116,17 @@ def main() -> None:
                 entry["turn_index"] = i
                 entry["turn_id"] = rid or ""
                 entry["role"] = role
+
+            # The baseline row format's version, on baseline rows only. A
+            # gated row does not carry it: the 305 published certificates'
+            # rows are a format of their own and adding a field to them would
+            # change nothing about how they are read while making every
+            # archived row shape disagree with the current one.
+            #
+            # Attached before the hash below, like every other descriptive
+            # field, so the chain covers it.
+            if args.ungated_baseline:
+                entry["row_version"] = BASELINE_ROW_VERSION
 
             # Every descriptive field is present, so the chain now covers all
             # of them. The two chain fields are attached afterwards because

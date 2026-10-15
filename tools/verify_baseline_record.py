@@ -61,6 +61,7 @@ from document_signing import payload_hash as compute_payload_hash  # noqa: E402
 from document_signing import signing_payload  # noqa: E402
 from itgl import (  # noqa: E402
     CHAIN_VERSION_V2,
+    SUPPORTED_BASELINE_ROW_VERSIONS,
     LedgerVerificationError,
     baseline_ledger_defects,
     derive_counters,
@@ -143,7 +144,7 @@ FORBIDDEN_FIELDS = (
     "audit",
 )
 
-LEDGER_FIELDS = ("path", "chain_version", "row_count", "itgl_final_hash")
+LEDGER_FIELDS = ("path", "chain_version", "row_version", "row_count", "itgl_final_hash")
 
 COUNTER_FIELDS = (
     "prompts_forwarded",
@@ -199,6 +200,7 @@ FIELD_RULES: Dict[str, tuple] = {
 LEDGER_FIELD_RULES: Dict[str, tuple] = {
     "path": (str, 1, None, None),
     "chain_version": (int, None, None, CHAIN_VERSION_V2),
+    "row_version": (int, None, None, None),
     "row_count": (int, None, None, None),
     "itgl_final_hash": (str, None, SHA256, None),
 }
@@ -278,6 +280,21 @@ def _structural_defects(record: Dict[str, Any]) -> List[str]:
             defects.append(
                 "A chain version 1 row's status is not evidence, so the bound ledger must "
                 f"be chain version {CHAIN_VERSION_V2}"
+            )
+        # Membership, not equality against the version this release writes. A
+        # later release that reads two row formats extends the tuple and this
+        # check needs no edit, which is the whole point of the field: a
+        # verifier refuses a format it does not read instead of applying the
+        # wrong rules to it.
+        declared_rows = ledger.get("row_version")
+        if (
+            not isinstance(declared_rows, bool)
+            and isinstance(declared_rows, int)
+            and declared_rows not in SUPPORTED_BASELINE_ROW_VERSIONS
+        ):
+            defects.append(
+                f"the record declares baseline row version {declared_rows}, which this "
+                f"release does not read; it reads {list(SUPPORTED_BASELINE_ROW_VERSIONS)}"
             )
 
     counters = record.get("counters")
@@ -493,6 +510,32 @@ def main() -> int:
         )
         for defect in row_defects[:5]:
             print(f"  - {defect}", file=sys.stderr)
+        return LEDGER_BINDING_FAILURE
+
+    # 5b. The format the document declares is the format its rows are in.
+    #
+    # Unreachable while exactly one row version is supported, and deliberately
+    # written anyway. The check above refuses a document declaring a version
+    # this release does not read, and baseline_ledger_defects refuses a row at
+    # one, so with a single supported version the two cannot disagree. The
+    # moment SUPPORTED_BASELINE_ROW_VERSIONS holds two, a document declaring
+    # one of them over rows in the other is accepted by both checks and this
+    # is the only thing between it and a figure computed by the wrong rules.
+    #
+    # tests/test_baseline_record.py asserts that it is unreachable today, and
+    # that assertion fails when a second version is added, so the case is
+    # written then rather than remembered.
+    declared_row_version = record["ledger"]["row_version"]
+    disagreeing = sorted(
+        {row.get("row_version") for row in rows if row.get("row_version") != declared_row_version},
+        key=repr,
+    )
+    if disagreeing:
+        print(
+            f"ERROR: ledger binding failed: the record declares baseline row version "
+            f"{declared_row_version!r} and the ledger carries rows at {disagreeing!r}",
+            file=sys.stderr,
+        )
         return LEDGER_BINDING_FAILURE
 
     # 6. Counters, recomputed.

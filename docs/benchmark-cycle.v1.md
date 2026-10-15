@@ -34,7 +34,11 @@ carries no result and no proof class, because a run with no gate in it has
 nothing to say about the gate. Its rows record status `FORWARDED`, which means
 a provider call was attempted with that row's content and is not a gate
 decision; the gate returns only `PASS` or `BLOCKED`, so a `FORWARDED` row
-cannot come from a gated run.
+cannot come from a gated run. Each row also carries `row_version`, the baseline
+row format it is in, which the record declares once in its `ledger` block; a
+verifier refuses a format it does not read rather than applying this format's
+rules to it. `docs/terminology.md` says why it is covered by the chain and not
+by the per-prompt digest.
 
 **What the ungated half is for.** Stated here because the documents described
 what a baseline record is before they said why one is run, and the first
