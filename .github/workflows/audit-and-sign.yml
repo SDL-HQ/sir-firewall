@@ -1582,9 +1582,16 @@ jobs:
 
           echo "Opened $pr_url"
 
-          if gh pr merge --squash --auto "$pr_url"; then
-            echo "Auto-merge enabled; the benchmark publishes once the required checks pass."
-          else
-            echo "NOTE: auto-merge could not be enabled, so $pr_url is open and awaiting a merge."
-            echo "NOTE: the benchmark itself is complete. Publication is pending, not failed."
-          fi
+          # Deliberately no auto-merge on this job, unlike the audit job above.
+          # An ordinary audit publishes a row that looks like 300 others. A
+          # benchmark publishes a pair, and both pairs published on 15 October
+          # exposed defects in how the repository describes a pair: three
+          # figures counted a baseline record as a certificate, two readers
+          # assumed one document kind, the documented INCONCLUSIVE rule was
+          # untrue of a run that also leaked, and the one-command check read
+          # two files describing different runs. Each was caught by a human
+          # reading the evidence while the checks were still running, and twice
+          # auto-merge beat that reading. The race is the reason, not a doubt
+          # about the ruleset: PR #417 merged with nine checks passed.
+          echo "NOTE: $pr_url is open and awaiting a merge. This job does not arm auto-merge."
+          echo "NOTE: the benchmark itself is complete. Publication is pending, not failed."

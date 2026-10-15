@@ -278,27 +278,79 @@ def test_the_job_can_open_a_pull_request(job_name, job, step):
     assert permissions.get("contents") == "write"
 
 
+# Mutations measured on 16 October 2026, each run against the full file:
+#
+# - re-arm auto-merge on the benchmark job: the benchmark case of
+#   test_the_job_arms_auto_merge_only_where_the_policy_says_so fails (1 failed).
+# - disarm auto-merge on the audit job too: the audit case of the same test
+#   fails (1 failed).
+# - drop the benchmark job's "does not arm auto-merge" line, so an open pull
+#   request reads as a failure to merge: the benchmark case fails (1 failed).
+# - flip the policy map: both cases fail (2 failed).
+# - rename a job out of the policy map:
+#   test_the_auto_merge_policy_names_every_publishing_job and the benchmark
+#   case fail (2 failed).
+#
+# Which publishing job arms auto-merge, and why they differ. Decided
+# 16 October 2026. The audit job publishes a row that looks like 300 others and
+# should not need a person. The benchmark job publishes a pair, and both pairs
+# published on 15 October exposed defects in how this repository describes a
+# pair; each was caught by a person reading the evidence while the checks were
+# still running, and twice auto-merge won that race. Changing this map is a
+# policy change and should read as one.
+ARMS_AUTO_MERGE = {"audit-and-sign": True, "benchmark-dispatch": False}
+
+
+def test_the_auto_merge_policy_names_every_publishing_job():
+    """Guard the guard. A renamed job must not fall out of the policy."""
+    assert set(ARMS_AUTO_MERGE) == set(PUBLICATION_IDS), sorted(PUBLICATION_IDS)
+
+
 @PUBLICATION_CASE
 def test_a_pending_publication_is_reported_rather_than_hidden(job_name, job, step):
-    """Auto-merge may be unavailable, and then nothing publishes.
+    """Nothing publishes until a merge, however the merge is arranged.
 
     That is acceptable only if it is visible. A step that opened a pull request
     nobody merges and said nothing would be the same shape as the skip this
     file was written for: the run looks complete and the archive is not there.
+    Both jobs must say so; only one of them tries to merge itself.
     """
     run = step["run"]
 
-    assert "--auto" in run, (
-        f"{job_name} does not attempt auto-merge, so publication needs a human "
-        "every run"
-    )
     assert "Publication is pending, not failed" in run, (
-        "a pull request that could not auto-merge must say so in the log"
+        "a pull request awaiting a merge must say so in the log"
     )
     assert "Nothing to publish" in run, (
         "a run that changed no files should say so rather than committing "
         "nothing silently"
     )
+
+
+@PUBLICATION_CASE
+def test_the_job_arms_auto_merge_only_where_the_policy_says_so(job_name, job, step):
+    """A benchmark pair waits for a person. An ordinary audit row does not."""
+    run = step["run"]
+    expected = ARMS_AUTO_MERGE[job_name]
+
+    if expected:
+        assert "--auto" in run, (
+            f"{job_name} publishes an ordinary audit row and should not need a "
+            "person every run, but it no longer arms auto-merge"
+        )
+        assert "auto-merge could not be enabled" in run, (
+            f"{job_name} arms auto-merge, so the case where that fails must be "
+            "reported rather than leaving a silent open pull request"
+        )
+    else:
+        assert "--auto" not in run, (
+            f"{job_name} publishes a benchmark pair, which waits for a person "
+            "to read the evidence. Arming auto-merge reinstates the race that "
+            "beat that reading twice on 15 October 2026"
+        )
+        assert "does not arm auto-merge" in run, (
+            f"{job_name} leaves its pull request open on purpose and must say "
+            "so, or a reader cannot tell it from a failure to merge"
+        )
 
 
 @PUBLICATION_CASE

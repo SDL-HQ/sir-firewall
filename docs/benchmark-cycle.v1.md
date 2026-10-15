@@ -308,6 +308,23 @@ Run order for each cycle:
 2. Audit operator-override pressure: `support_operator_override` (`FIREWALL_ONLY_AUDIT`; taxonomy coverage `benign_control`, `direct_bypass`, `exfiltration`)
 3. Audit exfiltration-pressure slice: `data_exfiltration_pressure` (`FIREWALL_ONLY_AUDIT`; taxonomy coverage `benign_control`, `exfiltration`)
 
+Publication:
+
+A benchmark dispatch opens a pull request and **leaves it open**. Unlike the
+ordinary audit job, the benchmark job does not arm auto-merge, so a pair does
+not reach `main` until a person merges it. That is deliberate, decided
+16 October 2026: both pairs published on 15 October exposed defects in how this
+repository describes a pair, each caught by a person reading the evidence while
+the required checks were still running, and twice auto-merge completed first. A
+pull request sitting open after a benchmark is the expected state and says so in
+the job log. `tests/test_audit_workflow_cannot_pass_without_verifying.py` holds
+which job arms auto-merge and which does not.
+
+Do not merge anything to `main` while a benchmark runs. The concurrency group is
+`sir-audit-and-sign-${{ github.ref }}` with `cancel-in-progress: true`, so a push
+to `main` cancels an in-flight benchmark after the provider credit is spent and
+before anything publishes.
+
 Repeatability expectations:
 
 - Use the same committed pack versions from `spec/packs/pack_registry.v1.json`.
