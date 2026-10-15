@@ -185,6 +185,25 @@ Use machine-clear status labels only:
 - `invalid_evidence_gap`
 - `historical_unpaired`
 
+**What produces each.** The list above was locked without saying which case
+reaches which label, so a reader holding a non-`valid_complete` pair could not
+tell what had gone wrong, and the cases 2.5 added had no stated home. Every
+status below is produced by `tools/pair_validation.py`, and every one it
+produces carries a `non_comparable_reason` naming the specific case.
+
+| Status | Produced when |
+|---|---|
+| `valid_complete` | Both halves are present and of the right kind, every required attribution dimension matches, the halves cover the same row count, the gated run's result is `AUDIT PASSED` or `AUDIT FAILED`, and the gate figures compute. Only this status carries gate figures. |
+| `incomplete_missing_baseline` | No baseline half was supplied, **or** the baseline half is not an ungated baseline record. The second case is every pair published before 2.5: both halves are certificates, so the pair is missing its baseline rather than holding a defective one. |
+| `incomplete_missing_gated` | No gated half was supplied, **or** the gated half is not an audit certificate, which includes a pair of two baseline records. |
+| `invalid_mismatched_dimensions` | A required attribution dimension differs, including the prompt set's own hash, **or** the two halves report different row counts. The row-count case is new in 2.5: a matching prompt-set hash says both halves selected the same suite, not that both ran all of it. |
+| `invalid_evidence_gap` | The halves are comparable but no figure may be computed. The baseline names no prompt-set hash kind, or a hash is absent; or the gated run's result is `INCONCLUSIVE` or anything other than the two comparable results; or a figure input is missing or contradictory, which covers an absent forwarding count, an absent `content_block_prompts` or leak count, a gated run that decided more expected-block prompts than the baseline forwarded, and more leaks than decided prompts. |
+| `historical_unpaired` | A pre-E benchmark row, marked by hand. It has no constant in the validator because nothing computes it: it is a label for evidence that predates the pair contract. |
+
+Nothing withholds gate figures except `invalid_evidence_gap` and the three
+statuses above it that stop before the figures are reached. A `valid_complete`
+pair always carries them.
+
 ### Non-comparability rules (locked)
 
 A pair is non-comparable when any required attribution dimension differs, required artifacts are missing/malformed, or baseline/gated role requirements are not satisfied.
