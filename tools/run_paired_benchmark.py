@@ -25,6 +25,7 @@ _REPO_ROOT = _Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO_ROOT / "src"))
 sys.path.insert(0, str(_Path(__file__).resolve().parent))
 
+from pair_validation import validate_pair
 from sir_firewall.model_selection import DEFAULT_MODEL, DEFAULT_PROVIDER, validate_execution_selection
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,13 +46,19 @@ def _run_checked(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     return proc
 
 
-def _parse_generated_cert_path(stdout: str) -> str:
+def _parse_generated_document_path(stdout: str, *, key: str) -> str:
+    """The path a generator reports, by the key it reports it under.
+
+    Two generators now: the certificate's prints OUTPUT_AUDIT_JSON and the
+    baseline record's prints OUTPUT_BASELINE_JSON. Keyed rather than positional
+    so one half cannot pick up the other half's document.
+    """
     for line in stdout.splitlines():
-        if line.startswith("OUTPUT_AUDIT_JSON="):
+        if line.startswith(f"{key}="):
             out = line.split("=", 1)[1].strip()
             if out:
                 return out
-    raise SystemExit("ERROR: generate_certificate.py output missing OUTPUT_AUDIT_JSON")
+    raise SystemExit(f"ERROR: generator output missing {key}")
 
 
 def _read_json(path: Path) -> Dict[str, Any]:
@@ -63,18 +70,26 @@ def _write_json(path: Path, data: Dict[str, Any]) -> None:
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def _refresh_benchmark_index_v2() -> None:
+def _refresh_benchmark_indexes() -> None:
+    """Rebuild both benchmark indexes after a pair is written.
+
+    v2 is built from the v1 entries, which come from the run index and are
+    therefore gate runs only. v3 is built from the archive directories, which
+    is the only way it can see a baseline record: the record has no result, so
+    it is not a row in the run index at all.
+    """
     runs_dir = ROOT / "proofs" / "runs"
     benchmark_v1_path = runs_dir / "benchmark_index.v1.json"
     benchmark_v2_path = runs_dir / "benchmark_index.v2.json"
-    docs_benchmark_v2_path = ROOT / "docs" / "runs" / "benchmark_index.v2.json"
+    benchmark_v3_path = runs_dir / "benchmark_index.v3.json"
+    docs_runs_dir = ROOT / "docs" / "runs"
 
     if not benchmark_v1_path.exists():
-        raise SystemExit(f"ERROR: missing benchmark index v1 required for v2 refresh: {benchmark_v1_path}")
+        raise SystemExit(f"ERROR: missing benchmark index v1 required for the refresh: {benchmark_v1_path}")
 
     spec = importlib.util.spec_from_file_location("publish_run_module", ROOT / "tools" / "publish_run.py")
     if spec is None or spec.loader is None:
-        raise SystemExit("ERROR: unable to load tools/publish_run.py for v2 refresh")
+        raise SystemExit("ERROR: unable to load tools/publish_run.py for the index refresh")
     publish_run_module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(publish_run_module)
 
@@ -89,90 +104,14 @@ def _refresh_benchmark_index_v2() -> None:
         pairs_dir=(runs_dir / "pairs"),
     )
     _write_json(benchmark_v2_path, benchmark_index_v2)
-    _write_json(docs_benchmark_v2_path, benchmark_index_v2)
+    _write_json(docs_runs_dir / "benchmark_index.v2.json", benchmark_index_v2)
 
-
-def _extract_run_dims(audit: Dict[str, Any]) -> Dict[str, Optional[str]]:
-    suite_hash = str(audit.get("suite_hash") or "").strip() or None
-    scenario_hash = str(audit.get("scenario_hash") or "").strip() or None
-    return {
-        "model": str(audit.get("model") or "").strip() or None,
-        "provider": str(audit.get("provider") or "").strip() or None,
-        "pack_id": (
-            str(audit.get("effective_pack_id") or "").strip()
-            or str(audit.get("pack_id") or "").strip()
-            or None
-        ),
-        "pack_version": str(audit.get("pack_version") or audit.get("selected_pack_version") or "").strip() or None,
-        "prompt_set_hash": scenario_hash or suite_hash,
-        "suite_hash": suite_hash,
-        "scenario_hash": scenario_hash,
-        "commit_sha": str(audit.get("commit_sha") or "").strip() or None,
-    }
-
-
-def _int_or_none(v: Any) -> Optional[int]:
-    return v if isinstance(v, int) else None
-
-
-def _compute_delta(baseline_val: Optional[int], gated_val: Optional[int]) -> Optional[int]:
-    if baseline_val is None or gated_val is None:
-        return None
-    return gated_val - baseline_val
-
-
-def _provider_complete(audit: Dict[str, Any]) -> Optional[bool]:
-    failures = _int_or_none(audit.get("provider_call_failures"))
-    if failures is None:
-        return None
-    return failures == 0
-
-
-def _validate_pair(*, baseline_audit: Dict[str, Any], gated_audit: Dict[str, Any]) -> tuple[str, Optional[str], Dict[str, Optional[str]]]:
-    baseline_exec = baseline_audit.get("benchmark_execution") if isinstance(baseline_audit.get("benchmark_execution"), dict) else {}
-    gated_exec = gated_audit.get("benchmark_execution") if isinstance(gated_audit.get("benchmark_execution"), dict) else {}
-
-    baseline_role_ok = baseline_exec.get("benchmark_role") == "baseline" and baseline_exec.get("gate_mode") == "ungated"
-    gated_role_ok = gated_exec.get("benchmark_role") == "gated" and gated_exec.get("gate_mode") == "sir_gated"
-    if not baseline_role_ok or not gated_role_ok:
-        return (
-            "invalid_mismatched_dimensions",
-            "role correctness failed: baseline must be (benchmark_role=baseline, gate_mode=ungated) and gated must be (benchmark_role=gated, gate_mode=sir_gated)",
-            {},
-        )
-
-    baseline_dims = _extract_run_dims(baseline_audit)
-    gated_dims = _extract_run_dims(gated_audit)
-
-    required = {
-        "provider": gated_dims["provider"],
-        "model": gated_dims["model"],
-        "pack_id": gated_dims["pack_id"],
-        "pack_version": gated_dims["pack_version"],
-        "prompt_set_hash": gated_dims["prompt_set_hash"],
-        "commit_sha": gated_dims["commit_sha"],
-    }
-
-    mismatches = []
-    for field in ("provider", "model", "pack_id", "pack_version", "commit_sha"):
-        if baseline_dims[field] != gated_dims[field]:
-            mismatches.append(field)
-
-    # Prompt-set identity is strict when available on either side.
-    b_prompt = baseline_dims["prompt_set_hash"]
-    g_prompt = gated_dims["prompt_set_hash"]
-    if b_prompt or g_prompt:
-        if b_prompt != g_prompt:
-            mismatches.append("prompt_set_hash")
-
-    if mismatches:
-        return (
-            "invalid_mismatched_dimensions",
-            "mismatched required attribution dimensions: " + ", ".join(mismatches),
-            required,
-        )
-
-    return "valid_complete", None, required
+    benchmark_index_v3 = publish_run_module._build_benchmark_index_v3(
+        runs_dir=runs_dir,
+        pairs_dir=(runs_dir / "pairs"),
+    )
+    _write_json(benchmark_v3_path, benchmark_index_v3)
+    _write_json(docs_runs_dir / "benchmark_index.v3.json", benchmark_index_v3)
 
 
 def _run_single(
@@ -205,7 +144,7 @@ def _run_single(
     _run_checked(suite_cmd)
 
     # Refresh the compatibility hash artifact from this half's ledger. The
-    # certificate generator independently verifies the summary-bound ledger.
+    # document generator independently verifies the summary-bound ledger.
     summary = _read_json(ROOT / "proofs" / "run_summary.json")
     _run_checked([
         sys.executable,
@@ -213,14 +152,31 @@ def _run_single(
         "--ledger",
         str(summary["ledger_path"]),
     ])
-    gen_proc = _run_checked([sys.executable, str(ROOT / "tools" / "generate_certificate.py")])
-    cert_rel_path = _parse_generated_cert_path(gen_proc.stdout)
+
+    # Which document this half produces follows from what it was: the gate
+    # decided, or it was not there. From SIR 2.5 the baseline half cannot
+    # produce a certificate at all, because tools/generate_certificate.py
+    # refuses a ledger whose rows say the gate was not in the path.
+    if ungated_baseline:
+        gen_proc = _run_checked(
+            [sys.executable, str(ROOT / "tools" / "generate_baseline_record.py")]
+        )
+        document_rel_path = _parse_generated_document_path(
+            gen_proc.stdout, key="OUTPUT_BASELINE_JSON"
+        )
+        publish_flag, archived_name = "--baseline", "baseline.json"
+    else:
+        gen_proc = _run_checked([sys.executable, str(ROOT / "tools" / "generate_certificate.py")])
+        document_rel_path = _parse_generated_document_path(
+            gen_proc.stdout, key="OUTPUT_AUDIT_JSON"
+        )
+        publish_flag, archived_name = "--cert", "audit.json"
 
     publish_cmd = [
         sys.executable,
         str(ROOT / "tools" / "publish_run.py"),
-        "--cert",
-        cert_rel_path,
+        publish_flag,
+        document_rel_path,
         "--copy",
         "proofs/itgl_ledger.jsonl",
         "--copy",
@@ -232,12 +188,14 @@ def _run_single(
     ]
     _run_checked(publish_cmd)
 
-    run_id = (ROOT / "proofs" / "run_id.txt").read_text(encoding="utf-8").strip()
+    # The summary's own run id, not proofs/run_id.txt: the publisher writes
+    # that file for the single-run workflow, and a baseline is not a row there.
+    run_id = str(summary.get("run_id") or "").strip()
     if not run_id:
-        raise SystemExit("ERROR: publish_run did not write run_id")
+        raise SystemExit("ERROR: the run summary carries no run_id")
 
-    audit = _read_json(ROOT / "proofs" / "runs" / run_id / "audit.json")
-    return run_id, audit
+    document = _read_json(ROOT / "proofs" / "runs" / run_id / archived_name)
+    return run_id, document
 
 
 def main() -> int:
@@ -257,7 +215,7 @@ def main() -> int:
     except ValueError as exc:
         raise SystemExit(f"ERROR: {exc}") from exc
 
-    baseline_run_id, baseline_audit = _run_single(
+    baseline_run_id, baseline_record = _run_single(
         mode=args.mode,
         pack=args.pack,
         suite=args.suite,
@@ -280,25 +238,37 @@ def main() -> int:
         ungated_baseline=False,
     )
 
-    baseline_entry_ref = f"runs/{baseline_run_id}/audit.json"
+    baseline_entry_ref = f"runs/{baseline_run_id}/baseline.json"
     gated_entry_ref = f"runs/{gated_run_id}/audit.json"
 
-    pair_status, non_comparable_reason, required_dims = _validate_pair(
-        baseline_audit=baseline_audit,
-        gated_audit=gated_audit,
-    )
+    # The assessment is tools/pair_validation.py's, computed from the two
+    # signed documents. This runner does no arithmetic of its own: the first
+    # draft of the 2.5 plan computed the gate's blocks here by subtraction and
+    # credited systemic resets to the gate, and that function is where the rule
+    # now lives and is tested.
+    assessment = validate_pair(baseline_record, gated_audit)
+    pair_status = assessment["pair_status"]
+    non_comparable_reason = assessment["non_comparable_reason"]
+    required_dims = assessment["required_dimensions"]
 
-    if not required_dims:
-        # fallback dimensions when validation fails before extraction completes
-        gated_dims = _extract_run_dims(gated_audit)
-        required_dims = {
-            "provider": gated_dims["provider"],
-            "model": gated_dims["model"],
-            "pack_id": gated_dims["pack_id"],
-            "pack_version": gated_dims["pack_version"],
-            "prompt_set_hash": gated_dims["prompt_set_hash"],
-            "commit_sha": gated_dims["commit_sha"],
-        }
+    provider_calls = assessment.get(
+        "provider_calls",
+        {
+            "baseline": {"attempts": None, "successes": None, "failures": None},
+            "gated": {"attempts": None, "successes": None, "failures": None},
+        },
+    )
+    baseline_failures = provider_calls["baseline"]["failures"]
+    gated_failures = provider_calls["gated"]["failures"]
+    baseline_complete = None if baseline_failures is None else baseline_failures == 0
+    gated_complete = None if gated_failures is None else gated_failures == 0
+    pair_provider_status = (
+        "complete"
+        if (baseline_complete is True and gated_complete is True)
+        else "unknown"
+        if (baseline_complete is None or gated_complete is None)
+        else "incomplete"
+    )
 
     pair_key = args.pair_key
     if not pair_key:
@@ -312,35 +282,20 @@ def main() -> int:
                 f"commit_sha={required_dims.get('commit_sha') or ''}",
             ]
         )
-
     pair_id_seed = f"{baseline_run_id}|{gated_run_id}|{pair_key}"
-    pair_id = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d-%H%M%S") + "-" + hashlib.sha256(pair_id_seed.encode("utf-8")).hexdigest()[:12]
-
-    baseline_leaks = _int_or_none(baseline_audit.get("jailbreaks_leaked"))
-    gated_leaks = _int_or_none(gated_audit.get("jailbreaks_leaked"))
-    baseline_harmless = _int_or_none(baseline_audit.get("harmless_blocked"))
-    gated_harmless = _int_or_none(gated_audit.get("harmless_blocked"))
-    baseline_attempts = _int_or_none(baseline_audit.get("provider_call_attempts"))
-    gated_attempts = _int_or_none(gated_audit.get("provider_call_attempts"))
-    baseline_successes = _int_or_none(baseline_audit.get("provider_call_successes"))
-    gated_successes = _int_or_none(gated_audit.get("provider_call_successes"))
-    baseline_failures = _int_or_none(baseline_audit.get("provider_call_failures"))
-    gated_failures = _int_or_none(gated_audit.get("provider_call_failures"))
-    baseline_complete = _provider_complete(baseline_audit)
-    gated_complete = _provider_complete(gated_audit)
-    pair_provider_status = (
-        "complete"
-        if (baseline_complete is True and gated_complete is True)
-        else "incomplete"
-        if (baseline_complete is False or gated_complete is False)
-        else "unknown"
-    )
+    pair_id = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d-%H%M%S") + "-" + hashlib.sha256(
+        pair_id_seed.encode("utf-8")
+    ).hexdigest()[:12]
 
     pair_artifact: Dict[str, Any] = {
+        "pair_form": "record_and_certificate",
         "pair_id": pair_id,
         "pair_key": pair_key,
         "created_at_utc": _utc_now_z(),
-        "baseline_definition": "same prompt set evaluated without SIR pre-inference gate intervention",
+        "baseline_definition": (
+            "same prompt set forwarded to the provider without SIR pre-inference gate "
+            "intervention"
+        ),
         "baseline_run_id": baseline_run_id,
         "gated_run_id": gated_run_id,
         "pair_status": pair_status,
@@ -349,37 +304,25 @@ def main() -> int:
         "pair_provider_status": pair_provider_status,
         "non_comparable_reason": non_comparable_reason,
         "required_dimensions": required_dims,
-        "deltas": {
-            "leaks_delta": _compute_delta(baseline_leaks, gated_leaks),
-            "harmless_blocked_delta": _compute_delta(baseline_harmless, gated_harmless),
-            "provider_call_attempts_delta": _compute_delta(baseline_attempts, gated_attempts),
-            "provider_call_successes_delta": _compute_delta(baseline_successes, gated_successes),
-            "provider_call_failures_delta": _compute_delta(baseline_failures, gated_failures),
-        },
-        "provider_calls": {
-            "baseline": {
-                "attempts": baseline_attempts,
-                "successes": baseline_successes,
-                "failures": baseline_failures,
-            },
-            "gated": {
-                "attempts": gated_attempts,
-                "successes": gated_successes,
-                "failures": gated_failures,
-            },
-        },
+        "provider_calls": provider_calls,
+        "deltas": assessment.get("deltas", {"provider_call_attempts_delta": None}),
         "evidence": {
             "baseline_entry_ref": baseline_entry_ref,
             "gated_entry_ref": gated_entry_ref,
         },
     }
+    # Present only when the pair is comparable. A gated half whose own result is
+    # INCONCLUSIVE decided an unknown share of its prompts, and no gate figure
+    # is published for such a pair at all.
+    if "gate_figures" in assessment:
+        pair_artifact["gate_figures"] = assessment["gate_figures"]
 
     out_path = ROOT / "proofs" / "runs" / "pairs" / f"{pair_id}.json"
     _write_json(out_path, pair_artifact)
-    _refresh_benchmark_index_v2()
+    _refresh_benchmark_indexes()
 
     print(f"OK: Pair artifact -> {out_path}")
-    print("OK: Refreshed benchmark_index.v2.json in proofs/runs and docs/runs")
+    print("OK: Refreshed the benchmark indexes in proofs/runs and docs/runs")
     print(f"PAIR_ID={pair_id}")
     print(f"BASELINE_RUN_ID={baseline_run_id}")
     print(f"GATED_RUN_ID={gated_run_id}")
