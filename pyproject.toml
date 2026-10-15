@@ -10,15 +10,13 @@ requires-python = ">=3.10"
 # install and anyone following the README got a collection error on
 # tests/test_gate_outcome_invariance.py.
 # tests/test_declared_dependencies.py fails if a package the code or the tests
-# import at module scope is missing from this list.
+# import at module scope is missing from this list, and now also if a name in
+# this list is imported by nothing.
 dependencies = [
   "cryptography",
-  "pydantic",
-  "requests",
   "pytest",
   "hypothesis",
   "PyYAML",
-  "pandas",
   # Published indexes are validated against their own schemas by
   # tests/test_benchmark_index_matches_its_schema.py. Until 15 October 2026
   # nothing did, and proofs/runs/benchmark_index.v2.json had been failing
@@ -27,7 +25,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-live = ["openai", "litellm"]
+# Each extra names a package imported lazily, behind a guard that raises a
+# SystemExit telling the reader which extra to install. litellm is the LIVE
+# provider path in red_team_suite.py; boto3 is the --s3-bucket upload in
+# tools/export_run_archive.py.
+# openai was listed under live and is imported nowhere in this repository.
+# litellm declares openai>=2.20.0,<3.0.0 as a core dependency of its own, so
+# the openai provider path keeps working without the duplicate declaration.
+live = ["litellm"]
+s3 = ["boto3"]
 
 [project.scripts]
 sir = "sir_firewall.cli:main"

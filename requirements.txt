@@ -1,8 +1,5 @@
 cryptography
-pydantic
-requests
 pytest
 hypothesis
 PyYAML
-pandas
 jsonschema
