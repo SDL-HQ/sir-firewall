@@ -304,3 +304,85 @@ def test_the_benchmark_artifact_carries_the_typed_index():
     paths = str(step["with"]["path"])
 
     assert "proofs/runs/benchmark_index.v3.json" in paths
+
+
+# --- a failed admission or verification must stop publication ---------------
+
+
+def _publication_steps():
+    """Every step in the benchmark job that writes to the published tree."""
+    out = []
+    for step in _benchmark_steps():
+        name = str(step.get("name", ""))
+        body = str(step.get("run", ""))
+        if name in ("Upload benchmark artifact (always)",):
+            continue
+        if "Publish" in name or "docs/runs" in body or "docs/" in body:
+            out.append(step)
+    return out
+
+
+def test_every_publication_step_requires_admission_and_verification():
+    """always() must not mean "even if the archives were refused".
+
+    Found by an independent implementation review on 15 October 2026. Every
+    publication step in this job carried `always()` and nothing else, so a
+    refused admission or a failed verification did not stop the archive being
+    copied to docs/runs, the markers being written, or the publishing pull
+    request being opened. The admission-order test passed throughout, because
+    it checks textual ordering and not whether admission succeeded.
+
+    always() stays. It is there so a run whose *result* is AUDIT FAILED or
+    INCONCLUSIVE still publishes its archive, which is a standing position of
+    this project: a run that fails is evidence and is published. Neither the
+    runner nor the generators exit non-zero for a failing result, so gating on
+    these two steps does not touch that. What it stops is publishing an
+    archive that was refused as mistyped, or that did not verify.
+
+    Mutation applied to .github/workflows/audit-and-sign.yml: removing the
+    gate from the pull-request publication step, 1 failure (this test).
+    """
+    steps = _publication_steps()
+    assert len(steps) >= 8, [str(s.get("name")) for s in steps]
+
+    for step in steps:
+        condition = str(step.get("if", ""))
+        assert "steps.run_benchmark.outcome == 'success'" in condition, step.get("name")
+        assert "steps.verify_halves.outcome == 'success'" in condition, step.get("name")
+
+
+def test_the_verification_step_is_addressable_by_the_publication_gate():
+    """A gate on a step id is only a gate while the id exists."""
+    assert _step("Verify each half with the verifier for its document kind")["id"] == (
+        "verify_halves"
+    )
+    assert _step("Run paired benchmark through SIR")["id"] == "run_benchmark"
+
+
+def test_the_verification_step_refuses_a_verifier_that_did_not_finish():
+    """A crash is not an unknown, and the exit code alone cannot tell them apart.
+
+    Python exits 1 on an uncaught exception, and this step accepts exit 1 as
+    NOT ESTABLISHED. The review found that every baseline archive crashed
+    after printing its report, so the step accepted a verifier that had not
+    run to completion. It now reads the verifier's own verdict from its JSON
+    and requires that to agree with the process exit code.
+
+    Mutation applied to .github/workflows/audit-and-sign.yml: dropping the
+    agreement check, 1 failure (this test).
+    """
+    body = str(_step("Verify each half with the verifier for its document kind")["run"])
+    # The raw file, because YAML strips the block scalar's indentation and
+    # these assertions are about whole lines.
+    raw = WORKFLOW.read_text(encoding="utf-8")
+
+    assert "--json" in body
+    # The whole line, not the expression: `if False and reported != exit_code`
+    # contains the expression and disables the check, and an earlier version of
+    # this assertion passed against exactly that.
+    assert "\n          if reported != exit_code:\n" in raw
+    assert "did not run" in body
+    assert "no readable report" in body
+    # And the shell itself fails, rather than relying on set -e to carry an
+    # embedded interpreter's status.
+    assert "exit 1" in body

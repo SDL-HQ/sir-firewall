@@ -344,3 +344,56 @@ def test_the_review_bundle_ships_what_verifies_either_document():
     ):
         assert required in bundle.EXPLICIT_FILES, required
         assert (ROOT / required).is_file(), required
+
+
+def test_the_one_command_verifier_runs_to_completion_on_a_baseline_archive(published_pair):
+    """It crashed on every baseline archive, and exited 1 doing it.
+
+    tools/verify_evidence.py printed a correct report and then called
+    Report.verdict, which is a property, so every baseline archive raised
+    TypeError after the report had been printed. Python exits 1 on an uncaught
+    exception, and the benchmark workflow accepted exit 1 as NOT ESTABLISHED,
+    so the crash was swallowed on the path that publishes evidence.
+
+    Nothing in the repository exercised that line, because no baseline archive
+    is published and the gated branch never had the bug. Found by an
+    independent implementation review on 15 October 2026.
+
+    Mutation applied to tools/verify_evidence.py: restoring the call, 2
+    failures (this test and
+    test_the_one_command_verifier_agrees_with_its_own_report).
+    """
+    for role in ("baseline_run_id", "gated_run_id"):
+        archive = published_pair["runs_dir"] / published_pair[role]
+        completed = subprocess.run(
+            [sys.executable, str(ROOT / "tools/verify_evidence.py"), str(archive)],
+            capture_output=True,
+            text=True,
+            cwd=str(ROOT),
+            check=False,
+        )
+        assert "Traceback" not in completed.stderr, (role, completed.stderr)
+        assert completed.returncode in (0, 1, 2), (role, completed.returncode)
+        assert completed.stdout.strip(), role
+
+
+def test_the_one_command_verifier_agrees_with_its_own_report(published_pair):
+    """The JSON's exit_code is what the workflow checks the process code against.
+
+    A crash after the report is printed produces a report whose exit_code
+    disagrees with the process's. That disagreement is how the workflow tells
+    an incomplete run from an unknown property, so it has to hold whenever the
+    tool does finish.
+    """
+    for role in ("baseline_run_id", "gated_run_id"):
+        archive = published_pair["runs_dir"] / published_pair[role]
+        completed = subprocess.run(
+            [sys.executable, str(ROOT / "tools/verify_evidence.py"), str(archive), "--json"],
+            capture_output=True,
+            text=True,
+            cwd=str(ROOT),
+            check=False,
+        )
+        report = json.loads(completed.stdout)
+        assert report["exit_code"] == completed.returncode, (role, report["exit_code"])
+        assert report["verdict"] in ("ESTABLISHED", "NOT ESTABLISHED", "FAILED"), role

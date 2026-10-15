@@ -1119,6 +1119,7 @@ jobs:
           echo "baseline_record_json=$baseline_record" >> "$GITHUB_OUTPUT"
 
       - name: Verify each half with the verifier for its document kind
+        id: verify_halves
         env:
           GATED_AUDIT_JSON: ${{ steps.run_benchmark.outputs.gated_audit_json }}
           BASELINE_RECORD_JSON: ${{ steps.run_benchmark.outputs.baseline_record_json }}
@@ -1150,26 +1151,62 @@ jobs:
           # and contract separately. Exit 1 is NOT ESTABLISHED, which is not a
           # failure: a property can be unknown without anything having gone
           # wrong, and publication is blocked on FAILED, not on unknown.
+          #
+          # The exit code alone is not enough to tell those apart. Python exits
+          # 1 on an uncaught exception, so a crash in the verifier is
+          # indistinguishable from NOT ESTABLISHED by code. An independent
+          # review found exactly that: every baseline archive crashed after
+          # printing its report, and this step accepted it. So the verifier's
+          # own verdict is read from its JSON and required to agree with the
+          # process exit code. A crash cannot produce that agreement.
           for run_id in "$GATED_RUN_ID" "$BASELINE_RUN_ID"; do
+            report="$(mktemp)"
             set +e
-            python tools/verify_evidence.py "proofs/runs/$run_id"
+            python tools/verify_evidence.py "proofs/runs/$run_id" --json > "$report"
             code=$?
             set -e
-            if [ "$code" -ge 2 ]; then
-              echo "ERROR: proofs/runs/$run_id did not verify end to end (exit $code)." >&2
+            cat "$report"
+            if ! python - "$report" "$code" "proofs/runs/$run_id" <<'PY'
+          import json
+          import sys
+
+          report_path, exit_code, archive = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+          try:
+              report = json.loads(open(report_path, encoding="utf-8").read())
+          except Exception as exc:
+              raise SystemExit(
+                  f"ERROR: {archive}: the verifier printed no readable report "
+                  f"(exit {exit_code}): {exc}"
+              )
+          reported = report.get("exit_code")
+          if reported != exit_code:
+              raise SystemExit(
+                  f"ERROR: {archive}: the verifier reported exit_code={reported!r} and the "
+                  f"process exited {exit_code}. They disagree, so the verifier did not run "
+                  "to completion."
+              )
+          if exit_code >= 2:
+              raise SystemExit(
+                  f"ERROR: {archive} did not verify end to end: "
+                  f"{report.get('verdict')} (exit {exit_code})."
+              )
+          print(f"OK: {archive}: {report.get('verdict')} (exit {exit_code})")
+          PY
+            then
+              echo "ERROR: proofs/runs/$run_id: the verifier's report was not accepted." >&2
               exit 1
             fi
           done
 
       - name: Prepare docs/ for GitHub Pages
-        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.run_benchmark.outcome == 'success' && steps.verify_halves.outcome == 'success'
         run: |
           set -euo pipefail
           mkdir -p docs
           touch docs/.nojekyll
 
       - name: Publish run archive to docs/runs
-        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.run_benchmark.outcome == 'success' && steps.verify_halves.outcome == 'success'
         run: |
           set -euo pipefail
           rm -rf docs/runs || true
@@ -1177,7 +1214,7 @@ jobs:
           python tools/prepare_run_archive_page.py docs/runs/index.html
 
       - name: Validate published run archive index JSON
-        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.run_benchmark.outcome == 'success' && steps.verify_halves.outcome == 'success'
         run: |
           set -euo pipefail
           test -f proofs/runs/index.json
@@ -1221,7 +1258,7 @@ jobs:
           PY
 
       - name: Publish monitor summary to docs/
-        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.run_benchmark.outcome == 'success' && steps.verify_halves.outcome == 'success'
         run: |
           set -euo pipefail
           python tools/generate_monitor_summary.py \
@@ -1230,7 +1267,7 @@ jobs:
             --window 20
 
       - name: Publish latest run marker to docs/ (from run index truth)
-        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.run_benchmark.outcome == 'success' && steps.verify_halves.outcome == 'success'
         env:
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -1309,7 +1346,7 @@ jobs:
 
       - name: Compute benchmark gated PASS truth from current gated audit proof
         id: compute_benchmark_gated_pass
-        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.run_benchmark.outcome == 'success' && steps.verify_halves.outcome == 'success'
         env:
           GATED_AUDIT_JSON: ${{ steps.run_benchmark.outputs.gated_audit_json }}
         run: |
@@ -1348,7 +1385,7 @@ jobs:
 
       - name: Compute benchmark live-pointer truth from current paired proofs
         id: compute_benchmark_live_pointer
-        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.run_benchmark.outcome == 'success' && steps.verify_halves.outcome == 'success'
         env:
           GATED_AUDIT_JSON: ${{ steps.run_benchmark.outputs.gated_audit_json }}
         run: |
@@ -1392,7 +1429,7 @@ jobs:
           PY
 
       - name: Publish latest PASS proof to docs/ (benchmark gated PASS only)
-        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.compute_benchmark_gated_pass.outputs.gated_pass == 'true'
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.run_benchmark.outcome == 'success' && steps.verify_halves.outcome == 'success' && steps.compute_benchmark_gated_pass.outputs.gated_pass == 'true'
         run: |
           set -euo pipefail
           test -f proofs/latest-audit.html
@@ -1401,7 +1438,7 @@ jobs:
           cp -f proofs/latest-audit.json docs/latest-audit.json
 
       - name: Publish latest live proof to docs/ (benchmark gated live only)
-        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.compute_benchmark_live_pointer.outputs.updated == 'true'
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.run_benchmark.outcome == 'success' && steps.verify_halves.outcome == 'success' && steps.compute_benchmark_live_pointer.outputs.updated == 'true'
         run: |
           set -euo pipefail
           test -f proofs/latest-live-audit.html
@@ -1427,7 +1464,7 @@ jobs:
             proofs/runs/*-gh${{ github.run_id }}*/
 
       - name: Publish benchmark files by pull request (archive + benchmark index/pairs)
-        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
+        if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true' && steps.run_benchmark.outcome == 'success' && steps.verify_halves.outcome == 'success'
         env:
           BENCHMARK_GATED_PASS: ${{ steps.compute_benchmark_gated_pass.outputs.gated_pass }}
           BENCHMARK_LIVE_POINTER_UPDATED: ${{ steps.compute_benchmark_live_pointer.outputs.updated }}
