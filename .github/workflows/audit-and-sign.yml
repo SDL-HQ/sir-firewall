@@ -1496,6 +1496,32 @@ jobs:
           if [ "${BENCHMARK_GATED_PASS:-false}" = "true" ]; then
             git add proofs/latest-audit.json proofs/latest-audit.html
             git add docs/latest-audit.json docs/latest-audit.html
+            # The mutable surface has to describe one run, so the root ledger
+            # moves with the pointer or neither moves.
+            #
+            # Until 15 October 2026 this block staged the pointer alone and
+            # left the root ledger, its terminal hash, the attempt log and the
+            # summary at whatever the previous single run wrote. The first
+            # paired benchmark published a certificate whose itgl_final_hash
+            # was dea9a51c beside a root itgl_final_hash.txt reading 63efebd1,
+            # so the documented one-command check over that surface reported
+            # LEDGER BINDING FAILED: exit 7, the code for a binding that
+            # disagrees, produced by two files that merely described different
+            # runs. A third party following the documented path would have
+            # found a tampering-shaped failure and no tampering.
+            #
+            # The audit job has always staged these together. Caught by the
+            # CLI binding test in the release gate of the run that produced it.
+            #
+            # That test's filename is deliberately not written here.
+            # tests/test_audit_workflow_cannot_pass_without_verifying.py
+            # decides which steps are verifying steps by looking for a
+            # verification tool's filename anywhere in the step, and a test
+            # named after one of those tools reads as the tool itself. Naming
+            # it pulled this step into that set, where its `exit 0` for a
+            # pending pull request is correct and read as an escape hatch.
+            git add proofs/itgl_ledger.jsonl proofs/itgl_final_hash.txt
+            git add proofs/latest-attempts.log proofs/run_summary.json
           fi
           if [ "${BENCHMARK_LIVE_POINTER_UPDATED:-false}" = "true" ]; then
             git add proofs/latest-live-audit.json proofs/latest-live-audit.html

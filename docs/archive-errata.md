@@ -34,15 +34,16 @@ output.
 ## Current figures
 
 <!-- BEGIN GENERATED ARCHIVE FIGURES: measured-totals -->
-Measured across all 329 published run archives under `proofs/runs/`:
+Measured across all 331 published run archives under `proofs/runs/`:
 
 | Check | Result | Count |
 |---|---|---|
-| `verify_certificate.py` | verified (exit 0) | 61 |
+| `verify_certificate.py` | verified (exit 0) | 62 |
 | `verify_certificate.py` | verified; no ledger in the archive, so no binding was checked (exit 0) | 39 |
 | `verify_certificate.py` | SIGNATURE VERIFICATION FAILED (exit 5) | 6 |
 | `verify_certificate.py` | ledger binding not established (no row count, or predates the 2.3.4 correction) (exit 9) | 223 |
-| `verify_archive_receipt.py` | verified (exit 0) | 185 |
+| `verify_certificate.py` | no certificate in archive; this archive holds a baseline record (exit none) | 1 |
+| `verify_archive_receipt.py` | verified (exit 0) | 187 |
 | `verify_archive_receipt.py` | archive incomplete or signature failed (exit 2) | 105 |
 | `verify_archive_receipt.py` | no archive receipt (legacy archive) (exit 3) | 39 |
 <!-- END GENERATED ARCHIVE FIGURES: measured-totals -->
@@ -217,7 +218,7 @@ certificate does not identify its ledger.
 <!-- BEGIN GENERATED ARCHIVE FIGURES: e4-above-the-correction -->
 **Why this is exit 9 and not exit 7.** A binding that was never made is not a
 binding that disagrees. Every certificate from SIR 2.3.4 onward matches the
-ledger shipped with it, 61 of 61, so a mismatch at or above the correction is a
+ledger shipped with it, 62 of 62, so a mismatch at or above the correction is a
 real failure and is still reported as one. Below it, reporting a documented and
 disclosed format boundary as a tampering failure would describe 105 published
 archives as broken.
@@ -302,9 +303,14 @@ benchmark.
 
 <!-- BEGIN GENERATED ARCHIVE FIGURES: e7-counts -->
 **Counts.** 54 published certificates carry `benchmark_execution.gate_mode` set
-to `ungated`, from 18 April 2026 to 23 September 2026. That marker is set by
-the issuer and is used here only to identify the affected records; no check is
-relaxed because of it. Appendix C lists them.
+to `ungated`, from 18 April 2026 to 23 September 2026. The marker is the
+issuer's own metadata and is the display key here, not what defines the set:
+these are the archives on which three independent signals agree, the marker, a
+published pair artefact naming the run as its baseline half, and the
+ungated-baseline digest on every row of its bound ledger. All three select the
+same 54, and a disagreement would stop these figures being generated rather
+than be resolved in the marker's favour. No check is relaxed because of any of
+them. Appendix C lists them.
 <!-- END GENERATED ARCHIVE FIGURES: e7-counts -->
 
 **Cause.** The baseline half of a benchmark ran through the certificate
@@ -503,8 +509,11 @@ All 39 of them:
 
 ## Appendix C. Published certificates carrying the legacy ungated marker
 
-These are the records described in E7. The marker is
-`benchmark_execution.gate_mode` set to `ungated`, which the issuer set.
+These are the records described in E7, listed under the display key the marker
+gives them: `benchmark_execution.gate_mode` set to `ungated`, which the issuer
+set. The set itself is not the marker's word. It is the archives on which three
+independent signals agree, and `tools/archive_verification_report.py` refuses to
+generate any of these figures if they ever disagree.
 
 <!-- BEGIN GENERATED ARCHIVE FIGURES: appendix-c -->
 - `20260418-152959-000000-gh24607820167-1ebb76ec1902`

@@ -513,20 +513,48 @@ def test_an_empty_ledger_is_not_a_baseline_ledger():
     assert itgl.baseline_ledger_defects([])
 
 
-def test_a_real_gated_ledger_is_not_a_baseline_ledger():
-    """Against the archive rather than a fixture."""
-    published = sorted((ROOT / "proofs/runs").glob("*/proofs/itgl_ledger.jsonl"))
-    assert published, "no archived ledgers to check against"
+def test_a_real_archived_ledger_classifies_as_the_kind_its_archive_holds():
+    """Against the archive rather than a fixture, in both directions.
 
-    checked = 0
-    for path in published[-25:]:
-        rows = itgl.load_ledger(path)
+    This globbed ledgers and asserted that none of them was a baseline ledger,
+    which was true while every archive held a certificate. The first paired
+    benchmark published a baseline record on 15 October 2026 and the test
+    failed on it: the record's ledger is a baseline ledger, correctly, and the
+    test was reading every archive as a gate run's.
+
+    Dispatching on the document the archive holds is the stronger statement
+    anyway. A certificate's ledger must not classify as a baseline and must
+    carry no forwarded row; a record's ledger must classify as a baseline and
+    must be forwarded rows throughout.
+    """
+    archives = sorted(
+        path for path in (ROOT / "proofs/runs").iterdir()
+        if path.is_dir() and (path / "proofs/itgl_ledger.jsonl").is_file()
+    )
+    assert archives, "no archived ledgers to check against"
+
+    records = [path for path in archives if (path / "baseline.json").is_file()]
+    certificates = [path for path in archives if (path / "audit.json").is_file()]
+    assert certificates, "no archived certificate to check against"
+
+    # Certificates: a window, because there are hundreds and the rule is the
+    # same for each. Records: all of them, because there are few and each one
+    # is new evidence.
+    checked_certificates = 0
+    for path in certificates[-25:]:
+        rows = itgl.load_ledger(path / "proofs/itgl_ledger.jsonl")
         if not rows:
             continue
-        checked += 1
+        checked_certificates += 1
         assert itgl.baseline_ledger_defects(rows), path
         assert itgl.forwarded_row_positions(rows) == [], path
-    assert checked, "no non-empty archived ledger was checked"
+    assert checked_certificates, "no non-empty archived certificate ledger was checked"
+
+    for path in records:
+        rows = itgl.load_ledger(path / "proofs/itgl_ledger.jsonl")
+        assert rows, path
+        assert itgl.baseline_ledger_defects(rows) == [], path
+        assert itgl.forwarded_row_positions(rows) == list(range(1, len(rows) + 1)), path
 
 
 # --- 3. nothing certifies a baseline ledger ---------------------------------

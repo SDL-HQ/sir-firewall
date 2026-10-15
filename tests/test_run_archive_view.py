@@ -307,7 +307,19 @@ def test_the_published_index_renders_with_every_entry_accounted_for(tmp_path):
     assert rows > 0
     assert passing >= 0
     assert legacy == 54, "the 54 published ungated baseline certificates"
-    assert records == 0, "no baseline record is published yet; step 7 opens that route"
+    # Counted from the index the view is rendering, not hardcoded. This read
+    # `records == 0` with a note that no baseline record was published yet;
+    # the first paired benchmark published one on 15 October 2026 and the view
+    # counted it correctly while the test still asserted there were none.
+    published = json.loads(PUBLISHED_INDEX.read_text(encoding="utf-8"))
+    expected_records = sum(
+        1 for entry in published.get("entries", [])
+        if entry.get("entry_kind") == "ungated_baseline_record"
+    )
+    assert records == expected_records, (
+        f"the view counts {records} baseline records and the index it rendered "
+        f"carries {expected_records}"
+    )
 
 
 def test_the_published_page_names_the_verifier_for_each_document(tmp_path):

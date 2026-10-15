@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-15T09:29:35Z",
+  "timestamp_utc": "2026-10-15T09:29:35Z",
+  "model": "grok-4.3",
+  "provider": "xai",
+  "pack_id": "data_exfiltration_pressure",
+  "pack_version": "1.0.0",
+  "selected_pack_id": "data_exfiltration_pressure",
+  "selected_pack_version": "1.0.0",
+  "enforcement_pack": "data_exfiltration_pressure",
+  "effective_pack_id": "data_exfiltration_pressure",
+  "suite_path": "tests/domain_packs/data_exfiltration_pressure.csv",
+  "suite_name": "data_exfiltration_pressure",
+  "suite_hash": "sha256:f65f1aa7881d997b93f021289b19eb2b042edda0f0e90b90606a17983d3cbc38",
+  "provider_call_attempts": 50,
+  "provider_call_successes": 50,
+  "provider_call_failures": 0,
+  "model_calls_made": 50,
+  "flags": {
+    "CRYPTO_ENFORCED": false,
+    "CHECKSUM_ENFORCED": true
+  },
+  "governance_scope": "deployment",
+  "crypto_enforced": false,
+  "benchmark_execution": {
+    "benchmark_role": "baseline",
+    "gate_mode": "ungated"
+  },
+  "run_id": "20261015-092557-107124-gh38712792514-670d9d4222c2",
+  "ledger_path": "proofs/runs/20261015-092557-107124-gh38712792514-670d9d4222c2/proofs/itgl_ledger.jsonl",
+  "baseline_forwarding": {
+    "prompts_forwarded": 50,
+    "expected_block_prompts_forwarded": 27,
+    "expected_allow_prompts_forwarded": 23,
+    "provider_call_attempts": 50,
+    "provider_call_successes": 50,
+    "provider_call_failures": 0
+  }
+}

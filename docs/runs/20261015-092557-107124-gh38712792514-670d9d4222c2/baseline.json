@@ -1,0 +1,36 @@
+{
+  "record_kind": "sir_ungated_baseline",
+  "record_version": 1,
+  "run_id": "20261015-092557-107124-gh38712792514-670d9d4222c2",
+  "timestamp_utc": "2026-10-15T09:29:35Z",
+  "sir_firewall_version": "2.4.0",
+  "commit_sha": "532833f8627fbb7136a1c6a4b1b7cd07d87bc3d4",
+  "repository": "SDL-HQ/sir-firewall",
+  "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/38712792514",
+  "mode": "live",
+  "provider": "xai",
+  "model": "grok-4.3",
+  "pack_id": "data_exfiltration_pressure",
+  "pack_version": "1.0.0",
+  "suite_path": "tests/domain_packs/data_exfiltration_pressure.csv",
+  "prompt_set_hash": "sha256:f65f1aa7881d997b93f021289b19eb2b042edda0f0e90b90606a17983d3cbc38",
+  "prompt_set_hash_kind": "suite_hash",
+  "ledger": {
+    "path": "proofs/runs/20261015-092557-107124-gh38712792514-670d9d4222c2/proofs/itgl_ledger.jsonl",
+    "chain_version": 2,
+    "row_version": 1,
+    "row_count": 50,
+    "itgl_final_hash": "sha256:4328b161c2b3f2da7e90b073431ddfb5eabbde64febeba6d67ea56f4b0c5ab72"
+  },
+  "counters": {
+    "prompts_forwarded": 50,
+    "expected_block_prompts_forwarded": 27,
+    "expected_allow_prompts_forwarded": 23,
+    "provider_call_attempts": 50,
+    "provider_call_successes": 50,
+    "provider_call_failures": 0
+  },
+  "signing_key_id": "sdl-2026-10-06",
+  "payload_hash": "sha256:dfab717ef58f3711130703eefc3953a8497c0a367e38ad3dbea40976ff387f62",
+  "signature": "GIXzUSERznT8zIQiQtNXdJv7uGjznsB4hZGKnbL3QNwomk3LVzdneBqpcrcdqMxXHfwx7TXHjmU0HcAH0DMOQYIb20Z/94oFQxsPwq4Qa7L14iCTg47qwM4MC8x5PrnGn1LSColVvzr9TbcHb+hCMv8R6jppdWzFn3f9iKZ2en2pcj6NYajvtibwjV04sDCiDZJ1OUaO7uc/jEAgzD43x0tdlxYl4EboAaZq45/RImUDiiyjGHQuGjx7ndrM8vGNfrlfWRkp9+SEmmDdBXxcOhaKGyuK00Vl07wPChUmD7b8FQiXV/9eNvTaHcko6+yoP1RmX0UjzNc8E8NRdQizRnuNnVtIIBE5QpwblKrgSDu7DK+yDhVWh6djsn+uJR2K4K8AEgy/xPm62ThErgTsGnp63Tebf4UF6HnPMYLRndOhpS4tNSYdAkB0S0dN45odmxmOfo8yXFE/wZpfYTVswmguMLtMsMtpRMSQd84muMdjHGjQai+nVBJZuUFfmZcVpNAq0ohcfw2I4fMygIIyCcelD/aUEO5HJaggDbU1CxifF5kpW9mVxzlbcDr5xwiLRr/x3i7yGDRV+b2ziuylpAv/d46bFJZCf38mwy/nT8kzKTPpE1uoqfY8Z9jPbKXofrYwnIt1K7FRE6ItEKCcoasDhoVEDUAfuS8l8Xg5KBc="
+}

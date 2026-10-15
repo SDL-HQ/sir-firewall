@@ -368,9 +368,24 @@ def build_figures(records: list[dict], runs_dir: Path) -> dict:
     )
 
     # --- certificate field tallies ------------------------------------------
+    #
+    # Over archives that hold a certificate, and only those. `certificates`
+    # carries an empty dict for an archive holding a baseline record, so every
+    # tally below would otherwise read a record as a certificate with the field
+    # absent: no version, so below every contract floor; no itgl_row_count; no
+    # counters_checked_against_ledger.
+    #
+    # Those three were live defects until 15 October 2026 and invisible until
+    # then, because no baseline record was published and the two sets were
+    # equal. The first paired benchmark published one and the register's
+    # generated sentence moved from 219 of 330 certificates to 220 of 331,
+    # counting a document whose whole point is that it is not a certificate.
+    # tests/test_claims_register.py counts docs/runs/*/audit.json and caught it.
+    certificate_fields = {run_id: cert for run_id, cert in certificates.items() if cert}
+
     def by_version(predicate) -> list[str]:
         return sorted(
-            run_id for run_id, cert in certificates.items()
+            run_id for run_id, cert in certificate_fields.items()
             if predicate(_semver(cert.get("sir_firewall_version")) or (0, 0, 0))
         )
 
@@ -382,19 +397,19 @@ def build_figures(records: list[dict], runs_dir: Path) -> dict:
     )
 
     row_count_absent = sorted(
-        run_id for run_id, cert in certificates.items()
+        run_id for run_id, cert in certificate_fields.items()
         if "itgl_row_count" not in cert
     )
     counters_absent = sorted(
-        run_id for run_id, cert in certificates.items()
+        run_id for run_id, cert in certificate_fields.items()
         if "counters_checked_against_ledger" not in cert
     )
     counters_false = sorted(
-        run_id for run_id, cert in certificates.items()
+        run_id for run_id, cert in certificate_fields.items()
         if cert.get("counters_checked_against_ledger") is False
     )
     counters_true = sorted(
-        run_id for run_id, cert in certificates.items()
+        run_id for run_id, cert in certificate_fields.items()
         if cert.get("counters_checked_against_ledger") is True
     )
 
@@ -402,7 +417,7 @@ def build_figures(records: list[dict], runs_dir: Path) -> dict:
     zero_call_by_class: dict[str, list[str]] = {}
     named_without_the_counter: list[str] = []
     products: set[str] = set()
-    for run_id, cert in sorted(certificates.items()):
+    for run_id, cert in sorted(certificate_fields.items()):
         model = cert.get("model")
         if not model:
             continue
@@ -448,7 +463,7 @@ def build_figures(records: list[dict], runs_dir: Path) -> dict:
     # that archive's rows carry the ungated digest because that is the point of
     # it. Without this restriction the first published pair makes all three
     # signals disagree about its own baseline half.
-    certificate_archives = {run_id for run_id, cert in certificates.items() if cert}
+    certificate_archives = set(certificate_fields)
     by_pair = _pair_named_baselines(runs_dir) & certificate_archives
     by_rows = _ungated_digest_archives(runs_dir, certificates)
 
@@ -512,6 +527,11 @@ def build_figures(records: list[dict], runs_dir: Path) -> dict:
         # path of whatever machine last generated the figures.
         "runs_dir": _repository_relative(runs_dir),
         "total": len(records),
+        # Archives holding a certificate, which is not the same as archives.
+        # Every sentence with "certificates" in it needs this denominator, and
+        # until the first baseline record was published on 15 October 2026 the
+        # two numbers were equal and nothing could tell them apart.
+        "certificates_total": len(certificate_fields),
         "docs_runs_total": published_tree_note,
         "certificate_rows": rows("certificate_exit", "certificate_meaning"),
         "receipt_rows": rows("receipt_exit", "receipt_meaning"),
@@ -788,9 +808,12 @@ def render_e6_counts(figures: dict) -> str:
 def render_e7_counts(figures: dict) -> str:
     """The published ungated baseline certificates, counted from the archive.
 
-    The marker is the issuer's own metadata, so this figure says how many
-    certificates declare themselves ungated and not how many runs were. It
-    qualifies a historical record; nothing is relaxed because of it.
+    The set is the agreement of three independent signals, computed in
+    build_figures: the issuer's marker, a published pair artefact naming the
+    run as its baseline half, and the ungated-baseline digest on every row of
+    the bound ledger. The marker is the display key, which is what this text
+    names them by and what Appendix C lists them under. It qualifies a
+    historical record; nothing is relaxed because of any of the three.
     """
     legacy = _runs(figures, "legacy_ungated_certificates")
     if not legacy:
@@ -802,8 +825,13 @@ def render_e7_counts(figures: dict) -> str:
     return _wrap(
         f"**Counts.** {len(legacy)} published certificates carry "
         "`benchmark_execution.gate_mode` set to `ungated`, from "
-        f"{first} to {last}. That marker is set by the issuer and is used here only "
-        "to identify the affected records; no check is relaxed because of it. "
+        f"{first} to {last}. The marker is the issuer's own metadata and is the "
+        "display key here, not what defines the set: these are the archives on which "
+        "three independent signals agree, the marker, a published pair artefact "
+        "naming the run as its baseline half, and the ungated-baseline digest on "
+        f"every row of its bound ledger. All three select the same {len(legacy)}, and "
+        "a disagreement would stop these figures being generated rather than be "
+        "resolved in the marker's favour. No check is relaxed because of any of them. "
         "Appendix C lists them."
     )
 
@@ -884,7 +912,12 @@ def _counters_bullet(figures: dict) -> str:
 
 
 def render_proof_qualifications(figures: dict) -> str:
-    total = figures["total"]
+    # Certificates, not archives. This read figures["total"] until 15 October
+    # 2026, when the first published baseline record made the archive one
+    # larger than the set of certificates and this sentence called a record a
+    # certificate. tests/test_claims_register.py counts docs/runs/*/audit.json
+    # and caught it in the release gate of the run that published it.
+    total = figures["certificates_total"]
     ungoverned = _n(figures, "ungoverned_by_a_contract")
     predates = _n(figures, "exit_9_predates_correction")
     bound = _n(figures, "correction_era_bound")
@@ -908,8 +941,11 @@ def render_proof_qualifications(figures: dict) -> str:
         "its own. Their signatures are authentic and their classification is wrong: "
         "the result is a failed audit of a gate that was not there, and the leak "
         "count is the number of prompts the suite labels for blocking. They are "
-        "identified by a marker the issuer set, which qualifies them and relaxes no "
-        "check. Disclosed as E7 in `docs/archive-errata.md`.",
+        "identified by three independent signals that agree: the marker the issuer "
+        "set, a published pair artefact naming the run as its baseline half, and the "
+        "ungated-baseline digest on every row of its bound ledger. The marker is the "
+        "display key only. Nothing is relaxed because of any of them. Disclosed as E7 "
+        "in `docs/archive-errata.md`.",
     ])
 
 
