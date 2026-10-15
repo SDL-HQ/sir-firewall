@@ -542,8 +542,13 @@ _UNDECLARED_RESULTS = (
 )
 
 
-def _run_marker(tmp_path, run: str, result) -> tuple[int, dict | None, str]:
-    """Execute a marker's own program against a run whose result is `result`."""
+def _run_marker(tmp_path, run: str, result, extra: dict | None = None) -> tuple[int, dict | None, str]:
+    """Execute a marker's own program against a run whose result is `result`.
+
+    `extra` is merged into both documents a marker can read, the current-run
+    certificate and the latest row of the run index, so one call exercises
+    whichever of the two the step under test reads.
+    """
     import os
     import shutil
     import subprocess
@@ -556,9 +561,13 @@ def _run_marker(tmp_path, run: str, result) -> tuple[int, dict | None, str]:
     shutil.copy(ROOT / "tools" / "certificate_results.py", work / "tools")
     (work / "proofs" / "runs").mkdir(parents=True)
 
-    certificate = {"result": result, "jailbreaks_leaked": 0, "harmless_blocked": 0}
+    certificate = {"result": result, "jailbreaks_leaked": 0, "harmless_blocked": 0, **(extra or {})}
     (work / "audit.json").write_text(json.dumps(certificate), encoding="utf-8")
-    index = {"runs": [{"result": result, "run_id": "r", "date": "2026-10-14T00:00:00Z"}]}
+    index = {
+        "runs": [
+            {"result": result, "run_id": "r", "date": "2026-10-14T00:00:00Z", **(extra or {})}
+        ]
+    }
     (work / "proofs" / "runs" / "index.json").write_text(json.dumps(index), encoding="utf-8")
     env_file = work / "github_env"
     env_file.write_text("", encoding="utf-8")
@@ -620,6 +629,34 @@ def test_each_marker_publishes_exactly_the_declared_results(tmp_path):
             assert "unsupported" in stderr, (
                 f"step {name!r} stopped on {result!r} for a reason other than the result: {stderr}"
             )
+
+
+def test_no_marker_publishes_a_verdict_for_a_baseline_record(tmp_path):
+    """A document declaring record_kind stops both markers, declared result or not.
+
+    D5 of claude/2.5-spec-baseline-record-2026-10-14.md: latest-run,
+    latest-audit, the monitor window and the run index describe gate runs. A
+    baseline record carries no result and is not written into the run index,
+    so neither marker can reach one by the published route. This is the check
+    at the point of reading: a document that says what it is is refused on its
+    own declaration, before its result is consulted.
+
+    The result here is a declared one, so nothing but the declaration can be
+    what stops the step.
+
+    Mutation applied to .github/workflows/audit-and-sign.yml: removing the
+    record_kind refusal from either marker, 1 failure each (this test).
+    """
+    for name, run in _result_mapping_steps():
+        code, published, stderr = _run_marker(
+            tmp_path, run, "AUDIT PASSED", extra={"record_kind": "sir_ungated_baseline"}
+        )
+        assert code != 0 and published is None, (
+            f"step {name!r} published a verdict for a baseline record: {published}"
+        )
+        assert "record_kind" in stderr, (
+            f"step {name!r} stopped for a reason other than the document kind: {stderr}"
+        )
 
 
 FINALIZE_STEP_NAME = "Finalize CI status (fail if audit failed or inconclusive)"

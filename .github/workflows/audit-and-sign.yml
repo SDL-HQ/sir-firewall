@@ -511,6 +511,15 @@ jobs:
                   f"ERROR: current-run certificate must be a JSON object: {audit_path}"
               )
 
+          # D5: baseline records are not runs for the single-run truth
+          # surfaces. A record carries no result, so reading one here would
+          # publish a verdict for a run with no gate in it.
+          if "record_kind" in certificate:
+              raise SystemExit(
+                  f"ERROR: {audit_path} is not an audit certificate: "
+                  f"record_kind={certificate['record_kind']!r}"
+              )
+
           result = certificate.get("result")
           try:
               status, audit_pass, inconclusive = status_for(result)
@@ -1132,6 +1141,15 @@ jobs:
           latest = runs[0]
           if not isinstance(latest, dict):
               raise SystemExit("ERROR: latest run row in proofs/runs/index.json is malformed")
+
+          # D5, as above. A baseline record is not written into
+          # proofs/runs/index.json at all; this is the check that says so where
+          # the row is read, rather than relying on the publisher alone.
+          if "record_kind" in latest:
+              raise SystemExit(
+                  "ERROR: latest run row in proofs/runs/index.json is not an audit "
+                  f"certificate: record_kind={latest['record_kind']!r}"
+              )
 
           # The declared results, and anything else stops the step.
           #
