@@ -152,7 +152,7 @@ unclaimed.
 **qualified.** True as intended: failures are archived, not only passes.
 
 <!-- BEGIN GENERATED ARCHIVE FIGURES: archive-total -->
-The archive holds 335 runs including failed and inconclusive ones.
+The archive holds 336 runs including failed and inconclusive ones.
 <!-- END GENERATED ARCHIVE FIGURES: archive-total -->
 
 A reader who examines the failures finds something the sentence does not prepare
@@ -180,20 +180,20 @@ latest-run as distinct truth surfaces.
 reader finds on inspection:
 
 <!-- BEGIN GENERATED ARCHIVE FIGURES: proof-qualifications -->
-- **219 of the 333 published certificates are governed by no evidence
+- **219 of the 334 published certificates are governed by no evidence
   contract.** The contracts begin at SIR 2.2.0 and 219 archives predate it.
   They are not invalid; signature, binding and custody verify. No contract
   governs their structure. Now disclosed by behaviour:
   `tools/verify_evidence.py` reports it on every pre-2.2.0 archive.
-- **41 of the 335 published certificates carry
-  `counters_checked_against_ledger`: 41 true and 0 false.** The field arrives
+- **42 of the 336 published certificates carry
+  `counters_checked_against_ledger`: 42 true and 0 false.** The field arrives
   with evidence contract v4 at SIR 2.4.0. The remaining 292 do not carry it,
   and `tools/verify_evidence.py` reports their signed counters as `unknown`,
   which is neither agreement nor disagreement. Absent is not false.
 - **105 pre-2.3.4 certificates cannot have their ledger binding established.**
   Before 2.3.4 `itgl_final_hash` came from an environment variable or a mutable
   file. Disclosed in `docs/evidence-binding-correction.md`. Every certificate
-  at or above 2.3.4 matches the ledger shipped with it, 65 of 65.
+  at or above 2.3.4 matches the ledger shipped with it, 66 of 66.
 - **54 published certificates describe runs with no gate in the request path.**
   Each is the ungated half of a paired benchmark, published before an ungated
   run had a document of its own. Their signatures are authentic and their
@@ -558,7 +558,7 @@ Running the documented one-command verification on any of the 99 archives in
 Appendix A of `docs/archive-errata.md` prints `VERDICT: FAILED` and exits 2,
 because their signed manifests name two files a repository ignore rule kept
 from ever being committed. A reader doing exactly what the sentence invites
-falsifies it on 30% of the published archive.
+falsifies it on 29% of the published archive.
 <!-- END GENERATED ARCHIVE FIGURES: errata-appendix-reference -->
 
 That is the same defect class as the "configuration" wording corrected earlier
