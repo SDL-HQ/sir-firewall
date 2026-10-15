@@ -46,6 +46,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
@@ -155,6 +156,83 @@ COUNTER_FIELDS = (
 
 PROMPT_SET_HASH_KINDS = ("suite_hash", "scenario_hash")
 
+SHA256 = re.compile(r"^sha256:[0-9a-f]{64}$")
+
+# The per-field rules the published schema states, written out so this tool
+# stays readable on its own: a reviewer handed this file alone can see what it
+# enforces without fetching spec/baseline_record.v1.schema.json.
+#
+# Until 15 October 2026 the only field rules here were the three constants
+# below (record_version, mode, prompt_set_hash_kind), so a record with an
+# empty run_id, an object for provider, an empty model and "not-a-hash" for
+# prompt_set_hash produced no structural defect and verified. The docstring
+# claimed the shipped rules were held equal to the schema; the test held the
+# required and forbidden sets equal and nothing held the field rules at all.
+# An independent review found it by handing the verifier a record the schema
+# rejects on five fields.
+#
+# record_version is the sharp one. The check was `!= RECORD_VERSION`, and in
+# Python True == 1, so record_version: true passed a check for 1.
+#
+# (type, minimum length for a string, compiled pattern, exact value)
+FIELD_RULES: Dict[str, tuple] = {
+    "record_kind": (str, 1, None, RECORD_KIND),
+    "record_version": (int, None, None, RECORD_VERSION),
+    "run_id": (str, 1, None, None),
+    "timestamp_utc": (str, 1, None, None),
+    "sir_firewall_version": (str, 1, None, None),
+    "commit_sha": (str, 0, None, None),
+    "ci_run_url": (str, 0, None, None),
+    "mode": (str, 1, None, "live"),
+    "provider": (str, 1, None, None),
+    "model": (str, 1, None, None),
+    "pack_id": (str, 1, None, None),
+    "pack_version": (str, 0, None, None),
+    "suite_path": (str, 1, None, None),
+    "prompt_set_hash": (str, None, SHA256, None),
+    "signing_key_id": (str, 1, None, None),
+    "payload_hash": (str, None, SHA256, None),
+    "signature": (str, 1, None, None),
+    "scenario_id": (str, 1, None, None),
+}
+
+LEDGER_FIELD_RULES: Dict[str, tuple] = {
+    "path": (str, 1, None, None),
+    "chain_version": (int, None, None, CHAIN_VERSION_V2),
+    "row_count": (int, None, None, None),
+    "itgl_final_hash": (str, None, SHA256, None),
+}
+
+
+def _field_defects(scope: str, values: Dict[str, Any], rules: Dict[str, tuple]) -> List[str]:
+    """Every field rule the schema states, applied to what is present."""
+    defects: List[str] = []
+    for field, (expected_type, min_length, pattern, exact) in rules.items():
+        if field not in values:
+            continue
+        value = values[field]
+        label = f"{scope}{field}"
+        # bool is a subclass of int, and True == 1, so an exact check alone
+        # accepts true where 1 is required.
+        if expected_type is int and isinstance(value, bool):
+            defects.append(f"{label} is {value!r}, not an integer")
+            continue
+        if not isinstance(value, expected_type):
+            defects.append(
+                f"{label} is {value!r}, not {'an integer' if expected_type is int else 'a string'}"
+            )
+            continue
+        if exact is not None and value != exact:
+            defects.append(f"{label} is {value!r}, not {exact!r}")
+            continue
+        if min_length is not None and len(value) < min_length:
+            defects.append(f"{label} is empty")
+        if pattern is not None and not pattern.match(value):
+            defects.append(f"{label} is {value!r}, which is not a sha256 digest")
+        if expected_type is int and exact is None and value < 0:
+            defects.append(f"{label} is {value!r}, not a non-negative integer")
+    return defects
+
 
 def _structural_defects(record: Dict[str, Any]) -> List[str]:
     defects: List[str] = []
@@ -177,12 +255,11 @@ def _structural_defects(record: Dict[str, Any]) -> List[str]:
         defects.append(f"does not carry required fields: {missing}")
         return defects
 
-    if record.get("record_version") != RECORD_VERSION:
-        defects.append(f"record_version is {record.get('record_version')!r}, not {RECORD_VERSION}")
+    defects.extend(_field_defects("", record, FIELD_RULES))
     if record.get("mode") != "live":
         defects.append(
-            f"mode is {record.get('mode')!r}, not 'live'. A baseline with no provider call "
-            "observes nothing its prompt set does not already state"
+            "A baseline with no provider call observes nothing its prompt set does not "
+            "already state, so mode must be 'live'"
         )
     if record.get("prompt_set_hash_kind") not in PROMPT_SET_HASH_KINDS:
         defects.append(f"prompt_set_hash_kind is {record.get('prompt_set_hash_kind')!r}")
@@ -196,10 +273,11 @@ def _structural_defects(record: Dict[str, Any]) -> List[str]:
                 defects.append(f"ledger does not carry {field}")
         if set(ledger) - set(LEDGER_FIELDS):
             defects.append(f"ledger carries undeclared fields: {sorted(set(ledger) - set(LEDGER_FIELDS))}")
+        defects.extend(_field_defects("ledger.", ledger, LEDGER_FIELD_RULES))
         if ledger.get("chain_version") != CHAIN_VERSION_V2:
             defects.append(
-                f"ledger chain_version is {ledger.get('chain_version')!r}, not "
-                f"{CHAIN_VERSION_V2}. A chain version 1 row's status is not evidence"
+                "A chain version 1 row's status is not evidence, so the bound ledger must "
+                f"be chain version {CHAIN_VERSION_V2}"
             )
 
     counters = record.get("counters")
