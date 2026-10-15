@@ -39,6 +39,12 @@ WORKFLOW = ROOT / ".github/workflows/audit-and-sign.yml"
 VERIFYING_TOOLS = (
     "validate_certificate_contract.py",
     "verify_certificate.py",
+    # From SIR 2.5 an archive holds one of two signed documents, and a step
+    # that verifies only the record is as much a verifying step as one that
+    # verifies only a certificate. Without this name such a step would not be
+    # a verifying step to the guards below, so a bare `exit 0` in it would
+    # pass unnoticed.
+    "verify_baseline_record.py",
     "verify_archive_receipt.py",
     "verify_evidence.py",
 )

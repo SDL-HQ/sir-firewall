@@ -462,6 +462,41 @@ jobs:
           python -m json.tool proofs/runs/index.json >/dev/null
           python -m json.tool docs/runs/index.json >/dev/null
 
+          # The typed index is the document the archive page reads, and the
+          # only published index that can hold a baseline record at all. It is
+          # checked against its published schema rather than only parsed,
+          # because what a reader needs from it is that each entry declares its
+          # kind and that no entry of the wrong kind carries a verdict, and
+          # that is a schema property rather than a syntax one.
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          from jsonschema import Draft202012Validator
+
+          schema = json.loads(
+              Path("spec/benchmark_index.v3.schema.json").read_text(encoding="utf-8")
+          )
+          validator = Draft202012Validator(schema)
+          for path in (
+              Path("proofs/runs/benchmark_index.v3.json"),
+              Path("docs/runs/benchmark_index.v3.json"),
+          ):
+              if not path.is_file():
+                  raise SystemExit(f"ERROR: the typed benchmark index is missing: {path}")
+              errors = sorted(validator.iter_errors(json.loads(path.read_text(encoding="utf-8"))),
+                              key=lambda error: list(error.path))
+              for error in errors[:5]:
+                  location = "/".join(str(part) for part in error.path) or "<root>"
+                  print(f"ERROR: {path}: {location}: {error.message}")
+              if errors:
+                  raise SystemExit(
+                      f"ERROR: {path} does not satisfy spec/benchmark_index.v3.schema.json "
+                      f"({len(errors)} errors)"
+                  )
+              print(f"OK: {path} satisfies spec/benchmark_index.v3.schema.json")
+          PY
+
       - name: Publish monitor summary to docs/
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
         run: |
@@ -1056,27 +1091,74 @@ jobs:
             exit 1
           fi
 
-          gated_cert="proofs/runs/$gated_run_id/audit.json"
-          if [ ! -f "$gated_cert" ]; then
-            echo "ERROR: gated benchmark certificate not found: $gated_cert"
+          # From SIR 2.5 the two halves are different documents: the gated
+          # half is a certificate at audit.json, the baseline half a record at
+          # baseline.json. tools/check_paired_archives.py admits the pair by
+          # kind and prints the two paths, so the filenames are decided in one
+          # place. This runs before any publication step, because a benchmark
+          # that publishes an archive and then fails has already put that
+          # archive in front of a reader.
+          admission="$(mktemp)"
+          if ! python tools/check_paired_archives.py \
+            --baseline-run-id "$baseline_run_id" \
+            --gated-run-id "$gated_run_id" | tee "$admission"; then
+            echo "ERROR: the benchmark produced archives that cannot be published." >&2
+            exit 1
+          fi
+
+          gated_cert="$(sed -n 's/^GATED_AUDIT_JSON=//p' "$admission" | tail -n 1)"
+          baseline_record="$(sed -n 's/^BASELINE_RECORD_JSON=//p' "$admission" | tail -n 1)"
+          if [ -z "$gated_cert" ] || [ -z "$baseline_record" ]; then
+            echo "ERROR: archive admission did not name both documents." >&2
             exit 1
           fi
 
           echo "gated_run_id=$gated_run_id" >> "$GITHUB_OUTPUT"
+          echo "baseline_run_id=$baseline_run_id" >> "$GITHUB_OUTPUT"
           echo "gated_audit_json=$gated_cert" >> "$GITHUB_OUTPUT"
-          echo "baseline_audit_json=proofs/runs/$baseline_run_id/audit.json" >> "$GITHUB_OUTPUT"
+          echo "baseline_record_json=$baseline_record" >> "$GITHUB_OUTPUT"
 
-      - name: Verify both paired certificates against their run ledgers
+      - name: Verify each half with the verifier for its document kind
+        env:
+          GATED_AUDIT_JSON: ${{ steps.run_benchmark.outputs.gated_audit_json }}
+          BASELINE_RECORD_JSON: ${{ steps.run_benchmark.outputs.baseline_record_json }}
+          GATED_RUN_ID: ${{ steps.run_benchmark.outputs.gated_run_id }}
+          BASELINE_RUN_ID: ${{ steps.run_benchmark.outputs.baseline_run_id }}
         run: |
           set -euo pipefail
-          baseline_cert="${{ steps.run_benchmark.outputs.baseline_audit_json }}"
-          gated_cert="${{ steps.run_benchmark.outputs.gated_audit_json }}"
-          for cert in "$baseline_cert" "$gated_cert"; do
-            run_id="$(basename "$(dirname "$cert")")"
-            ledger="$(python -c 'import sys; from sir_firewall.evidence_paths import canonical_ledger_path; print(canonical_ledger_path(sys.argv[1]))' "$run_id")"
-            python tools/verify_certificate.py "$cert" \
-              --ledger "$ledger" \
-              --require-registry
+          ledger_for() {
+            python -c 'import sys; from sir_firewall.evidence_paths import canonical_ledger_path; print(canonical_ledger_path(sys.argv[1]))' "$1"
+          }
+
+          # The gated half, by the certificate verifier.
+          python tools/verify_certificate.py "$GATED_AUDIT_JSON" \
+            --ledger "$(ledger_for "$GATED_RUN_ID")" \
+            --require-registry
+
+          # The baseline half, by the record's verifier. This step used to run
+          # the certificate verifier over both halves. From 2.5 that is not a
+          # weaker check but a wrong one: tools/verify_certificate.py refuses a
+          # document that is not a certificate on every path, so it would fail
+          # here for the right reason while telling a reader nothing about the
+          # record.
+          python tools/verify_baseline_record.py "$BASELINE_RECORD_JSON" \
+            --ledger "$(ledger_for "$BASELINE_RUN_ID")" \
+            --require-registry
+
+          # And each archive by the one command a third party runs, which
+          # dispatches on the document the archive holds and reports custody
+          # and contract separately. Exit 1 is NOT ESTABLISHED, which is not a
+          # failure: a property can be unknown without anything having gone
+          # wrong, and publication is blocked on FAILED, not on unknown.
+          for run_id in "$GATED_RUN_ID" "$BASELINE_RUN_ID"; do
+            set +e
+            python tools/verify_evidence.py "proofs/runs/$run_id"
+            code=$?
+            set -e
+            if [ "$code" -ge 2 ]; then
+              echo "ERROR: proofs/runs/$run_id did not verify end to end (exit $code)." >&2
+              exit 1
+            fi
           done
 
       - name: Prepare docs/ for GitHub Pages
@@ -1102,6 +1184,41 @@ jobs:
           test -f docs/runs/index.json
           python -m json.tool proofs/runs/index.json >/dev/null
           python -m json.tool docs/runs/index.json >/dev/null
+
+          # The typed index is the document the archive page reads, and the
+          # only published index that can hold a baseline record at all. It is
+          # checked against its published schema rather than only parsed,
+          # because what a reader needs from it is that each entry declares its
+          # kind and that no entry of the wrong kind carries a verdict, and
+          # that is a schema property rather than a syntax one.
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          from jsonschema import Draft202012Validator
+
+          schema = json.loads(
+              Path("spec/benchmark_index.v3.schema.json").read_text(encoding="utf-8")
+          )
+          validator = Draft202012Validator(schema)
+          for path in (
+              Path("proofs/runs/benchmark_index.v3.json"),
+              Path("docs/runs/benchmark_index.v3.json"),
+          ):
+              if not path.is_file():
+                  raise SystemExit(f"ERROR: the typed benchmark index is missing: {path}")
+              errors = sorted(validator.iter_errors(json.loads(path.read_text(encoding="utf-8"))),
+                              key=lambda error: list(error.path))
+              for error in errors[:5]:
+                  location = "/".join(str(part) for part in error.path) or "<root>"
+                  print(f"ERROR: {path}: {location}: {error.message}")
+              if errors:
+                  raise SystemExit(
+                      f"ERROR: {path} does not satisfy spec/benchmark_index.v3.schema.json "
+                      f"({len(errors)} errors)"
+                  )
+              print(f"OK: {path} satisfies spec/benchmark_index.v3.schema.json")
+          PY
 
       - name: Publish monitor summary to docs/
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
@@ -1234,7 +1351,6 @@ jobs:
         if: always() && env.CANONICAL_PUBLICATION_CONTEXT == 'true'
         env:
           GATED_AUDIT_JSON: ${{ steps.run_benchmark.outputs.gated_audit_json }}
-          BASELINE_AUDIT_JSON: ${{ steps.run_benchmark.outputs.baseline_audit_json }}
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -1252,10 +1368,12 @@ jobs:
 
           live_path = Path("proofs/latest-live-audit.json")
           eligible = False
-          candidates = [
-              Path(os.environ.get("GATED_AUDIT_JSON", "")),
-              Path(os.environ.get("BASELINE_AUDIT_JSON", "")),
-          ]
+          # The gated half only. D5: latest-run, latest-audit, the monitor
+          # window and the run index describe gate runs, and latest-live-audit
+          # is one of them. The baseline half used to be a candidate here, and
+          # from 2.5 it is a record with no result and no proof class, so it
+          # could not be a pointer to a live audit even if it were offered.
+          candidates = [Path(os.environ.get("GATED_AUDIT_JSON", ""))]
           expected_bytes = None
           for candidate in candidates:
               if candidate.is_file():
@@ -1301,6 +1419,7 @@ jobs:
             proofs/runs/index.json
             proofs/runs/benchmark_index.v1.json
             proofs/runs/benchmark_index.v2.json
+            proofs/runs/benchmark_index.v3.json
             proofs/runs/pairs/*.json
             proofs/run_id.txt
             proofs/latest-live-audit.json
