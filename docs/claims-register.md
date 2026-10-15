@@ -8,9 +8,24 @@ it is that each one **remains true when the reader examines the failures**. A
 claim that is true only while nobody checks is the thing this register exists
 to catch.
 
-Last reviewed 8 October 2026 at SIR 2.3.8, ending at commit `6f4d036`, with
-rows added on 15 October 2026 for the 2.5 evidence work. Those rows are dated
-in place; everything else was last examined at the date above.
+Last reviewed in full on 8 October 2026 at SIR 2.3.8, ending at commit
+`6f4d036`, with rows added on 15 October 2026 for the 2.5 evidence work. Those
+rows are dated in place; everything else was last examined at the date above.
+
+**A full re-examination against 2.5 is outstanding, and this is the only place
+that says so.** Release checklist item 8 reports met, and what its tests check
+is that every row carries a status, cites something checkable, records its
+patent coverage, and says a decision is required where it is open. None of them
+checks that a row was re-examined against the code as it now stands. That is
+the right division: a test can hold the register's shape and cannot hold a
+reader's judgement. But it means "10 of 10" is not a statement that these
+claims have been re-verified at this release, and a reader should not take it
+as one.
+
+The re-examination is deliberately held until after the first paired benchmark
+is dispatched. 2.5 changes what the evidence is, and the dispatch moves the
+published figures again; re-reading every claim against figures that are about
+to change would have to be done twice. It is recorded in `docs/backlog.md`.
 
 The release item this register serves stays **open** while it exists, and
 deliberately so. The condition is about the claims rather than about the

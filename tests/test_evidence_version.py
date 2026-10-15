@@ -176,7 +176,12 @@ def test_current_version_surfaces_match_runtime_authority():
         # were taken instead of a rename. The benchmark publication row names it
         # once more from 14 October 2026, as the merge after which the first
         # direct push from automation was declined.
-        "docs/backlog.md": Counter({v_240: 8, v_230: 1, v_102: 1}),
+        #
+        # v_238 arrived on 15 October 2026 with the row recording that the
+        # claims register was last reviewed in full at that release, two minor
+        # versions before the one it will ship with. Named by symbol, because
+        # this file counts its own mentions.
+        "docs/backlog.md": Counter({v_240: 8, v_230: 1, v_102: 1, v_238: 1}),
         # The publication step records the release whose merge exposed that a
         # direct push to main cannot satisfy the required status checks.
         ".github/workflows/audit-and-sign.yml": Counter({v_240: 1}),

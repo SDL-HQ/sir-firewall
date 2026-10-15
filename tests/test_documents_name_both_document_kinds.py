@@ -38,6 +38,44 @@ def _backticked_list(document: str, heading: str) -> list[str]:
     return re.findall(r"^- `([a-z_]+)`", section, flags=re.MULTILINE)
 
 
+def test_every_locked_pair_status_says_what_produces_it():
+    """A locked label with no stated cause tells a reader nothing.
+
+    The statuses were locked as a bare list of six labels, with nothing saying
+    which case reaches which, so the two cases 2.5 added, a baseline half that
+    is not a record and halves that cover different row counts, had no stated
+    home. The
+    table is pinned to the locked list in both directions: a status gaining a
+    row it does not have, or a row for a status that does not exist, fails
+    here.
+
+    Checked on 15 October 2026 against three mutations of docs/benchmark-cycle.v1.md,
+    each applied in place and reverted in a `finally` whose revert was
+    confirmed by hashing the file before and after. Each count is this file's:
+
+        1. a status loses its row in the table       1 failed
+        2. a row names a status nothing produces     1 failed
+        3. a cause is reduced to one word            1 failed
+    """
+    document = _cycle()
+    locked = set(_backticked_list(document, "### Pair status values (locked)"))
+    assert locked, "the locked list was not found, so this test proves nothing"
+
+    start = document.index("| Status | Produced when |")
+    rest = document[start:]
+    end = rest.find("\n\n")
+    table = rest if end < 0 else rest[:end]
+    rows = re.findall(r"^\| `([a-z_]+)` \| (.+?) \|$", table, flags=re.MULTILINE)
+    described = {status for status, _ in rows}
+
+    assert described == locked, {
+        "in the table and not locked": sorted(described - locked),
+        "locked and not in the table": sorted(locked - described),
+    }
+    for status, cause in rows:
+        assert len(cause.split()) >= 8, (status, cause)
+
+
 def test_the_locked_pair_statuses_are_the_validator_s_statuses():
     """A locked list of statuses that the validator cannot produce is not locked.
 
