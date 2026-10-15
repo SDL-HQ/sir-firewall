@@ -276,7 +276,13 @@ def _verify_baseline_archive(*, run_directory, record, ledger, manifest, receipt
         report.to_json(run_directory) if args.json else report.to_text(run_directory),
         file=sys.stdout,
     )
-    return report.verdict()
+    # verdict is a property. Calling it raised TypeError on every baseline
+    # archive, after the report had already been printed, so the tool printed a
+    # correct report and then exited 1 on an uncaught exception. The gated
+    # branch at the bottom of this file never had the bug, which is why it was
+    # not noticed: no baseline archive is published yet, so nothing in the
+    # repository exercised this line.
+    return report.verdict
 
 
 def main() -> int:
