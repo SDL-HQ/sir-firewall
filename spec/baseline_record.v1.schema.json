@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://sdl-hq.github.io/sir-firewall/spec/baseline_record.v1.schema.json",
   "title": "SIR Ungated Baseline Record v1",
-  "description": "What an ungated baseline run is allowed to say about itself.\n\nA baseline runs a prompt set with the SIR gate out of the path, so there is no gate decision to report and no audit outcome to compute. Before SIR 2.5 such a run was described by an audit certificate, which has both: 54 were published recording AUDIT FAILED under proof classes that name firewall activity, and docs/archive-errata.md E7 records them.\n\nThis record carries one claim: a named prompt set was forwarded to a named provider with nothing deciding on it, and this is what came back at the transport level. It carries no result and no proof class, and the fields a certificate uses to describe enforcement are forbidden rather than nullable, because a null in a field a reader expects to hold a verdict is how the 54 came to be read as failed audits.\n\nWhat it does not establish is stated in docs/benchmark-cycle.v1.md and in the evidence perimeter: the record is the issuer's account of its own run. The rows authenticate what the producer encoded, not an independently observed absence of gate invocation.",
+  "description": "What an ungated baseline run is allowed to say about itself.\n\nA baseline runs a prompt set with the SIR gate out of the path, so there is no gate decision to report and no audit outcome to compute. Before SIR 2.5 such a run was described by an audit certificate, which has both: 54 were published recording AUDIT FAILED under proof classes that name firewall activity, and docs/archive-errata.md E7 records them.\n\nThis record carries one claim: a named prompt set was forwarded to a named provider with nothing deciding on it, and this is what came back at the transport level. It carries no result and no proof class, and the fields a certificate uses to describe enforcement are forbidden rather than nullable, because a null in a field a reader expects to hold a verdict is how the 54 came to be read as failed audits.\n\nWhat a record is for: it establishes that a named prompt set was forwarded to a named provider with the gate out of the path, and how many of those calls returned. It is the provenance half of a comparison whose measured side is the gated run, fixing which prompts went to which model under which repository state so the gated run's figures can be attributed to that prompt set. It is not a control for the provider's own safety layer, because the call outcome cannot tell a provider-side refusal from an outage.\n\nWhat it does not establish is stated in docs/benchmark-cycle.v1.md and in the evidence perimeter: the record is the issuer's account of its own run. The rows authenticate what the producer encoded, not an independently observed absence of gate invocation.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -128,7 +128,7 @@
     "counters": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Recomputed from the bound ledger's rows by the verifier, not taken from this document. In a scenario a row is a turn and each provider call carries the earlier turns, so these count calls and turns rather than distinct content exposures.",
+      "description": "Recomputed from the bound ledger's rows by the verifier, not taken from this document. In a scenario a row is a turn and each provider call carries the earlier turns, so these count calls and turns rather than distinct content exposures. That history is built from the fixture's own rows, each contributing its role and its prompt text; it is appended before the call and regardless of the call's outcome, so a turn whose call failed still appears in later turns' history, and no entry in it is ever a provider reply.",
       "required": [
         "prompts_forwarded",
         "expected_block_prompts_forwarded",
@@ -140,7 +140,8 @@
       "properties": {
         "prompts_forwarded": {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "description": "Rows in the bound ledger. Every baseline row attempts a provider call, so this is also the attempt count."
         },
         "expected_block_prompts_forwarded": {
           "type": "integer",
@@ -149,19 +150,23 @@
         },
         "expected_allow_prompts_forwarded": {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "description": "The prompt set's own label count for allow, carried through from the suite file. Not a count of anything that happened."
         },
         "provider_call_attempts": {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "description": "Rows on which a provider call was issued, counted by the runner that issued them. One per attempt: a retry or a timeout is a further attempt. The count can be short of what happened and can also exceed it; a row asserting an attempt never issued satisfies the row shape."
         },
         "provider_call_successes": {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "description": "Calls that returned. It records whether the call raised and nothing else: a response carrying the provider's own content-policy refusal is a success, because the call returned. No response is read to decide this."
         },
         "provider_call_failures": {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "description": "Calls that raised. A refusal the provider returns as an error is counted here and is not distinguishable from an outage, a timeout, a rate limit or a bad credential."
         }
       }
     },

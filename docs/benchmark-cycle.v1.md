@@ -36,6 +36,30 @@ a provider call was attempted with that row's content and is not a gate
 decision; the gate returns only `PASS` or `BLOCKED`, so a `FORWARDED` row
 cannot come from a gated run.
 
+**What the ungated half is for.** Stated here because the documents described
+what a baseline record is before they said why one is run, and the first
+dispatch under this design publishes evidence.
+
+A baseline record establishes that a named prompt set was forwarded to a named
+provider with the gate out of the path, and how many of those calls returned.
+That is its whole claim. It is the provenance half of a comparison whose
+measured side is the gated run: it fixes which prompts went to which model
+under which repository state, so the gated run's own figures can be attributed
+to that prompt set rather than asserted over one nobody can identify.
+
+It is **not** a control for the provider's own safety layer. Telling what the
+provider did with a forwarded prompt would require reading the response back,
+and the baseline does not: `provider_call_outcome` records whether the call
+raised, so a provider's content-policy refusal that returns a response counts
+as a success, and one returned as an error counts as a failure that cannot be
+told apart from an outage. `docs/terminology.md` states that definition and
+`docs/evidence-perimeter.v5.md` lists what a verified record therefore does not
+establish.
+
+So a pair says what the gate did to a prompt set the baseline identifies. It
+does not say what the provider would have done without the gate, and no figure
+in a pair is named as though it did.
+
 Baselines published before 2.5 are audit certificates. All 54 of them say
 `"result": "AUDIT FAILED"` under a proof class naming firewall activity that
 did not occur. They stay published, are not re-signed, and carry a
