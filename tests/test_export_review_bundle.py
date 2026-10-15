@@ -10,31 +10,31 @@ def _write(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def _explicit_files() -> tuple:
+    import importlib.util
+
+    module_path = Path(__file__).resolve().parents[1] / "tools" / "export_review_bundle.py"
+    spec = importlib.util.spec_from_file_location("export_review_bundle", module_path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.EXPLICIT_FILES
+
+
 def _make_minimal_repo(root: Path, *, malformed_latest_run: bool = False, omit_latest_run: bool = False) -> None:
     script_src = Path(__file__).resolve().parents[1] / "tools" / "export_review_bundle.py"
     script_dst = root / "tools" / "export_review_bundle.py"
     script_dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(script_src, script_dst)
 
-    text_files = (
-        "README.md",
-        "RETENTION.md",
-        "docs/assurance-kit.md",
-        "docs/evaluator-technical-explainer.md",
-        "docs/external-technical-review-prep.md",
-        "docs/benchmark-cycle.v1.md",
-        "docs/archive/d5-benchmark-first-cycle-review.md",
-        "docs/compliance-evidence-map.md",
-        "proofs/latest-audit.html",
-        "proofs/runs/index.html",
-        "spec/evidence_contract.v1.json",
-        "spec/evidence_contract.v2.json",
-        "spec/evidence_contract.v3.json",
-        "tools/verify_certificate.py",
-        "tools/verify_archive_receipt.py",
-        "tools/verify_itgl.py",
-    )
-    for rel in text_files:
+    # The file list comes from the tool, not from a copy of it here. This
+    # fixture used to carry its own list, so adding a file to EXPLICIT_FILES
+    # made every test using this fixture fail on the fixture's omission rather
+    # than on the thing under test.
+    json_fixtures = ("proofs/latest-audit.json", "proofs/runs/index.json", "docs/latest-run.json")
+    for rel in _explicit_files():
+        if rel in json_fixtures:
+            continue
         _write(root / rel, "x\n")
 
     _write(

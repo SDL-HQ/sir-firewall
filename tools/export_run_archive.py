@@ -14,7 +14,17 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-REQUIRED_RUN_FILES = ("audit.json", "manifest.json", "archive_receipt.json")
+# Every archive carries these.
+REQUIRED_RUN_FILES = ("manifest.json", "archive_receipt.json")
+
+# And exactly one of these, which is what kind of archive it is. Until 15
+# October 2026 audit.json was required of every archive, so an ungated baseline
+# archive, whose signed document is baseline.json, could not be exported at
+# all. Requiring one and refusing both is the same rule
+# tools/verify_evidence.py applies: an archive holding both cannot be read as
+# either kind, and an archive holding neither is untyped.
+SIGNED_DOCUMENTS = ("audit.json", "baseline.json")
+DOCUMENT_KINDS = {"audit.json": "audit_certificate", "baseline.json": "ungated_baseline_record"}
 
 
 def _utc_now_z() -> str:
@@ -103,14 +113,41 @@ def _build_bundle_manifest(export_root: Path, run_dir: Path) -> Dict[str, Any]:
     source_commit = receipt.get("commit_sha") or manifest.get("commit_sha") or ""
     source_run_id = manifest.get("run_id") or run_dir.name
 
+    document = _signed_document(run_dir)
+
     return {
         "bundle_hash": _compute_bundle_hash(export_root),
         "exported_at_utc": _utc_now_z(),
         "receipt_hash": _sha256_bytes(receipt_bytes),
+        # What a retained bundle holds, so a reader of the manifest alone knows
+        # which verifier applies to it.
+        "signed_document": document,
+        "signed_document_kind": DOCUMENT_KINDS[document],
         "source_commit_sha": source_commit,
         "source_repository": source_repo,
         "source_run_id": source_run_id,
     }
+
+
+def _signed_document(run_dir: Path) -> str:
+    """Which document this archive holds, or a refusal.
+
+    The export is byte-preserving, so nothing here reads the document's
+    contents; what it establishes is that the archive is of one kind, which the
+    bundle manifest then records.
+    """
+    present = [name for name in SIGNED_DOCUMENTS if (run_dir / name).is_file()]
+    if len(present) == 1:
+        return present[0]
+    if not present:
+        raise ValueError(
+            f"run folder holds no signed document, so it has no kind: {run_dir} "
+            f"(expected one of {', '.join(SIGNED_DOCUMENTS)})"
+        )
+    raise ValueError(
+        f"run folder holds more than one signed document, so it cannot be read as "
+        f"either kind: {run_dir} ({', '.join(present)})"
+    )
 
 
 def _validate_source_run(run_dir: Path) -> Tuple[Path, str]:
@@ -120,6 +157,7 @@ def _validate_source_run(run_dir: Path) -> Tuple[Path, str]:
         p = run_dir / name
         if not p.exists() or not p.is_file():
             raise ValueError(f"run folder missing required file: {p}")
+    _signed_document(run_dir)
     manifest = _read_json_object(run_dir / "manifest.json")
     run_id = manifest.get("run_id") if isinstance(manifest.get("run_id"), str) else run_dir.name
     return run_dir, run_id
