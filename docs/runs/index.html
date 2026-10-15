@@ -498,9 +498,10 @@
         <p class="muted">Pair-first benchmark surface derived from per-run archives and machine indexes. Default scope is post-2.0 baseline onward from 2026-04-16 UTC.</p>
         <div class="machine-indexes">
           Machine indexes:
-          <a href="index.json"><code>runs/index.json</code></a> ·
-          <a href="benchmark_index.v1.json"><code>runs/benchmark_index.v1.json</code></a> row evidence ·
-          <a href="benchmark_index.v2.json"><code>runs/benchmark_index.v2.json</code></a> paired benchmark view
+          <a href="index.json"><code>runs/index.json</code></a> gate runs only ·
+          <a href="benchmark_index.v3.json"><code>runs/benchmark_index.v3.json</code></a> typed entries and pairs, the source of this page ·
+          <a href="benchmark_index.v1.json"><code>runs/benchmark_index.v1.json</code></a> ·
+          <a href="benchmark_index.v2.json"><code>runs/benchmark_index.v2.json</code></a> superseded
         </div>
       </div>
     </header>
@@ -557,7 +558,9 @@
 
       <div class="counter-grid" id="counters">
         <div class="counter-card"><div class="k">Rows in view</div><div class="v" id="c-runs">--</div></div>
-        <div class="counter-card"><div class="k">Non-pass rows</div><div class="v" id="c-nonpass">--</div></div>
+        <div class="counter-card"><div class="k">Non-pass gate runs</div><div class="v" id="c-nonpass">--</div></div>
+        <div class="counter-card"><div class="k">Baseline records</div><div class="v" id="c-records">--</div></div>
+        <div class="counter-card"><div class="k">Legacy baselines</div><div class="v" id="c-legacy">--</div></div>
         <div class="counter-card"><div class="k">Models</div><div class="v" id="c-models">--</div></div>
         <div class="counter-card"><div class="k">Packs</div><div class="v" id="c-packs">--</div></div>
         <div class="counter-card"><div class="k">Proof classes</div><div class="v" id="c-proofs">--</div></div>
@@ -682,14 +685,65 @@
       return Number.isFinite(t) && t >= c;
     }
 
+    const BASELINE_RECORD_KIND = "ungated_baseline_record";
+
+    // Only a gate run has a result, and the comparison is exact, as in
+    // tools/certificate_results.py. This page used to upper-case first, which
+    // disagreed with every other reader of the field.
     function isPass(result) {
-      return (result || "").toUpperCase() === "AUDIT PASSED";
+      return result === "AUDIT PASSED";
     }
+
+    function isBaselineRecord(entry) {
+      return entry?.entry_kind === BASELINE_RECORD_KIND;
+    }
+
+    // A legacy baseline is the ungated half of a pair published before 2.5,
+    // when a baseline run was certified by the generator built for gated runs.
+    // Its result reads AUDIT FAILED because with no gate every row was a
+    // forwarded prompt, so every prompt the suite labels for blocking counted
+    // as a leak. Those certificates stay published and are not re-signed, so
+    // the qualification travels with them wherever their result is shown. The
+    // marker is the pair artefact's own roles, which are issuer metadata; it
+    // qualifies a historical record and never relaxes a check.
+    function isLegacyBaselineCertificate(entry) {
+      if (!entry || isBaselineRecord(entry)) return false;
+      return rowContextByRunId.get(entry.run_id || "")?.benchmark_role === "baseline";
+    }
+
+    const LEGACY_BASELINE_NOTE =
+      "Ungated baseline. This result was computed with no gate in the path, so every "
+      + "prompt labelled for blocking counted as a leak. It is not an audit of the gate.";
+
+    const LEGACY_DELTA_NOTE =
+      "Computed against a baseline certified with no gate in the path. The leak delta is "
+      + "the negative of the number of expected-block prompts the gated run blocked, which "
+      + "is a count of blocks and not a measure of harm prevented.";
+
+    const NO_RESULT_NOTE =
+      "A baseline record carries no result. It records that the prompt set was forwarded "
+      + "to the provider with no gate in the path.";
 
     function resultPill(result) {
       const text = esc(result || "--");
       const cls = isPass(result) ? "pass" : "non-pass";
       return `<span class="pill ${cls}">${text}</span>`;
+    }
+
+    // What a row says about itself. A baseline record has no result, and
+    // putting "--" in a pass/fail pill styled the absence as a failure.
+    function entryResultPill(entry) {
+      if (isBaselineRecord(entry)) {
+        return `<span class="pill" title="${esc(NO_RESULT_NOTE)}">ungated baseline, no result</span>`;
+      }
+      const pill = resultPill(entry?.result);
+      if (!isLegacyBaselineCertificate(entry)) return pill;
+      return `${pill}<span class="pill" title="${esc(LEGACY_BASELINE_NOTE)}">legacy baseline, qualified</span>`;
+    }
+
+    function progressionLabel(entry) {
+      if (isBaselineRecord(entry)) return "NO RESULT";
+      return isPass(entry?.result) ? "PASS" : "NON_PASS";
     }
 
     function pairStatusLabel(status) {
@@ -753,6 +807,7 @@
       const ev = entry?.evidence || {};
       return [
         ["audit", ev.audit],
+        ["baseline", ev.baseline],
         ["manifest", ev.manifest],
         ["summary", ev.run_summary],
         ["receipt", ev.archive_receipt],
@@ -765,7 +820,7 @@
     function renderEvidenceGroup(entry) {
       const items = evidenceItemList(entry);
       if (!items.length) return "--";
-      const primaryKeys = new Set(["audit", "manifest", "summary", "receipt"]);
+      const primaryKeys = new Set(["audit", "baseline", "manifest", "summary", "receipt"]);
       const primary = items.filter(([k]) => primaryKeys.has(k)).slice(0, 3);
       const extra = items.filter(([k]) => !primary.some(([p]) => p === k));
       const primaryHtml = primary.map(([k, p]) => `<a class="link-chip" href="../${esc(p)}">${esc(k)}</a>`).join("");
@@ -773,8 +828,14 @@
         ? `<details class="evidence-more"><summary>more files</summary><div class="link-group" style="margin-top:5px;">${extra.map(([k, p]) => `<a class="link-chip" href="../${esc(p)}">${esc(k)}</a>`).join("")}</div></details>`
         : "";
       const ev = entry?.evidence || {};
-      const verifyCommand = ev.audit && entry?.run_id
-        ? `<div class="verify-command"><code>python3 tools/verify_certificate.py docs/${esc(ev.audit)} --ledger docs/runs/${esc(entry.run_id)}/proofs/itgl_ledger.jsonl</code></div>`
+      // The command names the verifier for the document the entry holds. A
+      // baseline record is verified by tools/verify_baseline_record.py;
+      // tools/verify_certificate.py refuses a document that is not a
+      // certificate on every path, including --no-ledger.
+      const documentPath = isBaselineRecord(entry) ? ev.baseline : ev.audit;
+      const verifier = isBaselineRecord(entry) ? "verify_baseline_record.py" : "verify_certificate.py";
+      const verifyCommand = documentPath && entry?.run_id
+        ? `<div class="verify-command"><code>python3 tools/${verifier} docs/${esc(documentPath)} --ledger docs/runs/${esc(entry.run_id)}/proofs/itgl_ledger.jsonl</code></div>`
         : "";
       return `<div class="link-group">${primaryHtml}</div>${extraHtml}${verifyCommand}`;
     }
@@ -792,17 +853,48 @@
       </div>`;
     }
 
-    function pairDeltaChipHtml(pair) {
-      const deltas = [];
-      const source = pair?.deltas;
+    const GATE_FIGURE_LABELS = [
+      ["expected_block_prompts", "expected-block prompts"],
+      ["expected_block_prompts_with_gate_decision", "with a gate decision"],
+      ["expected_block_prompts_blocked_by_gate", "blocked by the gate"],
+      ["expected_block_prompts_passed_by_gate", "passed by the gate"],
+      ["expected_block_prompts_reset", "reset before a decision"],
+    ];
+
+    function pairFigureChipHtml(pair) {
+      const chips = [];
       const packId = pair?.required_dimensions?.pack_id || "";
-      if (packId) deltas.push(`<span class="delta-chip">full-gate coverage ${esc(coverageFor(packId))}</span>`);
-      if (source && typeof source === "object") {
-        if (Number.isFinite(source.leaks_delta)) deltas.push(`<span class="delta-chip">delta leaks ${esc(String(source.leaks_delta))}</span>`);
-        if (Number.isFinite(source.provider_call_attempts_delta)) deltas.push(`<span class="delta-chip">delta provider calls ${esc(String(source.provider_call_attempts_delta))}</span>`);
-        if (Number.isFinite(source.harmless_blocked_delta)) deltas.push(`<span class="delta-chip">delta harmless blocked ${esc(String(source.harmless_blocked_delta))}</span>`);
+      if (packId) chips.push(`<span class="delta-chip">full-gate coverage ${esc(coverageFor(packId))}</span>`);
+      const source = pair?.deltas;
+      const attempts = source && typeof source === "object" ? source.provider_call_attempts_delta : undefined;
+
+      // A pair from 2.5 carries the gate's own figures over the prompts the
+      // suite labels for blocking, and carries no leak delta at all. The
+      // figures are present only on a comparable pair, so their absence is
+      // reported rather than filled in.
+      if (pair?.pair_form === "record_and_certificate") {
+        const figures = pair?.gate_figures;
+        if (figures && typeof figures === "object") {
+          GATE_FIGURE_LABELS.forEach(([key, label]) => {
+            if (Number.isFinite(figures[key])) {
+              chips.push(`<span class="delta-chip">${label} ${esc(String(figures[key]))}</span>`);
+            }
+          });
+        } else {
+          chips.push('<span class="delta-chip">no gate figures: this pair is not comparable</span>');
+        }
+        if (Number.isFinite(attempts)) chips.push(`<span class="delta-chip">delta provider calls ${esc(String(attempts))}</span>`);
+        return chips.length ? `<div class="pair-deltas">${chips.join("")}</div>` : '<div class="small">No figures in index.</div>';
       }
-      return deltas.length ? `<div class="pair-deltas">${deltas.join("")}</div>` : '<div class="small">No deltas in index.</div>';
+
+      // A pair published before 2.5 keeps its figures as published, named as
+      // legacy and carrying the qualification its baseline half needs.
+      if (source && typeof source === "object") {
+        if (Number.isFinite(source.leaks_delta)) chips.push(`<span class="delta-chip" title="${esc(LEGACY_DELTA_NOTE)}">legacy delta leaks ${esc(String(source.leaks_delta))}</span>`);
+        if (Number.isFinite(attempts)) chips.push(`<span class="delta-chip">delta provider calls ${esc(String(attempts))}</span>`);
+        if (Number.isFinite(source.harmless_blocked_delta)) chips.push(`<span class="delta-chip" title="${esc(LEGACY_DELTA_NOTE)}">legacy delta harmless blocked ${esc(String(source.harmless_blocked_delta))}</span>`);
+      }
+      return chips.length ? `<div class="pair-deltas">${chips.join("")}</div>` : '<div class="small">No figures in index.</div>';
     }
 
     function rowMatchesFilters(e, f) {
@@ -811,6 +903,10 @@
       if (f.pack && ((e.evaluation_target?.pack_id) || "") !== f.pack) return false;
       if (f.proof && (e.proof_class || "") !== f.proof) return false;
       if (f.kind && ((e.evaluation_target?.target_kind) || "") !== f.kind) return false;
+      // A baseline record has no result, so neither value of this filter
+      // describes it. Without this it was excluded by one and included by the
+      // other, which reported it as a non-passing run.
+      if (f.status && isBaselineRecord(e)) return false;
       if (f.status === "AUDIT PASSED" && !isPass(e.result)) return false;
       if (f.status === "NON_PASS" && isPass(e.result)) return false;
       if (f.search) {
@@ -849,6 +945,9 @@
         if (f.pack && ((gated.evaluation_target?.pack_id) || (base.evaluation_target?.pack_id) || "") !== f.pack) return false;
         if (f.proof && ((gated.proof_class) || (base.proof_class) || "") !== f.proof) return false;
         if (f.kind && ((gated.evaluation_target?.target_kind) || (base.evaluation_target?.target_kind) || "") !== f.kind) return false;
+        // The gated half of a pair is a certificate in both pair forms. If an
+        // index says otherwise, the result filter still does not apply to it.
+        if (f.status && isBaselineRecord(gated)) return false;
         if (f.status === "AUDIT PASSED" && !isPass(gated.result)) return false;
         if (f.status === "NON_PASS" && isPass(gated.result)) return false;
         if (f.search) {
@@ -867,14 +966,32 @@
       const packs = new Set();
       const proofs = new Set();
       let nonPass = 0;
+      let records = 0;
+      let legacyBaselines = 0;
       rows.forEach(r => {
         if (r.model) models.add(r.model);
         if (r.evaluation_target?.pack_id) packs.add(r.evaluation_target.pack_id);
         if (r.proof_class) proofs.add(r.proof_class);
+        if (isBaselineRecord(r)) {
+          // No result, so neither passing nor non-passing. Counting the
+          // absence as non-passing is what the monitor used to do too.
+          records += 1;
+          return;
+        }
+        if (isLegacyBaselineCertificate(r)) {
+          // A certificate with a result, but of a run with no gate in it. Its
+          // result is AUDIT FAILED in all 54 published cases, and counting
+          // those as non-passing gate runs is the published figure this page
+          // should not repeat.
+          legacyBaselines += 1;
+          return;
+        }
         if (!isPass(r.result)) nonPass += 1;
       });
       document.getElementById("c-runs").textContent = String(rows.length);
       document.getElementById("c-nonpass").textContent = String(nonPass);
+      document.getElementById("c-records").textContent = String(records);
+      document.getElementById("c-legacy").textContent = String(legacyBaselines);
       document.getElementById("c-models").textContent = String(models.size);
       document.getElementById("c-packs").textContent = String(packs.size);
       document.getElementById("c-proofs").textContent = String(proofs.size);
@@ -942,7 +1059,7 @@
         const historyChips = group.slice(0, GROUP_HISTORY_CHIPS).map(item => {
           const pairStatus = esc(pairStatusLabel(item.pair.pair_status || "unknown"));
           const stamp = esc((item.gated.run_timestamp_utc || item.base.run_timestamp_utc || "").slice(0, 19).replace("T", " "));
-          const result = isPass(item.gated.result) ? "PASS" : "NON_PASS";
+          const result = progressionLabel(item.gated);
           return `<span class="history-chip">${result} · ${pairStatus} · ${stamp || "unknown time"}</span>`;
         }).join("");
 
@@ -951,10 +1068,10 @@
         const olderRows = older.length ? older.map(item => `
           <tr>
             <td><code>${esc(truncateRunId(item.pair.pair_id || "pair"))}</code></td>
-            <td>${resultPill(item.base.result)} to ${resultPill(item.gated.result)}</td>
+            <td>${entryResultPill(item.base)} to ${entryResultPill(item.gated)}</td>
             <td><code>${esc(item.gated.run_timestamp_utc || item.base.run_timestamp_utc || "--")}</code></td>
             <td><code>${esc(pairStatusLabel(item.pair.pair_status || "unknown"))}</code></td>
-            <td>${pairDeltaChipHtml(item.pair)}</td>
+            <td>${pairFigureChipHtml(item.pair)}</td>
             <td>${pairEvidenceCell(item.base, item.gated)}</td>
           </tr>
         `).join("") : '<tr><td colspan="6" class="small">No older items in this stream.</td></tr>';
@@ -970,17 +1087,17 @@
                 <span>stream size ${group.length}</span>
               </div>
             </div>
-            <div>${resultPill(latestGated.result)}</div>
+            <div>${entryResultPill(latestGated)}</div>
           </div>
 
           <div class="latest-grid">
             <div class="latest-box">
               <div class="small">Latest pair outcome</div>
-              <div style="margin-top:4px;">${resultPill(latestBase.result)} to ${resultPill(latestGated.result)}</div>
+              <div style="margin-top:4px;">${entryResultPill(latestBase)} to ${entryResultPill(latestGated)}</div>
               <div class="small" style="margin-top:6px;">baseline ${runLink(latestBase.run_id)} · gated ${runLink(latestGated.run_id)}</div>
               <div class="small">baseline <code>${esc(latestBase.run_timestamp_utc || "--")}</code> · gated <code>${esc(latestGated.run_timestamp_utc || "--")}</code></div>
               ${reason}
-              <div style="margin-top:5px;">${pairDeltaChipHtml(latestPair)}</div>
+              <div style="margin-top:5px;">${pairFigureChipHtml(latestPair)}</div>
             </div>
             <div class="latest-box">
               <div class="small">Latest evidence access</div>
@@ -1007,7 +1124,7 @@
                     <th>Outcome</th>
                     <th>Timestamp</th>
                     <th>Status</th>
-                    <th>Deltas</th>
+                    <th>Figures</th>
                     <th>Evidence</th>
                   </tr>
                 </thead>
@@ -1036,15 +1153,17 @@
         const context = esc(rowContextLabel(r));
         const model = esc(r.model || "--");
         const ts = esc(r.run_timestamp_utc || "--");
-        const leaks = esc(r.comparison?.leaks ?? "--");
         const ciUrl = esc(safeHttpUrl(r.ci_run_url));
         const ci = ciUrl ? `<a href="${ciUrl}">CI</a>` : "--";
+        const outcomeDetail = isBaselineRecord(r)
+          ? `forwarded ${esc(String(r.forwarding?.prompts_forwarded ?? "--"))}`
+          : `leaks ${esc(r.comparison?.leaks ?? "--")}`;
         return `<tr>
           <td data-label="Timestamp"><code>${ts}</code></td>
           <td data-label="Pack / coverage"><code>${pack}</code><div class="small">full-gate coverage <code>${esc(coverageFor(r.evaluation_target?.pack_id || ""))}</code></div></td>
           <td data-label="Proof class"><code>${proof}</code><div class="small">${context}</div></td>
           <td data-label="Model"><code>${model}</code></td>
-          <td data-label="Result / leaks">${resultPill(r.result)}<div class="small">leaks ${leaks}</div></td>
+          <td data-label="Result / leaks">${entryResultPill(r)}<div class="small">${outcomeDetail}</div></td>
           <td data-label="Run">${runLink(r.run_id)}</td>
           <td data-label="Evidence / CI">${renderEvidenceGroup(r)}<div class="small">${ci}</div></td>
         </tr>`;
@@ -1067,11 +1186,11 @@
       const sorted = [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
       target.innerHTML = sorted.map(([key, group]) => {
         const latest = group[0] || {};
-        const seq = group.slice(0, 6).map(g => isPass(g.result) ? "PASS" : "NON_PASS").join(" -> ");
+        const seq = group.slice(0, 6).map(progressionLabel).join(" -> ");
         return `<tr>
           <td><code>${esc(key)}</code></td>
           <td>${group.length}</td>
-          <td>${resultPill(latest.result)}</td>
+          <td>${entryResultPill(latest)}</td>
           <td><code>${esc(seq)}</code></td>
           <td>${runLink(latest.run_id)} · ${renderEvidenceGroup(latest)}</td>
         </tr>`;
@@ -1120,23 +1239,26 @@
       const targetRecent = document.getElementById("recent-rows");
       const targetPairs = document.getElementById("pair-rows");
       try {
-        const [v1Response, v2Response] = await Promise.all([
-          fetch("./benchmark_index.v1.json", { cache: "no-store" }),
-          fetch("./benchmark_index.v2.json", { cache: "no-store" }),
-        ]);
+        // benchmark_index.v3.json, not v1 and v2. The earlier indexes carry
+        // one entry shape and one pair shape, so a baseline record could only
+        // appear in them as a gate run with fields missing. v3 declares each
+        // entry's kind and each pair's form, and the publisher builds it from
+        // the archives rather than from the run index, which holds gate runs
+        // only. Both earlier files are still published, and are superseded.
+        const v3Response = await fetch("./benchmark_index.v3.json", { cache: "no-store" });
+        if (!v3Response.ok) throw new Error(`v3 HTTP ${v3Response.status}`);
 
-        if (!v1Response.ok) throw new Error(`v1 HTTP ${v1Response.status}`);
-        if (!v2Response.ok) throw new Error(`v2 HTTP ${v2Response.status}`);
+        const v3Payload = await v3Response.json();
+        if (!Array.isArray(v3Payload?.entries)) throw new Error("v3 index has no entries array");
 
-        const v1Payload = await v1Response.json();
-        const v2Payload = await v2Response.json();
-
-        const entries = Array.isArray(v1Payload?.entries) ? v1Payload.entries : [];
+        const entries = v3Payload.entries;
         allEntries = entries;
         entriesByRunId.clear();
         entries.forEach(e => entriesByRunId.set(e.run_id, e));
 
-        pairedRows = Array.isArray(v2Payload?.pairs) ? v2Payload.pairs : [];
+        // Before any render, because the qualification on a legacy baseline
+        // certificate is read from the pair roles.
+        pairedRows = Array.isArray(v3Payload?.pairs) ? v3Payload.pairs : [];
         buildRowContextMap(pairedRows);
 
         const baselineDefinitionRaw = pairedRows.find(p => p && p.baseline_definition)?.baseline_definition
