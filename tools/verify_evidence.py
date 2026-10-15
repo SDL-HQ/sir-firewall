@@ -224,7 +224,12 @@ def _verify_baseline_archive(*, run_directory, record, ledger, manifest, receipt
     report = Report()
 
     argv = [str(TOOLS / "verify_baseline_record.py"), str(record)]
-    argv += ["--ledger", str(ledger)] if ledger.is_file() else []
+    # One or the other, never neither. The record names its own ledger path, so
+    # omitting both let an archive with no ledger be verified against a ledger
+    # somewhere else on disk, and this tool reports on one archive directory.
+    # The certificate branch below has always passed --no-ledger for the same
+    # reason; an independent review found the baseline branch did not.
+    argv += ["--ledger", str(ledger)] if ledger.is_file() else ["--no-ledger"]
     if args.allow_unregistered_key:
         if args.pubkey:
             argv += ["--pubkey", args.pubkey]
@@ -232,10 +237,27 @@ def _verify_baseline_archive(*, run_directory, record, ledger, manifest, receipt
         argv += ["--key-registry", args.key_registry, "--require-registry"]
     code, output = _run(argv)
     state, detail = _classify(code, BASELINE_RECORD_CODES, "verify_baseline_record.py")
+    if not ledger.is_file() and state == "established":
+        # Only a pass is downgraded, as in the certificate branch. A signature
+        # that failed without a ledger present still failed.
+        state, detail = (
+            "unknown",
+            "no ledger in this run directory, so the record's binding, row "
+            "classification and counters establish nothing; the document and its "
+            "signature were still checked",
+        )
     last_line = output.strip().splitlines()[-1] if output.strip() else None
     report.add("baseline record", state, detail, evidence=last_line)
 
-    if code in BASELINE_SIGNATURE_VERIFIED_CODES:
+    if args.allow_unregistered_key:
+        report.add(
+            "signing trust",
+            "unknown",
+            "--allow-unregistered-key was given, so the signing key was not resolved "
+            "through the approved registry; this establishes that someone signed the "
+            "record, not that SDL did",
+        )
+    elif code in BASELINE_SIGNATURE_VERIFIED_CODES:
         report.add(
             "signing trust",
             "established",
