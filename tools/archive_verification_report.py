@@ -657,6 +657,36 @@ def render_e6_counts(figures: dict) -> str:
     )
 
 
+def render_e7_counts(figures: dict) -> str:
+    """The published ungated baseline certificates, counted from the archive.
+
+    The marker is the issuer's own metadata, so this figure says how many
+    certificates declare themselves ungated and not how many runs were. It
+    qualifies a historical record; nothing is relaxed because of it.
+    """
+    legacy = _runs(figures, "legacy_ungated_certificates")
+    if not legacy:
+        return _wrap(
+            "**Counts.** No published certificate carries the legacy ungated marker."
+        )
+
+    first, last = _date_span(legacy)
+    return _wrap(
+        f"**Counts.** {len(legacy)} published certificates carry "
+        "`benchmark_execution.gate_mode` set to `ungated`, from "
+        f"{first} to {last}. That marker is set by the issuer and is used here only "
+        "to identify the affected records; no check is relaxed because of it. "
+        "Appendix C lists them."
+    )
+
+
+def render_appendix_c(figures: dict) -> str:
+    legacy = _runs(figures, "legacy_ungated_certificates")
+    if not legacy:
+        return "No published certificate carries the legacy ungated marker."
+    return _listing(legacy)
+
+
 def render_appendix_a(figures: dict) -> str:
     runs = _runs(figures, "incomplete")
     return f"All {len(runs)} of them:\n\n{_listing(runs)}"
@@ -744,6 +774,14 @@ def render_proof_qualifications(figures: dict) -> str:
         "variable or a mutable file. Disclosed in "
         "`docs/evidence-binding-correction.md`. Every certificate at or above 2.3.4 "
         f"matches the ledger shipped with it, {bound} of {era}.",
+        f"**{_n(figures, 'legacy_ungated_certificates')} published certificates "
+        "describe runs with no gate in the request path.** Each is the ungated half "
+        "of a paired benchmark, published before an ungated run had a document of "
+        "its own. Their signatures are authentic and their classification is wrong: "
+        "the result is a failed audit of a gate that was not there, and the leak "
+        "count is the number of prompts the suite labels for blocking. They are "
+        "identified by a marker the issuer set, which qualifies them and relaxes no "
+        "check. Disclosed as E7 in `docs/archive-errata.md`.",
     ])
 
 
@@ -781,8 +819,10 @@ ERRATA_REGIONS = {
     "e4-causes": render_e4_causes,
     "e4-above-the-correction": render_e4_above_the_correction,
     "e6-counts": render_e6_counts,
+    "e7-counts": render_e7_counts,
     "appendix-a": render_appendix_a,
     "appendix-b": render_appendix_b,
+    "appendix-c": render_appendix_c,
 }
 
 REGISTER_REGIONS = {

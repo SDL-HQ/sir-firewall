@@ -177,6 +177,13 @@ reader finds on inspection:
   Before 2.3.4 `itgl_final_hash` came from an environment variable or a mutable
   file. Disclosed in `docs/evidence-binding-correction.md`. Every certificate
   at or above 2.3.4 matches the ledger shipped with it, 47 of 47.
+- **54 published certificates describe runs with no gate in the request path.**
+  Each is the ungated half of a paired benchmark, published before an ungated
+  run had a document of its own. Their signatures are authentic and their
+  classification is wrong: the result is a failed audit of a gate that was not
+  there, and the leak count is the number of prompts the suite labels for
+  blocking. They are identified by a marker the issuer set, which qualifies
+  them and relaxes no check. Disclosed as E7 in `docs/archive-errata.md`.
 <!-- END GENERATED ARCHIVE FIGURES: proof-qualifications -->
 
 *Coverage: inside, claimed.* Chained audit entry and signed proof artefact
@@ -241,6 +248,50 @@ costs nothing and is done here. Recorded rather than fixed.
 *Coverage: outside.* The specification describes the evidence layer's structure
 and binding, not a verdict taxonomy, so splitting the field has no patent
 consequence either way.
+
+### An ungated baseline run was published as an audit of the gate
+
+**corrected, and the records stay published.** Recorded 15 October 2026, after
+an independent review of the benchmark evidence. The claim did not hold for the
+ungated half of any paired benchmark published before SIR 2.5.
+
+A paired benchmark runs the same prompt set twice: once with the SIR gate in
+the request path and once without. Until SIR 2.5 both halves were published as
+audit certificates, because an audit certificate was the only signed document
+the system could produce. The ungated half therefore carried a `result` and a
+`proof_class`, and both were wrong in the same direction.
+
+With no gate, the runner recorded status `PASS` on every row, because `PASS`
+was the only status it had for a row that was not blocked. `PASS` is a gate
+decision. On a row no gate saw it is synthetic, and it made every prompt the
+suite labels for blocking count as a leak, which made the result compute as
+`AUDIT FAILED`. The proof class named firewall activity that did not occur.
+
+What this was not: a signing or binding failure. The signatures are authentic
+and the archives are what was signed. What it was: a document whose
+classification describes something that did not happen, in a system whose
+purpose is that its documents describe what happened.
+
+**What a baseline record claims from 2.5.** One thing: that this prompt set was
+forwarded to the named provider with the gate out of the path, and what came
+back at the transport level. No result, no proof class, no leak count. Its rows
+carry `FORWARDED`, which the gate cannot emit.
+
+**What it does not claim**, since a reader will otherwise supply it: that no
+gate ran. The rows authenticate what the producer encoded, and a producer could
+write baseline-shaped rows for a run it gated. What the type separation rules
+out is a baseline being read as an audit, and an audit's ledger being read as a
+baseline's. `docs/evidence-perimeter.v5.md` carries the full list.
+
+The affected certificates stay published and are not re-signed, for the reason
+given under E1 in the errata. Where their result is shown, the archive view
+marks them as ungated baselines whose result was computed with no gate in the
+path. E7 records the rest.
+
+*Coverage: outside.* The specification describes the evidence layer's structure
+and binding. A second document kind with its own schema and verifier adds a
+document type to that layer rather than changing what the layer establishes, so
+this has no patent consequence either way.
 
 ### Zero downstream calls on failure paths
 

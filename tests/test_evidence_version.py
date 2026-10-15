@@ -150,7 +150,14 @@ def test_current_version_surfaces_match_runtime_authority():
         "docs/assets/StructuralDesignLabs_Logo.svg": Counter({v_210: 1}),
         # The commentary around the generated figures records the release it was
         # last revised at. The figures themselves name no version.
-        "docs/archive-errata.md": Counter({v_234: 5, v_240: 1, v_237: 1, v_102: 1}),
+        #
+        # The sixth v_234 arrived with E7 on 15 October 2026: its effect section
+        # names the binding correction that release carried, which is why most
+        # of those certificates return exit 9. E7's own "Fixed in" line is
+        # deliberately unwritten until the release that carries it ships, so
+        # the entry adds no version of its own. Written as the symbol rather
+        # than the string, because this file counts its own mentions too.
+        "docs/archive-errata.md": Counter({v_234: 6, v_240: 1, v_237: 1, v_102: 1}),
         # The scenario-suite divergence row names the version the three published
         # archives were produced at, which is the half of the question that is known.
         # Three post-2.4 rows added 13 October 2026 name the release that

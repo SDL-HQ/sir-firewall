@@ -293,6 +293,54 @@ at all, and changing that requires a new evidence contract, because the current
 contracts require a non-empty value. Historical certificates cannot be
 re-signed.
 
+## E7. Ungated baseline runs were published as audit certificates
+
+**Symptom.** Published certificates record `"result": "AUDIT FAILED"` under a
+proof class naming firewall activity, for runs in which the SIR gate was
+deliberately not in the request path. Each is the ungated half of a paired
+benchmark.
+
+<!-- BEGIN GENERATED ARCHIVE FIGURES: e7-counts -->
+**Counts.** 54 published certificates carry `benchmark_execution.gate_mode` set
+to `ungated`, from 18 April 2026 to 23 September 2026. That marker is set by
+the issuer and is used here only to identify the affected records; no check is
+relaxed because of it. Appendix C lists them.
+<!-- END GENERATED ARCHIVE FIGURES: e7-counts -->
+
+**Cause.** The baseline half of a benchmark ran through the certificate
+generator built for gated runs, because no other document existed. With no
+gate, the runner had only the gated vocabulary to write rows in, so it recorded
+status `PASS` on every row. `PASS` is a gate decision. On a row no gate saw it
+is synthetic, and it is what made every prompt the suite labels for blocking
+count as a leak, which in turn made the run's result compute as a failed audit.
+The proof class names gate activity that did not occur.
+
+**Effect.** The signatures are authentic. The classification is wrong in every
+one of them. These are not audits of SIR and do not describe its behaviour.
+Each claimed leak count equals the number of prompts the suite labels for
+blocking, and each pair's `leaks_delta` is the negative of the number of those
+prompts the gated run blocked. Neither figure measures harm.
+
+Two of them bind to their ledgers and verify at exit 0. The rest return exit 9:
+the terminal hash each signs does not match the ledger in its archive, under
+the pre-2.3.4 binding defect described in E4. For those, the archived ledger is
+not established as the run's ledger. All of these ledgers are chain version 1,
+which does not bind row content, so any reading of their rows rests on unbound
+data.
+
+**Fixed in** [version, when shipped]. An ungated baseline now produces a signed
+baseline record at `baseline.json` carrying no result and no proof class, with
+rows whose status is `FORWARDED` rather than `PASS`. The certificate generator
+refuses a ledger containing a forwarded row, the certificate verifier refuses a
+document that is not a certificate, and the benchmark workflow refuses to
+publish a pair whose halves hold the wrong documents. `docs/terminology.md`
+defines both document kinds.
+
+**Not retrofitted**, for the reason given under E1. The affected certificates
+stay published and are not re-signed. Where their result is shown, the archive
+view marks them as ungated baselines whose result was computed with no gate in
+the path.
+
 ## What a reviewer should do
 
 Choose a run whose `audit.json` records `sir_firewall_version` 2.3.4 or later,
@@ -452,3 +500,65 @@ All 39 of them:
 - `20260402-151409-000000-gh23907562600-ef03803fc756`
 - `20260403-023419-000000-gh23931201262-ef03803fc756`
 <!-- END GENERATED ARCHIVE FIGURES: appendix-b -->
+
+## Appendix C. Published certificates carrying the legacy ungated marker
+
+These are the records described in E7. The marker is
+`benchmark_execution.gate_mode` set to `ungated`, which the issuer set.
+
+<!-- BEGIN GENERATED ARCHIVE FIGURES: appendix-c -->
+- `20260418-152959-000000-gh24607820167-1ebb76ec1902`
+- `20260418-153521-000000-gh24607922115-d21846483796`
+- `20260418-154825-000000-gh24608097503-e2d0e1b413fb`
+- `20260419-023035-000000-gh24619116009-1ebb76ec1902`
+- `20260419-023521-000000-gh24619151964-d21846483796`
+- `20260419-024311-000000-gh24619274641-1ebb76ec1902`
+- `20260419-050141-000000-gh24621243485-8e8bade17b75`
+- `20260419-051554-000000-gh24621592763-be38eb8514b3`
+- `20260419-060853-000000-gh24622419670-4c8ca861c55c`
+- `20260419-093111-000000-gh24625904026-1c5793648137`
+- `20260419-093449-000000-gh24625981356-5e40cdf8839f`
+- `20260419-093804-000000-gh24626040274-c26ed8b9febb`
+- `20260420-002258-000000-gh24642775627-7d3f2bc8dc61`
+- `20260420-002657-000000-gh24642860106-b0d9b612582f`
+- `20260420-003044-000000-gh24642929678-7a61139ac212`
+- `20260421-035642-000000-gh24703159340-fd61811b25db`
+- `20260421-035932-000000-gh24703237756-a2df251b47c9`
+- `20260421-040333-000000-gh24703318848-8eaaa424c074`
+- `20260421-040705-000000-gh24703448382-0d1a1349ad2a`
+- `20260421-040954-000000-gh24703523370-5c41274c1c6d`
+- `20260421-041339-000000-gh24703599330-afef3eac3ab4`
+- `20260422-032159-000000-gh24758437941-02c9b1dbef40`
+- `20260422-033138-000000-gh24758694933-283a144e1d5c`
+- `20260422-035956-000000-gh24759419627-02c9b1dbef40`
+- `20260422-045059-000000-gh24760495711-02c9b1dbef40`
+- `20260422-062922-000000-gh24763782741-02c9b1dbef40`
+- `20260422-071212-000000-gh24765322238-02c9b1dbef40`
+- `20260422-075145-000000-gh24766850720-02c9b1dbef40`
+- `20260422-082329-000000-gh24768134743-02c9b1dbef40`
+- `20260422-092233-000000-gh24770156695-02c9b1dbef40`
+- `20260425-010746-000000-gh24918865390-aac6fa5f4bee`
+- `20260425-013815-000000-gh24919476703-aac6fa5f4bee`
+- `20260425-015212-000000-gh24919733883-9b1956cbf121`
+- `20260505-074758-000000-gh25364224804-dca5de736797`
+- `20260505-094010-000000-gh25368933060-2bdbfca8c981`
+- `20260505-101917-000000-gh25370654558-f15087580ef6`
+- `20260505-102353-000000-gh25370816646-3022169f2780`
+- `20260505-103102-000000-gh25371128120-3022169f2780`
+- `20260505-112554-000000-gh25373478758-9d8c95b71b57`
+- `20260505-113455-000000-gh25373768617-2bdbfca8c981`
+- `20260530-031219-000000-gh26672846006-2bdbfca8c981`
+- `20260624-005933-000000-gh28067676116-dca5de736797`
+- `20260731-013148-000000-gh30596251731-5754c1dff5f8`
+- `20260802-083643-000000-gh30739887300-a75784a32883`
+- `20260802-090719-000000-gh30741010081-64b7eaf2f600`
+- `20260804-053326-000000-gh30881028708-a75784a32883`
+- `20260804-054450-000000-gh30881280536-a75784a32883`
+- `20260918-065915-000000-gh35316527367-ca1b41f40240`
+- `20260918-121209-000000-gh35342540468-ca1b41f40240`
+- `20260918-122954-000000-gh35344648601-5b837eb1b2a6`
+- `20260920-092345-000000-gh35502041779-6b9fd67c75c0`
+- `20260921-120147-000000-gh35596886552-22386105e0e7`
+- `20260921-134707-359329-gh35607761858-a8a5ade8f6ed`
+- `20260923-120942-363864-gh35858690232-bae75d4d16c1`
+<!-- END GENERATED ARCHIVE FIGURES: appendix-c -->
