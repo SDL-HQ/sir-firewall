@@ -66,6 +66,65 @@ The filed patent specification does not use the word firewall anywhere and names
 no repository or URL, so none of this has any bearing on the patent, and a
 repository rename would carry no patent consequence.
 
+## The two signed documents
+
+Added 15 October 2026, with SIR 2.5. Until then an archive held one kind of
+signed document and every reader assumed it.
+
+**Audit certificate** (`audit.json`). A gated run. It carries a `result`, a
+`proof_class`, and the gate's counters. It says what the gate decided over a
+named prompt set.
+
+**Ungated baseline record** (`baseline.json`). A run with the gate out of the
+path. It carries one claim: that this prompt set was forwarded to the named
+provider with no gate in it, and what came back at the transport level. It
+carries **no result and no proof class**, because a run with no gate in it has
+nothing to say about the gate, and a document with a verdict-shaped field is
+read as a verdict whatever is written beside it.
+
+An archive holds exactly one of them. One holding both cannot be read as either
+kind and is refused everywhere: the verifiers, the exports, the publisher and
+the benchmark job's admission check. One holding neither has no kind.
+
+### `FORWARDED`
+
+A row status in a baseline ledger. It means a provider call was attempted with
+that row's content. It is **not a gate decision**: the gate returns `PASS` or
+`BLOCKED` and nothing else, so a `FORWARDED` row cannot have come from a gated
+run.
+
+Before 2.5 a baseline run recorded `PASS` on every row, because the runner had
+only the gated vocabulary to write in. `PASS` on a row no gate saw is what made
+every prompt labelled for blocking count as a leak, and the run's result
+compute as a failed audit. `docs/archive-errata.md` records the 54 published
+certificates that resulted.
+
+### What a baseline record's counters count
+
+Six, all recomputed from the rows by `tools/verify_baseline_record.py` and none
+of them asserted by the runner:
+
+- `prompts_forwarded`: rows in the ledger
+- `expected_block_prompts_forwarded`: rows the prompt set labels `block`
+- `expected_allow_prompts_forwarded`: rows it labels `allow`
+- `provider_call_attempts`
+- `provider_call_successes`
+- `provider_call_failures`
+
+They partition: successes plus failures equals attempts equals rows. A baseline
+attempts a call for every row, so a row with no attempt is a defect in the
+ledger rather than a run with fewer calls.
+
+**What they do not mean.** Nothing about the provider's responses beyond whether
+the call succeeded at the transport level. Responses are not read back and not
+judged. `expected_block_prompts_forwarded` is a count of the prompt set's own
+labels, not a count of anything that happened.
+
+In a scenario a row is a turn, and the provider call for a turn carries the
+cumulative history of every earlier turn. So in a baseline each call carries all
+earlier content, and these counters count calls and turns rather than distinct
+content exposures. The record's schema says so in its own description.
+
 ## What the counters count
 
 Added 13 October 2026, because no surface defined these and the figures appear
@@ -96,6 +155,12 @@ a contract change with an archive migration behind it, which is recorded as a
 candidate rather than done. Defining it costs nothing and removes the misreading
 now. The same reasoning as the proof class name above.
 
+**On the 54 published ungated baselines this counter equals the number of
+prompts labelled `block`, every time.** There was no gate, so nothing was
+allowed by a gate and nothing was blocked by one; the runner recorded `PASS` on
+every row and the counter fired on each labelled prompt. From 2.5 a baseline
+record does not carry this counter at all.
+
 ### `harmless_blocked`
 
 **What it counts:** benchmark rows labelled `allow` in their suite that the gate
@@ -111,7 +176,9 @@ phrasing, and no benchmark corpus predicts that for them.
 ### `AUDIT PASSED`
 
 **What it means:** the counters for this run were zero and the certificate's own
-checks were satisfied.
+checks were satisfied. It is a property of a gated run. A baseline record has
+no result, and no surface may supply one for it, by computing it from counters
+or otherwise.
 
 **What it does not mean:** that the rule set is adequate, or that the
 configuration enforces what its name suggests. A run over a corpus the rules

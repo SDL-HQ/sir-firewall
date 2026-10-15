@@ -21,10 +21,26 @@ Benchmark is not a proof class and does not replace row-level evidence.
 
 For benchmark pairing, **ungated baseline** means:
 
-- the same prompt set evaluated **without SIR pre-inference gate intervention**
+- the same prompt set forwarded to the provider **without SIR pre-inference gate intervention**
 - run under attributable conditions required for pair comparability
 
 This is stricter than "non-provider-call row" and must not be inferred from provider-call counts alone.
+
+From SIR 2.5 an ungated baseline requires live mode and produces a **signed
+baseline record** at `baseline.json`, not an audit certificate. The record
+carries one claim: that this prompt set was forwarded to the named provider
+with the gate out of the path, and what came back at the transport level. It
+carries no result and no proof class, because a run with no gate in it has
+nothing to say about the gate. Its rows record status `FORWARDED`, which means
+a provider call was attempted with that row's content and is not a gate
+decision; the gate returns only `PASS` or `BLOCKED`, so a `FORWARDED` row
+cannot come from a gated run.
+
+Baselines published before 2.5 are audit certificates. All 54 of them say
+`"result": "AUDIT FAILED"` under a proof class naming firewall activity that
+did not occur. They stay published, are not re-signed, and carry a
+qualification wherever their result is shown. `docs/archive-errata.md` records
+what they are.
 
 ### Paired benchmark unit (locked for successor schema)
 
@@ -43,7 +59,7 @@ With identical required attribution dimensions:
 - commit/context
 - other required attribution dimensions declared by schema
 
-And explicit deltas:
+And, for pairs published before SIR 2.5, explicit deltas:
 
 - `leaks_delta`
 - `harmless_blocked_delta`
@@ -56,6 +72,42 @@ delta is the number of prompts the gate blocked, reported from the other side.
 `provider_call_attempts_delta` is the observed quantity: requests that did not
 reach the provider because the gate stopped them. A gated run's own leak count
 is a genuine gate-conformance measure and may be compared across rule versions.
+
+**From SIR 2.5 a pair carries no leak delta and no harmless-blocked delta.**
+The paragraph above is the reason: a figure that has to be explained in four
+sentences before it can be read is better replaced than annotated. In their
+place a pair states the gate's own figures over the prompts the suite labels
+for blocking, all counted from the two signed documents:
+
+- `expected_block_prompts`: how many the prompt set labels for blocking
+- `expected_block_prompts_with_gate_decision`: how many the gate decided
+- `expected_block_prompts_blocked_by_gate`
+- `expected_block_prompts_passed_by_gate`
+- `expected_block_prompts_reset`: how many the gate did not decide, because a
+  system failure reset the run before it reached them
+
+The last one is why the deltas went. A subtraction credits a reset
+expected-block prompt to the gate, which did not see it. These five partition
+the labelled prompts, so a reader can see what the gate decided and what it
+never reached.
+
+A pair publishes these figures only when it is `valid_complete`, which requires
+the gated run's result to be `AUDIT PASSED` or `AUDIT FAILED`. An
+`INCONCLUSIVE` gated run makes the pair `invalid_evidence_gap` and it publishes
+no gate figures at all: a run whose own evidence is incomplete cannot be the
+measured side of a comparison.
+
+Both old deltas remain derivable from the new fields, so nothing published
+becomes unrecoverable: `leaks_delta` is
+`expected_block_prompts_passed_by_gate - expected_block_prompts`, and
+`harmless_blocked_delta` is the gated run's own `harmless_blocked`.
+
+Pairs compare **prompt-set identity**, `suite_hash` for a CSV suite or
+`scenario_hash` for a scenario, together with the registry pack id that
+selected it. They do not compare `effective_pack_id`, which is the enforcement
+pack: two runs over the same prompt set can carry different enforcement packs,
+and rejecting that pair would be rejecting it for a difference the comparison
+is not about. Provider, model and commit must match, as before.
 
 ### Pair status values (locked)
 
@@ -83,6 +135,16 @@ They are **not automatically pair-comparable** and must be marked `historical_un
 `latest-audit.*` and `latest-run.*` remain single-run truth surfaces.
 
 They are not benchmark pair claims and must not be interpreted as pair completeness or pair validity signals.
+
+**A baseline record is not a run on any of those surfaces.**
+`latest-run.*`, `latest-audit.*`, `latest-live-audit.*`, the monitor window and
+`proofs/runs/index.json` describe gate runs: every row there carries a result
+and a proof class, and a row with neither would put a verdict-shaped hole where
+a reader expects a verdict. That is the shape that made 54 published baselines
+read as failed audits. A baseline record is published in its own archive and
+appears in `benchmark_index.v3.json`, which is built from the archives rather
+than from the run index, because an index derived from the run index could never
+see one.
 
 `docs/runs/index.html` paired rows are a benchmark interpretation view over archived run evidence; pair rows do not replace per-run archive artifacts as source-of-truth.
 
@@ -132,14 +194,25 @@ A benchmark cycle counts as **valid canonical cycle v1** only when all of the fo
 - All 3 required runs above are executed and archived.
 - Every run has a published archive directory with:
   - `manifest.json`
-  - `audit.json`
+  - exactly one signed document: `audit.json` for a gated run, or
+    `baseline.json` for an ungated baseline. An archive holding both cannot be
+    read as either kind and is refused by the verifiers, the exports and the
+    publisher; an archive holding neither has no kind at all.
   - `archive_receipt.json`
   - copied `proofs/run_summary.json`
   - copied `proofs/itgl_ledger.jsonl`
   - copied `proofs/itgl_final_hash.txt`
   - copied `proofs/latest-attempts.log`
-- `proofs/runs/benchmark_index.v1.json` includes attributable rows for each required run.
-- Rows include explicit `evaluation_target`, `proof_class`, `provider`, `model`, and `row_identity` fields.
+- `proofs/runs/benchmark_index.v3.json` includes attributable entries for each
+  required run, and satisfies `spec/benchmark_index.v3.schema.json`. The v1 and
+  v2 indexes remain published and are superseded: both carry one entry shape, so
+  a baseline record could only appear in them as a gate run with fields
+  missing.
+- Every entry declares its `entry_kind` and includes explicit
+  `evaluation_target`, `provider`, `model` and `row_identity` fields. A
+  `proof_class` is required of an `audit_certificate` entry and must be absent
+  from an `ungated_baseline_record` entry, which carries forwarding counts in
+  place of a result.
 
 A cycle is **non-comparable / out-of-band** if any required row is missing, unarchived, malformed, or mixed with ad-hoc dimensions that change attribution semantics.
 
@@ -162,7 +235,8 @@ Repeatability expectations:
 
 For repeatable comparison rows:
 
-- Record provider/model exactly as emitted in `audit.json` and copied to benchmark index.
+- Record provider/model exactly as emitted in the archive's signed document,
+  `audit.json` or `baseline.json`, and copied to the benchmark index.
 - Keep original case and separators; no alias normalization in v1.
 - Missing provider/model is allowed only for audit rows where no model call path exists.
 
