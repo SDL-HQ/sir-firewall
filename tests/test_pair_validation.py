@@ -171,6 +171,13 @@ def test_a_reset_is_not_credited_to_the_gate():
 
 
 def test_the_reset_count_and_the_gate_counts_partition_the_prompts():
+    """Three leaves partition the total; the fifth figure is a subtotal.
+
+    docs/benchmark-cycle.v1.md called all five a partition of the labelled
+    prompts until 15 October 2026, when a parallel review pointed out that two
+    of them are totals. The code was always this shape. Both relations are
+    asserted here so the document cannot drift back.
+    """
     figures = pairs.validate_pair(
         record(counters={"expected_block_prompts_forwarded": 10}),
         certificate(content_block_prompts=7, jailbreaks_leaked=2),
@@ -181,6 +188,11 @@ def test_the_reset_count_and_the_gate_counts_partition_the_prompts():
         + figures["expected_block_prompts_blocked_by_gate"]
         + figures["expected_block_prompts_passed_by_gate"]
         == figures["expected_block_prompts"]
+    )
+    assert (
+        figures["expected_block_prompts_blocked_by_gate"]
+        + figures["expected_block_prompts_passed_by_gate"]
+        == figures["expected_block_prompts_with_gate_decision"]
     )
 
 

@@ -93,9 +93,25 @@ And, for pairs published before SIR 2.5, explicit deltas:
 no gate decision and no assessment of the model's response, so the baseline leak
 count is the number of prompts the suite labels as requiring a block, and the
 delta is the number of prompts the gate blocked, reported from the other side.
-`provider_call_attempts_delta` is the observed quantity: requests that did not
-reach the provider because the gate stopped them. A gated run's own leak count
-is a genuine gate-conformance measure and may be compared across rule versions.
+A gated run's own leak count is a genuine gate-conformance measure and may be
+compared across rule versions.
+
+`provider_call_attempts_delta` is the one delta that survives into 2.5, and its
+earlier description here was wrong in two ways. It is stored as **gated attempts
+minus baseline attempts**, so it is negative whenever the gate stopped a call:
+the published pairs carry `-74` against a baseline of 150 attempts and a gated
+run of 76. The earlier sentence called it "requests that did not reach the
+provider because the gate stopped them", which is its magnitude with the sign
+dropped.
+
+Its magnitude is the number of forwarded prompts that did not reach the provider
+on the gated side, and the gate is not the only reason a prompt did not. A
+systemic reset stops a run before the gate decides the rows it had not reached,
+and those rows did not reach the provider either. So the magnitude is gate
+blocks plus reset-stopped rows, and it equals the gate's blocks only when the
+gated run reset nothing. Read the gated certificate's own `systemic_reset_count`
+to tell the two apart, and `expected_block_prompts_reset` below for the
+labelled prompts specifically.
 
 **From SIR 2.5 a pair carries no leak delta and no harmless-blocked delta.**
 The paragraph above is the reason: a figure that has to be explained in four
@@ -111,9 +127,21 @@ for blocking, all counted from the two signed documents:
   system failure reset the run before it reached them
 
 The last one is why the deltas went. A subtraction credits a reset
-expected-block prompt to the gate, which did not see it. These five partition
-the labelled prompts, so a reader can see what the gate decided and what it
-never reached.
+expected-block prompt to the gate, which did not see it.
+
+These five are **three leaves and two totals**, not a five-way partition, and
+the earlier wording here said otherwise. `expected_block_prompts` is the total.
+The partition of it is the three leaves:
+
+    expected_block_prompts_reset
+    + expected_block_prompts_blocked_by_gate
+    + expected_block_prompts_passed_by_gate
+    = expected_block_prompts
+
+`expected_block_prompts_with_gate_decision` is a subtotal of two of those
+leaves, `blocked_by_gate + passed_by_gate`. So a reader can see what the gate
+decided and what it never reached, which is the point, but the five figures are
+not five disjoint parts of anything.
 
 A pair publishes these figures only when it is `valid_complete`, which requires
 the gated run's result to be `AUDIT PASSED` or `AUDIT FAILED`. An
@@ -122,9 +150,18 @@ no gate figures at all: a run whose own evidence is incomplete cannot be the
 measured side of a comparison.
 
 Both old deltas remain derivable from the new fields, so nothing published
-becomes unrecoverable: `leaks_delta` is
-`expected_block_prompts_passed_by_gate - expected_block_prompts`, and
-`harmless_blocked_delta` is the gated run's own `harmless_blocked`.
+becomes unrecoverable, on one identity worth stating rather than relying on.
+`leaks_delta` was the gated leak count minus the baseline leak count, and the
+baseline leak count was equal to the labelled count: an ungated run recorded
+`PASS` on every row, so every prompt labelled for blocking counted as a leak.
+That is why `expected_block_prompts` can stand in for it, and
+`leaks_delta` is `expected_block_prompts_passed_by_gate -
+expected_block_prompts`. The identity would fail for a legacy baseline that had
+reset rows, which would have been excluded from its leak count; none of the 54
+published baseline certificates carries a reset counter at all, so for every
+published pair the recovery is exact. `harmless_blocked_delta` is the gated run's
+own `harmless_blocked`, because an ungated run blocks nothing and all 54 report
+`harmless_blocked` of zero.
 
 Pairs compare **prompt-set identity**, `suite_hash` for a CSV suite or
 `scenario_hash` for a scenario, together with the registry pack id that
