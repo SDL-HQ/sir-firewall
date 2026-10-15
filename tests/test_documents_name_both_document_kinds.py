@@ -159,3 +159,70 @@ def test_the_record_is_named_as_carrying_no_result_in_both_documents():
     for path in (CYCLE, TERMS):
         text = path.read_text(encoding="utf-8")
         assert "no result and no proof class" in text, path.name
+
+
+PERIMETER = ROOT / "docs/evidence-perimeter.v5.md"
+REGISTER = ROOT / "docs/claims-register.md"
+
+
+def test_the_perimeter_reports_no_baseline_leak_count():
+    """A leak is a gated-run figure. On an ungated run it is the label count.
+
+    The perimeter carried "ungated leaks 100", "ungated leaks 27" and
+    "ungated leaks 26" as current evidence while its own method note said a
+    pre-2.5 baseline result described a gate that was not in the path. The
+    document disclaimed the reading at the top and relied on it below, which
+    is the E7 defect restated inside a published document. Found by a parallel
+    review on 15 October 2026, after the method note was added without the
+    body being read.
+
+    Mutations applied to docs/evidence-perimeter.v5.md, both detected:
+    restoring an "ungated leaks" figure, 1 failure (this test); restoring the
+    "SIR off vs on" conclusion, 1 failure (this test).
+    """
+    text = PERIMETER.read_text(encoding="utf-8")
+
+    assert "ungated leaks" not in text
+    assert "ungated baseline leaks" not in text
+    assert "distinguish SIR off vs on" not in text
+    # And the figures that replaced them say what they count.
+    assert "prompts labelled for blocking" in text
+
+
+def test_the_perimeter_withdraws_the_cross_model_reading():
+    """Both ID sets are model-independent by construction, so neither observes one.
+
+    Mutation applied to docs/evidence-perimeter.v5.md: restoring
+    "common-mode prompt-layer vulnerability" as something the finding
+    supports, 1 failure (this test).
+    """
+    text = PERIMETER.read_text(encoding="utf-8")
+
+    assert "identical across models" in text
+    assert "by construction" in text
+    # The withdrawn readings may be named as withdrawn, never as supported.
+    supported = text.split("What this supports:", 1)[1].split("What this does not support:", 1)[0]
+    for withdrawn in ("common-mode", "model selection"):
+        assert withdrawn not in supported, withdrawn
+
+
+def test_the_register_covers_the_published_cross_model_finding():
+    """The register opens by claiming every public technical claim, and had no row.
+
+    The finding was published externally on 3 May 2026 and cited in the
+    perimeter as current. A register that claims that coverage and omits a
+    published claim is the defect it exists to find.
+
+    Mutation applied to docs/claims-register.md: removing the row, 1 failure
+    (this test).
+    """
+    text = REGISTER.read_text(encoding="utf-8")
+
+    assert "Every public technical claim SIR makes" in text
+    assert "identical failure sets" in text
+    assert "x.com/SDL_HQ/status/2049438575574364279" in text
+    # And it is not recorded as holding.
+    row = text.split('### "Seven models, two providers, identical failure sets"', 1)[1]
+    row = row.split("\n### ", 1)[0].split("\n## ", 1)[0]
+    assert "**corrected" in row
+    assert "by construction" in row
