@@ -181,7 +181,10 @@ def test_current_version_surfaces_match_runtime_authority():
         # claims register was last reviewed in full at that release, two minor
         # versions before the one it will ship with. Named by symbol, because
         # this file counts its own mentions.
-        "docs/backlog.md": Counter({v_240: 9, v_230: 1, v_102: 1, v_238: 1}),
+        # The 2.5 re-examination row now points at the register for the
+        # method, so the backlog no longer names the version of the previous
+        # full review; the register does.
+        "docs/backlog.md": Counter({v_240: 9, v_230: 1, v_102: 1}),
         # The publication step records the release whose merge exposed that a
         # direct push to main cannot satisfy the required status checks.
         ".github/workflows/audit-and-sign.yml": Counter({v_240: 1}),

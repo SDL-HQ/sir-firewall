@@ -881,7 +881,14 @@ def _counters_bullet(figures: dict) -> str:
     counters unknown. Absent reported as false is the defect this release is
     named for, in the document that records the release.
     """
-    total = figures["total"]
+    # Certificates, not archives. The sibling renderer below was corrected on
+    # 15 October 2026 for exactly this, when the first published baseline record
+    # made the archive larger than the set of certificates; this function was
+    # one away and was missed, so the register read "43 of the 337 published
+    # certificates" while 43 true plus 0 false plus 292 absent is 335. Found on
+    # 16 October 2026 by the full claims-register re-examination, by adding the
+    # three states and comparing the sum against the denominator.
+    total = figures["certificates_total"]
     absent = _n(figures, "counters_absent")
     false = _n(figures, "counters_false")
     true = _n(figures, "counters_true")
