@@ -238,13 +238,36 @@ BASELINE_RECORD_KIND = "sir_ungated_baseline"
 BENCHMARK_INDEX_V3_VERSION = "benchmark_index.v3"
 
 
+# What an audit certificate declares about itself, and what nothing else in an
+# archive declares. Measured across the 324 published certificates on 15
+# October 2026: every one carries `audit`, `result`, `signature`, `payload_hash`
+# and `suite_hash`. Of the other signed or signed-looking files beside them, 39
+# manifests carry result, signature, payload_hash and suite_hash but never
+# `audit`, and 285 archive receipts carry only signature and payload_hash. So
+# `audit` together with `result` is the marker, and it is positive rather than
+# residual.
+CERTIFICATE_MARKERS = ("audit", "result")
+
+UNRECOGNISED_DOCUMENT = "unrecognised_document"
+
+
 def _document_kind(document: Dict[str, Any]) -> str:
-    """Which kind of signed document this is, by its own declaration."""
-    return (
-        "ungated_baseline_record"
-        if document.get("record_kind") == BASELINE_RECORD_KIND
-        else "audit_certificate"
-    )
+    """Which kind of signed document this is, by its own declaration.
+
+    Three answers, not two. Until 15 October 2026 this returned
+    "audit_certificate" for anything that was not a baseline record, so an
+    archive receipt, a manifest or any JSON at all classified as a certificate
+    and `--cert` would accept it. An independent review found it.
+
+    Neither kind is reported as neither. A publisher that guesses is how a
+    document ends up at the other kind's filename, and every reader downstream
+    dispatches on that filename.
+    """
+    if document.get("record_kind") == BASELINE_RECORD_KIND:
+        return "ungated_baseline_record"
+    if all(marker in document for marker in CERTIFICATE_MARKERS):
+        return "audit_certificate"
+    return UNRECOGNISED_DOCUMENT
 
 
 def _archived_document(run_dir: Path) -> Tuple[Optional[str], Dict[str, Any], Optional[str]]:
@@ -1004,6 +1027,14 @@ def main() -> int:
     # one kind at the other's filename, and every reader downstream dispatches
     # on that filename.
     expected_kind = "ungated_baseline_record" if args.baseline else "audit_certificate"
+    if document_kind == UNRECOGNISED_DOCUMENT:
+        raise SystemExit(
+            f"ERROR: {document_path} is not a signed document of either kind. An audit "
+            f"certificate declares itself by carrying {list(CERTIFICATE_MARKERS)} and an "
+            f"ungated baseline record by record_kind={BASELINE_RECORD_KIND!r}. This file "
+            "carries neither, so it cannot be archived as either: an archive receipt, a "
+            "manifest or a run summary is not the run's signed document."
+        )
     if document_kind != expected_kind:
         raise SystemExit(
             f"ERROR: {document_path} is a {document_kind} and was passed as a "
