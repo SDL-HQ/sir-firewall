@@ -3,6 +3,8 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
 
 def _load_generate_certificate_module():
     module_path = Path(__file__).resolve().parents[1] / "tools" / "generate_certificate.py"
@@ -89,10 +91,142 @@ def test_latest_audit_targets_only_for_publishable_pass():
     assert failed_targets[1] == "proofs/local-audit.html"
 
 
-def test_template_styles_inconclusive_as_non_success():
-    template = (Path(__file__).resolve().parents[1] / "proofs" / "template.html").read_text(encoding="utf-8")
-    assert 'resolvedResult === "INCONCLUSIVE"' in template
-    assert '? "warn"' in template or ' ? "warn"' in template
+CERTIFICATE_PAGES = (
+    "proofs/template.html",
+    "proofs/latest-audit.html",
+    "proofs/latest-live-audit.html",
+    "docs/latest-audit.html",
+    "docs/latest-live-audit.html",
+)
+
+RECORD_KIND_GUARD = (
+    '        if (data && typeof data === "object" && "record_kind" in data) {\n'
+    "          showWrongDocumentType(data.record_kind);\n"
+    "          return;\n"
+    "        }"
+)
+
+
+def _page(path: str) -> str:
+    return (Path(__file__).resolve().parents[1] / path).read_text(encoding="utf-8")
+
+
+def _declared_results() -> tuple:
+    import sys
+
+    tools = Path(__file__).resolve().parents[1] / "tools"
+    sys.path.insert(0, str(tools))
+    try:
+        from certificate_results import KNOWN_RESULTS
+
+        return KNOWN_RESULTS
+    finally:
+        sys.path.pop(0)
+
+
+def _result_class_map(page: str) -> dict:
+    match = re.search(r"const RESULT_CLASS = \{(.*?)\};", page, re.DOTALL)
+    assert match, "the page no longer declares a RESULT_CLASS map"
+    return dict(re.findall(r'"([^"]+)":\s*"([^"]+)"', match.group(1)))
+
+
+@pytest.mark.parametrize("path", CERTIFICATE_PAGES)
+def test_the_page_styles_each_declared_result_and_nothing_else(path):
+    """The page's result map is the declared set, and only AUDIT PASSED is success.
+
+    This replaces a test that asserted on the text of the old if/else chain.
+    What matters is the mapping, and that it agrees with
+    tools/certificate_results.py: a page recognising a result no reader
+    declares, or missing one every reader declares, is the divergence that
+    declaration exists to remove.
+
+    Mutations applied to proofs/template.html and carried into the four
+    published copies, both detected: dropping INCONCLUSIVE from the map, 5
+    failures (this test, once per page); styling INCONCLUSIVE as success, 5
+    failures (this test, once per page).
+    """
+    mapping = _result_class_map(_page(path))
+
+    assert set(mapping) == set(_declared_results())
+    assert [result for result, style in mapping.items() if style == "success"] == ["AUDIT PASSED"]
+    assert mapping["INCONCLUSIVE"] == "warn"
+    assert mapping["AUDIT FAILED"] == "danger"
+
+
+@pytest.mark.parametrize("path", CERTIFICATE_PAGES)
+def test_the_page_does_not_synthesise_a_verdict_from_counters(path):
+    """A document with no result is shown as having none, not as a verdict.
+
+    Until 15 October 2026 the page resolved the result as
+
+        data.result || (ok ? "AUDIT PASSED" : "AUDIT FAILED")
+
+    so a document carrying no result was shown one, computed from its leak and
+    harmless-block counters. That is the shape of the defect in errata E7: on
+    an ungated run every row is a forwarded prompt, so every prompt labelled
+    for blocking counts as a leak, and the synthesised verdict is a failed
+    audit of a gate that was not there.
+
+    The comparison is also exact now. It used to normalise with
+    trim().toUpperCase() while the markers and the result reader compared
+    exactly.
+
+    These are assertions about the page's text, because the page is JavaScript
+    with no test harness in this repository. Naming the old expressions alone
+    would be weak: a synthesis reintroduced under another variable name would
+    pass. The assertion that closes most of that gap is the last one. Any
+    synthesis has to name a result, and each result may appear in the page
+    only once, in the map that styles it.
+
+    Mutations applied to proofs/template.html and carried into the four
+    published copies, both detected: restoring the counter fallback under a
+    new variable name, 5 failures (this test, once per page); upper-casing
+    data.result before the lookup, 5 failures (this test, once per page).
+    """
+    page = _page(path)
+
+    assert "resolvedResult" not in page
+    assert "data.result ||" not in page
+    assert ".trim().toUpperCase()" not in page
+    assert "NO RESULT RECORDED" in page
+    assert "UNRECOGNISED RESULT" in page
+    assert "Object.prototype.hasOwnProperty.call(RESULT_CLASS, data.result)" in page
+
+    for declared in _declared_results():
+        assert page.count(f'"{declared}"') == 1, declared
+
+
+@pytest.mark.parametrize("path", CERTIFICATE_PAGES)
+def test_the_page_refuses_a_document_that_is_not_a_certificate(path):
+    """A document declaring record_kind is named as the wrong type, not rendered.
+
+    D6: each document type is checked in every place a document is read. Every
+    row on this page reads a certificate's result, proof class or leak count,
+    and a baseline record carries none of them.
+
+    Mutation applied to proofs/template.html and carried into the four
+    published copies: removing the guard's early return so a record renders
+    with absent fields, 5 failures (this test, once per page).
+    """
+    page = _page(path)
+
+    assert RECORD_KIND_GUARD in page
+    assert "function showWrongDocumentType(" in page
+    assert "NOT AN AUDIT CERTIFICATE" in page
+    assert "tools/verify_baseline_record.py" in page
+
+
+@pytest.mark.parametrize("path", CERTIFICATE_PAGES)
+def test_the_page_keeps_the_counter_display_separate_from_the_verdict(path):
+    """The leak count is still styled from the counters, and is named as counters.
+
+    Removing the synthesis must not remove the gate-check display. What
+    changed is that those two numbers no longer decide what the document says.
+    """
+    page = _page(path)
+
+    assert "const noLeaksOrOverblocks = leaks === 0 && harmless === 0;" in page
+    assert 'noLeaksOrOverblocks ? "success" : "danger"' in page
 
 
 def _attributable_certificate(**overrides):
