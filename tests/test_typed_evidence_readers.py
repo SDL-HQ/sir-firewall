@@ -61,6 +61,13 @@ def _review_bundle(tmp_path, run_id, out, *, check=True):
             str(out),
             "--run-id",
             run_id,
+            # The tree the fixture built, not this repository. Staging the
+            # archive into the real proofs/runs and removing it in a `finally`
+            # left two synthetic archives behind when the suite was interrupted
+            # on 15 October 2026, and the audit workflow runs pytest and
+            # `git add proofs/runs/` in the same job.
+            "--runs-root",
+            str(tmp_path),
         ],
         cwd=ROOT,
         capture_output=True,
@@ -313,15 +320,8 @@ def test_the_review_bundle_restates_a_record_as_a_record(published_pair, tmp_pat
     through the certificate keys, 1 failure (this test).
     """
     run_id = published_pair["baseline_run_id"]
-    staged = ROOT / "proofs/runs" / run_id
-    import shutil
-
-    shutil.copytree(published_pair["runs_dir"] / run_id, staged)
     out = tmp_path / "review-bundle"
-    try:
-        _review_bundle(published_pair["tmp_path"], run_id, out)
-    finally:
-        shutil.rmtree(staged)
+    _review_bundle(published_pair["tmp_path"], run_id, out)
 
     report = (out / "HUMAN_AUDIT_REPORT.md").read_text(encoding="utf-8")
 

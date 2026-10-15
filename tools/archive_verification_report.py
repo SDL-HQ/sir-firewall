@@ -49,6 +49,73 @@ VERIFY_RECEIPT = ROOT / "tools/verify_archive_receipt.py"
 VERIFY_BASELINE_RECORD = ROOT / "tools/verify_baseline_record.py"
 KEY_REGISTRY = ROOT / "spec/pubkeys/key_registry.v1.json"
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from itgl import (  # noqa: E402
+    LedgerVerificationError,
+    load_ledger,
+    ungated_row_final_hash,
+)
+
+# Where the publisher writes a pair artefact, which names each half's run id.
+PAIRS_DIRNAME = "pairs"
+BASELINE_RUN_ID_FIELD = "baseline_run_id"
+
+
+def _pair_named_baselines(runs_dir: Path) -> set[str]:
+    """Run ids a published pair artefact names as its baseline half.
+
+    The publisher writes these, so this signal is independent of what the run
+    said about itself. A malformed artefact is skipped rather than guessed at:
+    this is one of three signals and the disagreement it would cause is
+    reported by the caller.
+    """
+    pairs_dir = runs_dir / PAIRS_DIRNAME
+    if not pairs_dir.is_dir():
+        return set()
+    named: set[str] = set()
+    for path in sorted(pairs_dir.glob("*.json")):
+        try:
+            artefact = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        run_id = artefact.get(BASELINE_RUN_ID_FIELD)
+        if isinstance(run_id, str) and run_id:
+            named.add(run_id)
+    return named
+
+
+def _ungated_digest_archives(runs_dir: Path, certificates: dict) -> set[str]:
+    """Archives whose every bound ledger row carries the ungated-baseline digest.
+
+    Recomputed from the rows, so this signal is independent of both the
+    issuer's metadata and the publisher's artefacts. Every row or none: an
+    archive carrying the digest on some rows and not others is not a baseline
+    and not a gate run either, and returning it here would hide that in a set
+    the other two signals also select.
+    """
+    found: set[str] = set()
+    for run_id, certificate in certificates.items():
+        # Certificate archives only. An archive holding a baseline record has
+        # an empty certificate here, and its rows carry the ungated digest by
+        # design: that is what a record is for. Selecting it would put a
+        # correctly typed 2.5 document into a set that exists to qualify
+        # pre-2.5 certificates.
+        if not certificate:
+            continue
+        ledger = runs_dir / run_id / "proofs" / "itgl_ledger.jsonl"
+        if not ledger.is_file():
+            continue
+        try:
+            rows = load_ledger(ledger)
+        except (LedgerVerificationError, json.JSONDecodeError, OSError):
+            continue
+        if rows and all(
+            row.get("final_hash") == ungated_row_final_hash(row) for row in rows
+        ):
+            found.add(run_id)
+    return found
+
 CERTIFICATE_EXIT_MEANINGS = {
     0: "verified",
     1: "signing key not in registry",
@@ -84,6 +151,12 @@ NO_CERTIFICATE_BUT_A_RECORD = "no certificate in archive; this archive holds a b
 
 # The legacy marker from section 11 of the 2.5 specification. It is signer-set
 # metadata, used only to qualify a historical record, never to relax a check.
+#
+# It is the display key for the set of 54 and no longer what defines it. A
+# parallel review on 15 October 2026 pointed out that deriving the set from
+# this alone lets the published figure move by a metadata edit, and that it was
+# the weakest of three signals already available. All three are computed now
+# and must agree.
 LEGACY_UNGATED_MARKER = ("benchmark_execution", "gate_mode", "ungated")
 
 # Reported separately from "verified", which means the binding was checked and
@@ -343,16 +416,64 @@ def build_figures(records: list[dict], runs_dir: Path) -> dict:
     # --- the 54 published ungated baseline certificates --------------------
     #
     # Section 11 of the 2.5 specification: they stay published and are not
-    # re-signed, and they are identified here by the legacy marker so that a
-    # reader of these figures is not left to take their result at face value.
-    # The marker is the issuer's own metadata. It qualifies a historical
-    # record; nothing here is relaxed because of it.
+    # re-signed, and a reader of these figures is not left to take their result
+    # at face value.
+    #
+    # Three independent signals say an archive is one of them, and this figure
+    # was derived from the weakest of the three until 15 October 2026:
+    #
+    #   marker  the issuer's own benchmark_execution.gate_mode. Metadata the
+    #           signer wrote. It is inside the signed payload, so it cannot be
+    #           edited after signing, but it is what the signer chose to write.
+    #   pair    a published pair artefact naming this run as its baseline half.
+    #           Written by the publisher, not by the run.
+    #   rows    every row of the bound ledger carries the ungated-baseline
+    #           per-prompt digest. Recomputed here from the rows themselves.
+    #
+    # Measured on 15 October 2026: each signal independently selects the same
+    # 54 archives, and no archive carries the ungated digest on some rows and
+    # not others. So the set is the agreement of all three, and a disagreement
+    # is a defect rather than a tie to break. The marker stays as the display
+    # key, which is what docs/archive-errata.md E7 names it by.
     marker_parent, marker_field, marker_value = LEGACY_UNGATED_MARKER
-    legacy_ungated = sorted(
+    by_marker = {
         run_id for run_id, cert in certificates.items()
         if isinstance(cert.get(marker_parent), dict)
         and cert[marker_parent].get(marker_field) == marker_value
-    )
+    }
+    # Every signal is restricted to archives that hold a certificate. The set
+    # is the 54 published *certificates* describing ungated runs, and a
+    # correctly typed baseline record is not one of them however ungated it is:
+    # from 2.5 a pair artefact names a record archive as its baseline half, and
+    # that archive's rows carry the ungated digest because that is the point of
+    # it. Without this restriction the first published pair makes all three
+    # signals disagree about its own baseline half.
+    certificate_archives = {run_id for run_id, cert in certificates.items() if cert}
+    by_pair = _pair_named_baselines(runs_dir) & certificate_archives
+    by_rows = _ungated_digest_archives(runs_dir, certificates)
+
+    disputed = (by_marker | by_pair | by_rows) - (by_marker & by_pair & by_rows)
+    if disputed:
+        def _which(run_id: str) -> str:
+            held = [
+                name for name, group in
+                (("marker", by_marker), ("pair", by_pair), ("rows", by_rows))
+                if run_id in group
+            ]
+            return f"{run_id}: {'+'.join(held)}"
+
+        raise FigureError(
+            "the three signals that identify a published ungated baseline disagree, so "
+            "the set of them cannot be published as a fact.\n"
+            "  Each signal is independent: the issuer's marker, a pair artefact naming "
+            "the run as its baseline half, and the ungated digest on every row of its "
+            "bound ledger.\n"
+            "  Disagreeing archives, with the signals each one holds:\n"
+            + "".join(f"    {_which(run_id)}\n" for run_id in sorted(disputed)[:10])
+            + (f"    ... and {len(disputed) - 10} more\n" if len(disputed) > 10 else "")
+        )
+
+    legacy_ungated = sorted(by_marker & by_pair & by_rows)
 
     # --- the two published trees must hold the same runs --------------------
     #
@@ -401,6 +522,13 @@ def build_figures(records: list[dict], runs_dir: Path) -> dict:
         ),
         "baseline_records": sorted(baseline_records),
         "legacy_ungated_certificates": legacy_ungated,
+        # Published so a reader can see that the set is an agreement rather
+        # than one metadata field's word. Equal counts are the point.
+        "legacy_ungated_signal_counts": {
+            "marker": len(by_marker),
+            "pair_artefact": len(by_pair),
+            "ungated_rows": len(by_rows),
+        },
         "incomplete": incomplete,
         "receipt_signature_failed": receipt_signature_failed,
         "legacy_no_receipt": legacy_no_receipt,
