@@ -21,8 +21,9 @@ named tests. They are the first entries in the standing mutation set
 `docs/backlog.md` asks for: each one is a tampering that the per-row digest
 alone accepted.
 
-Checked on 15 October 2026 against seven mutations of a scratch copy, never the
-repository. Each count is what pytest reported:
+Checked on 15 October 2026 against ten mutations, each applied in place and
+reverted in a `finally` whose revert was then asserted clean against git. Each
+count is what pytest reported for this file:
 
     1. baseline rows carry PASS again                     5 failed, 8 errors
     2. digest reads turn_id instead of prompt_id           1 failed
@@ -32,8 +33,17 @@ repository. Each count is what pytest reported:
        gate split                                        5 failed, 8 errors
     6. generator refusal removed                           1 failed
     7. verifier binding accepts forwarded rows             1 failed
+    8. provider_call_outcome enum check removed            1 failed
+    9. provider_call_attempted check removed               1 failed
+   10. the runner writes a third outcome value             2 failed
 
-and the restored copy passed 18 of 18.
+and the restored copy passed 21 of 21.
+
+Mutation 9 was undetected on its first measurement. The test that should have
+caught it cleared the row's outcome as well as its attempt flag, so the outcome
+rule refused the row and the attempt rule could be deleted without a failure.
+It is recorded here because the fix was to the test, not to the code: a rule is
+only covered by a case that no other rule would also refuse.
 
 Mutation 2 is the one that changed this file. The runner and the verifier
 compute the digest through one function, so a mapping that is wrong in both
@@ -46,6 +56,7 @@ test_the_digest_mapping_agrees_with_every_published_baseline_row recomputes all
 """
 
 import argparse
+import ast
 import copy
 import importlib.util
 import json
@@ -321,6 +332,86 @@ def test_a_rehashed_row_with_a_bad_label_is_refused(baseline_rows):
     rows = _rehash(rows)
 
     assert itgl.baseline_ledger_defects(rows)
+
+
+def test_a_rehashed_row_with_an_unrecognised_provider_outcome_is_refused(baseline_rows):
+    """The counters' identity is enforced here, not measured by a run.
+
+    docs/terminology.md states that successes plus failures equals attempts
+    equals rows, and says it holds because the row rules refuse anything else.
+    This is that refusal. A parallel review on 15 October 2026 read the
+    identity as a schema tautology presented as evidence, which it is unless
+    the rule it rests on is pinned.
+    """
+    rows = copy.deepcopy(baseline_rows)
+    rows[0]["provider_call_outcome"] = "refused_by_provider"
+    rows = _rehash(rows)
+
+    assert itgl.verify_ledger(rows, itgl.CHAIN_VERSION_V2)
+    assert rows[0]["final_hash"] == itgl.ungated_row_final_hash(rows[0])
+    assert itgl.baseline_ledger_defects(rows)
+
+
+def test_a_rehashed_row_that_attempted_no_call_is_refused(baseline_rows):
+    """The other half of the identity: attempts equals rows.
+
+    The outcome is left at `success` deliberately. Clearing it as well would
+    let the outcome rule refuse the row, and this test would pass with the
+    attempt rule deleted: measured on 15 October 2026, that mutation was
+    undetected until the outcome was left intact.
+    """
+    rows = copy.deepcopy(baseline_rows)
+    rows[0]["provider_call_attempted"] = False
+    assert rows[0]["provider_call_outcome"] == "success"
+    rows = _rehash(rows)
+
+    assert itgl.verify_ledger(rows, itgl.CHAIN_VERSION_V2)
+    assert itgl.baseline_ledger_defects(rows)
+
+
+def test_the_runner_writes_only_the_outcomes_the_row_rules_permit():
+    """A third outcome value would make the published definition wrong.
+
+    docs/terminology.md, docs/evidence-perimeter.v5.md and
+    spec/baseline_record.v1.schema.json all define
+    `provider_call_outcome` as whether the call raised, and say a
+    provider-side refusal returning a response is a success while one returned
+    as an error is a failure indistinguishable from an outage. That definition
+    is only true while the runner has exactly these two values to write, one
+    where the call returned and one where it raised.
+
+    Distinguishing a provider refusal is deferred to 2.6, and this test is
+    where that change announces itself: it fails, and the three documents are
+    revisited rather than left describing a two-valued field that has three.
+
+    Read from the syntax tree rather than from a text slice, so an assignment
+    moved between branches is seen rather than matched by neighbouring text.
+    """
+    tree = ast.parse((ROOT / "red_team_suite.py").read_text(encoding="utf-8"))
+
+    def assigned_strings(node) -> set[str]:
+        found = set()
+        for child in ast.walk(node):
+            if not isinstance(child, ast.Assign):
+                continue
+            targets = [t.id for t in child.targets if isinstance(t, ast.Name)]
+            if "provider_call_outcome" not in targets:
+                continue
+            if isinstance(child.value, ast.Constant) and isinstance(child.value.value, str):
+                found.add(child.value.value)
+        return found
+
+    tries = [n for n in ast.walk(tree) if isinstance(n, ast.Try) and assigned_strings(n)]
+    assert len(tries) == 1, f"expected one try that writes the outcome, found {len(tries)}"
+    attempt = tries[0]
+
+    in_body = set().union(*(assigned_strings(stmt) for stmt in attempt.body))
+    in_handlers = set().union(*(assigned_strings(h) for h in attempt.handlers))
+
+    assert in_body == {"success"}, in_body
+    assert in_handlers == {"failure"}, in_handlers
+    assert assigned_strings(tree) == {"", "success", "failure"}, assigned_strings(tree)
+    assert set(itgl.PROVIDER_OUTCOMES) == {"success", "failure"}, itgl.PROVIDER_OUTCOMES
 
 
 def test_duplicate_prompt_indexes_are_refused(baseline_rows):

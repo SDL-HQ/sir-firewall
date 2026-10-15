@@ -111,14 +111,41 @@ of them asserted by the runner:
 - `provider_call_successes`
 - `provider_call_failures`
 
-They partition: successes plus failures equals attempts equals rows. A baseline
-attempts a call for every row, so a row with no attempt is a defect in the
-ledger rather than a run with fewer calls.
+Successes plus failures equals attempts equals rows. That holds because the row
+rules enforce it, not because a run measured it: `tools/itgl.py` refuses a
+baseline row whose `provider_call_attempted` is not `true` and refuses one whose
+`provider_call_outcome` is neither `success` nor `failure`. A ledger that would
+break the identity is not a baseline ledger. Read it as a shape check, not as a
+finding about a run.
 
-**What they do not mean.** Nothing about the provider's responses beyond whether
-the call succeeded at the transport level. Responses are not read back and not
-judged. `expected_block_prompts_forwarded` is a count of the prompt set's own
-labels, not a count of anything that happened.
+### What `provider_call_outcome` means
+
+**Whether the call raised.** `red_team_suite.py` writes `success` when the
+provider call returns and `failure` when it raises. Nothing about the response
+is inspected to decide it.
+
+Two consequences, both of which a reader will otherwise guess wrongly:
+
+- A response carrying the provider's own content-policy refusal is a
+  **success**. The call returned.
+- A refusal the provider returns as an error is a **failure**, and is not
+  distinguishable from an outage, a timeout, a rate limit or a bad credential.
+
+So the outcome says the call completed at the transport level. It does not say
+the provider processed the prompt, and a baseline is therefore not a control for
+the provider's own safety layer. Telling a provider-side refusal apart from a
+transport failure would change the row's outcome values, the exact key set, the
+counters, the schema and the verifier, which is a chain-version change; it is
+not in 2.5.
+
+**What the counters do not mean.** Nothing about the provider's responses beyond
+that outcome. No response is judged, and no counter and no pair figure is
+derived from one. A run started with `--capture-downstream-evidence` in live
+mode writes a response hash, and an excerpt if one is requested, to
+`proofs/downstream_evidence.jsonl`, which is archived beside the document;
+nothing recomputed by `tools/verify_baseline_record.py` reads it.
+`expected_block_prompts_forwarded` is a count of the prompt set's own labels,
+not a count of anything that happened.
 
 In a scenario a row is a turn, and the provider call for a turn carries the
 cumulative history of every earlier turn. So in a baseline each call carries all

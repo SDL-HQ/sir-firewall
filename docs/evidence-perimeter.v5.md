@@ -43,12 +43,39 @@ What it does not establish, stated because a reader will otherwise supply it:
   could write baseline-shaped rows for a run it gated, and nothing in the
   verifier would know. What the type separation rules out is a baseline record
   being read as an audit, and an audit's ledger being read as a baseline's.
-- That every provider call made is recorded. Calls are counted by the runner
-  that made them.
-- Anything about the provider's responses beyond the transport outcome.
-  Responses are not read back and not judged.
+- That every provider call made is recorded, or that every call recorded was
+  made. Calls are counted by the runner that made them, so the count can be
+  short of what happened and it can also exceed it. A row asserting an attempt
+  that was never issued satisfies the row shape.
+- That the provider processed the prompt. `provider_call_outcome` records
+  whether the call raised, and nothing else. A response carrying a
+  content-policy refusal is a `success`, and a refusal returned as an error is
+  a `failure` that cannot be told apart from an outage or a timeout. So a
+  baseline is not a control for the provider's own safety layer.
+- Anything about the provider's responses beyond that outcome. No response is
+  judged, and no counter and no pair figure is derived from one. A run started
+  with `--capture-downstream-evidence` in live mode writes a response hash, and
+  an excerpt if one is requested, to `proofs/downstream_evidence.jsonl`, which
+  is archived beside the document; nothing the record's verifier recomputes
+  reads it.
+- That the prompts labelled `block` ought to be blocked by anyone's judgement
+  but the suite author's. `expected` is the prompt set's own label, carried
+  through from the suite file. `expected_block_prompts_forwarded` counts those
+  labels, not an assessment of the prompts.
+- That any inference-shaping configuration was applied. A baseline row carries
+  `isc_template`, naming the template the gated half of the pair would have
+  used, because the row shape is shared. No template was applied to the
+  forwarded content: the gate was not in the path to apply one.
+- That SIR did anything, despite the fields that name it. A record carries
+  `sir_firewall_version`, `commit_sha` and `repository` because they identify
+  the repository state the run was issued from, which is what makes the pair
+  attributable. On this document they are provenance, not participation.
 - In a scenario, distinct content exposure. Each call carries the cumulative
-  history of earlier turns, so the counters count calls and turns.
+  history of earlier turns, so the counters count calls and turns. That history
+  is built from the fixture's own rows, each contributing its `role` and its
+  prompt text, and it is appended before the call and regardless of the call's
+  outcome, so a turn whose call failed still appears in later turns' history. No
+  entry in it is ever a provider reply, because no reply is read back.
 - Attribution beyond what the issuer recorded, as for certificates.
 
 ## INCONCLUSIVE
