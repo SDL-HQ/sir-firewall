@@ -29,6 +29,7 @@
 <body>
   <h1>Pre-Inference Governance Gate Audit Certificate</h1>
   <p class="subtitle">Pre-inference governance gate proof for <span class="mono">__AUDIT_LABEL__</span>.</p>
+  <p id="wrong-document" class="subtitle warn" hidden></p>
 
   <div class="box">
     <h2>Certificate summary</h2>
@@ -168,9 +169,43 @@
       }
     })();
 
+    // The recognised certificate results, declared once in
+    // tools/certificate_results.py. tests/test_certificate_result_set.py keeps
+    // this map in step with that declaration, because a page that recognises a
+    // result no reader declares, or misses one every reader declares, is the
+    // divergence that declaration exists to remove.
+    const RESULT_CLASS = {
+      "AUDIT PASSED": "success",
+      "AUDIT FAILED": "danger",
+      "INCONCLUSIVE": "warn",
+    };
+
+    // This page renders an audit certificate. A document that declares
+    // record_kind is a different document type: an ungated baseline record
+    // carries no result, no proof class and no leak count, and every row below
+    // reads one of those. Showing it here would fill those rows from absent
+    // fields, which is how 54 ungated baselines came to read as failed audits.
+    function showWrongDocumentType(recordKind) {
+      const notice = document.getElementById("wrong-document");
+      notice.textContent =
+        "This document is not an audit certificate. It declares record_kind " +
+        String(recordKind) +
+        ", and this page reads a certificate's result, proof class and leak count. " +
+        "Verify it with tools/verify_baseline_record.py.";
+      notice.hidden = false;
+      const resultEl = document.getElementById("result");
+      resultEl.textContent = "NOT AN AUDIT CERTIFICATE";
+      resultEl.className = "status warn";
+    }
+
     fetch('__AUDIT_JSON__')
       .then(r => r.json())
       .then(data => {
+        if (data && typeof data === "object" && "record_kind" in data) {
+          showWrongDocumentType(data.record_kind);
+          return;
+        }
+
         const leaks = Number(data.jailbreaks_leaked ?? 0);
         const harmless = Number(data.harmless_blocked ?? 0);
         const prompts = Number(data.prompts_tested ?? 0);
@@ -225,22 +260,31 @@
           typeof data.crypto_enforced === "boolean" ? String(data.crypto_enforced) : undefined
         );
 
-        const ok = leaks === 0 && harmless === 0;
+        // Counters, not a verdict: no prompt labelled for blocking leaked and
+        // no harmless prompt was blocked. The result below is read from the
+        // document and is not computed from these two numbers.
+        const noLeaksOrOverblocks = leaks === 0 && harmless === 0;
         const scoreEl = document.getElementById("score");
         scoreEl.textContent = `${leaks}`;
-        scoreEl.className = `mono ${ok ? "success" : "danger"}`;
+        scoreEl.className = `mono ${noLeaksOrOverblocks ? "success" : "danger"}`;
 
+        // Until 15 October 2026 an absent result was synthesised from those two
+        // counters, so a document carrying no verdict was shown one, and the
+        // comparison was normalised with trim().toUpperCase() while every other
+        // reader compared exactly. A document with no result now says it has
+        // none, and one carrying a result outside the declared set says that
+        // instead of being styled as a failure.
         const resultEl = document.getElementById("result");
-        const resolvedResult = String(data.result || (ok ? "AUDIT PASSED" : "AUDIT FAILED")).trim().toUpperCase();
-        resultEl.textContent = resolvedResult;
-        const resultClass = resolvedResult === "AUDIT PASSED"
-          ? "success"
-          : resolvedResult === "AUDIT FAILED"
-            ? "danger"
-            : resolvedResult === "INCONCLUSIVE"
-              ? "warn"
-              : "danger";
-        resultEl.className = `status ${resultClass}`;
+        const declared = Object.prototype.hasOwnProperty.call(RESULT_CLASS, data.result);
+        if (declared) {
+          resultEl.textContent = data.result;
+          resultEl.className = `status ${RESULT_CLASS[data.result]}`;
+        } else {
+          resultEl.textContent = data.result === undefined || data.result === null
+            ? "NO RESULT RECORDED"
+            : "UNRECOGNISED RESULT";
+          resultEl.className = "status warn";
+        }
 
         setText("commit", data.commit_sha);
         setText("payload-hash", data.payload_hash);
