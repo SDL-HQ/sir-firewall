@@ -21,11 +21,20 @@ from sir_firewall.evidence_paths import canonical_ledger_path
 from rule_coverage_report import build_report, inject_javascript_lookup
 
 NEEDLE = '      return `<div class="link-group">${primaryHtml}</div>${extraHtml}`;'
+AUGMENTED_RETURN = (
+    '      return `<div class="link-group">${primaryHtml}</div>${extraHtml}${verifyCommand}`;'
+)
 _LEDGER_TEMPLATE = canonical_ledger_path("__RUN_ID__", runs_dir=Path("docs/runs")).as_posix()
 _LEDGER_JAVASCRIPT = _LEDGER_TEMPLATE.replace("__RUN_ID__", "${esc(entry.run_id)}")
 REPLACEMENT = """      const ev = entry?.evidence || {};
-      const verifyCommand = ev.audit && entry?.run_id
-        ? `<div class="verify-command"><code>python3 tools/verify_certificate.py docs/${esc(ev.audit)} --ledger %s</code></div>`
+      // The command names the verifier for the document the entry holds. A
+      // baseline record is verified by tools/verify_baseline_record.py;
+      // tools/verify_certificate.py refuses a document that is not a
+      // certificate on every path, including --no-ledger.
+      const documentPath = isBaselineRecord(entry) ? ev.baseline : ev.audit;
+      const verifier = isBaselineRecord(entry) ? "verify_baseline_record.py" : "verify_certificate.py";
+      const verifyCommand = documentPath && entry?.run_id
+        ? `<div class="verify-command"><code>python3 tools/${verifier} docs/${esc(documentPath)} --ledger %s</code></div>`
         : "";
       return `<div class="link-group">${primaryHtml}</div>${extraHtml}${verifyCommand}`;""" % _LEDGER_JAVASCRIPT
 
@@ -40,21 +49,17 @@ def main() -> int:
     path = Path(args.page)
     text = path.read_text(encoding="utf-8")
     if REPLACEMENT not in text:
-        # Replace either an unaugmented source page or the previous augmentation.
-        previous_start = (
-            '      const ev = entry?.evidence || {};\n'
-            "      const verifyCommand = ev.audit && ev.itgl_ledger"
-        )
-        if previous_start in text:
+        # Replace either an unaugmented source page or a previous augmentation.
+        # Any augmentation is recognised by the return line it leaves behind,
+        # rather than by the condition the old insertion happened to use: this
+        # tool used to name that condition, so changing it made the tool refuse
+        # a page it had augmented itself.
+        if AUGMENTED_RETURN in text:
             start = text.index(
                 '      const ev = entry?.evidence || {};',
                 text.index("function renderEvidenceGroup"),
             )
-            end_line = (
-                '      return `<div class="link-group">${primaryHtml}</div>'
-                '${extraHtml}${verifyCommand}`;'
-            )
-            end = text.index(end_line, start) + len(end_line)
+            end = text.index(AUGMENTED_RETURN, start) + len(AUGMENTED_RETURN)
             text = text[:start] + REPLACEMENT + text[end:]
         elif NEEDLE in text:
             text = text.replace(NEEDLE, REPLACEMENT, 1)
