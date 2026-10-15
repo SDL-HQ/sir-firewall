@@ -252,6 +252,57 @@ def test_publishing_a_certificate_as_a_baseline_is_refused(published_pair):
     assert "--cert" in refused.stderr
 
 
+@pytest.mark.parametrize("name", ["archive_receipt.json", "manifest.json"])
+def test_publishing_an_archive_member_that_is_not_the_signed_document_is_refused(
+    published_pair, name
+):
+    """A publisher that guesses is how a document lands at the wrong filename.
+
+    `_document_kind` returned "audit_certificate" for anything that was not a
+    baseline record until 15 October 2026, so `--cert` accepted an archive
+    receipt or a manifest and archived it as the run's certificate. Found by an
+    independent review. A receipt carries a signature and a payload hash and no
+    result, and 39 published manifests carry a result and no `audit` field, so
+    neither is distinguishable from a certificate by a residual rule and both
+    are by a positive one.
+    """
+    tmp_path = published_pair["tmp_path"]
+    member = published_pair["runs_dir"] / published_pair["gated_run_id"] / name
+    staged = tmp_path / f"proofs/staged-{name}"
+    staged.write_text(member.read_text(encoding="utf-8"), encoding="utf-8")
+
+    refused = _publish_cli(tmp_path, "--cert", f"proofs/staged-{name}", check=False)
+
+    assert refused.returncode != 0
+    assert "not a signed document of either kind" in refused.stderr, refused.stderr
+
+
+def test_the_certificate_marker_holds_for_every_published_certificate():
+    """The positive rule is anchored to the archive, not only to itself.
+
+    A marker that no published certificate had to satisfy would classify the
+    archive by luck. Every one of them carries both fields, and no manifest or
+    archive receipt beside them carries `audit`.
+    """
+    publisher = _module("publish_run_for_marker_test", "tools/publish_run.py")
+
+    certificates = sorted((ROOT / "proofs/runs").glob("*/audit.json"))
+    assert len(certificates) >= 324, len(certificates)
+    for path in certificates:
+        document = json.loads(path.read_text(encoding="utf-8"))
+        assert publisher._document_kind(document) == "audit_certificate", path.parent.name
+
+    others = sorted((ROOT / "proofs/runs").glob("*/archive_receipt.json")) + sorted(
+        (ROOT / "proofs/runs").glob("*/manifest.json")
+    )
+    assert others
+    for path in others:
+        document = json.loads(path.read_text(encoding="utf-8"))
+        assert (
+            publisher._document_kind(document) == publisher.UNRECOGNISED_DOCUMENT
+        ), path.parent.name + "/" + path.name
+
+
 def test_both_flags_at_once_are_refused(published_pair):
     refused = _publish_cli(
         published_pair["tmp_path"], "--cert", "a.json", "--baseline", "b.json", check=False
