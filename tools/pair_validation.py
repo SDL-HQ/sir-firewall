@@ -286,9 +286,17 @@ def validate_pair(
         "provider_call_attempts_delta": (
             None
             if baseline_attempts is None or gated_attempts is None
-            # Gated minus baseline, the direction the published pairs use. The
-            # observed quantity: requests that did not reach the provider
-            # because the gate stopped them.
+            # Gated minus baseline, the direction the published pairs use, so
+            # the value is negative whenever the gated run made fewer calls.
+            #
+            # Its magnitude is forwarded prompts that did not reach the
+            # provider on the gated side, and the gate is not the only reason
+            # one did not: a systemic reset stops the run before the gate
+            # decides the rows it had not reached. So this is gate blocks plus
+            # reset-stopped rows, and it is the gate's blocks alone only when
+            # the gated run reset nothing. The comment here used to call it
+            # "requests the gate stopped", which is the magnitude with both the
+            # sign and the reset case dropped.
             else gated_attempts - baseline_attempts
         )
     }
