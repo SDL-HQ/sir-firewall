@@ -17,8 +17,16 @@ regenerating the documents deliberately.
 Verification is three-valued, not two. A record that cannot be checked and a
 record that fails are different results and are reported separately.
 
-Runtime is two verifier subprocesses per archive: about twenty seconds for the
-292 archives published at SIR 2.4.0, measured on 12 October 2026.
+An archive holds one signed document, and which one decides the verifier. A
+gated run's audit.json goes to tools/verify_certificate.py and an ungated
+baseline's baseline.json to tools/verify_baseline_record.py, counted apart,
+because an exit code from one says nothing about the other. Until 15 October
+2026 this script looked for audit.json alone, so a baseline archive counted as
+an archive with no document in it and nothing verified the record.
+
+Runtime is two verifier subprocesses per archive, the document's and the
+receipt's: about twenty seconds for the 292 archives published at SIR 2.4.0,
+measured on 12 October 2026.
 
 Usage:
     python3 tools/archive_verification_report.py
@@ -38,6 +46,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 VERIFY_CERTIFICATE = ROOT / "tools/verify_certificate.py"
 VERIFY_RECEIPT = ROOT / "tools/verify_archive_receipt.py"
+VERIFY_BASELINE_RECORD = ROOT / "tools/verify_baseline_record.py"
 KEY_REGISTRY = ROOT / "spec/pubkeys/key_registry.v1.json"
 
 CERTIFICATE_EXIT_MEANINGS = {
@@ -53,6 +62,29 @@ CERTIFICATE_EXIT_MEANINGS = {
     10: "SIGNING KEY REVOKED FOR THIS ARCHIVE",
     11: "SIGNED COUNTERS NOT SUPPORTED BY THE BOUND LEDGER",
 }
+
+RECORD_EXIT_MEANINGS = {
+    0: "verified",
+    2: "not a baseline record, or structurally invalid",
+    3: "payload hash mismatch",
+    4: "signature not valid base64",
+    5: "SIGNATURE VERIFICATION FAILED",
+    7: "LEDGER DOES NOT SUPPORT THE RECORD",
+    10: "SIGNING KEY REVOKED FOR THIS RECORD",
+}
+
+# A certificate and a baseline record are different documents and are counted
+# apart. An archive holds one of them: tools/verify_evidence.py refuses an
+# archive holding both, and so does this report, because a figure derived from
+# one would then describe the other.
+CERTIFICATE_DOCUMENT = "audit.json"
+RECORD_DOCUMENT = "baseline.json"
+
+NO_CERTIFICATE_BUT_A_RECORD = "no certificate in archive; this archive holds a baseline record"
+
+# The legacy marker from section 11 of the 2.5 specification. It is signer-set
+# metadata, used only to qualify a historical record, never to relax a check.
+LEGACY_UNGATED_MARKER = ("benchmark_execution", "gate_mode", "ungated")
 
 # Reported separately from "verified", which means the binding was checked and
 # holds. This archive has no ledger to check against at all.
@@ -169,11 +201,20 @@ def build_figures(records: list[dict], runs_dir: Path) -> dict:
     """
     runs_dir = Path(runs_dir)
     certificates: dict[str, dict] = {}
+    baseline_records: dict[str, dict] = {}
     for record in records:
-        path = runs_dir / record["run_id"] / "audit.json"
+        run_dir = runs_dir / record["run_id"]
+        certificate_path = run_dir / CERTIFICATE_DOCUMENT
+        record_path = run_dir / RECORD_DOCUMENT
         certificates[record["run_id"]] = (
-            json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+            json.loads(certificate_path.read_text(encoding="utf-8"))
+            if certificate_path.is_file()
+            else {}
         )
+        if record_path.is_file():
+            baseline_records[record["run_id"]] = json.loads(
+                record_path.read_text(encoding="utf-8")
+            )
 
     def cert_detail(record: dict) -> str:
         return record.get("certificate_detail") or ""
@@ -181,9 +222,11 @@ def build_figures(records: list[dict], runs_dir: Path) -> dict:
     def receipt_detail(record: dict) -> str:
         return record.get("receipt_detail") or ""
 
-    def rows(exit_field: str, meaning_field: str) -> list[dict]:
+    def rows(exit_field: str, meaning_field: str, only=None) -> list[dict]:
         counts: dict = {}
         for record in records:
+            if only is not None and not only(record):
+                continue
             key = (record[exit_field], record[meaning_field])
             counts[key] = counts.get(key, 0) + 1
         # Ascending exit code, then meaning, so row order is a property of the
@@ -297,6 +340,20 @@ def build_figures(records: list[dict], runs_dir: Path) -> dict:
             zero_call_by_class.setdefault(cert.get("proof_class") or "no proof_class", []).append(run_id)
             products.add(model)
 
+    # --- the 54 published ungated baseline certificates --------------------
+    #
+    # Section 11 of the 2.5 specification: they stay published and are not
+    # re-signed, and they are identified here by the legacy marker so that a
+    # reader of these figures is not left to take their result at face value.
+    # The marker is the issuer's own metadata. It qualifies a historical
+    # record; nothing here is relaxed because of it.
+    marker_parent, marker_field, marker_value = LEGACY_UNGATED_MARKER
+    legacy_ungated = sorted(
+        run_id for run_id, cert in certificates.items()
+        if isinstance(cert.get(marker_parent), dict)
+        and cert[marker_parent].get(marker_field) == marker_value
+    )
+
     # --- the two published trees must hold the same runs --------------------
     #
     # The errata counts proofs/runs and the register counts docs/runs. If the
@@ -305,13 +362,21 @@ def build_figures(records: list[dict], runs_dir: Path) -> dict:
     published_tree_note = None
     if runs_dir.resolve() == (ROOT / "proofs/runs").resolve():
         docs_runs = ROOT / "docs/runs"
+        # Either document counts. Counting audit.json alone would report the
+        # two trees as divergent as soon as a baseline record is published to
+        # both of them.
         published = {
             path.name for path in docs_runs.iterdir()
-            if path.is_dir() and (path / "audit.json").is_file()
+            if path.is_dir()
+            and ((path / CERTIFICATE_DOCUMENT).is_file() or (path / RECORD_DOCUMENT).is_file())
         } if docs_runs.is_dir() else set()
-        if published != set(certificates):
-            only_proofs = sorted(set(certificates) - published)
-            only_docs = sorted(published - set(certificates))
+        archived = {
+            run_id for run_id in certificates
+            if certificates[run_id] or run_id in baseline_records
+        }
+        if published != archived:
+            only_proofs = sorted(archived - published)
+            only_docs = sorted(published - archived)
             raise FigureError(
                 "proofs/runs and docs/runs do not hold the same runs, so a figure "
                 "derived from one would misdescribe the other.\n"
@@ -329,6 +394,13 @@ def build_figures(records: list[dict], runs_dir: Path) -> dict:
         "docs_runs_total": published_tree_note,
         "certificate_rows": rows("certificate_exit", "certificate_meaning"),
         "receipt_rows": rows("receipt_exit", "receipt_meaning"),
+        # Archives that hold a record. A row for the archives that do not
+        # would be a count of certificates reported as a record outcome.
+        "baseline_record_rows": rows(
+            "record_exit", "record_meaning", only=lambda r: r.get("record_exit") is not None
+        ),
+        "baseline_records": sorted(baseline_records),
+        "legacy_ungated_certificates": legacy_ungated,
         "incomplete": incomplete,
         "receipt_signature_failed": receipt_signature_failed,
         "legacy_no_receipt": legacy_no_receipt,
@@ -792,12 +864,38 @@ def measure(runs_dir: Path) -> list[dict]:
     """
     records: list[dict] = []
     for run_dir in sorted(p for p in Path(runs_dir).iterdir() if p.is_dir()):
-        certificate = run_dir / "audit.json"
+        certificate = run_dir / CERTIFICATE_DOCUMENT
+        baseline = run_dir / RECORD_DOCUMENT
         manifest = run_dir / "manifest.json"
-        if not certificate.is_file() and not manifest.is_file():
+        if not certificate.is_file() and not baseline.is_file() and not manifest.is_file():
             continue
+        if certificate.is_file() and baseline.is_file():
+            # The same refusal tools/verify_evidence.py makes. Reporting on
+            # either one would describe an archive that cannot be read as
+            # either kind.
+            raise FigureError(
+                f"{run_dir.name} holds both {CERTIFICATE_DOCUMENT} and {RECORD_DOCUMENT}, "
+                "so neither can be reported on as the archive's document"
+            )
 
         record = {"run_id": run_dir.name}
+        ledger = run_dir / "proofs/itgl_ledger.jsonl"
+
+        if baseline.is_file():
+            # The record's own verifier. Before 15 October 2026 this script
+            # looked for audit.json alone, so a baseline record's archive was
+            # counted as an archive with no document in it and nothing
+            # verified it.
+            argv = [sys.executable, str(VERIFY_BASELINE_RECORD), str(baseline)]
+            argv += ["--ledger", str(ledger)] if ledger.is_file() else []
+            argv += ["--key-registry", str(KEY_REGISTRY), "--require-registry"]
+            code, detail = _exit_code(argv)
+            record["record_exit"] = code
+            record["record_meaning"] = RECORD_EXIT_MEANINGS.get(code, "unmapped exit code")
+            record["record_detail"] = detail
+        else:
+            record["record_exit"] = None
+            record["record_meaning"] = "no baseline record in archive"
 
         if certificate.is_file():
             # Pass this run's own ledger and require the registry.
@@ -809,7 +907,6 @@ def measure(runs_dir: Path) -> list[dict]:
             # this script produces are published in docs/archive-errata.md and
             # read as a statement about the archive, so a check it did not
             # perform was being counted as a check that found nothing wrong.
-            ledger = run_dir / "proofs/itgl_ledger.jsonl"
             argv = [sys.executable, str(VERIFY_CERTIFICATE), str(certificate)]
             argv += ["--ledger", str(ledger)] if ledger.is_file() else ["--no-ledger"]
             argv += ["--key-registry", str(KEY_REGISTRY), "--require-registry"]
@@ -826,7 +923,9 @@ def measure(runs_dir: Path) -> list[dict]:
             record["certificate_detail"] = detail
         else:
             record["certificate_exit"] = None
-            record["certificate_meaning"] = "no certificate in archive"
+            record["certificate_meaning"] = (
+                NO_CERTIFICATE_BUT_A_RECORD if baseline.is_file() else "no certificate in archive"
+            )
 
         if manifest.is_file():
             code, detail = _exit_code(
@@ -888,6 +987,17 @@ def main() -> int:
             r["certificate_exit"] for r in records if r["certificate_meaning"] == label
         )
         print(f"  exit {str(code):>4}  {count:>4}  {label}")
+
+    records_present = [r for r in records if r.get("record_exit") is not None]
+    if records_present:
+        print("\nBaseline record verification (tools/verify_baseline_record.py)")
+        for label, count in tally("record_meaning"):
+            if label == "no baseline record in archive":
+                continue
+            code = next(r["record_exit"] for r in records if r["record_meaning"] == label)
+            print(f"  exit {str(code):>4}  {count:>4}  {label}")
+    else:
+        print("\nBaseline record verification: no baseline record is published yet")
 
     print("\nArchive receipt verification (tools/verify_archive_receipt.py)")
     for code, count in tally("receipt_exit"):

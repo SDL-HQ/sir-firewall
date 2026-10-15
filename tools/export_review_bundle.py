@@ -26,10 +26,21 @@ EXPLICIT_FILES: tuple[str, ...] = (
     "spec/evidence_contract.v1.json",
     "spec/evidence_contract.v2.json",
     "spec/evidence_contract.v3.json",
+    # The contract the current certificates are governed by, and the schema and
+    # verifier for the other document kind an archive can hold. A reviewer
+    # handed a baseline archive without these cannot check it.
+    "spec/evidence_contract.v4.json",
+    "spec/baseline_record.v1.schema.json",
     "tools/verify_certificate.py",
+    "tools/verify_baseline_record.py",
     "tools/verify_archive_receipt.py",
     "tools/verify_itgl.py",
 )
+
+# An archive holds one of these, and which one decides what the report below
+# can say about it.
+CERTIFICATE_DOCUMENT = "audit.json"
+RECORD_DOCUMENT = "baseline.json"
 
 
 def _copy_file(root: Path, out: Path, rel: str) -> None:
@@ -149,21 +160,66 @@ def _write_human_audit_report(out: Path, run_id: str | None) -> None:
     if run_id:
         run_manifest_rel = f"proofs/runs/{run_id}/manifest.json"
         run_manifest = _read_json_file(out / run_manifest_rel)
-        lines.extend(
-            _render_report_section(
-                title="Selected run manifest",
-                source_path=run_manifest_rel,
-                payload=run_manifest,
-                keys=(
-                    "run_id",
-                    "run_timestamp_utc",
-                    "result",
-                    "proof_class",
-                    "archive_receipt_path",
-                    "audit_path",
-                ),
+        run_dir = out / "proofs" / "runs" / run_id
+        holds_certificate = (run_dir / CERTIFICATE_DOCUMENT).is_file()
+        holds_record = (run_dir / RECORD_DOCUMENT).is_file()
+
+        if holds_certificate and holds_record:
+            raise SystemExit(
+                f"ERROR: proofs/runs/{run_id} holds both {CERTIFICATE_DOCUMENT} and "
+                f"{RECORD_DOCUMENT}, so it cannot be restated as either kind"
             )
-        )
+        if not holds_certificate and not holds_record:
+            raise SystemExit(
+                f"ERROR: proofs/runs/{run_id} holds no signed document, so it has no "
+                f"kind to restate (expected {CERTIFICATE_DOCUMENT} or {RECORD_DOCUMENT})"
+            )
+
+        if holds_record:
+            # A baseline record carries no result and no proof class. Restating
+            # it through the certificate keys printed `result: null` and
+            # `proof_class: null`, which is a verdict-shaped hole where a
+            # reader expects a verdict.
+            lines.extend(
+                [
+                    "## Selected run: ungated baseline record",
+                    "",
+                    "This run forwarded its prompt set to the provider with the gate out of",
+                    "the path. Its document carries no result and no proof class, and it is",
+                    "verified by `tools/verify_baseline_record.py`.",
+                    "",
+                ]
+            )
+            lines.extend(
+                _render_report_section(
+                    title="Selected run manifest",
+                    source_path=run_manifest_rel,
+                    payload=run_manifest,
+                    keys=(
+                        "run_id",
+                        "run_timestamp_utc",
+                        "record_kind",
+                        "archive_receipt_path",
+                        "baseline_path",
+                    ),
+                )
+            )
+        else:
+            lines.extend(
+                _render_report_section(
+                    title="Selected run manifest",
+                    source_path=run_manifest_rel,
+                    payload=run_manifest,
+                    keys=(
+                        "run_id",
+                        "run_timestamp_utc",
+                        "result",
+                        "proof_class",
+                        "archive_receipt_path",
+                        "audit_path",
+                    ),
+                )
+            )
 
     (out / "HUMAN_AUDIT_REPORT.md").write_text("\n".join(lines), encoding="utf-8")
 
