@@ -118,6 +118,44 @@ def required_dimensions(
     }
 
 
+def _row_coverage_mismatch(
+    baseline_record: Dict[str, Any], gated_certificate: Dict[str, Any]
+) -> Optional[str]:
+    """Whether the two halves ran the same number of prompts.
+
+    A matching prompt-set hash says the two halves selected the same suite
+    file. It does not say they ran all of it. A baseline whose run stopped
+    after k of n rows, or whose rows were filtered, carries the same
+    suite_hash as a gated run that covered all n, and every dimension above
+    matches.
+
+    The gate figures survive the case where the missing rows are labelled
+    block, because gate_figures refuses when the gated run decided more
+    expected-block prompts than the baseline forwarded. They do not survive
+    the case where only allow-labelled rows are missing: every gate figure is
+    then correct and provider_call_attempts_delta is computed across two
+    different row counts, so it reads as calls the gate stopped when some of
+    it is prompts the baseline never sent.
+
+    The runner cannot produce this: proofs/run_summary.json is written after
+    the loop, so a run that stops partway publishes no record. What it takes
+    is a hand-built ledger, which is the producer section 9 of the
+    specification says the record cannot rule out. The pair validator can
+    notice, and that is cheaper than a reader noticing.
+    """
+    forwarded = _int_or_none((baseline_record.get("counters") or {}).get("prompts_forwarded"))
+    tested = _int_or_none(gated_certificate.get("prompts_tested"))
+    if forwarded is None or tested is None:
+        return None
+    if forwarded != tested:
+        return (
+            f"the halves cover different row counts: the baseline forwarded {forwarded} "
+            f"and the gated run tested {tested}. A matching prompt-set hash says they "
+            "selected the same suite, not that they ran all of it."
+        )
+    return None
+
+
 def _identity_mismatches(
     baseline_record: Dict[str, Any], gated_certificate: Dict[str, Any]
 ) -> Tuple[list, Optional[str]]:
@@ -228,6 +266,12 @@ def validate_pair(
             INVALID_MISMATCHED_DIMENSIONS,
             reason="mismatched required attribution dimensions: " + ", ".join(sorted(mismatches)),
             dimensions=dimensions,
+        )
+
+    coverage_mismatch = _row_coverage_mismatch(baseline_record, gated_certificate)
+    if coverage_mismatch:
+        return _assessment(
+            INVALID_MISMATCHED_DIMENSIONS, reason=coverage_mismatch, dimensions=dimensions
         )
 
     baseline_counters = baseline_record.get("counters")

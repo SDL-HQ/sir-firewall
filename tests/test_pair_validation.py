@@ -402,3 +402,75 @@ def test_validation_does_not_mutate_its_inputs():
     pairs.validate_pair(baseline, gated)
 
     assert (json.dumps(baseline, sort_keys=True), json.dumps(gated, sort_keys=True)) == before
+
+
+# --- the halves must cover the same rows ------------------------------------
+
+
+def test_a_truncated_baseline_does_not_pair_with_a_full_gated_run():
+    """A matching suite hash says they chose the same suite, not that they ran it.
+
+    Raised by a parallel design review on 15 October 2026. A baseline whose
+    rows are a prefix of the suite carries the same suite_hash as a gated run
+    that covered all of it, and every other required dimension matches.
+
+    The gate figures already survive the case where the missing rows are
+    labelled block: gate_figures refuses when the gated run decided more
+    expected-block prompts than the baseline forwarded, so the review's
+    expectation that expected_block_prompts_reset would go negative is not
+    reachable. What was reachable is this case, where only allow-labelled rows
+    are missing: every gate figure is then correct, and
+    provider_call_attempts_delta is computed across two different row counts,
+    so it reads as calls the gate stopped when some of it is prompts the
+    baseline never sent.
+
+    Mutation applied to tools/pair_validation.py: removing the coverage check,
+    1 failure (this test).
+    """
+    assessment = pairs.validate_pair(
+        record(counters={"prompts_forwarded": 120, "expected_allow_prompts_forwarded": 20}),
+        certificate(),
+    )
+
+    assert assessment["pair_status"] == "invalid_mismatched_dimensions"
+    assert "different row counts" in assessment["non_comparable_reason"]
+    assert "gate_figures" not in assessment
+
+
+def test_a_baseline_missing_block_labelled_rows_was_already_refused():
+    """The case the figures guard, kept as a case so the two stay distinguishable.
+
+    This one is refused by gate_figures rather than by the coverage check, and
+    the reason says the halves disagree about the prompt set. Recorded because
+    the two refusals have different reasons and a reader of a pair artefact
+    should get the one that describes their pair.
+    """
+    assessment = pairs.validate_pair(
+        record(
+            counters={
+                "prompts_forwarded": 150,
+                "expected_block_prompts_forwarded": 90,
+            }
+        ),
+        certificate(),
+    )
+
+    assert assessment["pair_status"] == "invalid_evidence_gap"
+    assert "disagree about the prompt set" in assessment["non_comparable_reason"]
+
+
+def test_a_matched_row_count_is_not_refused():
+    """Guard the guard: the ordinary pair still passes the new check."""
+    assessment = pairs.validate_pair(record(), certificate())
+
+    assert assessment["pair_status"] == "valid_complete"
+
+
+def test_a_missing_row_count_on_either_half_is_not_treated_as_a_mismatch():
+    """Absent is unknown. A legacy certificate carries no prompts_tested."""
+    for pair in (
+        (record(counters={"prompts_forwarded": None}), certificate()),
+        (record(), certificate(prompts_tested=None)),
+    ):
+        assessment = pairs.validate_pair(*pair)
+        assert assessment["pair_status"] != "invalid_mismatched_dimensions", assessment
