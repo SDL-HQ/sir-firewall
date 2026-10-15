@@ -1,6 +1,8 @@
 # SIR current evidence perimeter v5
 
-Date (UTC): 2026-09-08
+Opened (UTC): 2026-09-08. Amended since, most recently 15 October 2026. This
+document is maintained rather than frozen: a reader checking which perimeter is
+current should read this line and the version below, not the opening date.
 
 ## Method note
 Paired benchmark means an ungated baseline run and an SIR-gated run executed against the same prompt set, then compared.
@@ -71,7 +73,7 @@ GitHub workflow dispatch constrains provider, model, and pack selection through 
 OpenAI GPT-5-family models route through the Responses API path. GPT-4.1-family and xAI models use the completion path. This is provider-call routing, not gate logic.
 
 ## Governance certificate fields
-Signed certificates include `governance_scope` and `crypto_enforced`. Both fields are part of the signed payload. Certificates generated before SIR 2.2 will not pass evidence-contract validation, but continue to pass signature verification and remain valid as historical evidence.
+Signed certificates include `governance_scope` and `crypto_enforced`. Both fields are part of the signed payload. Certificates generated before SIR 2.2 are governed by no evidence contract, which `tools/verify_evidence.py` reports as neither a pass nor a violation but as not established. They continue to pass signature verification and remain valid as historical evidence. An earlier wording here said they "will not pass" contract validation, which describes the two-valued checker this project replaced.
 
 `pack_hash` is present only when a caller supplies a pack hash through `pack_identity_context`; core does not compute it. The run harness no longer supplies the suite hash as `pack_hash`. A certificate signature makes supplied fields tamper-evident after signing but does not establish that a caller-supplied value was true.
 
@@ -122,7 +124,7 @@ Primary cross-provider comparison set:
 
 ### Provider-complete GPT-5.4-mini live pair in the current archive
 The current archive contains a provider-complete OpenAI `gpt-5.4-mini` pair for `support_operator_override`:
-- ungated baseline run `20260624-005933-000000-gh28067676116-dca5de736797`: leaks `26`, harmless blocked `0`, provider attempts `50`, successes `50`, failures `0`
+- ungated baseline run `20260624-005933-000000-gh28067676116-dca5de736797`: 26 prompts labelled for blocking, harmless blocked `0`, provider attempts `50`, successes `50`, failures `0`. This run is a pre-2.5 baseline certificate and is listed in `docs/archive-errata.md` Appendix C. Its signed `jailbreaks_leaked` reads `26`, which is that label count and not a leak.
 - SIR-gated run `20260624-005958-000000-gh28067676116-baac467cd954`: leaks `0`, harmless blocked `0`, provider attempts `24`, successes `24`, failures `0`
 
 Both sides satisfy the current provider-completeness condition.
@@ -149,13 +151,28 @@ The cross-model comparison figures below are carried forward unchanged from v4. 
 
 ## Observed paired outcomes for the core comparison packs
 For the six-model primary comparison set, on all three core packs:
-- ungated baseline: `AUDIT FAILED`
 - SIR-gated run: `AUDIT PASSED`
+- the ungated half of each pair is a pre-2.5 certificate reading
+  `AUDIT FAILED`. That result describes a run with no gate in the path and is
+  not an outcome of the comparison. `docs/archive-errata.md` E7 records what
+  those certificates are; all of them are in its Appendix C. It is reproduced
+  here only because a reader who opens one of those archives will see it.
 
 ## Core pack-level results
-- `generic_safety`: ungated leaks 100, SIR-gated leaks 0, gated benign/pass denominator 50
-- `data_exfiltration_pressure`: ungated leaks 27, SIR-gated leaks 0, gated benign/pass denominator 23
-- `support_operator_override`: ungated leaks 26, SIR-gated leaks 0, gated benign/pass denominator 24
+Stated as the gate's own figures. The ungated column these replace was a leak
+count, and on a run with no gate every prompt the suite labels for blocking
+counts as a leak, so that column was the pack's label count under another name.
+The arithmetic in this document showed it: 100 + 50 is `generic_safety`'s 150
+prompts, 27 + 23 and 26 + 24 are the other two packs' 50 each.
+
+- `generic_safety`: 100 prompts labelled for blocking, SIR-gated leaks 0, gated benign/pass denominator 50
+- `data_exfiltration_pressure`: 27 prompts labelled for blocking, SIR-gated leaks 0, gated benign/pass denominator 23
+- `support_operator_override`: 26 prompts labelled for blocking, SIR-gated leaks 0, gated benign/pass denominator 24
+
+So on these three packs the gate blocked every prompt the suite labels for
+blocking and blocked none of the 97 it labels for allowing. That is the figure,
+and it is a statement about the rule set against these corpora. It is not a
+measurement of harm prevented, because no response was read on either side.
 
 ## Core benign/pass denominator summary
 - total gated benign/pass denominator across compared live pairs: `97`
@@ -174,25 +191,51 @@ ID-level discrimination review was subsequently extended to all six models in th
 
 This finding was published: [Seven models, two providers, identical failure sets](https://x.com/SDL_HQ/status/2049438575574364279) - 2026-05-03
 
+**Corrected 15 October 2026. Both of those ID sets are identical across models
+by construction, so neither is an observation about any model.** The ungated
+set is the set of prompts the suite labels for blocking: with no gate in the
+path every one of them counts as a leak, and SIR never reads a model's
+response, so nothing in that set can vary with the model. The gated set is a
+deterministic pre-inference gate's decisions, taken before any model sees the
+request, so nothing in that set can vary with the model either. Two sets that
+cannot vary with the model were found not to vary with the model.
+
+The earlier reading of this finding is withdrawn. It is recorded in
+`docs/claims-register.md`, which also records what the published post says and
+what the correct statement would be.
+
 What this supports:
-- common-mode prompt-layer vulnerability across the tested model set
-- model selection, including generation level and reasoning capability, did not change attack outcomes on the tested packs
+- that the suite's block labels and the gate's decisions are both independent
+  of the model, which is what a deterministic pre-inference gate is for and is
+  a property of the design rather than a measurement of it
+- reproducibility: the same inputs and the same rule set gave the same
+  per-prompt decisions across six model configurations and two providers
 
 What this does not support:
-- universal claim across all models or all attack categories
+- any statement about the models, including common-mode vulnerability, model
+  susceptibility, or whether model selection changes attack outcomes. Neither
+  side of the comparison observed a model
+- a universal claim across all models or all attack categories
 - model-vs-model discrimination within the tested set
 
 ## `eu_ai_act_compliance_pressure` position recorded 22 April 2026
 Paired governance-gate-only benchmark position recorded 22 April 2026 under `xai/grok-4-1-fast`:
-- ungated baseline leaks: `100`
-- SIR-gated leaks: `26`
-- delta leaks: `-74`
+- 100 prompts labelled for blocking
+- SIR-gated leaks: `26`, so the gate blocked 74 of the 100 and passed 26
 - delta harmless blocked: `0`
 
+The `-74` this pair published as `leaks_delta` is that same 74 reported from
+the other side, against a baseline leak count that was the label count. SIR 2.5
+retired the delta for that reason; `docs/benchmark-cycle.v1.md` carries the
+replacement figures.
+
 Live paired position produced 22 April 2026 on `xai/grok-4-1-fast`:
-- `AUDIT FAILED` to `AUDIT FAILED`
-- delta leaks: `-74`
-- delta provider calls: `-74`
+- the gated run's result was `AUDIT FAILED`, with 26 of the 100
+  block-labelled prompts passed by the gate
+- the ungated half is a pre-2.5 certificate also reading `AUDIT FAILED`, for
+  the reason in E7
+- 74 fewer provider calls were attempted on the gated side, which is the gate's
+  block count over those prompts
 - delta harmless blocked: `0`
 
 ## `eu_ai_act_compliance_pressure` progression
@@ -213,9 +256,15 @@ Current gated-state interpretation:
 - `data_boundary`: dominant remaining leakage class
 
 ## What current evidence supports
-- the three core packs still strongly distinguish SIR off vs on
-- across the tested model set, the current three packs show common-mode prompt-layer susceptibility across six models and two providers
-- on those packs, in that tested set, model selection did not change attack outcomes; SIR did
+- on the three core packs, the gate blocks every prompt those suites label for
+  blocking and none of the 97 they label for allowing. "SIR off vs on" was the
+  earlier wording and overstated it: the off side measured the suite's labels,
+  not a model's behaviour
+- the gate's per-prompt decisions are reproducible across six model
+  configurations and two providers, because they are taken before any model is
+  called and do not depend on one
+- nothing here supports a statement about the models themselves. No response
+  was read on either side of any comparison in this document
 - `eu_ai_act_compliance_pressure` now shows that SIR can materially reduce governance-pressure leakage through bounded deterministic extensions
 - the current bounded EU-pack work reduced leaks from `100` to `26` in paired governance-gate-only benchmark mode with `0` harmless blocked
 - the same `-74` leak reduction was also observed in the 22 April 2026 live paired run, with `-74` provider calls and `0` harmless blocked

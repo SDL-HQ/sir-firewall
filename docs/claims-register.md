@@ -8,7 +8,9 @@ it is that each one **remains true when the reader examines the failures**. A
 claim that is true only while nobody checks is the thing this register exists
 to catch.
 
-Last reviewed 8 October 2026 at SIR 2.3.8, ending at commit `6f4d036`.
+Last reviewed 8 October 2026 at SIR 2.3.8, ending at commit `6f4d036`, with
+rows added on 15 October 2026 for the 2.5 evidence work. Those rows are dated
+in place; everything else was last examined at the date above.
 
 The release item this register serves stays **open** while it exists, and
 deliberately so. The condition is about the claims rather than about the
@@ -609,6 +611,77 @@ queued item, which is what the benchmark table leads with.
 *Coverage: outside.* The rule-coverage report is a build artefact. The patent
 boundary note places the coverage reporting work outside the specification, and
 the uncovered-row list it generates is not recited.
+
+### "Seven models, two providers, identical failure sets" (X, 3 May 2026)
+
+**corrected, 15 October 2026. The external post is not yet corrected; see
+below.** Raised by a parallel design review, which observed that the register
+claims to cover every public technical claim and had no row for this one.
+
+The post:
+[Seven models, two providers, identical failure sets](https://x.com/SDL_HQ/status/2049438575574364279),
+3 May 2026.
+
+The finding, as recorded in `docs/evidence-perimeter.v5.md`: across six model
+configurations and two providers, on each of the three core packs, the ungated
+leaked prompt ID sets were identical, and the SIR-gated blocked and passed
+prompt ID sets were identical. The published reading was that this shows
+common-mode prompt-layer vulnerability across the tested models, and that model
+selection did not change attack outcomes.
+
+**Both sets are identical across models by construction, so neither is an
+observation about any model.**
+
+The ungated set is the set of prompts the suite labels for blocking. With no
+gate in the path, every prompt so labelled counts as a leak, because
+`jailbreaks_leaked` counts block-labelled prompts the gate allowed and the gate
+allowed all of them by not being there. SIR never reads a model's response, so
+nothing in that set can vary with the model. The document's own arithmetic shows
+it: the ungated figures 100, 27 and 26 are exactly the three packs' block-label
+counts, against allow denominators of 50, 23 and 24 in packs of 150, 50 and 50.
+
+The gated set is a deterministic pre-inference gate's decisions, taken on the
+request before any model is called. Nothing in that set can vary with the model
+either.
+
+So two sets that cannot vary with the model were found not to vary with the
+model. The observation is true. The reading published on it is not available
+from it.
+
+**What the evidence does support**, and what a corrected statement would say:
+the gate's per-prompt decisions were reproducible across six model
+configurations and two providers, which is a property of a deterministic
+pre-inference design rather than a measurement of any model. On the three core
+packs the gate blocked every block-labelled prompt and none of the 97
+allow-labelled ones.
+
+**What is corrected where.** `docs/evidence-perimeter.v5.md` now withdraws the
+reading, states why both sets are model-independent, and replaces its "SIR off
+vs on" conclusion. The baseline-side figures throughout that document are
+restated as label counts, which is what they were.
+
+**The external surfaces are ones this register cannot test**, as recorded under
+what this register does not cover. The precedent is item 8 of the 2.4 release,
+which stayed open until the website carried the corrected wording, on the
+grounds that a register ticking its own item while an audited surface still said
+something it had recorded as not surviving examination would be the defect it
+was built to find.
+
+State of the external surfaces, 15 October 2026:
+
+- **LinkedIn: deleted.** The post carrying this finding was removed on
+  15 October 2026.
+- **X: outstanding.** The post recorded at
+  `https://x.com/SDL_HQ/status/2049438575574364279` was not located on
+  15 October 2026. Whether it was already removed or the recorded link is wrong
+  is not established, and an unverified absence is not a correction. This row
+  stays open until the post is confirmed gone or corrected.
+
+Neither surface can be checked from the repository, so this paragraph is the
+record, and it is the first thing to check when this claim is questioned.
+
+*Coverage: outside.* A reading published about a comparison is not a recited
+element of the specification.
 
 ---
 
