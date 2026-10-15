@@ -163,21 +163,35 @@ def test_an_ungated_baseline_records_forwarding_and_no_gate_counters(tmp_path, m
         )
 
 
-def test_pair_validation_rejects_wrong_role_markers():
+def test_the_pair_runner_does_not_assess_pairs_itself():
+    """Pair assessment moved to tools/pair_validation.py, and stayed there.
+
+    Until 15 October 2026 this runner carried its own role-marker check and its
+    own delta arithmetic. The arithmetic credited systemic resets to the gate,
+    and the role check read benchmark_execution, which is signer-set metadata
+    that an independent review showed accepts a gated run declaring itself
+    ungated. Both are now one tested function over the two signed documents,
+    and the runner calls it rather than reimplementing it.
+    """
     pair_runner = _load_pair_runner_module()
 
-    status, reason, _dims = pair_runner._validate_pair(
-        baseline_audit={
-            "benchmark_execution": {"benchmark_role": "baseline", "gate_mode": "sir_gated"},
-        },
-        gated_audit={
-            "benchmark_execution": {"benchmark_role": "gated", "gate_mode": "sir_gated"},
-        },
+    assert not hasattr(pair_runner, "_validate_pair")
+    assert not hasattr(pair_runner, "_compute_delta")
+    assert hasattr(pair_runner, "validate_pair"), (
+        "the runner must use the shared assessment"
     )
 
-    assert status == "invalid_mismatched_dimensions"
-    assert reason is not None
-    assert "role correctness failed" in reason
+    source = (
+        Path(__file__).resolve().parents[1] / "tools" / "run_paired_benchmark.py"
+    ).read_text(encoding="utf-8")
+    assert "leaks_delta" not in source, (
+        "a pair from 2.5 carries no leaks_delta; the figure is recoverable and the name "
+        "was not true of what it held"
+    )
+    assert "benchmark_execution" not in source, (
+        "role correctness is decided by the documents' kinds, not by metadata the signer "
+        "chose"
+    )
 
 
 def test_live_mode_default_off_does_not_write_downstream_evidence(tmp_path, monkeypatch):
