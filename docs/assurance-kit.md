@@ -88,8 +88,8 @@ Public surfaces and semantics:
 - `latest-live-audit.json` / `latest-live-audit.html`: mutable pointer to the latest qualifying live audit
 - `latest-run.json`: current status pointer for the most recent run, including FAIL or INCONCLUSIVE
 - `runs/index.html`: archive index for pass and fail runs
-- `runs/<run_id>/...`: per-run evidence bundle (manifest, audit, receipt, copied artefacts)
-- `runs/benchmark_index.v2.json`: evidence map for side-by-side comparison only, with `latest_run`, `latest_passing_run`, and paired benchmark rows
+- `runs/<run_id>/...`: per-run evidence bundle (manifest, one signed document, receipt, copied artefacts). The signed document is `audit.json` for a gated run or `baseline.json` for an ungated baseline record, and an archive holds exactly one of them
+- `runs/benchmark_index.v3.json`: evidence map for side-by-side comparison only, with `latest_run`, `latest_passing_run`, typed entries and paired benchmark rows. Each entry declares its `entry_kind`; a baseline record entry carries forwarding counts and no result. `benchmark_index.v1.json` and `.v2.json` remain published and are superseded
 - The selected per-run bundle is the claim-level evidence source. Latest pointers help locate candidates; benchmark rows remain exploratory comparison evidence.
 
 ## Canonical benchmark cycle contract (v1)
@@ -208,6 +208,21 @@ python3 tools/verify_archive_receipt.py "docs/runs/$RUN_ID" --require-registry
 python3 tools/validate_certificate_contract.py "docs/runs/$RUN_ID/audit.json"
 ```
 
+Those three are for an archive holding `audit.json`. For one holding
+`baseline.json`, an ungated baseline record, the first and third are replaced
+by one tool, and the receipt check is unchanged:
+
+```bash
+python3 tools/verify_baseline_record.py "docs/runs/$RUN_ID/baseline.json" --ledger "docs/runs/$RUN_ID/proofs/itgl_ledger.jsonl" --require-registry
+python3 tools/verify_archive_receipt.py "docs/runs/$RUN_ID" --require-registry
+```
+
+Pointing the certificate verifier at a record, or the record's verifier at a
+certificate, exits non-zero by design. Each establishes the document's type
+before anything else, so neither can report on the other kind.
+`tools/verify_evidence.py` on the archive directory picks the right one for
+you.
+
 The first of those prints:
 
 ```text
@@ -259,10 +274,11 @@ Read `docs/runs/benchmark_index.v2.json` as an evidence index:
 | --- | --- | --- |
 | `docs/runs/<run_id>/` | Every property of one archived run, each reported separately | `tools/verify_evidence.py docs/runs/<run_id>` |
 | `docs/runs/<run_id>/audit.json` + that run's ledger | Whether signature and certificate-to-ledger binding validate | `tools/verify_certificate.py ... --ledger ... --require-registry` |
+| `docs/runs/<run_id>/baseline.json` + that run's ledger | Whether an ungated baseline record is that kind of document, signed by an honoured key, and supported by its rows | `tools/verify_baseline_record.py ... --ledger ... --require-registry` |
 | `docs/runs/<run_id>/archive_receipt.json` | Run archive chain-of-custody receipt | `tools/verify_archive_receipt.py ... --require-registry` |
 | `docs/runs/<run_id>/audit.json` | Whether the certificate satisfies its version-applicable evidence contract | `tools/validate_certificate_contract.py ...` |
 | Root `proofs/run_summary.json` and ITGL files | Mutable current-run compatibility state; not claim-level evidence | local diagnostics only |
-| `docs/runs/benchmark_index.v2.json` | Honest map of runs, pointers, and pair rows | schema + direct inspection |
+| `docs/runs/benchmark_index.v3.json` | Honest map of runs, pointers, typed entries and pair rows | `spec/benchmark_index.v3.schema.json` + direct inspection |
 
 ## Key governance readiness reference
 

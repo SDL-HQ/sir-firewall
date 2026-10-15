@@ -47,7 +47,7 @@ Operationally, SIR evaluates a request path before model inference and produces 
 SIR produces evidence artefacts, including:
 
 - mutable root compatibility copies (`proofs/run_summary.json`, `proofs/latest-attempts.log`, `proofs/itgl_ledger.jsonl`, and `proofs/itgl_final_hash.txt`), which are useful for current local tooling but are not claim-level evidence; same-named files beneath a specific `docs/runs/<run_id>/proofs/` or `proofs/runs/<run_id>/proofs/` directory are distinct, immutable per-run archive members
-- mutable latest-pass pointers (`proofs/latest-audit.json`, `proofs/latest-audit.html`)
+- mutable latest-pass pointers (`proofs/latest-audit.json`, `proofs/latest-audit.html`). These describe gate runs only; an ungated baseline record is never a latest pointer, because it carries no result
 - current status pointer (`docs/latest-run.json`, served as `/latest-run.json`) with PASS/FAIL/INCONCLUSIVE status
 - per-run archive evidence (`docs/runs/<run_id>/...` and its `proofs/runs/<run_id>/...` source) with manifest, audit snapshot, identity-matched ledger, and archive receipt; the selected per-run bundle is the claim-level source
 - benchmark index mapping (`docs/runs/benchmark_index.v2.json`, served as `/runs/benchmark_index.v2.json`) as evidence-linked comparison rows
@@ -153,7 +153,7 @@ Coverage taxonomy note (v1):
 
 ## Archived-run verification
 
-Acquisition and verification are separate. Use the run archive to choose one locally available bundle whose `audit.json` records `sir_firewall_version` 2.3.4 or later; do not choose evidence from a mutable `latest-*` pointer. Retrieving or cloning the bundle requires network access, but the following verification needs no network once the repository and dependencies are locally available.
+Acquisition and verification are separate. Use the run archive to choose one locally available bundle whose `audit.json` records `sir_firewall_version` 2.3.4 or later; do not choose evidence from a mutable `latest-*` pointer. An archive holding `baseline.json` instead is an ungated baseline record rather than a certificate: it is verified with `tools/verify_baseline_record.py` and states what was forwarded to the provider with the gate out of the path, not what the gate decided. The worked example below is a certificate. Retrieving or cloning the bundle requires network access, but the following verification needs no network once the repository and dependencies are locally available.
 
 The worked bundle is `20260921-135018-029319-gh35607761858-f3dd66376a01`. Both checks below use that one directory. `--require-registry` fails closed if its `signing_key_id` cannot be resolved in the repository key registry, rather than silently falling back to a default public key.
 
