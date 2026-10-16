@@ -40,26 +40,23 @@ expression. The first version matched line starts in the file text and
 reported a dependency named "the", from a docstring sentence beginning "from
 the". It would have gone red on prose and stayed green on an import inside a
 function, which is the wrong way round.
+
+That check, the verifier count and the number words moved into
+`tools/generate_shop_window.py` on 17 October 2026, because the window's
+About line needs the same three and a second copy of any of them is the
+defect this project keeps finding. This file still owns the claim that the
+two public pages quote them correctly; it no longer owns how they are
+computed.
 """
 
 from __future__ import annotations
 
-import ast
 import importlib.util
 import json
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-
-#: Written out because the public pages write them out. A figure quoted in
-#: words still has to be true.
-WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight"}
-
-#: Everything a verifier may import without the visitor installing it: the
-#: standard library, and the other files the window ships.
-SHIPPED = {"key_registry", "itgl", "document_signing", "sir_firewall"}
-
 
 def _load(name: str, relative: str):
     spec = importlib.util.spec_from_file_location(name, ROOT / relative)
@@ -71,6 +68,12 @@ def _load(name: str, relative: str):
 
 GENERATOR = _load("generate_shop_window", "tools/generate_shop_window.py")
 SHOP_WINDOW = _load("shop_window", "tools/shop_window.py")
+
+#: Number words, and the rule for what a visitor must install, both read from
+#: the generator. They were duplicated here until 17 October 2026, when the
+#: About line needed the same two and a second copy would have been the
+#: defect this project keeps finding.
+WORDS = GENERATOR.WORDS
 README = (ROOT / "README.md").read_text(encoding="utf-8")
 TEMPLATE = (ROOT / "proofs" / "template.html").read_text(encoding="utf-8")
 
@@ -99,8 +102,7 @@ def test_both_pages_quote_the_exhibit_count_the_tool_produces():
 
 def test_both_pages_quote_the_number_of_verifiers_the_window_ships():
     """A visitor counts the things they run, not the files that get copied."""
-    verifiers = [name for name in GENERATOR.VERIFIER_FILES if name.startswith("verify_")]
-    expected = f"{WORDS[len(verifiers)]} verifiers"
+    expected = f"{WORDS[len(GENERATOR.verifier_commands())]} verifiers"
     assert expected in README
     assert expected in TEMPLATE
 
@@ -128,26 +130,7 @@ def test_one_dependency_is_still_one_dependency():
     imports that is neither standard library nor shipped alongside it breaks
     that promise in a place no other test looks.
     """
-    third_party = set()
-    for name in GENERATOR.VERIFIER_FILES:
-        # Parsed rather than matched by regex. A first version read the files
-        # as text and found a dependency named "the", from a docstring line
-        # beginning "from the ...".
-        tree = ast.parse((ROOT / "tools" / name).read_text(encoding="utf-8"))
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                names = [alias.name for alias in node.names]
-            elif isinstance(node, ast.ImportFrom):
-                names = [node.module or ""]
-            else:
-                continue
-            for imported in names:
-                top = imported.split(".")[0]
-                if not top or top in SHIPPED or top == "__future__":
-                    continue
-                if top in sys.stdlib_module_names:
-                    continue
-                third_party.add(top)
+    third_party = GENERATOR.third_party_dependencies()
 
     assert third_party == {"cryptography"}, sorted(third_party)
     expected = f"{WORDS[len(third_party)]} dependency"

@@ -24,6 +24,7 @@ pass whatever the copy contained.
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import importlib.util
 import json
@@ -163,6 +164,48 @@ VERIFIER_FILES = (
     "itgl.py",
     "document_signing.py",
 )
+
+#: Everything a shipped verifier may import without the visitor installing
+#: anything: the standard library, and the other files the window ships.
+SHIPPED_MODULES = {"key_registry", "itgl", "document_signing", "sir_firewall"}
+
+#: Written out because the public claims write them out. A figure quoted in
+#: words still has to be true.
+WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight"}
+
+
+def third_party_dependencies() -> set:
+    """What a visitor has to install, read from the imports of what ships.
+
+    Parsed with `ast` rather than matched against the file text. A first
+    version of this, in the test that used to own it, matched line starts and
+    reported a dependency named "the", from a docstring sentence beginning
+    "from the". It would have gone red on prose and stayed green on an import
+    inside a function, which is the wrong way round.
+    """
+    found = set()
+    for name in VERIFIER_FILES:
+        tree = ast.parse((ROOT / "tools" / name).read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                names = [node.module or ""]
+            else:
+                continue
+            for imported in names:
+                top = imported.split(".")[0]
+                if not top or top == "__future__" or top in SHIPPED_MODULES:
+                    continue
+                if top in sys.stdlib_module_names:
+                    continue
+                found.add(top)
+    return found
+
+
+def verifier_commands() -> list:
+    """The files a visitor runs, as against the files that get copied."""
+    return [name for name in VERIFIER_FILES if name.startswith("verify_")]
 
 
 def _shop_window():
@@ -760,6 +803,53 @@ def _tamper(window: Path, exhibit) -> dict:
     }
 
 
+def _about(exhibits) -> str:
+    """The window's About line, from the same figures as the README.
+
+    GitHub keeps a repository's About line in its settings rather than in the
+    tree, so it is the one public claim about the window that no test can
+    reach and no rebuild can correct. It went stale within a day of being
+    written, saying seven archives and three verifiers after the corrections
+    removed one of each, and it was a reviewer who noticed rather than us.
+
+    Emitting it here does not fix that, because a person still has to paste
+    it. It does mean the figures in it are derived rather than remembered,
+    there is one place to copy from, and `_about_holds` refuses the build if
+    the sentence stops being true of the exhibits it describes.
+    """
+    established = [e for e in exhibits if e.verdict == "ESTABLISHED"]
+    unclean = [e for e in exhibits if e.verdict != "ESTABLISHED"]
+    return (
+        f"{WORDS[len(exhibits)].capitalize()} published SIR archives, "
+        f"{WORDS[len(verifier_commands())]} verifiers, "
+        f"{WORDS[len(third_party_dependencies())]} dependency. "
+        f"Our own verdict tool establishes {WORDS[len(established)]} of the "
+        f"{WORDS[len(exhibits)]}, and the {WORDS[len(unclean)]} it does not are "
+        "defects we have written up."
+    )
+
+
+def _about_holds(exhibits) -> list:
+    """Whether the About line's last clause is true, rather than coincidental.
+
+    "the N it does not are defects we have written up" asserts that the
+    exhibits the verdict tool fails to establish are the same exhibits that
+    name an errata entry. Today those two sets happen to be equal, and equal
+    counts are not the same as one set. Nothing stops a future exhibit being
+    NOT ESTABLISHED with no errata entry, or established and disclosed, at
+    which point the counts could still match while the sentence is false.
+    """
+    unclean = {e.run_id for e in exhibits if e.verdict != "ESTABLISHED"}
+    disclosed = {e.run_id for e in exhibits if e.errata}
+    if unclean == disclosed:
+        return []
+    return [
+        "the About line says the archives the verdict tool does not establish are "
+        f"the ones written up in the errata, and they are not: not established "
+        f"{sorted(unclean)}, written up {sorted(disclosed)}"
+    ]
+
+
 def _not_for_publication(out: Path) -> dict:
     """Run the repository's publication rules over the tree about to be pushed.
 
@@ -867,9 +957,11 @@ def generate(out: Path, tag: str) -> list:
     (out / "GENERATED").write_text(
         f"source {VAULT}\ntag {tag}\ncommit {commit}\n"
         f"generated {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}\n"
-        f"archives {figures['total']}\ncertificates {figures['certificates_total']}\n",
+        f"archives {figures['total']}\ncertificates {figures['certificates_total']}\n"
+        f"about {_about(exhibits)}\n",
         encoding="utf-8",
     )
+    problems += _about_holds(exhibits)
 
     # No archive here, so nothing can answer for an exhibit but the exhibit.
     if (out / "docs" / "runs").exists() or (out / "proofs" / "runs").exists():
@@ -952,6 +1044,10 @@ def main() -> int:
     print(f"Generated the shop window at {args.out}, pinned at {tag}")
     for e in exhibits:
         print(f"  {e.number}. {e.name:38} {e.document_exit}/{e.receipt_exit}  {e.run_id}")
+    # Printed because a person has to paste it: GitHub holds a repository's
+    # About line in its settings, where no rebuild reaches it.
+    print("\nSet the window's About line in GitHub's settings to exactly this:\n")
+    print(f"  {_about(exhibits)}\n")
     return 0
 
 
