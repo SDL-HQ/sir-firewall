@@ -21,6 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Tags, not just the tip. The evidence window is pinned at a release
+          # tag, so item 10's command refuses outright in a clone that has
+          # none, and the gate fails for a reason that has nothing to do with
+          # the release. tests.yml fetches them for its own version of this.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:

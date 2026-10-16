@@ -309,3 +309,36 @@ def test_every_command_evidence_entry_states_an_expected_exit_code():
                 f"item {item['id']} names a command with no expected exit code: "
                 f"{entry.get('ref')!r}"
             )
+
+
+def test_the_gate_can_run_every_command_its_items_name():
+    """A command needing a release tag cannot run in a clone that has none.
+
+    `actions/checkout` fetches the tip and no tags unless asked. Item 10's
+    command builds the evidence window, which is pinned at a release tag and
+    refuses rather than guessing, so the gate failed on a tagless checkout for
+    a reason that said nothing about the release. The mark was working and the
+    workflow was wrong, which is the same shape as the dependency note already
+    written into that file.
+
+    Mutations measured on 16 October 2026:
+
+    - remove `fetch-depth: 0` from the gate's checkout: this test fails
+      (1 failed). Confirmed against the real failure first, by running the
+      item's command in a clone with its tags deleted: it exits 1 with
+      "REFUSED: the pin must be a release tag and this clone has none".
+    - drop the tag requirement from the generator instead, so it builds
+      unpinned: not taken. A window pinned to nothing is the one thing it must
+      never publish, so the refusal is the correct behaviour and the checkout
+      is the defect.
+    """
+    import yaml
+
+    workflow = yaml.safe_load(
+        (REPO / ".github" / "workflows" / "release-gate.yml").read_text(encoding="utf-8")
+    )
+    steps = workflow["jobs"]["release-checklist"]["steps"]
+    checkout = next(s for s in steps if str(s.get("uses", "")).startswith("actions/checkout"))
+    assert checkout.get("with", {}).get("fetch-depth") == 0, (
+        "the gate runs a command that needs a release tag and checks out without one"
+    )
