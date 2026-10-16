@@ -133,7 +133,21 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+#: Not an exit code any helper can return, so it cannot be confused with one.
+#: A helper that is not there has said nothing about the certificate, and the
+#: tables below map low exit codes to statements about the certificate: 2 in
+#: CONTRACT_CODES is "the certificate violates its applicable evidence
+#: contract", which is what a missing `validate_certificate_contract.py` used
+#: to be reported as. Python's own exit code for a file it cannot open is 2.
+#: Found by shipping this tool into a public repository without its helper,
+#: where the answer would have been that our evidence breaks our own contract.
+TOOL_MISSING = 1000
+
+
 def _run(argv: List[str]) -> Tuple[int, str]:
+    script = Path(argv[0])
+    if not script.is_file():
+        return TOOL_MISSING, f"{script.name} is not present beside this tool"
     result = subprocess.run(
         [sys.executable, *argv], cwd=REPO_ROOT, capture_output=True, text=True
     )
@@ -141,6 +155,14 @@ def _run(argv: List[str]) -> Tuple[int, str]:
 
 
 def _classify(code: int, table: Dict[int, Tuple[str, str]], tool: str) -> Tuple[str, str]:
+    if code == TOOL_MISSING:
+        # Unknown, not failed. Absence of a check is reported, never counted
+        # as the check having found something.
+        return (
+            "unknown",
+            f"{tool} is not present, so this property was not checked; it has not "
+            "failed, and a copy of this tool without its helpers cannot establish it",
+        )
     if code in table:
         return table[code]
     return ("failed", f"{tool} exited {code}")
