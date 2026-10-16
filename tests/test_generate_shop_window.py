@@ -83,6 +83,7 @@ import dataclasses
 import hashlib
 import importlib.util
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -513,3 +514,79 @@ def test_an_exhibit_the_errata_does_not_list_says_so(window):
     for e in classed:
         assert "does not enumerate its members" in verify, e.number
         assert f"**{e.errata}** in the archive of record's" in verify, e.number
+
+
+def test_the_published_tamper_recipe_is_the_one_that_was_measured(window):
+    """The page prints the exact text the generator ran, not a paraphrase of it.
+
+    The generator reimplemented something similar in Python and measured that.
+    The recipe it published was then found to be neither idempotent nor
+    one-way: it copied into a directory that may already exist, which nests
+    rather than replaces, and it flipped a field between two values, which
+    restores the original on a second run. A reader who ran it twice, which is
+    what a sceptic does, got exit 0 and the reasonable conclusion that we
+    cannot detect a changed byte. It was found by running the published page
+    twice, not by reading it.
+    """
+    verify = (window / "VERIFY.md").read_text(encoding="utf-8")
+    module = GENERATOR._shop_window()
+    exhibit = module.select()[0]
+    ledger = window / "exhibits" / exhibit.run_id / "proofs" / "itgl_ledger.jsonl"
+    row = len(ledger.read_text(encoding="utf-8").splitlines()) // 2
+    recipe = GENERATOR._tamper_recipe(exhibit.run_id, row)
+
+    assert recipe in verify, "the page does not print the text that was measured"
+    assert recipe.splitlines()[0].startswith("rm -rf "), (
+        "the recipe must clear its destination, or a second run copies into it"
+    )
+    assert '"allow" if' not in recipe, (
+        "the edit must not toggle between two values, or a second run restores the original"
+    )
+
+
+def test_running_the_published_recipe_twice_still_catches_it(window):
+    """Exit 7 once is not a measurement of something a reader may repeat."""
+    module = GENERATOR._shop_window()
+    result = GENERATOR._tamper(window, module.select()[0])
+
+    assert result["exit"] == module.TAMPER_EXIT, result
+    assert result["exit_again"] == module.TAMPER_EXIT, result
+    assert "ledger_hash" in result["message"], result["message"]
+
+
+def test_the_generator_refuses_a_recipe_that_undoes_itself(tmp_path):
+    """The guard for the defect that shipped, made to fire.
+
+    Measuring showed that removing the second-run check changed nothing, which
+    is true only because the recipe is now idempotent: the guard could not be
+    reached, so it was defence nobody could test. This injects the recipe as it
+    was published, which copies into a directory that may already exist and
+    toggles a field between two values, and requires the refusal.
+    """
+    shutil.rmtree("/tmp/tampered", ignore_errors=True)
+
+    def recipe_that_undoes_itself(run_id: str, row: int) -> str:
+        return "\n".join([
+            f"cp -r exhibits/{run_id} /tmp/tampered",
+            "python3 - <<'EOF'",
+            "import json, pathlib",
+            'p = pathlib.Path("/tmp/tampered/proofs/itgl_ledger.jsonl")',
+            "rows = p.read_text().splitlines()",
+            f"row = json.loads(rows[{row}])",
+            'row["expected"] = "allow" if row["expected"] == "block" else "block"',
+            f'rows[{row}] = json.dumps(row, separators=(",", ":"), sort_keys=True)',
+            'p.write_text("\\n".join(rows) + "\\n")',
+            "EOF",
+            "python3 tools/verify_certificate.py /tmp/tampered/audit.json "
+            "--ledger /tmp/tampered/proofs/itgl_ledger.jsonl",
+        ])
+
+    real = GENERATOR._tamper_recipe
+    GENERATOR._tamper_recipe = recipe_that_undoes_itself
+    try:
+        with pytest.raises(SystemExit) as refused:
+            GENERATOR.generate(tmp_path / "window", "v0.0.0-test")
+        assert "second run" in str(refused.value), str(refused.value)
+    finally:
+        GENERATOR._tamper_recipe = real
+        shutil.rmtree("/tmp/tampered", ignore_errors=True)
