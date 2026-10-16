@@ -98,11 +98,27 @@ def test_both_pages_quote_the_exhibit_count_the_tool_produces():
 
 
 def test_both_pages_quote_the_number_of_verifiers_the_window_ships():
-    """Three commands, not six files. A visitor counts the things they run."""
+    """A visitor counts the things they run, not the files that get copied."""
     verifiers = [name for name in GENERATOR.VERIFIER_FILES if name.startswith("verify_")]
     expected = f"{WORDS[len(verifiers)]} verifiers"
     assert expected in README
     assert expected in TEMPLATE
+
+
+def test_both_pages_quote_how_many_archives_the_verdict_tool_establishes():
+    """The figure that matters, and the one the window got wrong.
+
+    The window called an archive clean on two exit codes while the project's
+    own verdict tool said NOT ESTABLISHED about it. Both public surfaces now
+    quote the number of exhibits the verdict tool establishes, so a reader is
+    told the weaker number rather than discovering it.
+    """
+    figures = json.loads((ROOT / "docs" / "archive-figures.json").read_text(encoding="utf-8"))
+    exhibits = SHOP_WINDOW.select(figures)
+    established = [e for e in exhibits if e.verdict == "ESTABLISHED"]
+    expected = f"establishes {WORDS[len(established)]} of the {WORDS[len(exhibits)]}"
+    assert expected in README, expected
+    assert expected in TEMPLATE, expected
 
 
 def test_one_dependency_is_still_one_dependency():

@@ -6,7 +6,7 @@ Deterministic pre-inference governance gate · rules-only · cryptographically s
 
 Plain language: SIR sits in front of an AI model or agent and inspects a prompt before it reaches inference. It either lets the prompt through (`PASS`) or blocks it (`BLOCKED`) using deterministic, versioned rules.
 
-**Check it without cloning this repository.** [SDL-HQ/sir-evidence](https://github.com/SDL-HQ/sir-evidence) holds seven real published archives, the three verifiers, and one dependency to install. Not all seven come back clean, which is why they are published. It is generated from this repository at the latest release tag, so it says nothing this repository does not.
+**Check it without cloning this repository.** [SDL-HQ/sir-evidence](https://github.com/SDL-HQ/sir-evidence) holds six real published archives, four verifiers, and one dependency to install. Our own verdict tool establishes two of the six, and the four it does not are defects already written up in our errata. It also has a recipe for altering one ledger row so you can watch the chain refuse to re-derive. It is generated from this repository at the latest release tag, so it says nothing this repository does not.
 
 Models provide capability. SIR makes governance enforceable and provable. It does not claim model alignment. It claims deterministic enforcement and verifiable evidence for a given rule set and test suite.
 

@@ -60,6 +60,18 @@ class Exhibit:
     #: "beside" names the ledger in the archive; "none" passes --no-ledger
     #: because the archive ships no ledger at all.
     ledger: str
+    #: What `verify_evidence.py` says about the whole archive. The individual
+    #: verifiers answer one property each, and exit 0 from two of them is not
+    #: the project's own word for a sound archive: this is. An earlier version
+    #: of this file had no such field and called an archive clean on two exit
+    #: codes while the project's verdict tool said NOT ESTABLISHED.
+    verdict: str = "ESTABLISHED"
+    #: The errata entry that discloses this archive's defect, where there is
+    #: one. The front door and the back room have to agree.
+    errata: str = ""
+    #: The signed document this exhibit is about, and the tool that reads it.
+    document: str = "audit.json"
+    tool: str = "verify_certificate.py"
     #: Exit code when the *wrong* verifier is pointed at this document, where
     #: that refusal is the exhibit's point. None where it is not.
     refusal_exit: int | None = None
@@ -68,11 +80,7 @@ class Exhibit:
 
     def command(self, directory: str) -> list:
         """Exactly what the shop window tells a visitor to type."""
-        document = "baseline.json" if self.number == 7 else "audit.json"
-        tool = (
-            "verify_baseline_record.py" if self.number == 7 else "verify_certificate.py"
-        )
-        argv = [f"tools/{tool}", f"{directory}/{document}"]
+        argv = [f"tools/{self.tool}", f"{directory}/{self.document}"]
         if self.ledger == "beside":
             argv += ["--ledger", f"{directory}/proofs/itgl_ledger.jsonl"]
         else:
@@ -105,86 +113,157 @@ def _pick(pool: set) -> tuple:
 
 
 SPECIFICATION = (
-    # number, name, what the visitor learns, document exit, receipt exit, ledger, selector
+    # The 54 ungated baseline runs published as audit certificates, errata E7,
+    # are subtracted from every slot that is not about them. The first version
+    # of this file read five other sets out of the same figures file and never
+    # subtracted this one, so the exhibit labelled "a current certificate" was
+    # one of the 54: AUDIT FAILED, 100 leaks, on a run with no gate in the
+    # path. A front door whose lead exhibit is in the project's own errata is
+    # the discrediting story written for a hostile reader.
+    #
+    # number, name, teaches, document exit, receipt exit, ledger, verdict,
+    # errata, document, tool, selector
     (
         1,
-        "a current certificate",
-        "signature, ledger binding and row count all check, and the archive is complete",
+        "an archive that establishes every property",
+        "signature, ledger binding, signed counters and archive custody all check",
         0,
         0,
         "beside",
-        lambda s: s["binding_checked_and_holds"] - s["incomplete"] - s["receipt_signature_failed"],
+        "ESTABLISHED",
+        "",
+        "audit.json",
+        "verify_certificate.py",
+        # Clean means the verdict tool's word, so the counters must have been
+        # recomputed rather than absent. Exit 0 from two tools does not reach
+        # ESTABLISHED on its own.
+        lambda s: (
+            s["binding_checked_and_holds"]
+            - s["incomplete"]
+            - s["receipt_signature_failed"]
+            - s["legacy_ungated_certificates"]
+        )
+        & s["counters_true"],
     ),
     (
         2,
-        "a signature that fails",
-        "a real signature that really does not verify, published anyway",
+        "a signature that does not verify",
+        "a published certificate signed by a key the registry does not hold",
         5,
         2,
         "beside",
-        lambda s: s["certificate_signature_failed"],
+        "FAILED",
+        "E2",
+        "audit.json",
+        "verify_certificate.py",
+        lambda s: s["certificate_signature_failed"] - s["legacy_ungated_certificates"],
     ),
     (
         3,
-        "a pre-2.3.4 archive",
-        "a documented format boundary is not tampering, and the verifier says which it is",
+        "an archive from before the 2.3.4 correction",
+        "a documented format boundary is not tampering, and the verifier says which",
         9,
         0,
         "beside",
-        lambda s: s["exit_9_predates_correction"] - s["incomplete"],
+        "NOT ESTABLISHED",
+        "E4",
+        "audit.json",
+        "verify_certificate.py",
+        lambda s: s["exit_9_predates_correction"]
+        - s["incomplete"]
+        - s["legacy_ungated_certificates"],
     ),
     (
+        # Formerly two exhibits with identical selectors, so they were one
+        # archive presented as two and the page said "seven real published
+        # archives". `no_ledger_to_bind` and `legacy_no_receipt` are the same
+        # 39 archives, so there is no archive that has one and not the other
+        # and the two lessons belong to one exhibit.
         4,
-        "an archive shipping no ledger",
-        'verified, and less than "verified" sounds',
+        "an archive with no ledger and no receipt",
+        'verified, and less than "verified" sounds: nothing bound it and nothing vouches for the files',
         0,
         3,
         "none",
-        lambda s: s["no_ledger_to_bind"] & s["legacy_no_receipt"],
+        "NOT ESTABLISHED",
+        "E3",
+        "audit.json",
+        "verify_certificate.py",
+        lambda s: (s["no_ledger_to_bind"] & s["legacy_no_receipt"])
+        - s["legacy_ungated_certificates"],
     ),
     (
         5,
-        "an archive with no receipt",
-        "legacy archives predate the receipt scheme, disclosed",
-        0,
-        3,
-        "none",
-        lambda s: s["no_ledger_to_bind"] & s["legacy_no_receipt"],
-    ),
-    (
-        6,
         "a complete-looking archive that is not",
         "the receipt catches what the certificate cannot",
         0,
         2,
         "beside",
-        lambda s: s["incomplete"] & s["binding_checked_and_holds"],
+        "FAILED",
+        "E1",
+        "audit.json",
+        "verify_certificate.py",
+        lambda s: (s["incomplete"] & s["binding_checked_and_holds"])
+        - s["legacy_ungated_certificates"],
     ),
     (
-        7,
+        6,
         "a baseline record",
         "a certificate verifier refuses it, and its own verifier accepts it",
         0,
         0,
         "beside",
+        "ESTABLISHED",
+        "",
+        "baseline.json",
+        "verify_baseline_record.py",
         lambda s: s["baseline_records"],
     ),
 )
 
+#: Not an archive. The one answer a sceptic looks for is a changed byte caught,
+#: and every exhibit above is a defect we disclosed rather than a detection. So
+#: the window ships a recipe against exhibit 1: alter one field in one ledger
+#: row and the certificate verifier names the row and both hashes at exit 7.
+TAMPER_EXIT = 7
 
 def select(figures: dict | None = None) -> list:
-    """The seven exhibits, each bound to a real run id."""
+    """The six exhibits, each bound to a real run id.
+
+    Six archives, not seven. Two slots used to share one archive, which made
+    "seven real published archives" false and made the count of exhibits that
+    do not come back clean count one archive twice.
+    """
     if figures is None:
         figures = json.loads(FIGURES.read_text(encoding="utf-8"))
     sets = _sets(figures)
 
     exhibits = []
-    for number, name, teaches, document_exit, receipt_exit, ledger, selector in SPECIFICATION:
+    for (
+        number,
+        name,
+        teaches,
+        document_exit,
+        receipt_exit,
+        ledger,
+        verdict,
+        errata,
+        document,
+        tool,
+        selector,
+    ) in SPECIFICATION:
         pool = _pick(selector(sets))
         if not pool:
             raise LookupError(
                 f"exhibit {number}, {name}, has no candidate in the published "
                 "archive. The shop window cannot claim a result it cannot show"
+            )
+        ungated = sets["legacy_ungated_certificates"]
+        if errata != "E7" and pool[0] in ungated:
+            raise LookupError(
+                f"exhibit {number}, {name}, selected {pool[0]}, which is one of "
+                f"the {len(ungated)} ungated baseline runs published as audit "
+                "certificates. An exhibit that is in the errata has to say so"
             )
         exhibits.append(
             Exhibit(
@@ -194,9 +273,14 @@ def select(figures: dict | None = None) -> list:
                 document_exit=document_exit,
                 receipt_exit=receipt_exit,
                 ledger=ledger,
-                # Exhibit 7's whole point is the refusal, and its own verifier
-                # returns 0, so the documented command alone does not show it.
-                refusal_exit=12 if number == 7 else None,
+                verdict=verdict,
+                errata=errata,
+                document=document,
+                tool=tool,
+                # The baseline record's whole point is the refusal, and its own
+                # verifier returns 0, so the documented command alone does not
+                # show it.
+                refusal_exit=12 if document == "baseline.json" else None,
                 run_id=pool[0],
                 candidates=pool,
             )
