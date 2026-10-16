@@ -171,21 +171,18 @@ def test_the_generator_refuses_a_wrong_refusal_claim(tmp_path, monkeypatch):
 
     def wrong(figures=None):
         exhibits = real(figures)
-        for index, exhibit in enumerate(exhibits):
-            if exhibit.refusal_exit is None:
-                continue
-            exhibits[index] = type(exhibit)(
-                number=exhibit.number,
-                name=exhibit.name,
-                teaches=exhibit.teaches,
-                document_exit=exhibit.document_exit,
-                receipt_exit=exhibit.receipt_exit,
-                ledger=exhibit.ledger,
-                refusal_exit=exhibit.refusal_exit + 1,
-                run_id=exhibit.run_id,
-                candidates=exhibit.candidates,
-            )
-        return exhibits
+        # dataclasses.replace, not a field-by-field rebuild. The rebuild
+        # listed the fields that existed when it was written, so `document`
+        # and `tool` silently fell back to their defaults and the baseline
+        # exhibit was handed an audit.json path that does not exist. The same
+        # brittleness as indexing the specification tuple, in a different
+        # costume.
+        return [
+            dataclasses.replace(e, refusal_exit=e.refusal_exit + 1)
+            if e.refusal_exit is not None
+            else e
+            for e in exhibits
+        ]
 
     module = GENERATOR._shop_window()
     monkeypatch.setattr(module, "select", wrong)
@@ -590,3 +587,79 @@ def test_the_generator_refuses_a_recipe_that_undoes_itself(tmp_path):
     finally:
         GENERATOR._tamper_recipe = real
         shutil.rmtree("/tmp/tampered", ignore_errors=True)
+
+
+def test_the_window_ships_no_gate_implementation(window):
+    """An evidence display case is not a copy of the product.
+
+    `src/sir_firewall` shipped for one optional import inside a
+    `try/except ImportError`: the certificate verifier's canonical-path
+    fallback, which resolves `docs/runs/<id>/...` against the working
+    directory and so cannot resolve anything in a window that asserts it has
+    no `docs/runs`. The branch was already dead here, and it cost 416K
+    containing the gate itself, the deterministic rules and the policy packs,
+    in a repository whose own limits say the exhibits do not show the gate is
+    adequate. A visitor never sets `PYTHONPATH` either, so the import always
+    failed for them while the generator set one and measured a path no reader
+    reaches.
+    """
+    assert not (window / "src").exists(), "the window ships the gate"
+    shipped = {p.name for p in (window / "tools").iterdir()}
+    assert shipped == set(GENERATOR.VERIFIER_FILES), sorted(shipped)
+    for name in ("core.py", "deterministic_rules.py", "policy.py", "cli.py"):
+        assert not list(window.rglob(name)), name
+
+
+def test_every_exhibit_says_whether_its_named_model_ran(window):
+    """The property the verifiers do not have, so the page has to carry it.
+
+    Every evidence contract requires `model` and `provider` non-empty, and the
+    workflow supplies a default when none was selected, so a firewall-only
+    audit names a commercial product and records zero calls against it. That
+    is errata E6. The verifiers establish every property they know about on
+    such a certificate, which is how the window came to present one as the
+    archive that establishes everything, with nothing said about the model it
+    names never having run.
+    """
+    verify = (window / "VERIFY.md").read_text(encoding="utf-8")
+    module = GENERATOR._shop_window()
+    stated = 0
+    for exhibit in module.select():
+        document = json.loads(
+            (ROOT / "docs" / "runs" / exhibit.run_id / exhibit.document).read_text(
+                encoding="utf-8"
+            )
+        )
+        if not document.get("model"):
+            continue
+        stated += 1
+        calls = document.get("model_calls_made")
+        expected = "did run" if calls else "did not run"
+        note = GENERATOR._model_note(exhibit)
+        assert f"The named model {expected}" in note, (exhibit.number, note)
+        assert document["model"] in note and str(calls or 0) in note, (exhibit.number, note)
+        assert note in verify, exhibit.number
+    assert stated >= 4, f"only {stated} exhibits name a model, so this proves little"
+
+
+def test_the_table_says_which_verifier_produced_each_document_exit(window):
+    """Two tools produce a document exit, and the table used to hide which.
+
+    Exhibit 6 is a baseline record: `verify_baseline_record.py` exits 0, and
+    `verify_certificate.py` on the same file exits 12. The table gave 0
+    without naming the tool, so a reader taking the table as the answer would
+    run the certificate verifier, get a refusal, and conclude the page is
+    wrong when the page was merely incomplete.
+    """
+    readme = (window / "README.md").read_text(encoding="utf-8")
+    module = GENERATOR._shop_window()
+    tools = {e.tool for e in module.select()}
+    assert len(tools) > 1, "every exhibit uses one tool, so the column proves nothing"
+    for exhibit in module.select():
+        row = [
+            line
+            for line in readme.splitlines()
+            if line.startswith(f"| {exhibit.number} | {exhibit.name} |")
+        ]
+        assert row, exhibit.number
+        assert f"`{exhibit.tool}`" in row[0], (exhibit.number, row[0])

@@ -40,6 +40,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FIGURES = ROOT / "docs" / "archive-figures.json"
 PERIMETER = ROOT / "docs" / "evidence-perimeter.v6.md"
 ERRATA = ROOT / "docs" / "archive-errata.md"
+ARCHIVE = ROOT / "docs" / "runs"
 VAULT = "https://github.com/SDL-HQ/sir-firewall"
 WINDOW = "https://github.com/SDL-HQ/sir-evidence"
 
@@ -193,6 +194,42 @@ def _tree_digests(directory: Path) -> dict:
 # --- the documents ----------------------------------------------------------
 
 
+def _model_note(exhibit) -> str:
+    """What the signed payload says about the model, and whether it ran.
+
+    A certificate must name a `model` and `provider`: all the evidence
+    contracts require them non-empty, and the publishing workflow supplies a
+    default when no model was selected. So a firewall-only audit names a
+    commercial product and records zero calls against it, which the archive of
+    record discloses as errata E6.
+
+    The verifiers have no property for this. They check the payload hash, the
+    signature, the ledger binding, the signed counters, custody and the
+    contract, and a certificate naming a model that took no part in the run
+    establishes every one of them. An outside reader pointed out that the
+    window's lead exhibit was exactly that, unmarked, so a reader stopping at
+    the table would believe they had verified a gated run against a named
+    model. Read from the document rather than asserted.
+    """
+    document = json.loads(
+        (ARCHIVE / exhibit.run_id / exhibit.document).read_text(encoding="utf-8")
+    )
+    model, provider = document.get("model"), document.get("provider")
+    if not model:
+        return ""
+    calls = document.get("model_calls_made")
+    if calls:
+        return (
+            f"Signed payload: `model` is `{model}` on `{provider}`, with "
+            f"`model_calls_made: {calls}`. **The named model did run.**"
+        )
+    return (
+        f"Signed payload: `model` is `{model}` on `{provider}`, with "
+        "`model_calls_made: 0`. **The named model did not run**, and no "
+        "verifier on this page would tell you that."
+    )
+
+
 def _errata_lists(run_id: str) -> bool:
     """Whether the errata names this archive, or only describes its class.
 
@@ -273,8 +310,8 @@ def _perimeter_section(heading: str) -> tuple:
 
 def _readme(exhibits, figures, tag: str) -> str:
     rows = "\n".join(
-        f"| {e.number} | {e.name} | `{e.document_exit}` | `{e.receipt_exit}` | "
-        f"**{e.verdict}** | {e.errata or '-'} |"
+        f"| {e.number} | {e.name} | `{e.tool}` | `{e.document_exit}` | "
+        f"`{e.receipt_exit}` | **{e.verdict}** | {e.errata or '-'} |"
         for e in exhibits
     )
     # Counted on the verdict, and counted over archives. An earlier version
@@ -289,10 +326,13 @@ def _readme(exhibits, figures, tag: str) -> str:
 SIR is a deterministic pre-inference gate. It reads a request before a model
 does, decides `PASS` or `BLOCKED` by rules alone with no model in the decision
 path, and writes a signed record of what it saw and what it decided. The record
-is the point: it is designed to be checked by someone who does not trust us.
+is the point: it can be checked offline, by someone who does not have to take
+our word for what it says.
 
-**Read [LIMITS.md](LIMITS.md) second.** It says what SIR does not do, in the
-project's own words, and most of what is below is a limit made concrete.
+That is not the same as independent of us. The verifiers here are ours and the
+signing key is ours, so a signature that verifies establishes that we signed
+that payload, not that the payload is true. [LIMITS.md](LIMITS.md) says what
+follows from that, and it is the second thing to read.
 
 This repository is generated from the archive of record, pinned at `{tag}`. It
 holds {len(exhibits)} real published archives, each chosen because running our
@@ -305,8 +345,8 @@ these {len(exhibits)} come back NOT ESTABLISHED or FAILED, and
 {len(disclosed)} of them are defects this project has already written up in its
 own errata, named in the table.
 
-| # | Exhibit | Document exit | Receipt exit | Verdict | Errata |
-|---|---|---|---|---|---|
+| # | Exhibit | Document verifier | Its exit | Receipt exit | Verdict | Errata |
+|---|---|---|---|---|---|---|
 {rows}
 
 [VERIFY.md](VERIFY.md) has the exact command for each, explains why each one
@@ -398,6 +438,8 @@ python3 {refusal}
 ```
 
 Exits `{e.refusal_exit}`, naming the document kind it found."""
+        model = _model_note(e)
+        model = f"\n\n{model}" if model else ""
         if not e.errata:
             errata = ""
         elif _errata_lists(e.run_id):
@@ -423,7 +465,7 @@ python3 tools/verify_evidence.py exhibits/{e.run_id}
 ```
 
 Document verifier exits `{e.document_exit}`, receipt verifier exits \
-`{e.receipt_exit}`, and the verdict is **{e.verdict}**.{errata}{extra}"""
+`{e.receipt_exit}`, and the verdict is **{e.verdict}**.{model}{errata}{extra}"""
         )
 
     def rows(entries):
@@ -467,6 +509,24 @@ evidence contract governs has not failed a contract; a ledger that predates the
 fields needed to recompute the signed counters has not disagreed with them.
 Both are unknown, and unknown has its own verdict.
 
+## A certificate always names a model, even when none ran
+
+Every evidence contract requires `model` and `provider` to be present and
+non-empty, so a certificate has to name something, and the publishing workflow
+supplies a default when no model was selected. A firewall-only audit therefore
+names a commercial product and records `model_calls_made: 0` against it. The
+archive of record discloses that as errata **E6**.
+
+The verifiers have no property for it. They check the payload hash, the
+signature, the ledger binding, the signed counters, archive custody and the
+evidence contract, and a certificate naming a model that took no part in the
+run establishes every one of them. So each exhibit below states what its
+payload says about the model, because nothing you run here will.
+
+An outside reader found this on the lead exhibit, where the window said an
+archive establishes every property and did not mention that the model it names
+never ran.
+
 ## Why each command names its ledger
 
 A certificate is bound to the ledger of the run it signs, so verifying one
@@ -484,7 +544,7 @@ point of this repository is that you can see exactly what is being checked.
 
 ## The commands
 
-{chr(10).join(blocks)}
+{(chr(10) + chr(10)).join(blocks)}
 
 ## Break one and watch it get caught
 
@@ -560,11 +620,10 @@ def _run(window: Path, argv: list):
         # measurement found each sufficient alone and removed the variable as
         # untestable, which was true of the code at the time and stopped being
         # true the moment a tool that spawns children was shipped.
-        env=dict(
-            os.environ,
-            PYTHONPATH=str(window / "src"),
-            PYTHONDONTWRITEBYTECODE="1",
-        ),
+        # No PYTHONPATH: a visitor does not set one, and the window ships no
+        # package for it to point at. Measuring with one made the generator
+        # exercise an import path no reader reaches.
+        env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"),
     )
 
 
@@ -639,7 +698,6 @@ def _tamper(window: Path, exhibit) -> dict:
                 text=True,
                 env=dict(
                     os.environ,
-                    PYTHONPATH=str(window / "src"),
                     PYTHONDONTWRITEBYTECODE="1",
                 ),
             )
@@ -675,10 +733,19 @@ def generate(out: Path, tag: str) -> list:
     for name in VERIFIER_FILES:
         shutil.copy2(ROOT / "tools" / name, out / "tools" / name)
     shutil.copytree(ROOT / "spec", out / "spec", ignore=_NO_BYTECODE)
-    # sir_firewall is imported by one optional branch of the certificate
-    # verifier, for the canonical-path fallback. It is copied so that branch
-    # behaves here as it does in the vault rather than failing to import.
-    shutil.copytree(ROOT / "src", out / "src", ignore=_NO_BYTECODE)
+    # No `src/`. One optional branch of the certificate verifier imports
+    # `sir_firewall.evidence_paths` for the canonical-path fallback, inside a
+    # try/except ImportError, and that fallback resolves `docs/runs/<id>/...`
+    # against the working directory, which this window asserts it does not
+    # have. So the branch was already dead here, and shipping it cost 416K
+    # containing the gate itself: `core.py`, the deterministic rules and the
+    # policy packs, in a repository whose limits say the exhibits do not show
+    # the gate is adequate. `evidence_paths` is ten lines importing only
+    # pathlib; the package came with it because `__init__.py` imports `.core`.
+    #
+    # A visitor never sets PYTHONPATH either, so they always took the
+    # import-failure path. The generator used to set it and was measuring
+    # something no reader does.
     (out / "exhibits").mkdir()
 
     problems = []
