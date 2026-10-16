@@ -475,3 +475,30 @@ def test_the_generator_refuses_a_verdict_that_does_not_hold(tmp_path):
     finally:
         module.SPECIFICATION = original
         GENERATOR._shop_window = loaded
+
+
+def test_an_exhibit_the_errata_does_not_list_says_so(window):
+    """"Written up in our errata" is half-true if a reader greps for the id.
+
+    Three exhibits are listed individually in an appendix. The fourth is
+    covered by E4, which describes the 223 archives whose ledger binding
+    cannot be established and enumerates none of them. A reader who checks
+    the errata for each exhibit finds three and not the fourth, and that
+    asymmetry belongs on the page rather than in the discovery.
+    """
+    verify = (window / "VERIFY.md").read_text(encoding="utf-8")
+    errata = (ROOT / "docs" / "archive-errata.md").read_text(encoding="utf-8")
+    module = GENERATOR._shop_window()
+    exhibits = [e for e in module.select() if e.errata]
+    assert exhibits, "no exhibit carries an errata entry, so this test is obsolete"
+
+    listed = [e for e in exhibits if e.run_id in errata]
+    classed = [e for e in exhibits if e.run_id not in errata]
+    assert listed, "no exhibit is listed individually, so the distinction is untested"
+    assert classed, "no exhibit is class-covered only, so the distinction is untested"
+
+    for e in listed:
+        assert f"listed individually under **{e.errata}**" in verify, e.number
+    for e in classed:
+        assert "does not enumerate its members" in verify, e.number
+        assert f"**{e.errata}** in the archive of record's" in verify, e.number

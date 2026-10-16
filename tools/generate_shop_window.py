@@ -39,6 +39,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FIGURES = ROOT / "docs" / "archive-figures.json"
 PERIMETER = ROOT / "docs" / "evidence-perimeter.v6.md"
+ERRATA = ROOT / "docs" / "archive-errata.md"
 VAULT = "https://github.com/SDL-HQ/sir-firewall"
 WINDOW = "https://github.com/SDL-HQ/sir-evidence"
 
@@ -190,6 +191,18 @@ def _tree_digests(directory: Path) -> dict:
 
 
 # --- the documents ----------------------------------------------------------
+
+
+def _errata_lists(run_id: str) -> bool:
+    """Whether the errata names this archive, or only describes its class.
+
+    Three of the exhibits are listed individually in an appendix. The fourth
+    is covered by E4, which describes 223 archives whose ledger binding cannot
+    be established and enumerates none of them. Saying all four are "written
+    up" is true and leaves a reader who greps for the id finding it for three
+    and not the fourth, so the page says which it is.
+    """
+    return run_id in ERRATA.read_text(encoding="utf-8")
 
 
 def _documented_exits(tool: str) -> list:
@@ -385,12 +398,19 @@ python3 {refusal}
 ```
 
 Exits `{e.refusal_exit}`, naming the document kind it found."""
-        errata = (
-            f"\n\nThis archive's defect is disclosed as **{e.errata}** in the archive of "
-            "record's errata."
-            if e.errata
-            else ""
-        )
+        if not e.errata:
+            errata = ""
+        elif _errata_lists(e.run_id):
+            errata = (
+                f"\n\nThis archive is listed individually under **{e.errata}** in the "
+                "archive of record's errata."
+            )
+        else:
+            errata = (
+                f"\n\nThis archive's defect is **{e.errata}** in the archive of record's "
+                "errata, which describes the class and does not enumerate its members, so "
+                "searching that document for this run id finds nothing."
+            )
         blocks.append(
             f"""### {e.number}. {e.name}
 

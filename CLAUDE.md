@@ -40,9 +40,10 @@ days.
   a live URL. Add banners to superseded documents; do not relocate them.
 - **`docs/runs/index.json` is a display cap of the newest 200 runs**
   (`publish_run.py --keep`, default 200), not a manifest. Run directories are
-  never pruned. At the time of writing the archive holds 284 certificates and
-  the index lists 200. **Any measurement over "the archive" must iterate the
-  directories.** Measuring the index gives a smaller, wrong answer. This has
+  never pruned, so the archive is always larger than the index and that gap grows
+  with every run. No figure is given here on purpose; derive the current ones with
+  `archive_verification_report.py`. **Any measurement over "the archive" must
+  iterate the directories.** Measuring the index gives a smaller, wrong answer. This has
   happened, and was published in a draft before being caught.
 - **`proofs/runs/<run_id>/` is the canonical ledger location.**
   `sir_firewall.evidence_paths.canonical_ledger_path()` derives it from a run
@@ -91,6 +92,7 @@ minimal bundle needs no spec file;
 | 9 | binding **not checked**: no ledger was found, or the certificate predates `itgl_row_count` |
 | 10 | the signing key is revoked for this archive |
 | 11 | counter binding failure: the signed counters are not supported by the bound ledger |
+| 12 | the document is not a SIR audit certificate, and nothing about it was verified, including its signature |
 
 `tools/validate_certificate_contract.py`: 0 pass, 2 contract violation, 3 load
 error, 8 below the applicability floor.
