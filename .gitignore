@@ -11,3 +11,16 @@ src/*.egg-info/
 
 # macOS
 .DS_Store
+
+# Working documents live outside this public repository: handoffs, review
+# prompts, scope documents and the patent coverage analysis the claims
+# register's Coverage column is derived from. This stops an accidental
+# `git add .` from publishing them.
+# tests/test_no_working_documents_in_the_public_repository.py is the check that
+# holds it, because an ignore rule is bypassed by `git add -f` and says nothing
+# about a file added deliberately.
+/claude/
+/.claude/
+*.docx
+*.xlsx
+*.pptx
