@@ -44,16 +44,32 @@ last entry.
   documented command exits 0 whether the refusal works or not. The page would
   have published an exit code nothing had run.
   `test_the_generator_refuses_a_wrong_refusal_claim` was written for it.
+
+Three further mutations, measured on 16 October 2026 against the window's
+licence and the workflow that rebuilds it:
+
+- stop copying the licence:
+  `test_the_window_carries_the_licence_it_was_derived_from` fails (1 failed).
+- stop writing the rebuild workflow: 2 failed, both workflow tests.
+- let the rebuild ignore its own workflow, by replacing the diff with a
+  condition that is never true:
+  `test_the_rebuild_stops_rather_than_letting_its_own_workflow_rot` fails
+  (1 failed). This is the one that matters. A token issued to Actions cannot
+  update a workflow file, so a rebuild that stopped comparing would leave that
+  one file frozen at whatever was first pushed while every other file in the
+  repository moved, and nothing would say so.
 """
 
 from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -221,3 +237,75 @@ def test_the_pin_must_be_a_tag_that_exists():
 
     assert tag.startswith("v"), tag
     assert (ROOT / ".git").exists()
+
+
+def test_the_window_carries_the_licence_it_was_derived_from(window):
+    """Copied, byte for byte.
+
+    A licence is the one file in a generated repository that a hand edit is
+    most tempting for and least visible in. Copying it from the source means a
+    relicence in the archive of record reaches the window on the next rebuild
+    rather than leaving two different grants of the same material in public.
+    """
+    assert (window / "LICENSE").read_bytes() == (ROOT / "LICENSE").read_bytes()
+
+
+def test_the_window_carries_the_workflow_that_rebuilds_it(window):
+    """The window pulls; the archive of record never pushes.
+
+    A rebuild driven from the vault would need a token with write access to a
+    second public repository, held in the repository with the most CI traffic.
+    A rebuild driven from the window needs write access only to itself.
+    """
+    workflow = window / ".github" / "workflows" / "rebuild.yml"
+    assert workflow.is_file()
+    parsed = yaml.safe_load(workflow.read_text(encoding="utf-8"))
+    steps = parsed["jobs"]["rebuild"]["steps"]
+    run = "\n".join(step.get("run", "") for step in steps)
+    assert GENERATOR.VAULT in run, "the rebuild does not say what it rebuilds from"
+    assert "generate_shop_window.py --out" in run
+    assert "--sort=-v:refname" in run, "the rebuild does not pin to a release tag"
+
+
+def test_the_rebuild_stops_rather_than_letting_its_own_workflow_rot(window):
+    """A token issued to Actions cannot update a workflow file.
+
+    So the rebuild cannot write this file even when the generator changes it.
+    The alternative to failing loudly is a workflow that silently stays at the
+    version it was first pushed with, which is the hand-maintained file this
+    whole design exists to remove.
+    """
+    workflow = (window / ".github" / "workflows" / "rebuild.yml").read_text(encoding="utf-8")
+    assert "diff -r built/.github window/.github" in workflow
+    assert "exit 1" in workflow
+
+
+def test_check_mode_builds_the_window_and_keeps_nothing(tmp_path):
+    """The release gate wants the refusal, not the output."""
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "tools" / "generate_shop_window.py"), "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "reproduces" in result.stdout
+    assert not (ROOT / "window").exists()
+
+
+def test_check_mode_and_an_output_directory_are_not_both_given(tmp_path):
+    """Two answers to "where does this go" is a question, not a default."""
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "tools" / "generate_shop_window.py"),
+            "--check",
+            "--out",
+            str(tmp_path / "w"),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert not (tmp_path / "w").exists()

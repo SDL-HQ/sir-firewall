@@ -31,6 +31,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -38,6 +39,78 @@ ROOT = Path(__file__).resolve().parents[1]
 FIGURES = ROOT / "docs" / "archive-figures.json"
 PERIMETER = ROOT / "docs" / "evidence-perimeter.v6.md"
 VAULT = "https://github.com/SDL-HQ/sir-firewall"
+WINDOW = "https://github.com/SDL-HQ/sir-evidence"
+
+
+#: The window regenerates itself rather than being pushed to. A token issued to
+#: Actions in the vault would need write access to a second public repository;
+#: a token issued to Actions in the window needs write access only to itself.
+#: The dependency arrow points the safe way.
+REGENERATE_WORKFLOW = """\
+name: Rebuild from the archive of record
+
+# This file is written by tools/generate_shop_window.py in the archive of
+# record. Do not edit it here. A token issued to Actions cannot update a
+# workflow file, so when the generator changes it the job below fails and says
+# how to push the new one by hand.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: window
+
+      - name: Check out the archive of record at its latest release tag
+        run: |
+          git clone --quiet {vault}.git vault
+          cd vault
+          git checkout --quiet "$(git tag --list --sort=-v:refname | head -n 1)"
+
+      - name: Install the only dependency the verifiers have
+        run: python3 -m pip install --quiet cryptography
+
+      - name: Build, which refuses if a documented exit code does not reproduce
+        run: python3 vault/tools/generate_shop_window.py --out built
+
+      - name: Stop if the generator would change this workflow
+        run: |
+          if ! diff -r built/.github window/.github; then
+            echo "The generator writes a different workflow than this repository holds."
+            echo "Actions cannot update a workflow file. Push it from a clone of the"
+            echo "archive of record:"
+            echo "  python3 tools/generate_shop_window.py --out w && cp -a w/.github ."
+            exit 1
+          fi
+
+      - name: Replace the window with what was built
+        run: |
+          cd window
+          git rm -rq --ignore-unmatch . -- ':!.git' ':!.github'
+          cp -a ../built/. .
+          git add -A
+
+      - name: Commit, if anything moved
+        run: |
+          cd window
+          if git diff --cached --quiet; then
+            echo "The window already matches the archive of record."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -qm "Rebuild from $(sed -n 's/^tag //p' GENERATED)"
+          git push
+"""
 
 #: The three verifiers a visitor runs, and the modules they import from
 #: tools/. Held by a test, so a new import fails there rather than in the
@@ -155,6 +228,19 @@ Nothing here is a sample chosen for how it looks. Each exhibit is selected
 from a category by a tool in the main repository, and a test there refuses any
 category with only one member, so an exhibit is always an example of a class
 rather than a fact about one run.
+
+## This repository is generated
+
+Every file here except the workflow that rebuilds it is written by
+`tools/generate_shop_window.py` in the archive of record, from the latest
+release tag. Nothing is edited in place. An edit made here would be discarded
+by the next rebuild rather than read, so issues and changes belong in the
+archive of record. `GENERATED` records the tag, the commit it was built from,
+and when.
+
+The build is not a copy. It runs every command on this page inside the
+directory it has just written, and stops without publishing if any exit code
+differs from the one the page gives for it.
 """
 
 
@@ -328,6 +414,15 @@ def generate(out: Path, tag: str) -> list:
         if _tree_digests(source) != _tree_digests(destination):
             problems.append(f"exhibit {exhibit.number}: the copy differs from the archive")
 
+    # Copied, not retyped. A licence that drifts from the one it was derived
+    # from is worse than no licence at all.
+    shutil.copy2(ROOT / "LICENSE", out / "LICENSE")
+    workflows = out / ".github" / "workflows"
+    workflows.mkdir(parents=True)
+    (workflows / "rebuild.yml").write_text(
+        REGENERATE_WORKFLOW.format(vault=VAULT), encoding="utf-8"
+    )
+
     (out / "README.md").write_text(_readme(exhibits, figures, tag), encoding="utf-8")
     (out / "LIMITS.md").write_text(_limits(), encoding="utf-8")
     (out / "VERIFY.md").write_text(_verify_doc(exhibits, _exit_meanings(figures)), encoding="utf-8")
@@ -382,11 +477,23 @@ def _release_tag() -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--out", type=Path, default=None)
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="build into a temporary directory and discard it; the refusal is the point",
+    )
     parser.add_argument("--tag", default=None, help="defaults to the highest release tag")
     args = parser.parse_args()
+    if (args.out is None) == (not args.check):
+        parser.error("give --out or --check, and not both")
 
     tag = args.tag or _release_tag()
+    if args.check:
+        with tempfile.TemporaryDirectory() as scratch:
+            generate(Path(scratch) / "window", tag)
+        print(f"The shop window builds from {tag} and every documented exit code reproduces.")
+        return 0
     exhibits = generate(args.out, tag)
     print(f"Generated the shop window at {args.out}, pinned at {tag}")
     for e in exhibits:

@@ -827,6 +827,59 @@
           "ref": "tests/test_runnable_suites.py::test_the_summary_reports_the_suite_and_the_enforcement_pack_separately"
         }
       ]
+    },
+    {
+      "id": 10,
+      "name": "Evidence window",
+      "status": "met",
+      "condition": "The evidence window builds from this release, every exit code its pages give reproduces inside the directory the generator writes, and the two public surfaces that send a reader there name the repository it is published at.",
+      "evidence": [
+        {
+          "type": "artefact",
+          "ref": "tools/generate_shop_window.py"
+        },
+        {
+          "type": "command",
+          "ref": "python3 tools/generate_shop_window.py --check",
+          "expect_exit": 0
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_generate_shop_window.py::test_a_generated_window_verifies_end_to_end"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_generate_shop_window.py::test_the_generator_refuses_a_claim_that_does_not_hold"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_generate_shop_window.py::test_the_generator_refuses_a_wrong_refusal_claim"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_generate_shop_window.py::test_the_window_carries_the_licence_it_was_derived_from"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_generate_shop_window.py::test_the_window_carries_the_workflow_that_rebuilds_it"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_generate_shop_window.py::test_the_rebuild_stops_rather_than_letting_its_own_workflow_rot"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_the_evidence_window_is_reachable.py::test_the_readme_sends_a_reader_to_the_window"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_the_evidence_window_is_reachable.py::test_the_audit_page_offers_the_small_alternative"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_the_evidence_window_is_reachable.py::test_one_dependency_is_still_one_dependency"
+        }
+      ]
     }
   ],
   "bypass": "The Protect Main ruleset lists Repository admin with bypass mode 'allow for pull requests only', and the repository has no other collaborators, so that is the sole maintainer. The normal merge button is blocked while a required check fails; merging anyway requires choosing an option labelled 'bypass rules', which GitHub records. This was decided knowingly on 6 October rather than left implicit: the gate makes a premature merge deliberate rather than impossible. No app or outside contributor can bypass."
