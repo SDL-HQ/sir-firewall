@@ -41,6 +41,9 @@ PERIMETER = ROOT / "docs" / "evidence-perimeter.v6.md"
 VAULT = "https://github.com/SDL-HQ/sir-firewall"
 WINDOW = "https://github.com/SDL-HQ/sir-evidence"
 
+#: Nothing compiled travels. See the refusal at the end of generate().
+_NO_BYTECODE = shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo")
+
 
 #: The window regenerates itself rather than being pushed to. A token issued to
 #: Actions in the vault would need write access to a second public repository;
@@ -376,10 +379,14 @@ def _shell(argv: list) -> str:
 
 def _run(window: Path, argv: list):
     return subprocess.run(
-        [sys.executable, *argv],
+        [sys.executable, "-B", *argv],
         cwd=window,
         capture_output=True,
         text=True,
+        # -B above, so running the verifiers leaves no bytecode in the tree
+        # they are run in. PYTHONDONTWRITEBYTECODE was set here too until
+        # measuring showed each was sufficient alone, which made neither of
+        # them detectable.
         env=dict(os.environ, PYTHONPATH=str(window / "src")),
     )
 
@@ -398,11 +405,11 @@ def generate(out: Path, tag: str) -> list:
     (out / "tools").mkdir()
     for name in VERIFIER_FILES:
         shutil.copy2(ROOT / "tools" / name, out / "tools" / name)
-    shutil.copytree(ROOT / "spec", out / "spec")
+    shutil.copytree(ROOT / "spec", out / "spec", ignore=_NO_BYTECODE)
     # sir_firewall is imported by one optional branch of the certificate
     # verifier, for the canonical-path fallback. It is copied so that branch
     # behaves here as it does in the vault rather than failing to import.
-    shutil.copytree(ROOT / "src", out / "src")
+    shutil.copytree(ROOT / "src", out / "src", ignore=_NO_BYTECODE)
     (out / "exhibits").mkdir()
 
     problems = []
@@ -410,7 +417,7 @@ def generate(out: Path, tag: str) -> list:
         source = _archive(exhibit.run_id)
         destination = out / "exhibits" / exhibit.run_id
         if not destination.exists():
-            shutil.copytree(source, destination)
+            shutil.copytree(source, destination, ignore=_NO_BYTECODE)
         if _tree_digests(source) != _tree_digests(destination):
             problems.append(f"exhibit {exhibit.number}: the copy differs from the archive")
 
@@ -457,6 +464,17 @@ def generate(out: Path, tag: str) -> list:
                     f"exhibit {exhibit.number}: claims the wrong verifier refuses it with "
                     f"{exhibit.refusal_exit}, and it returned {refused}"
                 )
+
+    # The verifiers were just run inside the window, which compiles the modules
+    # they import unless told not to, so this is checked after the runs rather
+    # than only at the copy.
+    compiled = sorted(
+        str(path.relative_to(out))
+        for path in out.rglob("*")
+        if path.name == "__pycache__" or path.suffix in (".pyc", ".pyo")
+    )
+    if compiled:
+        problems.append(f"the window would ship compiled bytecode: {', '.join(compiled[:4])}")
 
     if problems:
         raise SystemExit(
