@@ -194,40 +194,80 @@ def _tree_digests(directory: Path) -> dict:
 # --- the documents ----------------------------------------------------------
 
 
-def _model_note(exhibit) -> str:
-    """What the signed payload says about the model, and whether it ran.
+def _model_invocation(exhibit) -> tuple:
+    """Whether the named model ran, read from the field its own kind uses.
 
-    A certificate must name a `model` and `provider`: all the evidence
-    contracts require them non-empty, and the publishing workflow supplies a
-    default when no model was selected. So a firewall-only audit names a
-    commercial product and records zero calls against it, which the archive of
-    record discloses as errata E6.
+    The two document kinds record this differently and nothing made that
+    explicit, so a note written for one was applied to the other and published
+    a false sentence. A certificate carries `model_calls_made` at the top
+    level. A baseline record carries no such field: its counters live under
+    `counters`, as `provider_call_attempts` and `provider_call_successes`,
+    because an ungated baseline forwards every prompt by definition. Reading
+    the certificate's field on a baseline returned None, which read as zero,
+    and the page said the model did not run on a record of fifty calls to it.
 
-    The verifiers have no property for this. They check the payload hash, the
-    signature, the ledger binding, the signed counters, custody and the
-    contract, and a certificate naming a model that took no part in the run
-    establishes every one of them. An outside reader pointed out that the
-    window's lead exhibit was exactly that, unmarked, so a reader stopping at
-    the table would believe they had verified a gated run against a named
-    model. Read from the document rather than asserted.
+    Returns (model, provider, calls). Refuses rather than guessing: a document
+    that names a model and records nothing about calling it is a claim this
+    tool cannot derive, and the page must not carry a sentence about it.
     """
     document = json.loads(
         (ARCHIVE / exhibit.run_id / exhibit.document).read_text(encoding="utf-8")
     )
     model, provider = document.get("model"), document.get("provider")
     if not model:
+        return (None, None, None)
+
+    if "model_calls_made" in document:
+        return (model, provider, document["model_calls_made"])
+    counters = document.get("counters") or {}
+    for field in ("provider_call_successes", "provider_call_attempts"):
+        if field in counters:
+            return (model, provider, counters[field])
+    # Three-valued, like every other answer this project gives. A January
+    # archive names a model and carries no call counters at all, because the
+    # counters postdate it. That is not zero calls and it is not a reason to
+    # refuse: it is unknown, and unknown has its own answer here as it does in
+    # the verdict tool. Writing the refusal first is what surfaced it.
+    return (model, provider, None)
+
+
+def _model_note(exhibit) -> str:
+    """One line per exhibit, because no verifier on the page reports this."""
+    model, provider, calls = _model_invocation(exhibit)
+    if not model:
         return ""
-    calls = document.get("model_calls_made")
+    if calls is None:
+        return (
+            f"Signed payload: `model` is `{model}` on `{provider}`, and the "
+            "document records no call counters at all, because they postdate "
+            "it. **Whether the named model ran cannot be told from this "
+            "archive.** That is not the same as zero."
+        )
     if calls:
         return (
             f"Signed payload: `model` is `{model}` on `{provider}`, with "
-            f"`model_calls_made: {calls}`. **The named model did run.**"
+            f"{calls} recorded calls to it. **The named model did run.**"
         )
     return (
-        f"Signed payload: `model` is `{model}` on `{provider}`, with "
-        "`model_calls_made: 0`. **The named model did not run**, and no "
-        "verifier on this page would tell you that."
+        f"Signed payload: `model` is `{model}` on `{provider}`, with zero "
+        "recorded calls. **The named model did not run**, and no verifier on "
+        "this page would tell you that."
     )
+
+
+def _ran(exhibit) -> str:
+    """The table cell, because a reader who stops at the table stops there.
+
+    The note under the commands was not enough: an outside reader pointed out
+    that the row still said an archive establishes every property with nothing
+    beside it about the model it names never having been called.
+    """
+    model, _, calls = _model_invocation(exhibit)
+    if not model:
+        return "-"
+    if calls is None:
+        return "unknown"
+    return f"yes, {calls}" if calls else "**no**"
 
 
 def _errata_lists(run_id: str) -> bool:
@@ -311,7 +351,7 @@ def _perimeter_section(heading: str) -> tuple:
 def _readme(exhibits, figures, tag: str) -> str:
     rows = "\n".join(
         f"| {e.number} | {e.name} | `{e.tool}` | `{e.document_exit}` | "
-        f"`{e.receipt_exit}` | **{e.verdict}** | {e.errata or '-'} |"
+        f"`{e.receipt_exit}` | **{e.verdict}** | {_ran(e)} | {e.errata or '-'} |"
         for e in exhibits
     )
     # Counted on the verdict, and counted over archives. An earlier version
@@ -345,8 +385,8 @@ these {len(exhibits)} come back NOT ESTABLISHED or FAILED, and
 {len(disclosed)} of them are defects this project has already written up in its
 own errata, named in the table.
 
-| # | Exhibit | Document verifier | Its exit | Receipt exit | Verdict | Errata |
-|---|---|---|---|---|---|---|
+| # | Exhibit | Document verifier | Its exit | Receipt exit | Verdict | Named model ran | Errata |
+|---|---|---|---|---|---|---|---|
 {rows}
 
 [VERIFY.md](VERIFY.md) has the exact command for each, explains why each one

@@ -618,28 +618,88 @@ def test_every_exhibit_says_whether_its_named_model_ran(window):
     audit names a commercial product and records zero calls against it. That
     is errata E6. The verifiers establish every property they know about on
     such a certificate, which is how the window came to present one as the
-    archive that establishes everything, with nothing said about the model it
-    names never having run.
+    archive that establishes everything with nothing said about the model.
+
+    Three-valued, and that was learned the hard way twice. The first version
+    read `model_calls_made` on every document. A baseline record has no such
+    field: its counters live under `counters` as `provider_call_attempts` and
+    `provider_call_successes`, so the lookup returned None, read as zero, and
+    the page said the named model did not run on a record of fifty calls to
+    it. The second version refused when it could not tell, and that refusal
+    fired immediately on a January archive that names a model and carries no
+    counters at all because they postdate it. Unknown is not zero, and it is
+    not a reason to refuse.
     """
     verify = (window / "VERIFY.md").read_text(encoding="utf-8")
     module = GENERATOR._shop_window()
-    stated = 0
+    seen = set()
     for exhibit in module.select():
         document = json.loads(
             (ROOT / "docs" / "runs" / exhibit.run_id / exhibit.document).read_text(
                 encoding="utf-8"
             )
         )
+        model, _, calls = GENERATOR._model_invocation(exhibit)
         if not document.get("model"):
+            assert model is None
             continue
-        stated += 1
-        calls = document.get("model_calls_made")
-        expected = "did run" if calls else "did not run"
+
+        # Derived here from the document's own shape, independently of the
+        # generator, so agreement means something.
+        if "model_calls_made" in document:
+            expected = document["model_calls_made"]
+        elif isinstance(document.get("counters"), dict) and (
+            "provider_call_successes" in document["counters"]
+        ):
+            expected = document["counters"]["provider_call_successes"]
+        else:
+            expected = None
+        assert calls == expected, (exhibit.number, calls, expected)
+
         note = GENERATOR._model_note(exhibit)
-        assert f"The named model {expected}" in note, (exhibit.number, note)
-        assert document["model"] in note and str(calls or 0) in note, (exhibit.number, note)
+        if expected is None:
+            assert "cannot be told from this" in note, (exhibit.number, note)
+            seen.add("unknown")
+        elif expected:
+            assert "The named model did run" in note, (exhibit.number, note)
+            assert str(expected) in note, (exhibit.number, note)
+            seen.add("ran")
+        else:
+            assert "The named model did not run" in note, (exhibit.number, note)
+            seen.add("did not")
         assert note in verify, exhibit.number
-    assert stated >= 4, f"only {stated} exhibits name a model, so this proves little"
+
+    assert seen == {"ran", "did not", "unknown"}, (
+        f"the exhibits only demonstrate {sorted(seen)}, so this test does not "
+        "show the three states are distinguished"
+    )
+
+
+def test_a_baseline_records_its_calls_under_counters_not_at_the_top(window):
+    """The defect this introduced, pinned to the document that exposed it.
+
+    A note written for a certificate was applied to a baseline record, which
+    has no `model_calls_made`. The lookup returned None, the page said the
+    model did not run, and the record shows fifty successful provider calls.
+    """
+    module = GENERATOR._shop_window()
+    baselines = [e for e in module.select() if e.document == "baseline.json"]
+    assert baselines, "no baseline exhibit, so this test cannot show the difference"
+    for exhibit in baselines:
+        document = json.loads(
+            (ROOT / "docs" / "runs" / exhibit.run_id / exhibit.document).read_text(
+                encoding="utf-8"
+            )
+        )
+        assert "model_calls_made" not in document, (
+            "the baseline now carries the certificate's field, so reading the "
+            "wrong one would no longer be visible here"
+        )
+        calls = document["counters"]["provider_call_successes"]
+        assert calls > 0, document["counters"]
+        _, _, read = GENERATOR._model_invocation(exhibit)
+        assert read == calls, (read, calls)
+        assert "did run" in GENERATOR._model_note(exhibit)
 
 
 def test_the_table_says_which_verifier_produced_each_document_exit(window):
@@ -663,3 +723,28 @@ def test_the_table_says_which_verifier_produced_each_document_exit(window):
         ]
         assert row, exhibit.number
         assert f"`{exhibit.tool}`" in row[0], (exhibit.number, row[0])
+
+
+def test_the_table_itself_says_whether_the_named_model_ran(window):
+    """Putting it one file down is not putting it where the claim is.
+
+    The note under the commands in VERIFY.md was the first fix, and an outside
+    reader pointed out that the README row still said an archive establishes
+    every property with nothing beside it about the model it names never
+    having been called. A reader who stops at the table stops at the table.
+    """
+    readme = (window / "README.md").read_text(encoding="utf-8")
+    module = GENERATOR._shop_window()
+    for exhibit in module.select():
+        _, _, calls = GENERATOR._model_invocation(exhibit)
+        row = next(
+            line
+            for line in readme.splitlines()
+            if line.startswith(f"| {exhibit.number} | {exhibit.name} |")
+        )
+        if calls is None:
+            assert "unknown" in row, (exhibit.number, row)
+        elif calls:
+            assert f"yes, {calls}" in row, (exhibit.number, row)
+        else:
+            assert "**no**" in row, (exhibit.number, row)
