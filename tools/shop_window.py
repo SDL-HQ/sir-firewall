@@ -60,6 +60,9 @@ class Exhibit:
     #: "beside" names the ledger in the archive; "none" passes --no-ledger
     #: because the archive ships no ledger at all.
     ledger: str
+    #: Exit code when the *wrong* verifier is pointed at this document, where
+    #: that refusal is the exhibit's point. None where it is not.
+    refusal_exit: int | None = None
     run_id: str = ""
     candidates: tuple = field(default=(), repr=False)
 
@@ -75,6 +78,17 @@ class Exhibit:
         else:
             argv += ["--no-ledger"]
         return argv
+
+    def refusal_command(self, directory: str) -> list:
+        """The wrong verifier, for the exhibit whose point is being refused."""
+        if self.refusal_exit is None:
+            raise ValueError(f"exhibit {self.number} has no refusal to show")
+        return [
+            "tools/verify_certificate.py",
+            f"{directory}/baseline.json",
+            "--ledger",
+            f"{directory}/proofs/itgl_ledger.jsonl",
+        ]
 
 
 def _sets(figures: dict) -> dict:
@@ -149,7 +163,7 @@ SPECIFICATION = (
     (
         7,
         "a baseline record",
-        "wrong document kind, by design, with its own verifier",
+        "a certificate verifier refuses it, and its own verifier accepts it",
         0,
         0,
         "beside",
@@ -180,6 +194,9 @@ def select(figures: dict | None = None) -> list:
                 document_exit=document_exit,
                 receipt_exit=receipt_exit,
                 ledger=ledger,
+                # Exhibit 7's whole point is the refusal, and its own verifier
+                # returns 0, so the documented command alone does not show it.
+                refusal_exit=12 if number == 7 else None,
                 run_id=pool[0],
                 candidates=pool,
             )
