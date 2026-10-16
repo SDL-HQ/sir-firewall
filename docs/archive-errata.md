@@ -334,7 +334,7 @@ not established as the run's ledger. All of these ledgers are chain version 1,
 which does not bind row content, so any reading of their rows rests on unbound
 data.
 
-**Fixed in** [version, when shipped]. An ungated baseline now produces a signed
+**Fixed in** 2.5.0. An ungated baseline now produces a signed
 baseline record at `baseline.json` carrying no result and no proof class, with
 rows whose status is `FORWARDED` rather than `PASS`. The certificate generator
 refuses a ledger containing a forwarded row, the certificate verifier refuses a

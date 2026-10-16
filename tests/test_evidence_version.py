@@ -113,10 +113,19 @@ def test_current_version_surfaces_match_runtime_authority():
     # neighbours, because a literal here would make this file a version surface
     # that has to classify itself.
     v_238 = ".".join(("2", "3", "8"))
-    # The release in flight. Recognised before it is the runtime authority so that
-    # the forward-looking floors written against it are classified now rather than
-    # all arriving uncounted and then all arriving at once on the version bump.
+    # The runtime authority before the bump this release carries, and the one
+    # the comment above describes. Both symbols exist for the same reason: a
+    # current surface left behind at an old version has to fail rather than
+    # pass, and it cannot do that while the old version and the authority are
+    # the same string.
     v_240 = ".".join(("2", "4", "0"))
+    # There is no symbol for a release in flight, and there should have been
+    # one for 2.5 from the start. The comment this replaces said a forward
+    # symbol exists so that surfaces naming the coming release are classified
+    # as they are written rather than "all arriving at once on the version
+    # bump". No symbol was added when this release opened, so that is exactly
+    # what happened: six files naming it became visible to this scan in the
+    # bump commit itself. Add the symbol for the next release when it opens.
     archived_evidence_prefixes = ("proofs/runs/", "docs/runs/", "proofs/archive/")
     mutable_certificate_pointers = {
         "proofs/latest-audit.json",
@@ -138,7 +147,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # authority. If a fifth contract is added this fires, so its floor is
         # confirmed here rather than assumed. Named by symbol, because this
         # file counts its own mentions.
-        "README.md": Counter({v_234: 10, v_233: 4, v_232: 2, v_230: 2, v_231: 2, v_221: 2, v_220: 3, v_235: 2, authority: 2}),
+        "README.md": Counter({v_234: 10, v_233: 4, v_232: 2, v_230: 2, v_231: 2, v_221: 2, v_220: 3, v_235: 2, authority: 1, v_240: 1}),
         # RETENTION's contract list omitted v4 for the same reason and gains
         # the one version its range names.
         "RETENTION.md": Counter({v_234: 1, v_233: 1, v_220: 1, v_235: 1, v_240: 1}),
@@ -146,11 +155,11 @@ def test_current_version_surfaces_match_runtime_authority():
         # Item 8's verification record points twice at the release whose notes
         # the evidence page now frames as a dated record rather than as the
         # current measurement.
-        "release-checklist.json": Counter({v_238: 1, v_240: 1, v_235: 2}),
+        "release-checklist.json": Counter({v_240: 1, v_235: 2, authority: 2}),
         # The chain-version floor table is version-keyed, so that test names
         # the released versions either side of the floor as boundary cases.
         # This entry fires if the floor moves without the test moving with it.
-        "tests/test_ledger_binds_row_contents.py": Counter({v_102: 1, v_238: 1, v_240: 1}),
+        "tests/test_ledger_binds_row_contents.py": Counter({v_102: 1, v_238: 1, v_240: 1, authority: 1}),
         "examples/verifier-negatives/tampered-leak-count.json": Counter({v_230: 1}),
         "examples/verifier-negatives/tampered-leak-count-rehashed.json": Counter({v_230: 1}),
         "examples/verifier-negatives/tampered-required-field-removed.json": Counter({v_230: 1}),
@@ -167,7 +176,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # deliberately unwritten until the release that carries it ships, so
         # the entry adds no version of its own. Written as the symbol rather
         # than the string, because this file counts its own mentions too.
-        "docs/archive-errata.md": Counter({v_234: 6, v_240: 1, v_237: 1, v_102: 1}),
+        "docs/archive-errata.md": Counter({v_234: 6, v_240: 1, v_237: 1, v_102: 1, authority: 1}),
         # The scenario-suite divergence row names the version the three published
         # archives were produced at, which is the half of the question that is known.
         # Three post-2.4 rows added 13 October 2026 name the release that
@@ -184,7 +193,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # The 2.5 re-examination row now points at the register for the
         # method, so the backlog no longer names the version of the previous
         # full review; the register does.
-        "docs/backlog.md": Counter({v_240: 9, v_230: 1, v_102: 1}),
+        "docs/backlog.md": Counter({v_240: 9, v_230: 1, v_102: 1, authority: 3}),
         # The publication step records the release whose merge exposed that a
         # direct push to main cannot satisfy the required status checks.
         ".github/workflows/audit-and-sign.yml": Counter({v_240: 1}),
@@ -205,7 +214,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # entry moves to the historical symbol for that version while v6
         # keeps the authority, and that split is the point: a frozen
         # document states the version it closed on, not the current one.
-        "docs/evidence-perimeter.v5.md": Counter({authority: 1}),
+        "docs/evidence-perimeter.v5.md": Counter({v_240: 1}),
         "docs/assurance-kit.md": Counter({v_234: 4, v_237: 1, v_240: 4, v_220: 3, v_102: 1, v_200: 1}),
         "docs/evaluator-technical-explainer.md": Counter({v_234: 2, v_237: 1}),
         "docs/minimal-pilot-runbook.md": Counter({v_234: 3, v_237: 1}),
@@ -251,7 +260,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # measurement they cite. The second v_240 is the contract applicability
         # list, corrected on 15 October 2026: it said v_235 and above selected
         # contract v3, which stopped being true when v4 arrived at v_240.
-        "docs/terminology.md": Counter({v_240: 3, v_235: 1, v_234: 1}),
+        "docs/terminology.md": Counter({v_240: 3, v_235: 1, v_234: 1, authority: 3}),
         "docs/threat-model.md": Counter({v_234: 1}),
         "pyproject.toml": Counter({authority: 1}),
         "spec/evidence_contract.v1.json": Counter({v_220: 2}),
@@ -270,11 +279,25 @@ def test_current_version_surfaces_match_runtime_authority():
         # dispatch that had no missing-certificate net, and the merge after
         # which the first direct push from automation was declined.
         "tests/test_audit_workflow_cannot_pass_without_verifying.py": Counter({v_240: 3}),
-        "tests/test_release_checklist.py": Counter({v_240: 1}),
+        # The notes for the release in flight. They become a frozen surface
+        # at the tag, and tests/test_release_notes_suite_size.py holds the
+        # suite figure in them against the collected count until then.
+        f"docs/release-notes-{authority}.md": Counter({authority: 2}),
         # The pack rename names the last shipped version where it states what
         # that release carried under the retired identifiers, and where it holds
         # those release notes against being tidied. v_240, four times.
-        "tests/test_pack_names_say_what_they_enforce.py": Counter({v_240: 4}),
+        "tests/test_pack_names_say_what_they_enforce.py": Counter({v_240: 4, authority: 1}),
+        # Surfaces that named the release while it was in flight. They were
+        # invisible to this scan until the bump made that version a
+        # recognised token, so they all arrive at once here. The symbol for
+        # the next release in flight should be added at the start of that
+        # release rather than at its end, which is the lesson of this block.
+        "docs/latency.md": Counter({authority: 1}),
+        "spec/packs/pack_registry.v1.json": Counter({authority: 1}),
+        "tests/domain_packs/README.md": Counter({authority: 1}),
+        "tests/domain_packs/mental_health_clinical.md": Counter({authority: 1}),
+        "tests/test_benchmark_index_v3_schema.py": Counter({authority: 2}),
+        "tests/test_no_key_material_in_diagnostics.py": Counter({authority: 1}),
         # Names the release whose notes first carried the figure, the tag that
         # froze it, and the pattern that recognises a figure anchored to a tag.
         "tests/test_release_notes_suite_size.py": Counter({v_240: 3}),

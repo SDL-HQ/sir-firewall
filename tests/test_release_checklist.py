@@ -134,9 +134,23 @@ def test_summary_only_never_fails(tmp_path):
 
 
 def test_the_real_checklist_is_wellformed():
-    result = _run(REPO / "release-checklist.json", REPO, "--summary-only")
+    """The summary names the release the checklist targets.
+
+    This held the target version as a literal, which meant the version bump of
+    every release turned it red for a reason unrelated to anything the test is
+    about, and it also made this file a version surface that
+    tests/test_evidence_version.py then had to classify. The version is read
+    from the checklist instead, so what is held is the thing that matters: the
+    summary reports the release the file declares, rather than a release some
+    other file remembers.
+    """
+    checklist = REPO / "release-checklist.json"
+    target = json.loads(checklist.read_text(encoding="utf-8"))["target_version"]
+    result = _run(checklist, REPO, "--summary-only")
+
     assert result.returncode == 0
-    assert "Release checklist for 2.4.0" in result.stdout
+    assert f"Release checklist for {target}" in result.stdout
+    assert re.fullmatch(r"\d+\.\d+\.\d+", target), target
 
 
 def test_command_evidence_never_reaches_a_shell(tmp_path):

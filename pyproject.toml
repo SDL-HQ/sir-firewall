@@ -1,6 +1,6 @@
 [project]
 name = "sir-firewall"
-version = "2.4.0"
+version = "2.5.0"
 requires-python = ">=3.10"
 
 # pytest and hypothesis sit here rather than in a test extra because the README
