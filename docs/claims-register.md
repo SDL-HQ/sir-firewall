@@ -43,8 +43,8 @@ and not on a 16 October one. Recorded here rather than counted as reviewed.
 
 **Release checklist item 8 reports met, and that is still not a statement that
 these claims were re-verified.** Its tests check that every row carries a
-status, cites something checkable, records its patent coverage, and says a
-decision is required where it is open. A test can hold the register's shape and
+status, cites something checkable, and says a decision is required where it is
+open. A test can hold the register's shape and
 cannot hold a reader's judgement. The date above is the judgement; the checklist
 is the shape.
 
@@ -86,13 +86,13 @@ result observed, not that a test exists.
 | The website homepage uncovered-row claim | fetched the live page on 16 October 2026. It reads "For the EU AI Act pack, the published coverage JSON names 26 uncovered rows", and `docs/coverage.json` gives `eu_ai_act_compliance_pressure` exactly 26 full-gate uncovered rows. It is also the largest of the eight pack counts, so the page names the worst case rather than a flattering one | holds |
 | "Seven models, two providers, identical failure sets" | re-read; the external post remains uncorrected and this register continues to say so | holds as recorded |
 
-Two citations in this register resolve to nothing a repository reader can
-open: `claude/patent-coverage-boundary-2026-10-05.md`, which the Coverage
-column says it follows, and `claude/website-changes-queued.md`. Both are
-working documents outside the repository. For a register whose condition is
-that it survives a reader who goes looking, a pointer that reader cannot follow
-is a gap, and it is recorded in `docs/backlog.md` rather than resolved here,
-because publishing them is a disclosure decision and not an editorial one.
+One citation in this register resolved to nothing a repository reader can
+open, `claude/website-changes-queued.md`, a working document held outside the
+repository. For a register whose condition is that it survives a reader who
+goes looking, a pointer that reader cannot follow is a gap, so the citation is
+gone and the two items it stood for are stated below in the website row
+itself. The other such citation was the patent coverage analysis, and that
+column has been removed rather than repointed.
 
 ## How to read this
 
@@ -105,15 +105,19 @@ because publishing them is a disclosure decision and not an editorial one.
 | **corrected** | Was false or stale. The surface has been changed. |
 | **open** | A decision is required before the surface is changed. Named, not deferred silently. |
 
-**Coverage** records whether the feature sits inside the filed specification
-(US 19/820,502) or outside it, per
-`claude/patent-coverage-boundary-2026-10-05.md`. This column exists so that
-nobody tells a buyer a feature is covered when it is not, and so that valuable
-material is not discovered to be undescribed at contest time. It is not legal
-advice and it is not a determination of patentability.
+**Patent coverage is tracked, and not here.** Which features are and are not
+covered is recorded in SDL's private records, because an analysis of that is a
+map of what is unprotected, and publishing one is poor practice whatever a
+granted application would eventually disclose by itself. This register carried such a column until
+16 October 2026; it was removed in full, along with every claim reference,
+specification paragraph and filing note. `PATENTS.md` states that an
+application is pending and nothing further, which is the whole of what this
+repository says on the subject.
 
-The boundary is fixed: nothing shipped after 25 September 2026 can be added to
-that application.
+Removing it does not weaken what this register is for. The column's purpose was
+that nobody tells a buyer a feature is covered when it is not, and that
+discipline belongs with whoever is talking to the buyer rather than with the
+public reader.
 
 ---
 
@@ -124,9 +128,6 @@ that application.
 **holds.** No embeddings, no scoring, no model in the decision path. The
 deciding code is `deterministic_rules.py` and the normalisation functions, both
 covered by `configuration_hash`.
-
-*Coverage: inside, claimed.* Claims 1 and 14 recite deterministic rule
-evaluation and a binary decision without model inference.
 
 ### "It claims deterministic enforcement and verifiable evidence for a given policy and test suite"
 
@@ -147,11 +148,6 @@ changes nothing these suites measure.
 
 Recorded in `docs/threat-model.md` as a third category beside derived and
 asserted fields: derived, correct, signed, and not load-bearing.
-
-*Coverage: inside, not claimed.* Domain packs appear throughout the
-specification, 63 mentions, including content hash over the canonical dataset
-and rejection on an absent or unsupported pack. They are in the amendment
-reservoir rather than in the claims.
 
 ### "produce verifiable evidence that a given governance configuration actually enforces what it claims"
 
@@ -196,11 +192,6 @@ false under either reading: the site carries neither the superseded
 no statement of limits at all. Adding that link is the outstanding site work,
 recorded in `claude/website-changes-queued.md`.
 
-*Coverage: inside, partly claimed.* Claim 4 recites a configuration hash from a
-policy file loaded at initialisation. Paragraph [0086] supports the broader
-version covering rule group versions and rule parameters, which is stronger and
-unclaimed.
-
 ### "The run archive always contains per-run artefacts for both passes and failures"
 
 **qualified.** True as intended: failures are archived, not only passes.
@@ -224,9 +215,6 @@ Disclosed in `docs/archive-errata.md`, whose figures are generated by
 `tools/archive_verification_report.py --update-published-surfaces` and held by
 `tests/test_published_archive_figures.py`. The README cross-references the
 errata.
-
-*Coverage: inside, claimed.* Claims 5, 11 and 18 recite latest-audit and
-latest-run as distinct truth surfaces.
 
 ### "A proof-producing system (signed certificate, fingerprint, ITGL hash chain, and per-run archives)"
 
@@ -260,11 +248,6 @@ reader finds on inspection:
   of them. Disclosed as E7 in `docs/archive-errata.md`.
 <!-- END GENERATED ARCHIVE FIGURES: proof-qualifications -->
 
-*Coverage: inside, claimed.* Chained audit entry and signed proof artefact
-(claims 1, 14); offline verification without access to the originating system
-(claim 9); per-run regeneration from genesis (claims 13, 19). The
-`trust_fingerprint` composition at [0232] is inside and unclaimed.
-
 ### "`sir packs list` ... does not guarantee that a same-named ISC policy pack exists"
 
 **corrected.** Stale as of `a787ed1`. The constraint it warned about is gone:
@@ -274,10 +257,6 @@ does not exist fails at resolution rather than producing a run in which every
 row is a systemic reset.
 
 Four of the nine entries had been unrunnable since `e0ee45d` on 16 April 2026.
-
-*Coverage: inside, not claimed.* "Rejection on absent or unsupported pack" is
-described in the specification. Item 9's fast failure moves the implementation
-toward the described behaviour.
 
 ### A certificate's `result` mixes evidence integrity with enforcement outcome
 
@@ -319,10 +298,6 @@ change and belongs to a release that bumps the contract anyway, by the same
 reasoning as the proof class name in `docs/terminology.md`. Defining the limit
 costs nothing and is done here. Recorded rather than fixed.
 
-*Coverage: outside.* The specification describes the evidence layer's structure
-and binding, not a verdict taxonomy, so splitting the field has no patent
-consequence either way.
-
 ### An ungated baseline run was published as an audit of the gate
 
 **corrected, and the records stay published.** Recorded 15 October 2026, after
@@ -361,11 +336,6 @@ The affected certificates stay published and are not re-signed, for the reason
 given under E1 in the errata. Where their result is shown, the archive view
 marks them as ungated baselines whose result was computed with no gate in the
 path. E7 records the rest.
-
-*Coverage: outside.* The specification describes the evidence layer's structure
-and binding. A second document kind with its own schema and verifier adds a
-document type to that layer rather than changing what the layer establishes, so
-this has no patent consequence either way.
 
 ### Zero downstream calls on failure paths
 
@@ -415,10 +385,6 @@ it claims to exercise. The paths it cannot construct are named in
 reads `BLOCKED` and calls the model anyway is outside both, and nothing in SIR
 can prevent it. That is the same boundary as the attribution gap.
 
-*Coverage: outside.* The reference harness is product work. The boundary note
-treats items 1, 4, 6, 7 and 8 as outside the specification unless something
-specific turns up, and nothing here did.
-
 ### "approved calls preserve the evaluated content"
 
 **qualified, and the qualification is the whole of it.** The sentence reads two
@@ -445,10 +411,6 @@ Two prompts have the reverse shape, where the evaluated form does not contain
 the forwarded one. Both are a base64 wrapper replaced by its decoded payload, so
 the wrapper's rule hit disappears because the wrapper did. Both are blocked.
 They are why no surface says normalisation only ever adds.
-
-*Coverage: inside, claimed in part.* Claim 2 recites the normalisation modes and
-claim 9 offline verification without access to the evaluated content. The
-difference between the evaluated and the forwarded string is not recited.
 
 ### "Deterministic and explainable (rules-only; no embeddings, no hidden scoring)"
 
@@ -478,9 +440,6 @@ every time.
 Explainable is held by behaviour. A blocked row carries `triggered_rule` and
 `rule_hits`, pinned by `tests/test_row_is_self_describing.py` and
 `tests/test_rule_metadata.py`.
-
-*Coverage: inside, claimed.* Claim 6 recites rule families used and found to
-produce no match, recorded on the decision.
 
 ---
 
@@ -531,8 +490,6 @@ scenario suites are now pinned to current behaviour by
 `tests/test_runnable_suites.py`, because the existing reproduction test covers
 `account_recovery_fraud` alone, which is how a four-leak drift against a
 published zero sat unnoticed.
-
-*Coverage: outside.* Reported as a limit, not as a feature.
 
 ### The assurance kit's worked example
 
@@ -623,13 +580,6 @@ surface claims every run verifies while that errata list is non-empty, and will
 fail again if the list is ever emptied, because then the stronger claim becomes
 available and this row should say so.
 
-*Coverage: inside for the blocking half, claimed; outside for the insurance
-half.*
-Claims 1 and 14 recite deterministic rule evaluation and a binary decision
-without model inference. Nothing in the 64 pages recites an actor, user, session
-or principal, so the attribution an insurance conversation assumes is neither
-implemented nor described, and no amendment can add it.
-
 ### The website homepage uncovered-row claim (structuraldesignlabs.com)
 
 **corrected, deployed 12 October 2026.** This was the site's central claim and
@@ -679,10 +629,6 @@ false claim on it: the pack measurement and the use-versus-mention limit. Both
 are disclosed in this register and in the repository. The queued audit in
 `claude/website-changes-queued.md` carries them, along with the one remaining
 queued item, which is what the benchmark table leads with.
-
-*Coverage: outside.* The rule-coverage report is a build artefact. The patent
-boundary note places the coverage reporting work outside the specification, and
-the uncovered-row list it generates is not recited.
 
 ### "Seven models, two providers, identical failure sets" (X, 3 May 2026)
 
@@ -754,9 +700,6 @@ State of the external surfaces, 15 October 2026:
 Neither surface can be checked from the repository, so this paragraph is the
 record, and it is the first thing to check when this claim is questioned.
 
-*Coverage: outside.* A reading published about a comparison is not a recited
-element of the specification.
-
 ---
 
 ## What this register does not cover
@@ -797,20 +740,3 @@ About description and the homepage framing were all corrected instead. A list of
 decisions that empties by correction rather than by choice is the outcome this
 register was built for.
 
-## One patent consequence of this release, recorded here because it changes a parked decision
-
-`claude/patent-coverage-boundary-2026-10-05.md` parked a second application for
-generator-side refusal, to be revisited **only if
-`enforced_policy_matches_signed_policy` survives evidence contract v4 and cash
-allows**.
-
-**It survives.** The field is in v4's required set, confirmed 8 October 2026 in
-`628f22f`. One of the two conditions on that parked decision is now met.
-
-The feature is **outside the filed specification entirely**: "generator",
-"refuse", "refusal", "decline" and "withhold" appear zero times in the 64 pages.
-The disclosure cut-off is **24 September 2027**, and the cheap route recorded is
-an NZ provisional to hold the date rather than a full filing.
-
-This register does not reopen the decision. It records that the condition it
-waited on has been satisfied, so the decision is now live rather than parked.

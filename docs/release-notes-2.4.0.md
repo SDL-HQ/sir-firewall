@@ -96,8 +96,13 @@ what the rate is over.
 piece of evidence cannot carry both. See below.
 
 **Item 8, claims register.** `docs/claims-register.md` records every public
-technical claim with a status, evidence a reader can check, and whether the
-feature sits inside the filed specification. See below.
+technical claim with a status and evidence a reader can check. See below.
+
+*Amended 16 October 2026: this release also recorded a patent coverage verdict
+per claim. That column was removed from the register on that date and the
+analysis moved to SDL's private records, so the sentence above no longer
+describes what the register carries. The amendment is noted rather than made
+silently, because these notes describe a release that shipped.*
 
 **Item 9, runnable suites.** Every registry entry declares the ISC policy pack
 it is enforced under, separately from its own identifier. Four of the nine

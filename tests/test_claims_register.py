@@ -4,7 +4,7 @@ Item 8's condition is that each public technical claim remains true when the
 reader examines the failures. A register that says so and is never checked is
 exactly the failure mode it exists to catch, so the figures in it are compared
 against the measurements that produced them, and its structure is held so a
-claim cannot be added without a status, evidence and a coverage verdict.
+claim cannot be added without a status and something checkable.
 
 The register deliberately contains `open` rows. Those are decisions the
 maintainer owns, named rather than deferred silently, and this file does not
@@ -92,25 +92,6 @@ def test_every_claim_cites_something_checkable(claim):
     assert cites_path or cites_commit or cites_number, (
         f"{claim!r} cites nothing a reader could check"
     )
-
-
-@pytest.mark.parametrize("claim", sorted(SECTIONS))
-def test_every_claim_records_its_patent_coverage(claim):
-    """The column the patent boundary note asks for.
-
-    Without it, a buyer can be told a feature is covered when it is not, and
-    valuable material can be found undescribed at contest time.
-    """
-    body = SECTIONS[claim]
-    if "Coverage:" not in body:
-        # The two non-feature sections are allowed to omit it.
-        assert claim in ("The boundaries list", "The assurance kit's worked example"), (
-            f"{claim!r} records no coverage verdict"
-        )
-        return
-
-    assert re.search(r"\*Coverage: (inside|outside)", body), body[:200]
-
 
 def test_every_open_row_says_a_decision_is_required():
     """An open row must read as a decision, not as a soft pass.
@@ -452,22 +433,6 @@ def test_the_forwarded_content_row_states_both_readings():
         "unmeasured, and the row must say so"
     )
 
-
-def test_the_resolved_patent_condition_is_recorded():
-    """A parked decision whose condition is now satisfied is live, not parked.
-
-    enforced_policy_matches_signed_policy survives contract v4, which was one of
-    the two conditions on revisiting a second application. The register records
-    that rather than leaving it in a document dated three days earlier.
-    """
-    assert "enforced_policy_matches_signed_policy" in TEXT
-    assert "24 September 2027" in TEXT, "the disclosure cut-off must be stated"
-    contract = json.loads((ROOT / "spec/evidence_contract.v4.json").read_text(encoding="utf-8"))
-    assert "enforced_policy_matches_signed_policy" in contract["required"], (
-        "the field no longer survives v4; the register's patent note is now wrong"
-    )
-
-
 def _report_module():
     name = "archive_verification_report"
     spec = importlib.util.spec_from_file_location(
@@ -556,3 +521,53 @@ def test_the_counter_states_sum_to_the_denominator():
         "this sum, so a mismatch means one of them is counting the wrong set"
     )
     assert f"{len(figures['counters_true'])} of the {figures['certificates_total']} published certificates" in FLAT
+
+
+def test_the_register_says_nothing_about_the_patent(claim=None):
+    """Decided 16 October 2026: coverage is tracked privately, not here.
+
+    The register carried a Coverage column giving, per claim, whether the
+    feature sits inside the filed specification and whether it is recited. Read
+    together the fifteen verdicts characterised eleven of the twenty claims,
+    cited two specification paragraphs, and named five places where described
+    material is unclaimed, including one gap stated as permanent. That is a map
+    of what is unprotected, published by the people it would be used against.
+
+    The specification itself publishes if the application is granted. The
+    analysis of where its gaps are never does, unless we publish it.
+
+    `PATENTS.md` states that an application is pending, and that is the whole of
+    what this repository says. This refuses the rest coming back, in the
+    register and in the two documents that discussed it.
+    """
+    forbidden = re.compile(
+        r"claims? \d+|19/820,502|\[0\d{3}\]|amendment reservoir|unclaimed|"
+        r"recite[sd]?\b|filed specification|provisional",
+        re.IGNORECASE,
+    )
+    offenders = {}
+    for relative in ("docs/claims-register.md", "docs/terminology.md"):
+        text = (ROOT / relative).read_text(encoding="utf-8")
+        found = sorted({m.group(0).lower() for m in forbidden.finditer(text)})
+        if found:
+            offenders[relative] = found
+
+    assert not offenders, (
+        "patent analysis belongs in SDL's private records, not in a public "
+        f"repository. PATENTS.md carries the notice and nothing else: {offenders}"
+    )
+
+
+def test_the_patent_notice_is_still_there_and_is_still_only_a_notice():
+    """Removing the analysis must not remove the disclosure that we have one."""
+    raw = (ROOT / "PATENTS.md").read_text(encoding="utf-8")
+    notice = re.sub(r"\s+", " ", raw)
+
+    assert "19/820,502" in notice, "the application number is the notice"
+    assert "not open to public inspection" in notice, (
+        "the notice must keep saying the number cannot be verified yet"
+    )
+    assert len(raw.split()) < 200, (
+        "PATENTS.md is a notice. Anything longer is the analysis coming back "
+        f"in by another door: {len(raw.split())} words"
+    )
