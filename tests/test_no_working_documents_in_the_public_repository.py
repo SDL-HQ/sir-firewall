@@ -16,87 +16,56 @@ appear in documentation, every one a placeholder with no key body, one of them
 reading "YOUR REAL PRIVATE KEY HERE". This file turns that audit into a check
 that runs on every commit, because an audit establishes a fact about one day.
 
-What it refuses, and why each is drawn narrowly:
+The rules themselves live in `tools/publication_rules.py`, which says why each
+is drawn as narrowly as it is. They moved there on 17 October 2026 because this
+repository is no longer the only tree published from it: the evidence window is
+generated and pushed to a second public repository, its prose exists in no file
+here, and the generator now runs the same rules over the tree it is about to
+publish. One definition, two surfaces.
 
-- Working-document shapes. Named by pattern rather than by listing files, so a
-  new handoff is caught without anyone remembering to add it here.
-- Private key material. The header alone is not enough to fail, because the
-  documentation needs to name it; what fails is a header followed by a key body.
-  Checking for the body rather than the marker is the difference between a
-  check people keep and a check people route around.
-- Credential shapes for the providers and services this project actually uses.
-  A generic high-entropy-string rule would flag hashes, run ids and signatures,
-  of which this repository has hundreds of thousands.
+Published archives are excluded from the working-document and patent rules and
+included in the secret rules. An archive is generated evidence and cannot
+contain a handoff, and its audited prompts may contain any words at all, but it
+could in principle carry something a run picked up.
 
-Published archives are excluded from the working-document rules and included in
-the secret rules. An archive is generated evidence and cannot contain a handoff,
-but it could in principle carry something a run picked up.
+Mutations measured on 16 October 2026, each run against the full file, and all
+four repeated on 17 October 2026 after the rules moved. Lifting logic out of a
+check is how a check goes hollow while still reading correctly, so the move is
+not finished until the mutations that caught something before catch it again:
 
-Mutations measured on 16 October 2026, each run against the full file:
-
-- add `claude/handoff-2026-10-16.md` to the tree:
-  `test_no_working_document_is_tracked` fails (1 failed).
+- add `claude/handoff-2026-10-17.md` to the tree:
+  `test_no_working_document_is_tracked` fails (1 failed, both dates).
 - add a real generated RSA private key to `docs/`:
-  `test_no_tracked_file_carries_private_key_material` fails (1 failed).
+  `test_no_tracked_file_carries_private_key_material` fails (1 failed, both).
 - add a file containing a provider-shaped API key:
-  `test_no_tracked_file_carries_a_credential` fails (1 failed).
-- empty the tracked-file list: `test_the_scan_sees_the_repository` fails
-  (1 failed).
+  `test_no_tracked_file_carries_a_credential` fails (1 failed, both).
+- empty the tracked-file list: `test_the_scan_sees_the_repository` fails. One
+  failure on 16 October and two on 17, because
+  `test_every_exempted_rule_file_is_real_and_needs_the_exemption` reads the
+  same list and an empty one takes its exemptions with it.
+
+The generator's own five mutations over the window are recorded in
+`tests/test_generate_shop_window.py`, next to the tests that measure them.
 """
 
-import re
 import subprocess
 from pathlib import Path
 
 import pytest
 
+import publication_rules
+from publication_rules import (
+    ARCHIVE_PREFIXES,
+    KEY_BODY,
+    KEY_BODY_MINIMUM,
+    KEY_HEADER,
+    PATENT_ANALYSIS,
+    PATENT_NOTICE,
+    RULE_FILES,
+    WORKING_DOCUMENT,
+)
+
 ROOT = Path(__file__).resolve().parents[1]
-
-# Shapes that mean "this was written to work from, not to publish".
-WORKING_DOCUMENT = (
-    re.compile(r"(^|/)\.?claude/"),
-    re.compile(r"(^|/)handoff[-_]"),
-    re.compile(r"(^|/)(codex|fable|grok)[-_]prompt"),
-    re.compile(r"[-_]prompt[-_]\d{4}-\d{2}-\d{2}"),
-    re.compile(r"patent[-_]coverage"),
-    re.compile(r"patent[-_]brief"),
-    re.compile(r"website[-_]changes[-_]queued"),
-    re.compile(r"\.(docx|xlsx|pptx|doc|xls|ppt)$", re.IGNORECASE),
-)
-
-# A header on its own is documentation. A header with a body is a key.
-KEY_HEADER = re.compile(r"-----BEGIN ([A-Z ]*PRIVATE KEY)-----(.*?)-----END", re.S)
-KEY_BODY = re.compile(r"[A-Za-z0-9+/=]{40,}")
-
-CREDENTIALS = {
-    "OpenAI-style key": re.compile(r"\bsk-[A-Za-z0-9_-]{20,}"),
-    "Anthropic key": re.compile(r"\bsk-ant-[A-Za-z0-9_-]{20,}"),
-    "xAI key": re.compile(r"\bxai-[A-Za-z0-9_-]{20,}"),
-    "GitHub token": re.compile(r"\bgh[pousr]_[A-Za-z0-9]{30,}"),
-    "AWS access key id": re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
-    "Slack token": re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}"),
-    "Google API key": re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b"),
-}
-
-ARCHIVE_PREFIXES = ("proofs/runs/", "docs/runs/", "proofs/archive/")
-
-# Decided 16 October 2026. PATENTS.md states that an application is pending and
-# nothing else; everything beyond that notice is held in SDL's private records.
-# The claims register carried a coverage column until that date, and read
-# together its verdicts characterised more than half the claims, cited
-# specification paragraphs, and named places where described material is
-# unclaimed. The specification publishes if the application is granted. An
-# analysis of where its gaps are does not, unless we publish it.
-PATENT_ANALYSIS = re.compile(
-    # The claim-number rule excludes a version. tools/verify_certificate.py
-    # says "a certificate that claims <version> or later", which is not a
-    # patent reference, and a literal version here would make this file a
-    # surface tests/test_evidence_version.py has to classify.
-    r"\bclaims? \d+\b(?!\.\d)|19/820,502|\[0\d{3}\]|amendment reservoir|"
-    r"\brecite[sd]?\b|filed specification|\bprovisional\b",
-    re.IGNORECASE,
-)
-PATENT_NOTICE = "PATENTS.md"
 
 
 def _tracked() -> list:
@@ -125,13 +94,22 @@ def test_the_scan_sees_the_repository():
     assert "docs/claims-register.md" in TRACKED
 
 
+def test_the_rules_this_file_enforces_are_the_ones_the_generator_enforces():
+    """The point of moving them. A second copy is the defect, not the fix."""
+    assert publication_rules.__file__.endswith("tools/publication_rules.py")
+    assert RULE_FILES[0] == "tools/publication_rules.py"
+    assert Path(__file__).relative_to(ROOT).as_posix() in RULE_FILES
+    assert publication_rules.working_document("claude/handoff-2026-10-17.md")
+    assert not publication_rules.working_document("docs/claims-register.md")
+
+
 def test_no_working_document_is_tracked():
     offenders = {
-        relative: pattern.pattern
+        relative: pattern
         for relative in TRACKED
-        if not relative.startswith(ARCHIVE_PREFIXES)
-        for pattern in WORKING_DOCUMENT
-        if pattern.search(relative)
+        if not publication_rules.is_archive(relative)
+        for pattern in [publication_rules.working_document(relative)]
+        if pattern
     }
 
     assert not offenders, (
@@ -141,12 +119,12 @@ def test_no_working_document_is_tracked():
 
 
 def test_no_tracked_file_carries_private_key_material():
-    offenders = {}
-    for relative, text in _readable(TRACKED):
-        for match in KEY_HEADER.finditer(text):
-            body = "".join(KEY_BODY.findall(match.group(2)))
-            if len(body) > 200:
-                offenders[relative] = f"{match.group(1)}, {len(body)} base64 characters"
+    offenders = {
+        relative: found
+        for relative, text in _readable(TRACKED)
+        for found in [publication_rules.private_key_material(text)]
+        if found
+    }
 
     assert not offenders, (
         "these carry a private key header followed by a key body. A header "
@@ -156,11 +134,12 @@ def test_no_tracked_file_carries_private_key_material():
 
 
 def test_no_tracked_file_carries_a_credential():
-    offenders = {}
-    for relative, text in _readable(TRACKED):
-        for name, pattern in CREDENTIALS.items():
-            if pattern.search(text):
-                offenders.setdefault(relative, []).append(name)
+    offenders = {
+        relative: found
+        for relative, text in _readable(TRACKED)
+        for found in [publication_rules.credentials(text)]
+        if found
+    }
 
     assert not offenders, f"these look like live credentials: {offenders}"
 
@@ -206,28 +185,23 @@ def test_a_documented_key_header_without_a_body_is_allowed():
     )
     real = "-----BEGIN PRIVATE KEY-----\n" + ("A" * 64 + "\n") * 20 + "-----END PRIVATE KEY-----"
 
-    def carries_material(text):
-        return any(
-            len("".join(KEY_BODY.findall(m.group(2)))) > 200
-            for m in KEY_HEADER.finditer(text)
-        )
-
-    assert not carries_material(documented)
-    assert carries_material(real)
+    assert not publication_rules.private_key_material(documented)
+    assert publication_rules.private_key_material(real)
+    # The threshold is the rule, so name it rather than trusting the samples.
+    assert KEY_BODY_MINIMUM == 200
+    assert len("".join(KEY_BODY.findall(KEY_HEADER.search(real).group(2)))) > KEY_BODY_MINIMUM
 
 
 def test_no_tracked_file_outside_the_notice_carries_patent_analysis():
     """One file may discuss the patent, and only to say one exists."""
     offenders = {}
     for relative, text in _readable(TRACKED):
-        if relative == PATENT_NOTICE or relative.startswith(ARCHIVE_PREFIXES):
+        if relative == PATENT_NOTICE or publication_rules.is_archive(relative):
             continue
-        # These two files are the rules themselves and have to name what
-        # they refuse. Everything else is held.
-        if relative in (Path(__file__).relative_to(ROOT).as_posix(),
-                        "tests/test_claims_register.py"):
+        # The rule files have to name what they refuse. Everything else is held.
+        if relative in RULE_FILES:
             continue
-        found = sorted({m.group(0).lower() for m in PATENT_ANALYSIS.finditer(text)})
+        found = publication_rules.patent_analysis(text)
         if found:
             offenders[relative] = found
 
@@ -235,6 +209,17 @@ def test_no_tracked_file_outside_the_notice_carries_patent_analysis():
         "patent analysis belongs in SDL's private records. PATENTS.md carries "
         f"the notice and nothing else: {offenders}"
     )
+
+
+def test_every_exempted_rule_file_is_real_and_needs_the_exemption():
+    """An exemption nobody can lose track of. Each one earns its place."""
+    for relative in RULE_FILES:
+        path = ROOT / relative
+        assert path.is_file(), relative
+        assert relative in TRACKED, relative
+        assert publication_rules.patent_analysis(
+            path.read_text(encoding="utf-8")
+        ), f"{relative} no longer needs the exemption, so remove it"
 
 
 def test_the_patent_pattern_catches_the_column_that_was_removed():

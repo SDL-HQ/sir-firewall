@@ -75,6 +75,34 @@ mutations, 16 October 2026:
   filters working nothing produces bytecode for it to find, so it is a
   backstop rather than dead code, and the first mutation above is what shows
   it fires. Kept on that basis and recorded rather than claimed.
+
+The window is a second public repository, and from 17 October 2026 the vault's
+publication rules run over the tree the generator is about to push. Its prose
+is the part that needed it. `README.md`, `LIMITS.md`, `VERIFY.md` and
+`GENERATED` exist in no file in the vault, so the guard that runs there on
+every commit had never seen a word of them, and one of them carries an error
+message captured live from a subprocess. Five mutations, measured against this
+file and the vault's guard together, 17 October 2026:
+
+- remove the scan from `generate()`: 2 failed, both end-to-end refusals.
+- make `offences()` return nothing at all: 5 failed.
+- treat every file in the window as an archive, so the prose is still scanned
+  for secrets but not for writing and not for the patent: 3 failed.
+- apply the patent rule to exhibits as well: 1 failed. Worth recording
+  precisely, because the rule is detectable against a planted sample and fires
+  on nothing real: no file in any of the six published exhibits contains a
+  phrase it refuses, measured the same day. The exemption is kept anyway. An
+  audited prompt may contain any words at all, and the alternative is a guard
+  that gets weakened the first time a legitimate run blocks a publication.
+- skip a file that cannot be read as UTF-8 rather than judging it by its path:
+  1 failed.
+
+Writing these is also how the vault's guard caught its own test suite. The
+patent sample was inline here, this file is tracked, and
+`test_no_tracked_file_outside_the_notice_carries_patent_analysis` failed on it.
+The sample moved to `publication_rules.PATENT_SAMPLE` rather than this file
+joining the three that are exempt from the rule. Exempting a whole test file to
+keep one string is the trade that turns a guard into decoration.
 """
 
 from __future__ import annotations
@@ -104,6 +132,7 @@ def _load(name: str, relative: str):
 
 GENERATOR = _load("generate_shop_window", "tools/generate_shop_window.py")
 SHOP_WINDOW = _load("shop_window", "tools/shop_window.py")
+PUBLICATION_RULES = _load("publication_rules", "tools/publication_rules.py")
 FIGURES = json.loads((ROOT / "docs/archive-figures.json").read_text(encoding="utf-8"))
 
 
@@ -748,3 +777,122 @@ def test_the_table_itself_says_whether_the_named_model_ran(window):
             assert f"yes, {calls}" in row, (exhibit.number, row)
         else:
             assert "**no**" in row, (exhibit.number, row)
+
+
+def test_the_published_window_carries_nothing_that_must_not_be_published(window):
+    """The window is a second public repository, so the vault's rules apply.
+
+    Most of what the window carries is copied from files the vault's own guard
+    already scans on every commit. Its prose is not. README.md, LIMITS.md,
+    VERIFY.md and GENERATED are written by the generator, exist in no file in
+    the vault, and interpolate model names, paths, dates and an error message
+    captured live from a subprocess. Nothing inspected them until this.
+    """
+    assert GENERATOR._not_for_publication(window) == {}
+
+
+def test_the_window_scan_reads_the_prose_that_exists_nowhere_else(window):
+    """Guard the guard. A scan that reached no generated file would pass too."""
+    seen = []
+    for path in sorted(window.rglob("*")):
+        if path.is_file():
+            seen.append(path.relative_to(window).as_posix())
+    for name in ("README.md", "LIMITS.md", "VERIFY.md", "GENERATED"):
+        assert name in seen, name
+    assert len(seen) > 50, len(seen)
+
+
+def test_the_scan_refuses_each_shape_it_exists_to_refuse(tmp_path):
+    """Exercised against the real shapes, so the rules are not notional."""
+    tree = tmp_path / "window"
+    (tree / "exhibits" / "20260101-000000-000000-gh1-abc").mkdir(parents=True)
+    (tree / "handoff-notes.md").write_text("notes", encoding="utf-8")
+    (tree / "LIMITS.md").write_text(
+        "The audit bot pushes with ghp_" + "a" * 36 + ".", encoding="utf-8"
+    )
+    (tree / "VERIFY.md").write_text(
+        "-----BEGIN PRIVATE KEY-----\n" + ("A" * 64 + "\n") * 20 + "-----END PRIVATE KEY-----",
+        encoding="utf-8",
+    )
+    (tree / "README.md").write_text(PUBLICATION_RULES.PATENT_SAMPLE, encoding="utf-8")
+
+    offences = GENERATOR._not_for_publication(tree)
+
+    assert "working document" in str(offences["handoff-notes.md"])
+    assert "GitHub token" in str(offences["LIMITS.md"])
+    assert "private key material" in str(offences["VERIFY.md"])
+    assert "patent analysis" in str(offences["README.md"])
+    assert set(offences) == {"handoff-notes.md", "LIMITS.md", "VERIFY.md", "README.md"}
+
+
+def test_an_exhibit_is_scanned_for_secrets_and_not_for_the_words_in_its_prompts(tmp_path):
+    """An archive is generated evidence, and an audited prompt can say anything.
+
+    The vault treats an archive the same way. A run whose prompt discusses a
+    patent is evidence that the gate saw that prompt, not an analysis of the
+    application, and refusing it would make the guard the reason a category of
+    run cannot be published.
+    """
+    tree = tmp_path / "window"
+    exhibit = tree / "exhibits" / "20260101-000000-000000-gh1-abc"
+    exhibit.mkdir(parents=True)
+    (exhibit / "handoff-notes.md").write_text(
+        f"The prompt asked about this. {PUBLICATION_RULES.PATENT_SAMPLE}", encoding="utf-8"
+    )
+    (exhibit / "itgl_ledger.jsonl").write_text(
+        '{"prompt": "is sk-' + "b" * 32 + ' a live key"}', encoding="utf-8"
+    )
+
+    offences = GENERATOR._not_for_publication(tree)
+
+    assert "exhibits/20260101-000000-000000-gh1-abc/handoff-notes.md" not in offences
+    assert "OpenAI-style key" in str(
+        offences["exhibits/20260101-000000-000000-gh1-abc/itgl_ledger.jsonl"]
+    )
+
+
+def test_a_file_the_scan_cannot_read_is_still_judged_by_its_path(tmp_path):
+    """Binary files are passed through with no text rather than skipped."""
+    tree = tmp_path / "window"
+    tree.mkdir()
+    (tree / "SDL_RD_Plan.docx").write_bytes(b"PK\x03\x04\xff\xfe\x00binary")
+
+    offences = GENERATOR._not_for_publication(tree)
+
+    assert "working document" in str(offences["SDL_RD_Plan.docx"])
+
+
+def test_the_generator_refuses_to_publish_a_credential_in_its_own_prose(
+    tmp_path, monkeypatch
+):
+    """The refusal, exercised rather than trusted, through the real build."""
+    real = GENERATOR._limits
+    monkeypatch.setattr(
+        GENERATOR, "_limits", lambda: real() + "\n\nPushed with ghp_" + "a" * 36 + ".\n"
+    )
+
+    with pytest.raises(SystemExit) as refused:
+        GENERATOR.generate(tmp_path / "window", "v0.0.0-test")
+
+    assert "REFUSED" in str(refused.value)
+    assert "LIMITS.md must not be published" in str(refused.value)
+    assert "GitHub token" in str(refused.value)
+
+
+def test_the_generator_refuses_to_publish_patent_analysis_in_its_own_prose(
+    tmp_path, monkeypatch
+):
+    """PATENTS.md says an application is pending. The window says nothing at all."""
+    real = GENERATOR._limits
+    monkeypatch.setattr(
+        GENERATOR,
+        "_limits",
+        lambda: real() + f"\n\n{PUBLICATION_RULES.PATENT_SAMPLE}\n",
+    )
+
+    with pytest.raises(SystemExit) as refused:
+        GENERATOR.generate(tmp_path / "window", "v0.0.0-test")
+
+    assert "REFUSED" in str(refused.value)
+    assert "LIMITS.md must not be published" in str(refused.value)
+    assert "patent analysis" in str(refused.value)

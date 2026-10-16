@@ -832,11 +832,15 @@
       "id": 10,
       "name": "Evidence window",
       "status": "met",
-      "condition": "The evidence window builds from this release, every exit code its pages give reproduces inside the directory the generator writes, and the two public surfaces that send a reader there name the repository it is published at.",
+      "condition": "The evidence window builds from this release, every exit code its pages give reproduces inside the directory the generator writes, nothing in the tree it would push is a working document or a secret under the same rules this repository is held to, and the two public surfaces that send a reader there name the repository it is published at.",
       "evidence": [
         {
           "type": "artefact",
           "ref": "tools/generate_shop_window.py"
+        },
+        {
+          "type": "artefact",
+          "ref": "tools/publication_rules.py"
         },
         {
           "type": "command",
@@ -866,6 +870,22 @@
         {
           "type": "test",
           "ref": "tests/test_generate_shop_window.py::test_the_rebuild_stops_rather_than_letting_its_own_workflow_rot"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_generate_shop_window.py::test_the_published_window_carries_nothing_that_must_not_be_published"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_generate_shop_window.py::test_the_generator_refuses_to_publish_a_credential_in_its_own_prose"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_generate_shop_window.py::test_the_generator_refuses_to_publish_patent_analysis_in_its_own_prose"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_no_working_documents_in_the_public_repository.py::test_the_rules_this_file_enforces_are_the_ones_the_generator_enforces"
         },
         {
           "type": "test",
