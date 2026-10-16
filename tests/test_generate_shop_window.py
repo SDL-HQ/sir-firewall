@@ -58,10 +58,28 @@ licence and the workflow that rebuilds it:
   update a workflow file, so a rebuild that stopped comparing would leave that
   one file frozen at whatever was first pushed while every other file in the
   repository moved, and nothing would say so.
+
+The window shipped compiled bytecode until this was measured. Four further
+mutations, 16 October 2026:
+
+- stop filtering `__pycache__` out of the copies: 2 failed, 11 errors, the
+  module fixture refusing. The refusal is reachable, which is the answer to
+  the undetected one below.
+- remove `-B` from the verifier subprocesses: 2 failed, 11 errors. Running the
+  verifiers inside the window is itself what compiled the modules.
+- remove `PYTHONDONTWRITEBYTECODE` from their environment: nothing failed, and
+  removing `-B` alone also failed nothing. Each was sufficient on its own, so
+  neither could be measured and the pair said less than one of them would. The
+  environment variable was removed; `-B` is detectable now, above.
+- drop the refusal and keep the filters: undetected, 17 passed. With the
+  filters working nothing produces bytecode for it to find, so it is a
+  backstop rather than dead code, and the first mutation above is what shows
+  it fires. Kept on that basis and recorded rather than claimed.
 """
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import subprocess
@@ -309,3 +327,47 @@ def test_check_mode_and_an_output_directory_are_not_both_given(tmp_path):
     )
     assert result.returncode != 0
     assert not (tmp_path / "w").exists()
+
+
+def test_the_window_ships_nothing_compiled(window):
+    """Bytecode in the window is three problems, and the third is structural.
+
+    A repository about care should not look careless, and a stranger asked to
+    run our code should not be handed a precompiled copy of it, since a `.pyc`
+    can differ from the `.py` beside it and Python will prefer the cache. But
+    the one that breaks the design is that bytecode varies with whichever
+    Python versions have run in the source clone, so the rebuild's comparison
+    between what it builds and what is committed would never settle.
+
+    Checked after the verifier runs, not only at the copy: running them inside
+    the window is itself what compiled the modules before `-B` was passed.
+    """
+    compiled = [
+        str(path.relative_to(window))
+        for path in window.rglob("*")
+        if path.name == "__pycache__" or path.suffix in (".pyc", ".pyo")
+    ]
+    assert compiled == [], compiled
+
+
+def test_two_builds_of_the_same_tag_agree_except_on_when_they_were_built(tmp_path):
+    """The weekly rebuild compares what it builds against what is committed.
+
+    If two builds of one tag can differ, that comparison is noise and the
+    self-rebuilding design does not work. `GENERATED` carries the build time
+    and is expected to differ; everything else is expected not to.
+    """
+    first, second = tmp_path / "first", tmp_path / "second"
+    GENERATOR.generate(first, "v0.0.0-test")
+    GENERATOR.generate(second, "v0.0.0-test")
+
+    def tree(root):
+        return {
+            str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in sorted(root.rglob("*"))
+            if path.is_file() and path.name != "GENERATED"
+        }
+
+    left, right = tree(first), tree(second)
+    assert left.keys() == right.keys(), set(left) ^ set(right)
+    assert left == right, [name for name in left if left[name] != right[name]]
