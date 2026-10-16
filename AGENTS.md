@@ -158,6 +158,16 @@ changes the verdict.
   its own test suite: use `publication_rules.PATENT_SAMPLE` instead of
   exempting another file.
 
+  The window's About line is the exception, because GitHub keeps it in
+  repository settings where no rebuild reaches it. The generator composes it
+  from the same figures as the README, writes it into `GENERATED` as a single
+  line, and prints it at the end of a build. Paste it from there rather than
+  retyping it; it went stale within a day of being written by hand. The number
+  words, the list of files a visitor runs and the walk that computes what they
+  install all live in `generate_shop_window.py` for the same reason, and
+  `tests/test_the_evidence_window_is_reachable.py` holds the two public pages
+  against them.
+
 - **Absent input is never a pass.** CI steps that run under `always()` are
   reached even when the checkout or the audit itself failed. A missing counter
   file means the audit did not run, which is inconclusive, not zero leaks. The

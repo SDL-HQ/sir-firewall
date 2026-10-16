@@ -103,6 +103,34 @@ patent sample was inline here, this file is tracked, and
 The sample moved to `publication_rules.PATENT_SAMPLE` rather than this file
 joining the three that are exempt from the rule. Exempting a whole test file to
 keep one string is the trade that turns a guard into decoration.
+
+The window's About line lives in GitHub's repository settings, so it is the one
+public claim about the window that no rebuild reaches. It said seven archives
+and three verifiers for a day after the corrections removed one of each, and a
+reviewer found it rather than a test. The generator composes it from the same
+figures as the README and prints it to be pasted. Four mutations, 17 October
+2026:
+
+- write the archive count out as a word instead of counting it: 2 failed.
+- stop writing the line into `GENERATED`: 1 failed,
+  `test_the_generated_file_carries_the_about_line_to_copy_from`. A first
+  attempt at this mutation deleted the line from a continued f-string and
+  produced a collection error, which is a broken file rather than a result,
+  and is recorded here because an error counted as a detection is a mutation
+  that measured nothing.
+- make `_about_holds` never fire: 1 failed. The clause it holds asserts that
+  two sets are the same set, and today they only have the same size.
+- replace the whole sentence with prose carrying no figures at all: 2 failed,
+  including the guard against a test that would pass on an empty set of quoted
+  numbers.
+
+One limit, stated rather than left to be discovered. A claim derived from a
+function cannot be caught by a test that derives it from the same function. If
+`third_party_dependencies()` began returning two packages, the About line would
+read "two dependency" and `test_the_about_line_is_derived_from_the_window_it_describes`
+would agree with it. What pins the real value is
+`tests/test_the_evidence_window_is_reachable.py::test_one_dependency_is_still_one_dependency`,
+which asserts the set is exactly `{"cryptography"}` rather than counting it.
 """
 
 from __future__ import annotations
@@ -896,3 +924,90 @@ def test_the_generator_refuses_to_publish_patent_analysis_in_its_own_prose(
     assert "REFUSED" in str(refused.value)
     assert "LIMITS.md must not be published" in str(refused.value)
     assert "patent analysis" in str(refused.value)
+
+
+def test_the_about_line_is_derived_from_the_window_it_describes():
+    """Every figure in it recomputed from the thing it names.
+
+    GitHub keeps the About line in repository settings, so it is the one
+    public claim about the window that no rebuild reaches. It said seven
+    archives and three verifiers for a day after the corrections removed one
+    of each, and a reviewer found it rather than a test.
+    """
+    exhibits = GENERATOR._shop_window().select()
+    about = GENERATOR._about(exhibits)
+    words = GENERATOR.WORDS
+
+    established = [e for e in exhibits if e.verdict == "ESTABLISHED"]
+    unclean = [e for e in exhibits if e.verdict != "ESTABLISHED"]
+
+    assert f"{words[len(exhibits)].capitalize()} published SIR archives" in about
+    assert f"{words[len(GENERATOR.verifier_commands())]} verifiers" in about
+    assert f"{words[len(GENERATOR.third_party_dependencies())]} dependency" in about
+    assert f"establishes {words[len(established)]} of the {words[len(exhibits)]}" in about
+    assert f"the {words[len(unclean)]} it does not" in about
+
+
+def test_the_about_line_quotes_no_figure_it_did_not_compute():
+    """Guard the guard. A sentence of prose with no numbers would pass above."""
+    exhibits = GENERATOR._shop_window().select()
+    about = GENERATOR._about(exhibits)
+    derived = {
+        GENERATOR.WORDS[len(exhibits)].lower(),
+        GENERATOR.WORDS[len(GENERATOR.verifier_commands())],
+        GENERATOR.WORDS[len(GENERATOR.third_party_dependencies())],
+        GENERATOR.WORDS[len([e for e in exhibits if e.verdict == "ESTABLISHED"])],
+        GENERATOR.WORDS[len([e for e in exhibits if e.verdict != "ESTABLISHED"])],
+    }
+    quoted = {
+        word.strip(".,")
+        for word in about.lower().split()
+        if word.strip(".,") in set(GENERATOR.WORDS.values())
+    }
+    assert quoted, about
+    assert quoted <= derived, sorted(quoted - derived)
+    assert not any(character.isdigit() for character in about), about
+
+
+def test_the_generated_file_carries_the_about_line_to_copy_from(window):
+    """A person still has to paste it, so the build leaves it where it is read."""
+    generated = (window / "GENERATED").read_text(encoding="utf-8")
+    line = next(
+        value for key, _, value in
+        (row.partition(" ") for row in generated.splitlines()) if key == "about"
+    )
+    assert line == GENERATOR._about(GENERATOR._shop_window().select())
+    # One line, because the rebuild workflow reads this file with sed.
+    assert "\n" not in line
+
+
+def test_the_generator_refuses_an_about_line_whose_last_clause_is_false(
+    tmp_path, monkeypatch
+):
+    """"The N it does not are defects we have written up" is a claim about sets.
+
+    Two equal counts are not one set. An exhibit that is NOT ESTABLISHED with
+    no errata entry, paired with one that is established and disclosed, keeps
+    both counts the same and makes the sentence false.
+    """
+    real = GENERATOR._shop_window().select
+
+    def swapped(figures=None):
+        exhibits = real(figures)
+        established = next(e for e in exhibits if e.verdict == "ESTABLISHED")
+        unclean = next(e for e in exhibits if e.verdict != "ESTABLISHED")
+        exhibits[exhibits.index(established)] = dataclasses.replace(
+            established, errata="E9, listed"
+        )
+        exhibits[exhibits.index(unclean)] = dataclasses.replace(unclean, errata="")
+        return exhibits
+
+    module = GENERATOR._shop_window()
+    monkeypatch.setattr(module, "select", swapped)
+    monkeypatch.setattr(GENERATOR, "_shop_window", lambda: module)
+
+    with pytest.raises(SystemExit) as refused:
+        GENERATOR.generate(tmp_path / "window", "v0.0.0-test")
+
+    assert "REFUSED" in str(refused.value)
+    assert "written up in the errata" in str(refused.value)
