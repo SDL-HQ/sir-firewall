@@ -79,6 +79,7 @@ mutations, 16 October 2026:
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import importlib.util
 import json
@@ -460,12 +461,22 @@ def test_the_generator_refuses_a_verdict_that_does_not_hold(tmp_path):
     """
     # The generator loads its own copy of shop_window.py, so mutating this
     # module's copy changes nothing. Patch what the generator reads.
+    #
+    # Patched through `select` rather than by index into SPECIFICATION. The
+    # first version rewrote the seventh element of each entry, and when the
+    # declared ledger flag was removed from those tuples the verdict moved to
+    # a different position, so the mutation silently rewrote the errata label
+    # instead and the test passed while asserting nothing.
     module = GENERATOR._shop_window()
-    original = module.SPECIFICATION
-    module.SPECIFICATION = tuple(
-        tuple("FAILED" if i == 6 else v for i, v in enumerate(entry)) if entry[0] == 1 else entry
-        for entry in original
-    )
+    real = module.select
+
+    def with_a_wrong_verdict(figures=None):
+        return [
+            dataclasses.replace(e, verdict="FAILED") if e.number == 1 else e
+            for e in real(figures)
+        ]
+
+    module.select = with_a_wrong_verdict
     loaded = GENERATOR._shop_window
     GENERATOR._shop_window = lambda: module
     try:
@@ -473,7 +484,7 @@ def test_the_generator_refuses_a_verdict_that_does_not_hold(tmp_path):
             GENERATOR.generate(tmp_path / "window", "v0.0.0-test")
         assert "verdict" in str(refused.value), str(refused.value)
     finally:
-        module.SPECIFICATION = original
+        module.select = real
         GENERATOR._shop_window = loaded
 
 

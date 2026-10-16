@@ -307,3 +307,50 @@ def test_no_candidate_in_any_slot_is_one_of_the_ungated_certificates():
         if e.errata != "E7" and set(e.candidates) & ungated
     }
     assert not offenders, offenders
+
+
+def test_the_ledger_flag_is_derived_from_the_archive_not_declared():
+    """The command must name a file that is there.
+
+    This was declared per slot. A parallel audit of every member of every pool
+    found that three of the six candidates for the signature-failure slot ship
+    no ledger while the slot said "beside". Their documented command still
+    exits 5, because the signature fails before the ledger is reached, so the
+    advertised exit code held and the command named a path that does not
+    exist. Nothing on the page would have looked wrong except the file.
+
+    It held only because `sorted(pool)[0]` happens to pick an archive from the
+    April 5 group, which does ship one, and the three that do not are dated
+    April 16 and sort later. That is a fact about today's run ids.
+    """
+    for exhibit in EXHIBITS:
+        ledger = ROOT / "docs" / "runs" / exhibit.run_id / "proofs" / "itgl_ledger.jsonl"
+        expected = "beside" if ledger.is_file() else "none"
+        assert exhibit.ledger == expected, (exhibit.number, exhibit.ledger, expected)
+        argv = exhibit.command(f"exhibits/{exhibit.run_id}")
+        if expected == "beside":
+            assert "--ledger" in argv, exhibit.number
+        else:
+            assert "--no-ledger" in argv, exhibit.number
+
+
+def test_at_least_one_pool_disagrees_with_itself_about_shipping_a_ledger():
+    """Why deriving it is necessary rather than tidy.
+
+    If every pool were homogeneous in whether its archives ship a ledger, a
+    declared flag would be correct by luck and this would be a style
+    preference. One pool is not, so any change to the choice rule could put a
+    `--ledger` path on the page for an archive that has none.
+    """
+    mixed = {}
+    for exhibit in EXHIBITS:
+        present = {
+            (ROOT / "docs" / "runs" / run / "proofs" / "itgl_ledger.jsonl").is_file()
+            for run in exhibit.candidates
+        }
+        if len(present) > 1:
+            mixed[exhibit.number] = len(exhibit.candidates)
+    assert mixed, (
+        "every pool now agrees with itself about shipping a ledger, so this "
+        "test no longer shows why the flag is derived; keep the derivation"
+    )

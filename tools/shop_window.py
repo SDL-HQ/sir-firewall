@@ -58,8 +58,16 @@ class Exhibit:
     document_exit: int
     receipt_exit: int
     #: "beside" names the ledger in the archive; "none" passes --no-ledger
-    #: because the archive ships no ledger at all.
-    ledger: str
+    #: because the archive ships no ledger at all. Derived in select() from
+    #: whether the archive actually ships one, never declared. It was declared
+    #: per slot until a parallel audit found that three of the six candidates
+    #: for the signature-failure slot ship no ledger while the slot said
+    #: "beside". Their documented command still exits 5, because the signature
+    #: fails before the ledger is reached, so the claim held and the command
+    #: named a file that is not there. A value asserted about an artefact
+    #: rather than computed from it is the shape of every significant defect
+    #: in this repository's history.
+    ledger: str = ""
     #: What `verify_evidence.py` says about the whole archive. The individual
     #: verifiers answer one property each, and exit 0 from two of them is not
     #: the project's own word for a sound archive: this is. An earlier version
@@ -99,6 +107,12 @@ class Exhibit:
         ]
 
 
+def _ledger_flag(run_id: str) -> str:
+    """"beside" when the archive ships a ledger, "none" when it does not."""
+    ledger = ROOT / "docs" / "runs" / run_id / "proofs" / "itgl_ledger.jsonl"
+    return "beside" if ledger.is_file() else "none"
+
+
 def _sets(figures: dict) -> dict:
     return {
         key: set(value)
@@ -121,15 +135,14 @@ SPECIFICATION = (
     # path. A front door whose lead exhibit is in the project's own errata is
     # the discrediting story written for a hostile reader.
     #
-    # number, name, teaches, document exit, receipt exit, ledger, verdict,
-    # errata, document, tool, selector
+    # number, name, teaches, document exit, receipt exit, verdict, errata,
+    # document, tool, selector. The ledger flag is derived, not listed.
     (
         1,
         "an archive that establishes every property",
         "signature, ledger binding, signed counters and archive custody all check",
         0,
         0,
-        "beside",
         "ESTABLISHED",
         "",
         "audit.json",
@@ -151,7 +164,6 @@ SPECIFICATION = (
         "a published certificate signed by a key the registry does not hold",
         5,
         2,
-        "beside",
         "FAILED",
         "E2",
         "audit.json",
@@ -164,7 +176,6 @@ SPECIFICATION = (
         "a documented format boundary is not tampering, and the verifier says which",
         9,
         0,
-        "beside",
         "NOT ESTABLISHED",
         "E4",
         "audit.json",
@@ -184,7 +195,6 @@ SPECIFICATION = (
         'verified, and less than "verified" sounds: nothing bound it and nothing vouches for the files',
         0,
         3,
-        "none",
         "NOT ESTABLISHED",
         "E3",
         "audit.json",
@@ -198,7 +208,6 @@ SPECIFICATION = (
         "the receipt catches what the certificate cannot",
         0,
         2,
-        "beside",
         "FAILED",
         "E1",
         "audit.json",
@@ -212,7 +221,6 @@ SPECIFICATION = (
         "a certificate verifier refuses it, and its own verifier accepts it",
         0,
         0,
-        "beside",
         "ESTABLISHED",
         "",
         "baseline.json",
@@ -245,7 +253,6 @@ def select(figures: dict | None = None) -> list:
         teaches,
         document_exit,
         receipt_exit,
-        ledger,
         verdict,
         errata,
         document,
@@ -272,7 +279,8 @@ def select(figures: dict | None = None) -> list:
                 teaches=teaches,
                 document_exit=document_exit,
                 receipt_exit=receipt_exit,
-                ledger=ledger,
+                # Derived from the archive, not from this file.
+                ledger=_ledger_flag(pool[0]),
                 verdict=verdict,
                 errata=errata,
                 document=document,
