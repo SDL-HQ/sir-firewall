@@ -27,7 +27,7 @@ REVIEWER_DOCUMENTS = (
     "docs/evaluator-technical-explainer.md",
     "docs/minimal-pilot-runbook.md",
     "RETENTION.md",
-    "docs/evidence-perimeter.v5.md",
+    "docs/evidence-perimeter.v6.md",
     "docs/benchmark-cycle.v1.md",
 )
 
@@ -115,7 +115,7 @@ def test_no_document_points_a_verifier_at_the_other_kind(document, tool, argumen
 
 def test_the_reviewer_documents_name_the_record_s_verifier():
     """A reviewer handed a baseline archive has to be told what verifies it."""
-    for relative in ("docs/assurance-kit.md", "docs/evidence-perimeter.v5.md"):
+    for relative in ("docs/assurance-kit.md", "docs/evidence-perimeter.v6.md"):
         text = (ROOT / relative).read_text(encoding="utf-8")
         assert "verify_baseline_record.py" in text, relative
         assert "baseline.json" in text, relative

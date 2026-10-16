@@ -1,6 +1,6 @@
 # D5 - First benchmark execution and evidence review (April 5, 2026)
 
-> Historical document retained for record. Not the current authoritative state. For current benchmark contract and surfaces, use `docs/benchmark-cycle.v1.md` and `docs/runs/benchmark_index.v2.json`.
+> Historical document retained for record. Not the current authoritative state. For current benchmark contract and surfaces, use `docs/benchmark-cycle.v1.md` and `docs/runs/benchmark_index.v3.json`.
 
 This note records the D5 execution outcome for the canonical benchmark cycle contract in `docs/benchmark-cycle.v1.md`.
 

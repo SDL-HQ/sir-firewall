@@ -1,5 +1,7 @@
 # SIR current evidence perimeter v5
 
+> Historical evidence state, opened 2026-09-08 and closed 2026-10-16. Not the current authoritative state. For the current perimeter, use [docs/evidence-perimeter.v6.md](evidence-perimeter.v6.md).
+
 Opened (UTC): 2026-09-08. Amended since, most recently 15 October 2026. This
 document is maintained rather than frozen: a reader checking which perimeter is
 current should read this line and the version below, not the opening date.

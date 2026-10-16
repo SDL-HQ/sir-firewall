@@ -57,7 +57,7 @@ and the baseline does not: `provider_call_outcome` records whether the call
 raised, so a provider's content-policy refusal that returns a response counts
 as a success, and one returned as an error counts as a failure that cannot be
 told apart from an outage. `docs/terminology.md` states that definition and
-`docs/evidence-perimeter.v5.md` lists what a verified record therefore does not
+`docs/evidence-perimeter.v6.md` lists what a verified record therefore does not
 establish.
 
 So a pair says what the gate did to a prompt set the baseline identifies. It

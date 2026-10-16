@@ -199,7 +199,7 @@ def test_the_record_is_named_as_carrying_no_result_in_both_documents():
         assert "no result and no proof class" in text, path.name
 
 
-PERIMETER = ROOT / "docs/evidence-perimeter.v5.md"
+PERIMETER = ROOT / "docs/evidence-perimeter.v6.md"
 REGISTER = ROOT / "docs/claims-register.md"
 
 
@@ -214,7 +214,8 @@ def test_the_perimeter_reports_no_baseline_leak_count():
     review on 15 October 2026, after the method note was added without the
     body being read.
 
-    Mutations applied to docs/evidence-perimeter.v5.md, both detected:
+    Mutations applied to the perimeter, v5 at the time and carried into v6
+    unchanged, both detected:
     restoring an "ungated leaks" figure, 1 failure (this test); restoring the
     "SIR off vs on" conclusion, 1 failure (this test).
     """
@@ -230,7 +231,8 @@ def test_the_perimeter_reports_no_baseline_leak_count():
 def test_the_perimeter_withdraws_the_cross_model_reading():
     """Both ID sets are model-independent by construction, so neither observes one.
 
-    Mutation applied to docs/evidence-perimeter.v5.md: restoring
+    Mutation applied to the perimeter, v5 at the time and carried into v6
+    unchanged: restoring
     "common-mode prompt-layer vulnerability" as something the finding
     supports, 1 failure (this test).
     """

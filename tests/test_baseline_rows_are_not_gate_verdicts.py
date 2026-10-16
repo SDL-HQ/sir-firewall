@@ -434,7 +434,7 @@ def test_the_row_version_is_covered_by_the_chain_and_not_by_the_digest(baseline_
 def test_the_runner_writes_only_the_outcomes_the_row_rules_permit():
     """A third outcome value would make the published definition wrong.
 
-    docs/terminology.md, docs/evidence-perimeter.v5.md and
+    docs/terminology.md, docs/evidence-perimeter.v6.md and
     spec/baseline_record.v1.schema.json all define
     `provider_call_outcome` as whether the call raised, and say a
     provider-side refusal returning a response is a success while one returned
