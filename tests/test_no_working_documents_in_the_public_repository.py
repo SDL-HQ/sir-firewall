@@ -80,6 +80,24 @@ CREDENTIALS = {
 
 ARCHIVE_PREFIXES = ("proofs/runs/", "docs/runs/", "proofs/archive/")
 
+# Decided 16 October 2026. PATENTS.md states that an application is pending and
+# nothing else; everything beyond that notice is held in SDL's private records.
+# The claims register carried a coverage column until that date, and read
+# together its verdicts characterised more than half the claims, cited
+# specification paragraphs, and named places where described material is
+# unclaimed. The specification publishes if the application is granted. An
+# analysis of where its gaps are does not, unless we publish it.
+PATENT_ANALYSIS = re.compile(
+    # The claim-number rule excludes a version. tools/verify_certificate.py
+    # says "a certificate that claims <version> or later", which is not a
+    # patent reference, and a literal version here would make this file a
+    # surface tests/test_evidence_version.py has to classify.
+    r"\bclaims? \d+\b(?!\.\d)|19/820,502|\[0\d{3}\]|amendment reservoir|"
+    r"\brecite[sd]?\b|filed specification|\bprovisional\b",
+    re.IGNORECASE,
+)
+PATENT_NOTICE = "PATENTS.md"
+
 
 def _tracked() -> list:
     out = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT)
@@ -196,3 +214,45 @@ def test_a_documented_key_header_without_a_body_is_allowed():
 
     assert not carries_material(documented)
     assert carries_material(real)
+
+
+def test_no_tracked_file_outside_the_notice_carries_patent_analysis():
+    """One file may discuss the patent, and only to say one exists."""
+    offenders = {}
+    for relative, text in _readable(TRACKED):
+        if relative == PATENT_NOTICE or relative.startswith(ARCHIVE_PREFIXES):
+            continue
+        # These two files are the rules themselves and have to name what
+        # they refuse. Everything else is held.
+        if relative in (Path(__file__).relative_to(ROOT).as_posix(),
+                        "tests/test_claims_register.py"):
+            continue
+        found = sorted({m.group(0).lower() for m in PATENT_ANALYSIS.finditer(text)})
+        if found:
+            offenders[relative] = found
+
+    assert not offenders, (
+        "patent analysis belongs in SDL's private records. PATENTS.md carries "
+        f"the notice and nothing else: {offenders}"
+    )
+
+
+def test_the_patent_pattern_catches_the_column_that_was_removed():
+    """Exercised against the real wording, so the rule is not notional."""
+    removed = [
+        "*Coverage: inside, claimed.* Claims 1 and 14 recite deterministic rule evaluation",
+        "They are in the amendment reservoir rather than in the claims.",
+        "The `trust_fingerprint` composition at [0232] is inside and unclaimed.",
+        "whether the feature sits inside the filed specification (US 19/820,502)",
+        "an NZ provisional to hold the date rather than a full filing",
+    ]
+    for sample in removed:
+        assert PATENT_ANALYSIS.search(sample), sample
+
+    kept = [
+        "the gate returns PASS or BLOCKED and nothing else",
+        "docs/evidence-perimeter.v6.md records both pairs",
+        "a certificate signs commit_sha",
+    ]
+    for sample in kept:
+        assert not PATENT_ANALYSIS.search(sample), sample

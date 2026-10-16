@@ -62,9 +62,6 @@ shown wherever archived certificates are displayed.
 Published run indexes filter, count and display `proof_class` as a comparison
 dimension. Pair grouping keys on model and pack, not on `proof_class`.
 
-The filed patent specification does not use the word firewall anywhere and names
-no repository or URL, so none of this has any bearing on the patent, and a
-repository rename would carry no patent consequence.
 
 ## Two policy packs renamed in 2.5.0
 
