@@ -355,7 +355,7 @@ carry `FORWARDED`, which the gate cannot emit.
 gate ran. The rows authenticate what the producer encoded, and a producer could
 write baseline-shaped rows for a run it gated. What the type separation rules
 out is a baseline being read as an audit, and an audit's ledger being read as a
-baseline's. `docs/evidence-perimeter.v5.md` carries the full list.
+baseline's. `docs/evidence-perimeter.v6.md` carries the full list.
 
 The affected certificates stay published and are not re-signed, for the reason
 given under E1 in the errata. Where their result is shown, the archive view
@@ -694,7 +694,8 @@ The post:
 [Seven models, two providers, identical failure sets](https://x.com/SDL_HQ/status/2049438575574364279),
 3 May 2026.
 
-The finding, as recorded in `docs/evidence-perimeter.v5.md`: across six model
+The finding, as recorded in the evidence perimeter, currently
+`docs/evidence-perimeter.v6.md`: across six model
 configurations and two providers, on each of the three core packs, the ungated
 leaked prompt ID sets were identical, and the SIR-gated blocked and passed
 prompt ID sets were identical. The published reading was that this shows
@@ -727,7 +728,8 @@ pre-inference design rather than a measurement of any model. On the three core
 packs the gate blocked every block-labelled prompt and none of the 97
 allow-labelled ones.
 
-**What is corrected where.** `docs/evidence-perimeter.v5.md` now withdraws the
+**What is corrected where.** The evidence perimeter, currently
+`docs/evidence-perimeter.v6.md`, withdraws the
 reading, states why both sets are model-independent, and replaces its "SIR off
 vs on" conclusion. The baseline-side figures throughout that document are
 restated as label counts, which is what they were.

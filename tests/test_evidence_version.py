@@ -36,7 +36,7 @@ def test_current_state_statements_match_runtime_authority():
     """Derive the expected version for narrowly defined current-state claims."""
 
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    perimeter = (ROOT / "docs/evidence-perimeter.v5.md").read_text(encoding="utf-8")
+    perimeter = (ROOT / "docs/evidence-perimeter.v6.md").read_text(encoding="utf-8")
     failure_modes = (ROOT / "docs/failure-modes.md").read_text(encoding="utf-8")
     rule_coverage = (ROOT / "docs/rule-coverage.md").read_text(encoding="utf-8")
 
@@ -199,6 +199,12 @@ def test_current_version_surfaces_match_runtime_authority():
         # exclusion.
         "docs/archive-figures.json": Counter({v_234: 1}),
         "docs/coverage.json": Counter({authority: 1}),
+        "docs/evidence-perimeter.v6.md": Counter({authority: 1}),
+        # v5 closed on 16 October 2026 carrying the version current at the
+        # time, which is still the authority today. At the next bump this
+        # entry moves to the historical symbol for that version while v6
+        # keeps the authority, and that split is the point: a frozen
+        # document states the version it closed on, not the current one.
         "docs/evidence-perimeter.v5.md": Counter({authority: 1}),
         "docs/assurance-kit.md": Counter({v_234: 4, v_237: 1, v_240: 4, v_220: 3, v_102: 1, v_200: 1}),
         "docs/evaluator-technical-explainer.md": Counter({v_234: 2, v_237: 1}),

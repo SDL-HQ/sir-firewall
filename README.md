@@ -355,7 +355,7 @@ SIR’s job is simple: enforce policy before inference, then prove what happened
 * [Evaluator technical explainer](docs/evaluator-technical-explainer.md) (evaluation and interpretation path)
 * [Assurance kit](docs/assurance-kit.md) (supporting evaluation and verification reference)
 * [Compliance evidence map](docs/compliance-evidence-map.md) (reviewer-facing evidence packaging map)
-* [Evidence perimeter note](docs/evidence-perimeter.v5.md) (current bounded benchmark perimeter)
+* [Evidence perimeter note](docs/evidence-perimeter.v6.md) (current bounded benchmark perimeter)
 * [Claims register](docs/claims-register.md) (every public technical claim, and whether it survives a reader who examines the failures)
 * [Archive errata](docs/archive-errata.md) (published archives that do not verify, and why)
 * [Reference demonstration](docs/reference-demonstration.md) (downstream calls on failure paths, and how the evaluated text differs from the forwarded one)
