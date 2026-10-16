@@ -371,3 +371,47 @@ def test_two_builds_of_the_same_tag_agree_except_on_when_they_were_built(tmp_pat
     left, right = tree(first), tree(second)
     assert left.keys() == right.keys(), set(left) ^ set(right)
     assert left == right, [name for name in left if left[name] != right[name]]
+
+
+def test_the_rebuild_skips_a_release_that_predates_the_generator(window):
+    """The window is rebuilt from the tag it is pinned at, so the tag must hold the tool.
+
+    The first published window was pinned at a release made before the
+    generator existed, and the first scheduled rebuild failed on it with
+    `can't open file`. Failing weekly for a condition nobody can act on until
+    the next release trains a person to ignore the one workflow whose whole
+    job is to notice drift, so the job checks and skips with a notice instead.
+
+    It is a bounded state, not a permanent exemption: it is false from the
+    first release that contains the generator onward, and nothing in the
+    window can change while it holds, because everything the window is built
+    from is frozen at that same tag.
+
+    Mutations measured on 16 October 2026:
+
+    - remove the gate step: this test fails (1 failed). Confirmed against the
+      real failure first, by running the job's own two commands locally
+      against the release the first window was pinned at: exit 2, and
+      `can't open file`.
+    - leave the gate but drop the `if` from the build step: this test fails
+      (1 failed), which is the case that would still have gone red weekly.
+    """
+    import yaml
+
+    parsed = yaml.safe_load(
+        (window / ".github" / "workflows" / "rebuild.yml").read_text(encoding="utf-8")
+    )
+    steps = parsed["jobs"]["rebuild"]["steps"]
+    gate = next(s for s in steps if s.get("id") == "pin")
+    assert "generate_shop_window.py" in gate["run"]
+    assert "buildable=no" in gate["run"]
+
+    guarded = [s for s in steps if s.get("if") == "steps.pin.outputs.buildable == 'yes'"]
+    names = {s.get("name", "") for s in guarded}
+    assert any("Build" in name for name in names), names
+    assert any("Commit" in name for name in names), names
+    # Everything after the gate is conditional on it, or the job still fails.
+    after = steps[steps.index(gate) + 1 :]
+    assert all(s.get("if") == "steps.pin.outputs.buildable == 'yes'" for s in after), [
+        s.get("name") for s in after if "if" not in s
+    ]

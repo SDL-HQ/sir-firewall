@@ -79,13 +79,34 @@ jobs:
           cd vault
           git checkout --quiet "$(git tag --list --sort=-v:refname | head -n 1)"
 
+      # The window is pinned at a release tag and rebuilt from that tag's tree,
+      # so a tag older than the generator cannot rebuild it. That was true of
+      # the release this window was first published from, and stops being true
+      # at the next one. Skipping says so rather than failing every week for a
+      # reason nobody can act on.
+      - name: Stop here if the generator is not in that release
+        id: pin
+        run: |
+          cd vault
+          tag="$(git describe --tags --exact-match)"
+          if [ -f tools/generate_shop_window.py ]; then
+            echo "buildable=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "buildable=no" >> "$GITHUB_OUTPUT"
+            echo "::notice::$tag predates the generator, so the window cannot be \
+          rebuilt from it and nothing in the window can change until the next release."
+          fi
+
       - name: Install the only dependency the verifiers have
+        if: steps.pin.outputs.buildable == 'yes'
         run: python3 -m pip install --quiet cryptography
 
       - name: Build, which refuses if a documented exit code does not reproduce
+        if: steps.pin.outputs.buildable == 'yes'
         run: python3 vault/tools/generate_shop_window.py --out built
 
       - name: Stop if the generator would change this workflow
+        if: steps.pin.outputs.buildable == 'yes'
         run: |
           if ! diff -r built/.github window/.github; then
             echo "The generator writes a different workflow than this repository holds."
@@ -96,13 +117,15 @@ jobs:
           fi
 
       - name: Replace the window with what was built
+        if: steps.pin.outputs.buildable == 'yes'
         run: |
           cd window
-          git rm -rq --ignore-unmatch . -- ':!.git' ':!.github'
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {{}} +
           cp -a ../built/. .
           git add -A
 
       - name: Commit, if anything moved
+        if: steps.pin.outputs.buildable == 'yes'
         run: |
           cd window
           if git diff --cached --quiet; then
