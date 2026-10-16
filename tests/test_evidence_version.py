@@ -193,7 +193,10 @@ def test_current_version_surfaces_match_runtime_authority():
         # The 2.5 re-examination row now points at the register for the
         # method, so the backlog no longer names the version of the previous
         # full review; the register does.
-        "docs/backlog.md": Counter({v_240: 9, v_230: 1, v_102: 1, authority: 3}),
+        # Every row resolved by this release names it, which is the point:
+        # a row saying "unreleased" after the tag is the drift this file
+        # exists to catch, one document over.
+        "docs/backlog.md": Counter({v_240: 9, v_230: 1, v_102: 1, authority: 31}),
         # The publication step records the release whose merge exposed that a
         # direct push to main cannot satisfy the required status checks.
         ".github/workflows/audit-and-sign.yml": Counter({v_240: 1}),
@@ -279,10 +282,10 @@ def test_current_version_surfaces_match_runtime_authority():
         # dispatch that had no missing-certificate net, and the merge after
         # which the first direct push from automation was declined.
         "tests/test_audit_workflow_cannot_pass_without_verifying.py": Counter({v_240: 3}),
-        # The notes for the release in flight. They become a frozen surface
-        # at the tag, and tests/test_release_notes_suite_size.py holds the
-        # suite figure in them against the collected count until then.
-        f"docs/release-notes-{authority}.md": Counter({authority: 2}),
+        # These notes are now a frozen surface: the tag exists, so the suite
+        # figure in them is stated as a fact about that tag rather than
+        # about the tree a reader is holding, which is the third mention.
+        f"docs/release-notes-{authority}.md": Counter({authority: 3}),
         # The pack rename names the last shipped version where it states what
         # that release carried under the retired identifiers, and where it holds
         # those release notes against being tidied. v_240, four times.

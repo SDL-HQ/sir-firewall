@@ -21,7 +21,7 @@ The ten acceptance conditions in `release-checklist.json` are all met, and
 `tools/check_release_checklist.py` refuses the merge path unless every one
 carries evidence that resolves: a test that exists, an artefact that exists, or
 a command that runs to its stated exit code. Prose is not evidence.
-The suite is 1477 tests, held against that figure by `tests/test_release_notes_suite_size.py`.
+The suite was 1477 tests at the v2.5.0 tag, held against that figure by `tests/test_release_notes_suite_size.py`.
 
 No published archive is rewritten or re-signed. The 54 stay published, with
 what they are recorded as E7 in `docs/archive-errata.md`.
