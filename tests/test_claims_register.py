@@ -6,9 +6,9 @@ exactly the failure mode it exists to catch, so the figures in it are compared
 against the measurements that produced them, and its structure is held so a
 claim cannot be added without a status, evidence and a coverage verdict.
 
-The register deliberately contains `open` rows. Those are decisions Ryan owns,
-named rather than deferred silently, and this file does not try to close them.
-It only refuses to let them disappear.
+The register deliberately contains `open` rows. Those are decisions the
+maintainer owns, named rather than deferred silently, and this file does not
+try to close them. It only refuses to let them disappear.
 """
 
 import importlib.util
