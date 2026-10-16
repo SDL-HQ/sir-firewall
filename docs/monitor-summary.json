@@ -5,17 +5,17 @@
     "inconclusive": 0
   },
   "counts_cover": "audit_certificates",
-  "latest_ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/38980519036",
+  "latest_ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/38982226221",
   "latest_passing_run": {
-    "date": "2026-10-16T23:16:33Z",
+    "date": "2026-10-16T23:35:36Z",
     "result": "AUDIT PASSED",
-    "run_id": "20261016-231633-087192-gh38980519036-44179ab36036"
+    "run_id": "20261016-233536-495704-gh38982226221-9b27a5366d34"
   },
   "latest_run": {
-    "date": "2026-10-16T23:16:33Z",
+    "date": "2026-10-16T23:35:36Z",
     "result": "AUDIT PASSED",
-    "run_id": "20261016-231633-087192-gh38980519036-44179ab36036"
+    "run_id": "20261016-233536-495704-gh38982226221-9b27a5366d34"
   },
-  "updated_at_utc": "2026-10-16T23:16:34Z",
+  "updated_at_utc": "2026-10-16T23:35:38Z",
   "window_size": 20
 }
