@@ -101,6 +101,7 @@ def _load(name: str, relative: str):
 
 
 GENERATOR = _load("generate_shop_window", "tools/generate_shop_window.py")
+SHOP_WINDOW = _load("shop_window", "tools/shop_window.py")
 FIGURES = json.loads((ROOT / "docs/archive-figures.json").read_text(encoding="utf-8"))
 
 
@@ -415,3 +416,62 @@ def test_the_rebuild_skips_a_release_that_predates_the_generator(window):
     assert all(s.get("if") == "steps.pin.outputs.buildable == 'yes'" for s in after), [
         s.get("name") for s in after if "if" not in s
     ]
+
+
+def test_the_exit_table_keeps_both_rows_that_share_exit_zero(window):
+    """The table was a dict keyed on the exit code, so one row overwrote the other.
+
+    `certificate_rows` publishes two exit-0 rows: 80 archives verified with
+    their binding checked, and 39 verified with no ledger to check it against.
+    The dict kept the second, so the page told a reader that exit 0 means no
+    binding was checked, directly beneath two exhibits that exit 0 with the
+    binding checked and say so on the same page.
+    """
+    verify = (window / "VERIFY.md").read_text(encoding="utf-8")
+    # Scoped to the certificate table. A first version counted "| `0` |" lines
+    # across the whole file, so the receipt table's 206 and the baseline
+    # table's 2 kept it green with the certificate table collapsed to one
+    # exit-0 row, and the meaning check passed because "verified" is a
+    # substring of the receipt row. The test read correctly and measured
+    # nothing, which only a mutation showed.
+    block = verify.split("Certificate verifier.", 1)[1].split("Archive receipt verifier", 1)[0]
+    zero_rows = [line for line in block.splitlines() if line.startswith("| `0` |")]
+    figures = json.loads((ROOT / "docs" / "archive-figures.json").read_text(encoding="utf-8"))
+    published = [row for row in figures["certificate_rows"] if row["exit"] == 0]
+
+    assert len(zero_rows) == len(published), zero_rows
+    for row in published:
+        assert any(line.startswith(f"| `0` | {row['meaning']} |") for line in zero_rows), (
+            row["meaning"],
+            zero_rows,
+        )
+    assert "| `12` |" in verify, "the exit the baseline exhibit exists to show is absent"
+    assert "| `7` |" in verify, "the exit a tampered ledger produces is absent"
+
+
+def test_the_generator_refuses_a_verdict_that_does_not_hold(tmp_path):
+    """The claim that was missing entirely, so nothing could disagree with it.
+
+    The window reported exit 0 from two single-property verifiers and called
+    the archive clean, while the project's own `verify_evidence.py` said NOT
+    ESTABLISHED about it. The verdict is now a field on the exhibit, and the
+    generator runs the verdict tool inside the window it has built. This
+    mutates the claim and requires the refusal.
+    """
+    # The generator loads its own copy of shop_window.py, so mutating this
+    # module's copy changes nothing. Patch what the generator reads.
+    module = GENERATOR._shop_window()
+    original = module.SPECIFICATION
+    module.SPECIFICATION = tuple(
+        tuple("FAILED" if i == 6 else v for i, v in enumerate(entry)) if entry[0] == 1 else entry
+        for entry in original
+    )
+    loaded = GENERATOR._shop_window
+    GENERATOR._shop_window = lambda: module
+    try:
+        with pytest.raises(SystemExit) as refused:
+            GENERATOR.generate(tmp_path / "window", "v0.0.0-test")
+        assert "verdict" in str(refused.value), str(refused.value)
+    finally:
+        module.SPECIFICATION = original
+        GENERATOR._shop_window = loaded

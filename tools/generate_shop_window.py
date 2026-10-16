@@ -28,6 +28,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -141,10 +142,19 @@ jobs:
 #: The three verifiers a visitor runs, and the modules they import from
 #: tools/. Held by a test, so a new import fails there rather than in the
 #: generated repository.
+#: `verify_evidence.py` is the command the archive of record tells a reader to
+#: prefer, and it was not shipped. The window showed six exit codes from three
+#: single-property tools and called two of them clean, while the project's own
+#: verdict tool said NOT ESTABLISHED about one of those two. It executes
+#: `validate_certificate_contract.py`, so that ships too: without it the
+#: verdict tool reports a missing helper as "the certificate violates its
+#: applicable evidence contract", which is the worst wrong answer available.
 VERIFIER_FILES = (
     "verify_certificate.py",
     "verify_baseline_record.py",
     "verify_archive_receipt.py",
+    "verify_evidence.py",
+    "validate_certificate_contract.py",
     "key_registry.py",
     "itgl.py",
     "document_signing.py",
@@ -182,12 +192,54 @@ def _tree_digests(directory: Path) -> dict:
 # --- the documents ----------------------------------------------------------
 
 
-def _exit_meanings(figures: dict) -> dict:
-    """What the verifier prints, taken from the published figures tables."""
-    return {
-        "certificate": {row["exit"]: row["meaning"] for row in figures["certificate_rows"]},
-        "receipt": {row["exit"]: row["meaning"] for row in figures["receipt_rows"]},
-    }
+def _documented_exits(tool: str) -> list:
+    """Exit codes the verifier documents in its own epilog.
+
+    The published figures only hold codes some archive actually produced, so
+    exit 7 (a ledger that does not re-derive) and exit 12 (the wrong document
+    kind) are absent from them: nothing published is tampered with, and no
+    certificate is a baseline record. They are the two codes the window most
+    needs to explain, so they come from the verifier's own text.
+    """
+    source = (ROOT / "tools" / tool).read_text(encoding="utf-8")
+    # The epilog is written as adjacent string literals, so a sentence can run
+    # across two of them. Joined first: a first version matched one literal at
+    # a time and produced exit 12 as "the document is not a SIR audit
+    # certificate, and nothing", which stops exactly before the part that
+    # matters.
+    joined = re.sub(r'\\n"\s*\n\s*"', " ", source)
+    found = []
+    # Non-greedy to the first full stop: joining the literals also joined the
+    # sentences, so a greedy match returned all three codes as one meaning.
+    for match in re.finditer(r"Exit code (\d+) means (.+?\.)", joined, re.S):
+        found.append((int(match.group(1)), " ".join(match.group(2).split()).rstrip(".")))
+    return found
+
+
+def _exit_tables(figures: dict) -> dict:
+    """Every published row, in order, plus the codes the tool documents itself.
+
+    This was a dict keyed on the exit code. `certificate_rows` holds two exit-0
+    rows, 80 "verified" and 39 "verified; no ledger in the archive, so no
+    binding was checked", so the dict kept the second and the page told a
+    reader that exit 0 means no binding was checked, directly beneath two
+    exhibits that exit 0 with the binding checked and say so.
+    """
+    tables = {}
+    for name, key in (("certificate", "certificate_rows"), ("receipt", "receipt_rows"),
+                      ("baseline", "baseline_record_rows")):
+        rows = [
+            (row["exit"], row["meaning"], row["count"])
+            for row in figures[key]
+            if row["exit"] is not None
+        ]
+        tables[name] = rows
+    observed = {code for code, _, _ in tables["certificate"]}
+    tables["certificate_documented"] = [
+        (code, meaning) for code, meaning in _documented_exits("verify_certificate.py")
+        if code not in observed
+    ]
+    return tables
 
 
 def _perimeter_section(heading: str) -> tuple:
@@ -208,14 +260,18 @@ def _perimeter_section(heading: str) -> tuple:
 
 def _readme(exhibits, figures, tag: str) -> str:
     rows = "\n".join(
-        f"| {e.number} | {e.name} | `{e.document_exit}` | `{e.receipt_exit}` | {e.teaches} |"
+        f"| {e.number} | {e.name} | `{e.document_exit}` | `{e.receipt_exit}` | "
+        f"**{e.verdict}** | {e.errata or '-'} |"
         for e in exhibits
     )
-    # Counted, not asserted. An earlier draft said "four of these are about our
-    # limits and three say we got something wrong", and neither number survived
-    # being checked against the table above it.
-    nonzero = sum(1 for e in exhibits if e.document_exit or e.receipt_exit)
-    return f"""# SIR, in seven commands
+    # Counted on the verdict, and counted over archives. An earlier version
+    # counted rows whose exit codes were non-zero, over a list in which one
+    # archive appeared twice, and asserted "seven real published archives"
+    # above it. Both numbers were wrong and the page was confident.
+    established = [e for e in exhibits if e.verdict == "ESTABLISHED"]
+    unclean = [e for e in exhibits if e.verdict != "ESTABLISHED"]
+    disclosed = [e for e in exhibits if e.errata]
+    return f"""# SIR, in six commands and one you break yourself
 
 SIR is a deterministic pre-inference gate. It reads a request before a model
 does, decides `PASS` or `BLOCKED` by rules alone with no model in the decision
@@ -225,35 +281,36 @@ is the point: it is designed to be checked by someone who does not trust us.
 **Read [LIMITS.md](LIMITS.md) second.** It says what SIR does not do, in the
 project's own words, and most of what is below is a limit made concrete.
 
-This repository is generated from the archive of record, pinned at `{tag}`.
-It holds seven real published archives, chosen because running our own
-verifiers against them produces different answers.
+This repository is generated from the archive of record, pinned at `{tag}`. It
+holds {len(exhibits)} real published archives, each chosen because running our
+verifiers against it produces a different answer.
 
-**{nonzero} of the seven do not come back clean.** One has a signature that
-genuinely does not verify. One is missing a file its own manifest lists. The
-rest are boundaries and absences we have disclosed rather than tidied: an
-archive too old for the current binding scheme, one that ships no ledger, and
-one that predates the receipt format.
+**Our own verdict tool establishes {len(established)} of the {len(exhibits)}.**
+`verify_evidence.py` prints one verdict over every property of an archive, and
+exit 0 from a single-property verifier is not the same thing. {len(unclean)} of
+these {len(exhibits)} come back NOT ESTABLISHED or FAILED, and
+{len(disclosed)} of them are defects this project has already written up in its
+own errata, named in the table.
 
-The seventh comes back clean twice over and is still worth running: it is a
-baseline record, not a certificate, and pointing the certificate verifier at
-it makes the verifier refuse the document rather than say something wrong
-about it.
-
-| # | Exhibit | Document exit | Receipt exit | What it shows |
-|---|---|---|---|---|
+| # | Exhibit | Document exit | Receipt exit | Verdict | Errata |
+|---|---|---|---|---|---|
 {rows}
 
-[VERIFY.md](VERIFY.md) has the exact command for each, and explains why each
-one names its ledger on the command line.
+[VERIFY.md](VERIFY.md) has the exact command for each, explains why each one
+names its ledger, and ends with a recipe for changing one field in one ledger
+row so you can watch the chain refuse to re-derive. That last one is the only
+item here that is a detection rather than a disclosure, and it is the reason
+the evidence plane exists.
 
 The archive of record is at [{VAULT}]({VAULT}). It holds
 {figures['total']} runs and {figures['certificates_total']} certificates.
 
-Nothing here is a sample chosen for how it looks. Each exhibit is selected
-from a category by a tool in the main repository, and a test there refuses any
-category with only one member, so an exhibit is always an example of a class
-rather than a fact about one run.
+Nothing here is a sample chosen for how it looks. Each exhibit is selected from
+a category by a tool in the main repository, a test there refuses any category
+with fewer than two eligible archives, and another refuses any exhibit drawn
+from the 54 ungated baseline runs this project published as audit
+certificates. The first version of this page failed that last check, which did
+not exist: its lead exhibit was one of the 54.
 
 ## This repository is generated
 
@@ -265,31 +322,41 @@ archive of record. `GENERATED` records the tag, the commit it was built from,
 and when.
 
 The build is not a copy. It runs every command on this page inside the
-directory it has just written, and stops without publishing if any exit code
-differs from the one the page gives for it.
+directory it has just written, including the tampering recipe, and stops
+without publishing if any exit code or verdict differs from the one the page
+gives for it.
 """
 
 
 def _limits() -> str:
     claims_lead, non_claims = _perimeter_section("Explicit non-claims")
     support_lead, unsupported = _perimeter_section("What current evidence does not support")
+    # The perimeter gives "Explicit non-claims" a lead-in sentence and gives
+    # the second section none: its bullets start immediately under the
+    # heading. An earlier version of this file claimed "lead-in sentences
+    # included" for both and rendered a two-line hole where the second one
+    # would be, which is the same class of defect as the missing lead-in it
+    # was written to prevent.
+    def section(heading: str, lead: str, bullets: list) -> str:
+        body = f"{lead}\n\n" if lead else ""
+        if not lead:
+            body = (
+                "The perimeter gives this list no lead-in sentence, so there is none to\n"
+                "lift. Its items are scoped by the perimeter itself, and the phrase\n"
+                '"listed here" in the last of them means listed there, not here.\n\n'
+            )
+        return f"## {heading}\n\n{body}{chr(10).join(bullets)}"
+
     return f"""# What SIR does not do
 
-Lifted verbatim from the evidence perimeter in the archive of record, lead-in
-sentences included. It is not rewritten for this page, because a limit
-restated for a front door is a limit softened for a front door.
+Lifted verbatim from the evidence perimeter in the archive of record, with each
+section's own lead-in sentence where the perimeter has one. Nothing here is
+rewritten for this page, because a limit restated for a front door is a limit
+softened for a front door.
 
-## Explicit non-claims
+{section("Explicit non-claims", claims_lead, non_claims)}
 
-{claims_lead}
-
-{chr(10).join(non_claims)}
-
-## What current evidence does not support
-
-{support_lead}
-
-{chr(10).join(unsupported)}
+{section("What current evidence does not support", support_lead, unsupported)}
 
 ## And the one that applies to this repository
 
@@ -301,7 +368,7 @@ checks, and nothing more.
 """
 
 
-def _verify_doc(exhibits, meanings) -> str:
+def _verify_doc(exhibits, tables, tamper) -> str:
     blocks = []
     for e in exhibits:
         command = _shell(e.command(f"exhibits/{e.run_id}"))
@@ -318,6 +385,12 @@ python3 {refusal}
 ```
 
 Exits `{e.refusal_exit}`, naming the document kind it found."""
+        errata = (
+            f"\n\nThis archive's defect is disclosed as **{e.errata}** in the archive of "
+            "record's errata."
+            if e.errata
+            else ""
+        )
         blocks.append(
             f"""### {e.number}. {e.name}
 
@@ -326,25 +399,53 @@ Exits `{e.refusal_exit}`, naming the document kind it found."""
 ```
 python3 {command}
 python3 tools/verify_archive_receipt.py exhibits/{e.run_id}
+python3 tools/verify_evidence.py exhibits/{e.run_id}
 ```
 
-Document verifier exits `{e.document_exit}`. Receipt verifier exits
-`{e.receipt_exit}`.{extra}"""
+Document verifier exits `{e.document_exit}`, receipt verifier exits \
+`{e.receipt_exit}`, and the verdict is **{e.verdict}**.{errata}{extra}"""
         )
 
-    certificate = "\n".join(
-        f"| `{code}` | {meaning} |" for code, meaning in sorted(
-            (c, m) for c, m in meanings["certificate"].items() if c is not None
-        )
+    def rows(entries):
+        return "\n".join(f"| `{code}` | {meaning} | {count} |" for code, meaning, count in entries)
+
+    # Observed and documented in one table, ordered by exit code, with the two
+    # exit-0 rows kept in the order the figures publish them.
+    certificate_rows = sorted(
+        list(tables["certificate"])
+        + [(c, m, "none published") for c, m in tables["certificate_documented"]],
+        key=lambda row: row[0],
     )
-    receipt = "\n".join(
-        f"| `{code}` | {meaning} |" for code, meaning in sorted(meanings["receipt"].items())
+    zero = [row for row in tables["certificate"] if row[0] == 0]
+    shared = (
+        f"Two rows share exit 0, because {zero[0][2]} archives verified with their "
+        f"binding checked and {zero[1][2]} verified without a ledger to check it "
+        "against, and those are different facts"
+        if len(zero) == 2
+        else "Each exit code appears once"
     )
 
     return f"""# Verifying the exhibits
 
 Every command below runs offline against a file in this repository. Nothing
 calls a model provider, and nothing needs a credential.
+
+## Three commands per exhibit, and the third is the one that answers
+
+The first two verify one property each: the signed document, and the archive's
+own manifest. `verify_evidence.py` runs those and the rest, and prints one
+verdict over all of them. It is the command the archive of record tells a
+reader to prefer, and an exit code of 0 from the first two is not the same
+thing as its verdict:
+
+- **ESTABLISHED** every applicable property established, none unknown
+- **NOT ESTABLISHED** nothing failed, but at least one property is unknown
+- **FAILED** at least one property actively failed
+
+Not established is not a failure and it is not a pass. A certificate no
+evidence contract governs has not failed a contract; a ledger that predates the
+fields needed to recompute the signed counters has not disagreed with them.
+Both are unknown, and unknown has its own verdict.
 
 ## Why each command names its ledger
 
@@ -355,8 +456,8 @@ ledger by itself, from the run id inside the signed payload.
 **Older certificates carry no run id.** They predate the field. For those the
 verifier has nothing to key on, finds no ledger however complete the directory
 is, and reports that the binding was not checked. That is a true answer and a
-confusing one, so every command here names the ledger explicitly, and the two
-archives that ship no ledger at all pass `--no-ledger` instead.
+confusing one, so every command here names the ledger explicitly, and the
+archive that ships no ledger at all passes `--no-ledger` instead.
 
 We could have hidden this in a one-word wrapper. We have not, because the
 point of this repository is that you can see exactly what is being checked.
@@ -365,22 +466,58 @@ point of this repository is that you can see exactly what is being checked.
 
 {chr(10).join(blocks)}
 
+## Break one and watch it get caught
+
+Every exhibit above is an archive we published and a defect we disclosed. None
+of them is a detection, and detection is the whole proposition, so here is one
+you perform yourself. Copy exhibit 1, change one field in one ledger row, and
+re-run the command that passed:
+
+```
+cp -r exhibits/{tamper['run_id']} /tmp/tampered
+python3 - <<'EOF'
+import json, pathlib
+p = pathlib.Path("/tmp/tampered/proofs/itgl_ledger.jsonl")
+rows = p.read_text().splitlines()
+row = json.loads(rows[{tamper['row']}])
+row["expected"] = "allow" if row["expected"] == "block" else "block"
+rows[{tamper['row']}] = json.dumps(row, separators=(",", ":"), sort_keys=True)
+p.write_text("\\n".join(rows) + "\\n")
+EOF
+python3 tools/verify_certificate.py /tmp/tampered/audit.json --ledger /tmp/tampered/proofs/itgl_ledger.jsonl
+```
+
+Exits `{tamper['exit']}`, and names the row and both hashes:
+
+```
+{tamper['message']}
+```
+
+One field in one row of {tamper['rows']}, and the chain does not re-derive.
+
 ## How to read the exit codes
 
-Certificate verifier:
+Certificate verifier. {shared}:
 
-| Exit | Meaning |
-|---|---|
-{certificate}
+| Exit | Meaning | Archives |
+|---|---|---|
+{rows(certificate_rows)}
 
 Archive receipt verifier:
 
-| Exit | Meaning |
-|---|---|
-{receipt}
+| Exit | Meaning | Archives |
+|---|---|---|
+{rows(tables["receipt"])}
 
-These meanings are generated from the archive of record's own published
-figures, not written for this page.
+Baseline record verifier:
+
+| Exit | Meaning | Archives |
+|---|---|---|
+{rows(tables["baseline"])}
+
+Every meaning and count above is generated from the archive of record's own
+published figures, except the two exit codes no published archive produces,
+which are generated from the verifier's own documentation.
 """
 
 
@@ -406,12 +543,73 @@ def _run(window: Path, argv: list):
         cwd=window,
         capture_output=True,
         text=True,
-        # -B above, so running the verifiers leaves no bytecode in the tree
-        # they are run in. PYTHONDONTWRITEBYTECODE was set here too until
-        # measuring showed each was sufficient alone, which made neither of
-        # them detectable.
-        env=dict(os.environ, PYTHONPATH=str(window / "src")),
+        # Both, and they are not redundant. `-B` covers the process this
+        # starts; the environment variable covers its children, which matters
+        # because `verify_evidence.py` runs the other verifiers as
+        # subprocesses of its own and `-B` does not reach them. An earlier
+        # measurement found each sufficient alone and removed the variable as
+        # untestable, which was true of the code at the time and stopped being
+        # true the moment a tool that spawns children was shipped.
+        env=dict(
+            os.environ,
+            PYTHONPATH=str(window / "src"),
+            PYTHONDONTWRITEBYTECODE="1",
+        ),
     )
+
+
+def _verdict(window: Path, directory: str) -> str:
+    """What `verify_evidence.py` says, run inside the generated window."""
+    result = _run(window, ["tools/verify_evidence.py", directory])
+    for line in reversed((result.stdout + result.stderr).splitlines()):
+        if line.startswith("VERDICT:"):
+            return line.split(":", 1)[1].strip()
+    return f"<no verdict, exit {result.returncode}>"
+
+
+def _tamper(window: Path, exhibit) -> dict:
+    """Alter one chained field in one ledger row and record what happens.
+
+    Published, so it has to be measured here rather than asserted on the page.
+    Three attempts at this during development each failed for a different
+    reason in the test rig and twice looked like the chain not detecting a
+    change at all: once because the copy had no `spec/` so no key loaded, and
+    once because the edit was applied conditionally and the row was left
+    untouched. The lesson is in the method: change the bytes, check the file
+    hash moved, then run the verifier.
+    """
+    scratch = window / ".tamper"
+    if scratch.exists():
+        shutil.rmtree(scratch)
+    shutil.copytree(window / "exhibits" / exhibit.run_id, scratch, ignore=_NO_BYTECODE)
+    ledger = scratch / "proofs" / "itgl_ledger.jsonl"
+    rows = ledger.read_text(encoding="utf-8").splitlines()
+    before = hashlib.sha256(ledger.read_bytes()).hexdigest()
+    index = len(rows) // 2
+    row = json.loads(rows[index])
+    if "expected" not in row:
+        raise SystemExit("REFUSED: the tamper recipe's field is not in this ledger's rows")
+    row["expected"] = "allow" if row["expected"] == "block" else "block"
+    rows[index] = json.dumps(row, separators=(",", ":"), sort_keys=True)
+    ledger.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    if hashlib.sha256(ledger.read_bytes()).hexdigest() == before:
+        raise SystemExit("REFUSED: the tamper recipe changed nothing")
+
+    result = _run(window, [
+        "tools/verify_certificate.py", ".tamper/audit.json",
+        "--ledger", ".tamper/proofs/itgl_ledger.jsonl",
+    ])
+    message = next(
+        (l.strip() for l in (result.stdout + result.stderr).splitlines() if "ERROR" in l), ""
+    )
+    shutil.rmtree(scratch)
+    return {
+        "run_id": exhibit.run_id,
+        "row": index,
+        "rows": len(rows),
+        "exit": result.returncode,
+        "message": message,
+    }
 
 
 def generate(out: Path, tag: str) -> list:
@@ -455,7 +653,18 @@ def generate(out: Path, tag: str) -> list:
 
     (out / "README.md").write_text(_readme(exhibits, figures, tag), encoding="utf-8")
     (out / "LIMITS.md").write_text(_limits(), encoding="utf-8")
-    (out / "VERIFY.md").write_text(_verify_doc(exhibits, _exit_meanings(figures)), encoding="utf-8")
+    # Measured inside the window, because the page publishes the recipe and
+    # the exit code it produces.
+    tamper = _tamper(out, exhibits[0])
+    if tamper["exit"] != module.TAMPER_EXIT:
+        problems.append(
+            f"the tamper recipe claims exit {module.TAMPER_EXIT} and produced {tamper['exit']}"
+        )
+    if not tamper["message"]:
+        problems.append("the tamper recipe produced no error naming what failed")
+    (out / "VERIFY.md").write_text(
+        _verify_doc(exhibits, _exit_tables(figures), tamper), encoding="utf-8"
+    )
 
     commit = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=False
@@ -479,6 +688,12 @@ def generate(out: Path, tag: str) -> list:
             problems.append(
                 f"exhibit {exhibit.number}, {exhibit.name}: claims "
                 f"{exhibit.document_exit}/{exhibit.receipt_exit}, produces {document}/{receipt}"
+            )
+        verdict = _verdict(out, directory)
+        if verdict != exhibit.verdict:
+            problems.append(
+                f"exhibit {exhibit.number}, {exhibit.name}: the page says the verdict is "
+                f"{exhibit.verdict} and verify_evidence.py says {verdict}"
             )
         if exhibit.refusal_exit is not None:
             refused = _run(out, exhibit.refusal_command(directory)).returncode

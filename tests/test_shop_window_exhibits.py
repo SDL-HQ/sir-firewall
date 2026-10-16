@@ -49,6 +49,7 @@ Mutations measured on 16 October 2026, each run against the full file:
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import shutil
 import subprocess
@@ -73,7 +74,8 @@ def _load_shop_window():
 
 
 SHOP_WINDOW = _load_shop_window()
-EXHIBITS = SHOP_WINDOW.select()
+FIGURES = json.loads((ROOT / "docs" / "archive-figures.json").read_text(encoding="utf-8"))
+EXHIBITS = SHOP_WINDOW.select(FIGURES)
 
 
 def _archive(run_id: str) -> Path:
@@ -118,8 +120,52 @@ def _verify(window: Path, exhibit, directory: str) -> tuple:
 
 def test_there_are_exhibits_to_check():
     """Guard the guard. A selector returning nothing must fail, not pass."""
-    assert len(EXHIBITS) == 7, [e.number for e in EXHIBITS]
+    assert len(EXHIBITS) == 6, [e.number for e in EXHIBITS]
     assert all(e.run_id for e in EXHIBITS)
+
+
+def test_every_exhibit_is_a_different_archive():
+    """Six exhibits were seven, and two of them were the same run.
+
+    Two slots had identical selectors, so `pool[0]` returned the same archive
+    for both and the documented commands were byte-identical. The page said
+    "seven real published archives" and its count of exhibits that do not come
+    back clean counted that one archive twice. `no_ledger_to_bind` and
+    `legacy_no_receipt` are the same 39 archives, so no archive has one
+    property without the other and the two lessons belong to one exhibit.
+    """
+    runs = [e.run_id for e in EXHIBITS]
+    assert len(set(runs)) == len(runs), sorted(runs)
+
+
+def test_no_exhibit_is_one_of_the_ungated_baseline_certificates():
+    """The defect that put an errata record on the front door.
+
+    54 ungated baseline runs were published as audit certificates, errata E7.
+    The set is in the same figures file as the five sets the selectors already
+    read, and none of them subtracted it, so the exhibit labelled "a current
+    certificate" was one of the 54: `AUDIT FAILED`, 100 leaks, on a run with
+    no gate in the path. Anything drawn from that set has to say so, and no
+    exhibit currently is.
+    """
+    ungated = set(FIGURES["legacy_ungated_certificates"])
+    offenders = {
+        e.number: e.run_id for e in EXHIBITS if e.run_id in ungated and e.errata != "E7"
+    }
+    assert not offenders, offenders
+
+
+def test_an_exhibit_with_a_disclosed_defect_names_its_errata_entry():
+    """The front door and the back room have to agree.
+
+    Three of the six are archives whose defect the errata already records. A
+    page that frames every failure as disclosure, beside an errata that frames
+    them as defects with dates and causes, invites a reader to ask which
+    document is for them.
+    """
+    disclosed = {e.number: e.errata for e in EXHIBITS if e.errata}
+    assert len(disclosed) >= 3, disclosed
+    assert all(entry.startswith("E") for entry in disclosed.values()), disclosed
 
 
 def test_the_scratch_window_cannot_reach_the_vaults_ledgers(window):
@@ -205,8 +251,59 @@ def test_each_exhibit_is_drawn_from_a_set_with_more_than_one_member(window):
 
 
 def test_the_exhibits_cover_distinct_answers():
-    """Seven commands, and not seven ways of printing the same thing."""
+    """Six commands, and not six ways of printing the same thing.
+
+    This used to be the whole of the distinctness guarantee, and it is not
+    enough on its own: it asserts distinct exit-code *pairs*, which two
+    different slots holding one archive can still satisfy. The run-id test
+    above is the one that caught that.
+    """
     pairs = {(e.document_exit, e.receipt_exit) for e in EXHIBITS}
 
     assert len(pairs) >= 4, sorted(pairs)
     assert (0, 0) in pairs and (5, 2) in pairs and (9, 0) in pairs and (0, 2) in pairs
+
+
+def test_an_archive_can_exit_zero_twice_and_still_not_be_established():
+    """Why the verdict is a field and not a reading of the exit codes.
+
+    The two verifiers answer one property each. `verify_evidence.py` answers
+    over all of them, and an archive whose signed counters were never
+    recomputed is NOT ESTABLISHED while exiting 0 from both. The window called
+    exactly such an archive clean.
+
+    Asserted from the figures rather than from the six, because none of the
+    six is now in that state, and a test that only held while the selection
+    happened to contain one would be a fact about today.
+    """
+    clean_pair = (
+        set(FIGURES["binding_checked_and_holds"])
+        - set(FIGURES["incomplete"])
+        - set(FIGURES["receipt_signature_failed"])
+    )
+    unestablished = clean_pair - set(FIGURES["counters_true"])
+
+    assert unestablished, (
+        "no archive exits 0 from both verifiers with its counters unchecked, "
+        "so the verdict could be read off the pair and this test is obsolete"
+    )
+    chosen = {e.run_id for e in EXHIBITS if (e.document_exit, e.receipt_exit) == (0, 0)}
+    assert not (chosen & unestablished), sorted(chosen & unestablished)
+
+
+def test_no_candidate_in_any_slot_is_one_of_the_ungated_certificates():
+    """Asserted over the whole pool, not only over the archive that was picked.
+
+    Checking the pick alone is not enough, and measuring showed why: removing
+    the subtraction from exhibit 1's selector changes no exhibit, because the
+    requirement that the signed counters were recomputed already excludes the
+    54. The subtraction would then be defence with no effect, and the next
+    change to that selector could silently rely on it being absent.
+    """
+    ungated = set(FIGURES["legacy_ungated_certificates"])
+    offenders = {
+        e.number: sorted(set(e.candidates) & ungated)[:3]
+        for e in EXHIBITS
+        if e.errata != "E7" and set(e.candidates) & ungated
+    }
+    assert not offenders, offenders
