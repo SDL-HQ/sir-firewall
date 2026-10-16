@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/38853419307",
+      "commit_sha": "3c14f76e315b04b93bb9a649eb78f0fef3999cdb",
+      "comparison": {
+        "harmless_blocked": 0,
+        "itgl_final_hash": "sha256:daf012b0f543fc130d995c1aaa1cb368fe8bdb7be09280ee9f9ce69d1d233884",
+        "leaks": 0,
+        "provider_call_attempts": 0,
+        "provider_call_failures": 0,
+        "provider_call_successes": 0,
+        "trust_fingerprint": "sha256:edc135ba18bcb40ad80d67003a1b9c33e3c360acc0555cde003024a7b585e01b"
+      },
+      "entry_kind": "audit_certificate",
+      "evaluation_target": {
+        "pack_id": "generic_safety",
+        "pack_version": "1.0.0",
+        "scenario_id": null,
+        "target_kind": "domain_pack"
+      },
+      "evidence": {
+        "archive_receipt": "runs/20261016-045944-760241-gh38853419307-62197b78b847/archive_receipt.json",
+        "attempt_log": "runs/20261016-045944-760241-gh38853419307-62197b78b847/proofs/latest-attempts.log",
+        "audit": "runs/20261016-045944-760241-gh38853419307-62197b78b847/audit.json",
+        "itgl_final_hash": "runs/20261016-045944-760241-gh38853419307-62197b78b847/proofs/itgl_final_hash.txt",
+        "itgl_ledger": "runs/20261016-045944-760241-gh38853419307-62197b78b847/proofs/itgl_ledger.jsonl",
+        "manifest": "runs/20261016-045944-760241-gh38853419307-62197b78b847/manifest.json",
+        "run_summary": "runs/20261016-045944-760241-gh38853419307-62197b78b847/proofs/run_summary.json"
+      },
+      "model": "grok-4.3",
+      "proof_class": "FIREWALL_ONLY_AUDIT",
+      "provider": "xai",
+      "result": "AUDIT PASSED",
+      "row_identity": "sir=2.5.0|commit=3c14f76e315b04b93bb9a649eb78f0fef3999cdb|target=domain_pack:generic_safety@1.0.0|proof_class=FIREWALL_ONLY_AUDIT|provider=xai|model=grok-4.3",
+      "run_id": "20261016-045944-760241-gh38853419307-62197b78b847",
+      "run_timestamp_utc": "2026-10-16T04:59:44Z",
+      "sir_firewall_version": "2.5.0"
+    },
+    {
       "ci_run_url": "https://github.com/SDL-HQ/sir-firewall/actions/runs/38850763654",
       "commit_sha": "0579f58c8d3a338cce854858c35a5af26ada9893",
       "comparison": {
@@ -8692,11 +8729,11 @@
   ],
   "latest_passing_run": {
     "result": "AUDIT PASSED",
-    "run_id": "20261016-042820-860115-gh38850763654-c3de54071dca"
+    "run_id": "20261016-045944-760241-gh38853419307-62197b78b847"
   },
   "latest_run": {
     "result": "AUDIT PASSED",
-    "run_id": "20261016-042820-860115-gh38850763654-c3de54071dca"
+    "run_id": "20261016-045944-760241-gh38853419307-62197b78b847"
   },
   "pairs": [
     {
@@ -11175,6 +11212,6 @@
     }
   ],
   "supersedes": "benchmark_index.v2",
-  "updated_at_utc": "2026-10-16T04:28:22Z",
+  "updated_at_utc": "2026-10-16T04:59:46Z",
   "version": "benchmark_index.v3"
 }
