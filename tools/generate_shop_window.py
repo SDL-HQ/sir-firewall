@@ -494,17 +494,7 @@ you perform yourself. Copy exhibit 1, change one field in one ledger row, and
 re-run the command that passed:
 
 ```
-cp -r exhibits/{tamper['run_id']} /tmp/tampered
-python3 - <<'EOF'
-import json, pathlib
-p = pathlib.Path("/tmp/tampered/proofs/itgl_ledger.jsonl")
-rows = p.read_text().splitlines()
-row = json.loads(rows[{tamper['row']}])
-row["expected"] = "allow" if row["expected"] == "block" else "block"
-rows[{tamper['row']}] = json.dumps(row, separators=(",", ":"), sort_keys=True)
-p.write_text("\\n".join(rows) + "\\n")
-EOF
-python3 tools/verify_certificate.py /tmp/tampered/audit.json --ledger /tmp/tampered/proofs/itgl_ledger.jsonl
+{tamper['recipe']}
 ```
 
 Exits `{tamper['exit']}`, and names the row and both hashes:
@@ -578,6 +568,35 @@ def _run(window: Path, argv: list):
     )
 
 
+def _tamper_recipe(run_id: str, row: int) -> str:
+    """The exact text the page publishes, built once so it can be run verbatim.
+
+    The generator used to reimplement something similar in Python and measure
+    that. The published recipe then turned out to be neither idempotent nor
+    one-way: `cp -r src /tmp/tampered` nests when the destination already
+    exists, and flipping `expected` between two values restores the original on
+    a second run. A visitor who ran it twice, which is what a sceptic does, got
+    exit 0 and the reasonable conclusion that we cannot detect a changed byte.
+    Measuring a paraphrase of a published command is not measuring it.
+    """
+    lines = [
+        "rm -rf /tmp/sir-tampered",
+        "cp -r exhibits/" + run_id + " /tmp/sir-tampered",
+        "python3 - <<'EOF'",
+        "import json, pathlib",
+        'p = pathlib.Path("/tmp/sir-tampered/proofs/itgl_ledger.jsonl")',
+        "rows = p.read_text().splitlines()",
+        "row = json.loads(rows[" + str(row) + "])",
+        'row["expected"] = "tampered"',
+        "rows[" + str(row) + '] = json.dumps(row, separators=(",", ":"), sort_keys=True)',
+        'p.write_text("\\n".join(rows) + "\\n")',
+        "EOF",
+        "python3 tools/verify_certificate.py /tmp/sir-tampered/audit.json "
+        "--ledger /tmp/sir-tampered/proofs/itgl_ledger.jsonl",
+    ]
+    return "\n".join(lines)
+
+
 def _verdict(window: Path, directory: str) -> str:
     """What `verify_evidence.py` says, run inside the generated window."""
     result = _run(window, ["tools/verify_evidence.py", directory])
@@ -588,47 +607,56 @@ def _verdict(window: Path, directory: str) -> str:
 
 
 def _tamper(window: Path, exhibit) -> dict:
-    """Alter one chained field in one ledger row and record what happens.
+    """Run the published recipe, verbatim and twice.
 
-    Published, so it has to be measured here rather than asserted on the page.
-    Three attempts at this during development each failed for a different
-    reason in the test rig and twice looked like the chain not detecting a
-    change at all: once because the copy had no `spec/` so no key loaded, and
-    once because the edit was applied conditionally and the row was left
-    untouched. The lesson is in the method: change the bytes, check the file
-    hash moved, then run the verifier.
+    Twice, because the first version of this recipe passed once and then
+    quietly undid itself: it toggled a field between two values and copied into
+    a directory that already existed. Once is not a measurement of something a
+    stranger may run more than once.
+
+    Three earlier attempts at measuring this failed in the rig rather than the
+    product, twice looking like the chain not detecting a change: once because
+    the copy had no `spec/` so no key loaded, and once because the edit was
+    applied conditionally and the row was left untouched. Hence the method:
+    change the bytes, check the file hash moved, then run the verifier.
     """
-    scratch = window / ".tamper"
-    if scratch.exists():
-        shutil.rmtree(scratch)
-    shutil.copytree(window / "exhibits" / exhibit.run_id, scratch, ignore=_NO_BYTECODE)
-    ledger = scratch / "proofs" / "itgl_ledger.jsonl"
+    ledger = window / "exhibits" / exhibit.run_id / "proofs" / "itgl_ledger.jsonl"
     rows = ledger.read_text(encoding="utf-8").splitlines()
-    before = hashlib.sha256(ledger.read_bytes()).hexdigest()
-    index = len(rows) // 2
-    row = json.loads(rows[index])
-    if "expected" not in row:
+    row = len(rows) // 2
+    if "expected" not in json.loads(rows[row]):
         raise SystemExit("REFUSED: the tamper recipe's field is not in this ledger's rows")
-    row["expected"] = "allow" if row["expected"] == "block" else "block"
-    rows[index] = json.dumps(row, separators=(",", ":"), sort_keys=True)
-    ledger.write_text("\n".join(rows) + "\n", encoding="utf-8")
-    if hashlib.sha256(ledger.read_bytes()).hexdigest() == before:
-        raise SystemExit("REFUSED: the tamper recipe changed nothing")
+    recipe = _tamper_recipe(exhibit.run_id, row)
 
-    result = _run(window, [
-        "tools/verify_certificate.py", ".tamper/audit.json",
-        "--ledger", ".tamper/proofs/itgl_ledger.jsonl",
-    ])
+    runs = []
+    for _ in range(2):
+        runs.append(
+            subprocess.run(
+                recipe,
+                shell=True,
+                executable="/bin/bash",
+                cwd=window,
+                capture_output=True,
+                text=True,
+                env=dict(
+                    os.environ,
+                    PYTHONPATH=str(window / "src"),
+                    PYTHONDONTWRITEBYTECODE="1",
+                ),
+            )
+        )
     message = next(
-        (l.strip() for l in (result.stdout + result.stderr).splitlines() if "ERROR" in l), ""
+        (line.strip() for line in (runs[0].stdout + runs[0].stderr).splitlines()
+         if "ERROR" in line),
+        "",
     )
-    shutil.rmtree(scratch)
     return {
         "run_id": exhibit.run_id,
-        "row": index,
+        "row": row,
         "rows": len(rows),
-        "exit": result.returncode,
+        "exit": runs[0].returncode,
+        "exit_again": runs[1].returncode,
         "message": message,
+        "recipe": recipe,
     }
 
 
@@ -679,6 +707,12 @@ def generate(out: Path, tag: str) -> list:
     if tamper["exit"] != module.TAMPER_EXIT:
         problems.append(
             f"the tamper recipe claims exit {module.TAMPER_EXIT} and produced {tamper['exit']}"
+        )
+    if tamper["exit_again"] != module.TAMPER_EXIT:
+        problems.append(
+            f"the tamper recipe produced {tamper['exit']} and then "
+            f"{tamper['exit_again']} on a second run, so a reader who repeats it is "
+            "told the change was not detected"
         )
     if not tamper["message"]:
         problems.append("the tamper recipe produced no error naming what failed")
