@@ -290,6 +290,10 @@ def test_current_version_surfaces_match_runtime_authority():
         # that release carried under the retired identifiers, and where it holds
         # those release notes against being tidied. v_240, four times.
         "tests/test_pack_names_say_what_they_enforce.py": Counter({v_240: 4, authority: 1}),
+        # The shop window names one exhibit for the binding correction that
+        # the archive is divided by, which is a historical boundary and not
+        # a current-state claim.
+        "tools/shop_window.py": Counter({v_234: 1}),
         # Surfaces that named the release while it was in flight. They were
         # invisible to this scan until the bump made that version a
         # recognised token, so they all arrive at once here. The symbol for
