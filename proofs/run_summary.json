@@ -1,6 +1,6 @@
 {
-  "date": "2026-10-16T05:40:20Z",
-  "timestamp_utc": "2026-10-16T05:40:20Z",
+  "date": "2026-10-16T06:57:14Z",
+  "timestamp_utc": "2026-10-16T06:57:14Z",
   "proof_class": "FIREWALL_ONLY_AUDIT",
   "model": "grok-4.3",
   "provider": "xai",
@@ -41,6 +41,6 @@
     "benchmark_role": "gated",
     "gate_mode": "sir_gated"
   },
-  "run_id": "20261016-054020-047384-gh38856946764-cdb54f771132",
-  "ledger_path": "proofs/runs/20261016-054020-047384-gh38856946764-cdb54f771132/proofs/itgl_ledger.jsonl"
+  "run_id": "20261016-065714-843177-gh38864140301-c3439e93b53d",
+  "ledger_path": "proofs/runs/20261016-065714-843177-gh38864140301-c3439e93b53d/proofs/itgl_ledger.jsonl"
 }
