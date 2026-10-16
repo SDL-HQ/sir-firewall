@@ -88,8 +88,13 @@ LOCAL_MODULES = {
     "pair_validation",
     "certificate_results",
     "document_signing",
+    "publication_rules",
     "tools",
 }
+
+# Where a repository-local module can live. Used only by the test that holds
+# the list above to files that exist.
+LOCAL_MODULE_DIRECTORIES = ("tools", "src/sir_firewall", "tests", "")
 
 # Import name to distribution name, where they differ.
 IMPORT_TO_DISTRIBUTION = {"yaml": "PyYAML"}
@@ -167,6 +172,38 @@ def _unimported(declared: set, imported: dict) -> set:
         present.add(name.lower())
         present.add(IMPORT_TO_DISTRIBUTION.get(name, name).lower())
     return {name for name in declared if name not in present}
+
+
+def test_every_module_excused_as_local_is_really_in_this_repository():
+    """Guard the excuse list. A stale name here silently declares nothing.
+
+    `LOCAL_MODULES` removes a name from the comparison entirely, so an entry
+    for a module that has been renamed or deleted goes on excusing anything
+    imported under that name, including a real package from an index. Nothing
+    held the list until `publication_rules` was added to it on 17 October 2026,
+    which is when it became obvious that adding to it costs nothing and is
+    never noticed.
+
+    Mutation, 17 October 2026: add `requests` to `LOCAL_MODULES`, which is a
+    real distribution and not a file here. This test fails (1 failed) and
+    `test_every_declared_dependency_is_imported` does not, because that one
+    reads the same excused list.
+    """
+    missing = []
+    for name in sorted(LOCAL_MODULES):
+        if any(
+            (ROOT / directory / f"{name}.py").is_file()
+            for directory in LOCAL_MODULE_DIRECTORIES
+        ):
+            continue
+        if (ROOT / "src" / name).is_dir() or (ROOT / name).is_dir():
+            continue
+        missing.append(name)
+
+    assert not missing, (
+        "these are excused from the dependency comparison as repository-local "
+        f"and are not in the repository: {missing}"
+    )
 
 
 def test_every_imported_third_party_package_is_declared():

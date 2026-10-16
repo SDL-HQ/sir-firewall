@@ -141,6 +141,23 @@ changes the verdict.
   happened twice. A test asserts the rendered blocks against actual stdout.
   Keep it.
 
+- **Two trees are published from here, and the same rules scan both.**
+  `tools/publication_rules.py` holds the working-document, private-key,
+  credential and patent rules in one place.
+  `tests/test_no_working_documents_in_the_public_repository.py` runs them over
+  this repository's tracked files on every commit, and
+  `tools/generate_shop_window.py` runs them over the window it is about to
+  push. That second run is the only inspection the window's generated prose
+  ever gets: its `README.md`, `LIMITS.md`, `VERIFY.md` and `GENERATED` exist in
+  no file here, and one of them carries an error message captured live from a
+  subprocess. Do not give either surface its own copy of the rules; a second
+  copy of an identity is this project's recurring defect, and the window's copy
+  is the half nobody would be watching. Exhibits are scanned for secrets and
+  not for writing, because an audited prompt may contain any words at all.
+  Planting the patent phrase inline in a test is how the vault's guard caught
+  its own test suite: use `publication_rules.PATENT_SAMPLE` instead of
+  exempting another file.
+
 - **Absent input is never a pass.** CI steps that run under `always()` are
   reached even when the checkout or the audit itself failed. A missing counter
   file means the audit did not run, which is inconclusive, not zero leaks. The

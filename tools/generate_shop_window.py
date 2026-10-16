@@ -36,6 +36,8 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+import publication_rules
+
 ROOT = Path(__file__).resolve().parents[1]
 FIGURES = ROOT / "docs" / "archive-figures.json"
 PERIMETER = ROOT / "docs" / "evidence-perimeter.v6.md"
@@ -758,6 +760,38 @@ def _tamper(window: Path, exhibit) -> dict:
     }
 
 
+def _not_for_publication(out: Path) -> dict:
+    """Run the repository's publication rules over the tree about to be pushed.
+
+    The window is a second public repository and most of what it carries is
+    copied from files the vault's own guard already scans. Its prose is not:
+    README.md, LIMITS.md, VERIFY.md and GENERATED are written here, exist in no
+    file in the vault, and interpolate model names, paths, dates and an error
+    message captured live from a subprocess. Nothing inspected them until this.
+
+    Exhibits are treated exactly as the vault treats an archive, which is to
+    say the secret rules apply and the writing rules do not. An archive is
+    generated evidence, and the prompts inside an audited run may contain any
+    words at all, including the ones the patent rule refuses.
+    """
+    offences = {}
+    for path in sorted(out.rglob("*")):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(out).as_posix()
+        archive = relative.startswith("exhibits/")
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            text = None
+        found = publication_rules.offences(
+            relative, text, working_documents=not archive, patent=not archive
+        )
+        if found:
+            offences[relative] = found
+    return offences
+
+
 def generate(out: Path, tag: str) -> list:
     figures = json.loads(FIGURES.read_text(encoding="utf-8"))
     module = _shop_window()
@@ -874,6 +908,9 @@ def generate(out: Path, tag: str) -> list:
     )
     if compiled:
         problems.append(f"the window would ship compiled bytecode: {', '.join(compiled[:4])}")
+
+    for relative, reasons in _not_for_publication(out).items():
+        problems.append(f"{relative} must not be published: {'; '.join(reasons)}")
 
     if problems:
         raise SystemExit(
