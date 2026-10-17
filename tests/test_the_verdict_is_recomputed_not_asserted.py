@@ -485,3 +485,70 @@ def test_the_verdict_is_defined_once():
     source = (ROOT / "tools/generate_certificate.py").read_text(encoding="utf-8")
     assert "def _compute_audit_result(" not in source
     assert "from itgl import compute_audit_result" in source
+
+
+def _underivable_ledger(tmp):
+    """A valid chain version 2 ledger whose rows cannot be derived from.
+
+    `expected` is one of ITGL.DERIVABLE_ROW_FIELDS, so dropping it before the
+    rows are chained gives a ledger whose hashes are correct and whose counters
+    cannot be recomputed. That is the shape a foreign emitter produces.
+    """
+    rows = []
+    for index in (1, 2):
+        row = _row(index)
+        del row["expected"]
+        rows.append(row)
+    rows = _chain(rows)
+    assert ITGL.derive_counters(rows) is None, "fixture must be underivable"
+    path = tmp / "underivable_ledger.jsonl"
+    path.write_text(
+        "".join(json.dumps(r, separators=(",", ":"), ensure_ascii=False) + "\n" for r in rows),
+        encoding="utf-8",
+    )
+    return rows, path
+
+
+def test_a_claim_that_the_counters_were_checked_is_refused_when_the_rows_cannot_support_it(world):
+    """The flag is read by `verify_evidence.py` as if it were a check.
+
+    Found by an outside review on 18 October 2026 and confirmed by building the
+    document. `verify_evidence.py` establishes its "signed counters" property
+    from `counters_checked_against_ledger` alone, and this verifier printed a
+    NOTE and exited 0 when the rows could not be derived from. So a certificate
+    asserting the flag over an underivable chain version 2 ledger produced
+    "the signed counters were recomputed from the rows the certificate binds"
+    about a recomputation that never ran.
+
+    A value read from the document instead of derived from the rows, in the
+    tool the assurance kit tells a reader to prefer, in the one property the
+    three-valued discipline exists to protect. Breaking this restores it.
+    """
+    tmp, key, _ledger, base = world
+    rows, path = _underivable_ledger(tmp)
+    cert = dict(base)
+    cert["itgl_final_hash"] = f"sha256:{rows[-1]['ledger_hash']}"
+    cert["itgl_row_count"] = len(rows)
+    cert["counters_checked_against_ledger"] = True
+    out = _verify(tmp, _sign(cert, key), path, "claims_checked.json")
+    assert out.returncode == 11, (out.returncode, out.stderr)
+    assert "counters_checked_against_ledger=true" in out.stderr, out.stderr
+
+
+def test_the_same_ledger_is_not_checked_rather_than_refused_when_nothing_claims_it(world):
+    """The refusal above must not punish a certificate that claims nothing.
+
+    292 published certificates predate the field and report not checked. This
+    holds the fix narrow: the defect is the unsupported claim, not the absent
+    check, and widening it to every underivable ledger would turn a format
+    change into a binding failure, which is the trap exit 9 exists for.
+    """
+    tmp, key, _ledger, base = world
+    rows, path = _underivable_ledger(tmp)
+    cert = dict(base)
+    cert["itgl_final_hash"] = f"sha256:{rows[-1]['ledger_hash']}"
+    cert["itgl_row_count"] = len(rows)
+    cert["counters_checked_against_ledger"] = False
+    out = _verify(tmp, _sign(cert, key), path, "claims_nothing.json")
+    assert out.returncode == 0, (out.returncode, out.stderr)
+    assert "were not checked against it" in out.stderr, out.stderr

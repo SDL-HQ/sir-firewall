@@ -694,6 +694,30 @@ def main() -> int:
                 )
             return COUNTER_BINDING_FAILURE
         if disagreements is None:
+            # A certificate may say the check did not happen. What it may not
+            # do is claim the check happened over rows that cannot support it.
+            # `counters_checked_against_ledger` is a signed field, and
+            # `verify_evidence.py` establishes its "signed counters" property
+            # from that field alone, so a certificate asserting it over an
+            # underivable ledger produced "the signed counters were recomputed
+            # from the rows the certificate binds" about a recomputation that
+            # never ran. That is a value read from the document instead of
+            # derived from the rows: the defect class this verifier exists to
+            # refuse, in the one property the three-valued discipline protects.
+            #
+            # Version-conditional by construction rather than by a floor. The
+            # field arrived with evidence contract v4 at 2.4.0, so every
+            # certificate written before it returns None here and is untouched.
+            # Measured when this landed: 0 of the 77 established archives move.
+            if cert.get("counters_checked_against_ledger") is True:
+                print(
+                    "ERROR: counter binding verification failed: the certificate "
+                    "claims counters_checked_against_ledger=true, but the rows of "
+                    "the ledger it binds do not carry the fields the counters are "
+                    "recomputed from, so no such check can have happened.",
+                    file=sys.stderr,
+                )
+                return COUNTER_BINDING_FAILURE
             print(
                 "NOTE: this ledger predates the fields needed to recompute the "
                 "certificate's counters, so they were not checked against it.",
