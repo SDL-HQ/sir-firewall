@@ -1192,6 +1192,14 @@ def main() -> None:
             "provider_call_attempts": provider_call_attempts,
             "provider_call_successes": provider_call_successes,
             "provider_call_failures": provider_call_failures,
+            # From 17 October 2026 the ledger derives this too, so the count
+            # accumulated above is cross-checked against the rows like every
+            # other counter. It was the one input to the certificate's result
+            # that reached the summary unchecked, and the summary is the file
+            # that sits on disk even in a job where the audit never ran. The
+            # summary's own expression below is left as it is: the check here
+            # holds the two equal, so it is already the rows' answer.
+            "configurations_observed": len(configuration_hashes),
         }
         _disagreements = {
             key: {"counted": _claimed[key], "ledger": value}

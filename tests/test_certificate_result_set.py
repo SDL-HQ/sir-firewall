@@ -40,18 +40,26 @@ UNDECLARED = (
 
 
 def _generator_results() -> set[str]:
-    """Every string _compute_audit_result can return, read from its source."""
-    tree = ast.parse((TOOLS / "generate_certificate.py").read_text(encoding="utf-8"))
+    """Every string the verdict function can return, read from its source.
+
+    The function moved from tools/generate_certificate.py to tools/itgl.py on
+    17 October 2026, so that it ships in the minimal verification bundle and
+    the verifier can recompute `result` rather than take it on trust. This
+    reads its new home. A `StopIteration` here means it moved again: follow
+    it, rather than relaxing the test, because a declared verdict with no
+    source is exactly what this exists to catch.
+    """
+    tree = ast.parse((TOOLS / "itgl.py").read_text(encoding="utf-8"))
     function = next(
         node
         for node in ast.walk(tree)
-        if isinstance(node, ast.FunctionDef) and node.name == "_compute_audit_result"
+        if isinstance(node, ast.FunctionDef) and node.name == "compute_audit_result"
     )
     results = set()
     for node in ast.walk(function):
         if isinstance(node, ast.Return):
             assert isinstance(node.value, ast.Constant) and isinstance(node.value.value, str), (
-                "_compute_audit_result returns something other than a string literal, "
+                "compute_audit_result returns something other than a string literal, "
                 f"so its result set can no longer be read from source (line {node.lineno})"
             )
             results.add(node.value.value)

@@ -278,6 +278,11 @@ def test_current_version_surfaces_match_runtime_authority():
         "tests/test_certificate_ledger_binding.py": Counter({v_234: 4, v_240: 3}),
         "tests/test_contract_floor_is_not_self_asserted.py": Counter({v_240: 2, v_235: 5}),
         "tests/test_counters_derive_from_the_ledger.py": Counter({v_238: 1}),
+        # The same fixture shape as the line above, for the verdict rather than
+        # the counters, and deliberately not the current version: the contract
+        # floor comes from the bound ledger's chain version, so what a fixture
+        # certificate claims does not choose the rule that judges it.
+        "tests/test_the_verdict_is_recomputed_not_asserted.py": Counter({v_238: 1}),
         # Names the release whose version bump was validated by the branch
         # dispatch that had no missing-certificate net, and the merge after
         # which the first direct push from automation was declined.
