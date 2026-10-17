@@ -412,6 +412,13 @@ def main(ledger_path: Optional[str] = None, allow_detached_ledger: bool = False)
     provider_call_attempts = int(summary.get("provider_call_attempts") or 0)
     provider_call_successes = int(summary.get("provider_call_successes") or 0)
     provider_call_failures = int(summary.get("provider_call_failures") or 0)
+    # Baseline row version 2's third provider outcome. Read here because the
+    # verifier derives it from the rows and recomputes `result` with it: left
+    # unread, the producer computed the verdict with a default of 0 while the
+    # verifier used the real count, and a run whose every call the provider
+    # declined disagreed with its own ledger at exit 11. Measured before the
+    # fix: producer INCONCLUSIVE, ledger AUDIT PASSED, on an honest run.
+    provider_call_declined = int(summary.get("provider_call_declined") or 0)
     systemic_reset_domain_pack_load_failed_count = int(
         summary.get("systemic_reset_domain_pack_load_failed_count") or 0
     )
@@ -462,6 +469,7 @@ def main(ledger_path: Optional[str] = None, allow_detached_ledger: bool = False)
         provider_call_attempts=provider_call_attempts,
         provider_call_successes=provider_call_successes,
         provider_call_failures=provider_call_failures,
+        provider_call_declined=provider_call_declined,
         systemic_reset_count=systemic_reset_count,
         systemic_reset_domain_pack_load_failed_count=systemic_reset_domain_pack_load_failed_count,
         prompts_tested=prompts_tested,
@@ -563,6 +571,13 @@ def main(ledger_path: Optional[str] = None, allow_detached_ledger: bool = False)
         "provider_call_attempts": provider_call_attempts,
         "provider_call_successes": provider_call_successes,
         "provider_call_failures": provider_call_failures,
+        "provider_call_declined": provider_call_declined,
+        # What decided the count above, and the ceiling every call was made
+        # under. The evidence contract is open, so these are additive and need
+        # no new contract version; a v5 floor would only be needed to require
+        # them. Both are needed to read the count rather than to describe it.
+        "refusal_detection": summary.get("refusal_detection"),
+        "provider_output_limit": summary.get("provider_output_limit"),
     }
     if denied_by_system_failure is not None:
         _counter_claims["legitimate_requests_denied_by_system_failure"] = (
@@ -670,6 +685,13 @@ def main(ledger_path: Optional[str] = None, allow_detached_ledger: bool = False)
         "provider_call_attempts": provider_call_attempts,
         "provider_call_successes": provider_call_successes,
         "provider_call_failures": provider_call_failures,
+        "provider_call_declined": provider_call_declined,
+        # What decided the count above, and the ceiling every call was made
+        # under. The evidence contract is open, so these are additive and need
+        # no new contract version; a v5 floor would only be needed to require
+        # them. Both are needed to read the count rather than to describe it.
+        "refusal_detection": summary.get("refusal_detection"),
+        "provider_output_limit": summary.get("provider_output_limit"),
         "model_calls_made": provider_call_attempts,
         "flags": policy_flags,
         "enforced_policy_matches_signed_policy": policy_matches,

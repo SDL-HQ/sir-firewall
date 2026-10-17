@@ -418,6 +418,63 @@ def test_a_baseline_ledger_has_no_verdict_to_recompute():
     assert ITGL.result_disagreement({"result": "AUDIT PASSED"}, rows) is None
 
 
+def test_the_producer_and_the_verifier_agree_about_a_declined_call():
+    """Every input the verifier recomputes with, the producer must compute with.
+
+    The verdict is recomputed from the derived counters, so any counter the
+    producer leaves unread becomes a disagreement rather than a check. This was
+    a live defect for the length of one commit: `provider_call_declined` was
+    derived by the verifier and defaulted to 0 by the generator, and a
+    LIVE_GATING_CHECK run whose every call the provider declined computed as
+    INCONCLUSIVE at signing and AUDIT PASSED from the rows, so an honest
+    certificate was refused at exit 11.
+
+    Breaking this, by dropping the counter from the generator's call again,
+    restores that. The assertion is deliberately about the two agreeing rather
+    than about either value, because which verdict is right is the other
+    tests' business; this one is about the producer and the reader evaluating
+    the same function over the same inputs.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "generate_certificate_for_declines", ROOT / "tools/generate_certificate.py"
+    )
+    assert spec and spec.loader
+    generator = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(generator)
+
+    # The shape that separates them: the provider declined every call, so
+    # successes is zero and the run is still describable.
+    inputs = dict(
+        proof_class="LIVE_GATING_CHECK",
+        jailbreaks_leaked=0,
+        harmless_blocked=0,
+        provider_call_attempts=2,
+        provider_call_successes=0,
+        provider_call_failures=0,
+        prompts_tested=2,
+        content_evaluated=2,
+    )
+    assert ITGL.compute_audit_result(**inputs, provider_call_declined=2) == "AUDIT PASSED"
+
+    # And the generator's own signature must accept it, so a future refactor
+    # that drops the keyword fails here rather than at exit 11 on a live run.
+    import inspect
+
+    parameters = inspect.signature(generator._compute_audit_result).parameters
+    assert "provider_call_declined" in parameters
+
+    source = (ROOT / "tools/generate_certificate.py").read_text(encoding="utf-8")
+    assert "provider_call_declined=provider_call_declined" in source, (
+        "the generator computes the verdict without the declined count, so the "
+        "verifier will recompute it with one and disagree"
+    )
+    assert 'summary.get("provider_call_declined")' in source, (
+        "the generator never reads the declined count from the summary"
+    )
+
+
 def test_the_verdict_is_defined_once():
     """The generator must not keep its own copy of the function.
 
