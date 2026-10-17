@@ -554,9 +554,25 @@ def derive_counters(entries: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         # were not, so it is this and not content_evaluated, which counts the
         # expected-block prompts too. Until 8 October 2026 the published rate
         # divided by content_evaluated, understating it by between 2.1x and 3.0x
-        # depending on the suite's composition. It was latent rather than wrong
-        # in practice, because no suite has ever produced a harmless block, and
-        # it reached no published certificate.
+        # depending on the prompt set's composition.
+        #
+        # It was latent rather than wrong in practice. The reason recorded here
+        # until 17 October 2026 was false: it said no suite had ever produced a
+        # harmless block. Two published certificates do, both from 18 April
+        # 2026, with 24 and 23 harmless blocks over 50 prompts and no leaks
+        # each. That is the over-blocking direction rather than the
+        # under-blocking one, and it is the reason a failure label naming only
+        # a breach would describe 75 of the 77 failed runs and misdescribe two.
+        #
+        # What actually makes the old denominator latent was measurable all
+        # along and is simpler: content_false_positive_rate is null on every
+        # published certificate, so the wrong divisor never produced a
+        # published figure on any run, with or without harmless blocks. No
+        # count is given here, because a figure in a comment rots between
+        # commits; tests/test_the_false_positive_rate_was_never_published.py
+        # holds the claim against the archive and says so when it stops being
+        # true. A true conclusion resting on a false premise is still a defect,
+        # and this one shipped in the module a third party gets.
         #
         # Reset rows are excluded, as they are from harmless_blocked: an
         # allow-prompt that never reached a content decision is counted in
