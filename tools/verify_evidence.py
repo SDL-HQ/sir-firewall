@@ -513,6 +513,19 @@ def main() -> int:
                 "and a repository ignore rule meant those two were never committed, "
                 "so check docs/archive-errata.md before concluding the download is bad"
             )
+        if state == "failed" and "file hash mismatch" in output:
+            # Deliberately does not say the failure is benign. A changed file is
+            # a changed file, and the receipt's job is to report it. Three
+            # archives carry a redaction recorded in the errata; anything else
+            # is either E1 or is new, and a reader has to look to tell which.
+            detail += (
+                "; a file named by the signed manifest has different bytes than when it "
+                "was signed, which is what this check is for. Three April 2026 archives "
+                "carry a redaction of provider account identifiers recorded as E8 in "
+                "docs/archive-errata.md, whose receipts fail for that reason and whose "
+                "certificates and ledgers verify unchanged. Any other archive failing "
+                "this way is not covered there"
+            )
         report.add(
             "archive custody", state, detail, evidence=output.splitlines()[-1] if output else None
         )
