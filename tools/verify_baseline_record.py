@@ -38,6 +38,8 @@ Exit codes:
   3  payload_hash does not match the signed payload
   4  the signature is not valid base64
   5  signature verification failed
+  6  the signature check could not be performed, so the signature is neither
+     established nor refuted
   7  the bound ledger does not support the record
   10 the signing key is revoked for this record
 """
@@ -78,6 +80,12 @@ NOT_A_BASELINE_RECORD = 2
 PAYLOAD_HASH_MISMATCH = 3
 SIGNATURE_NOT_BASE64 = 4
 SIGNATURE_FAILED = 5
+#: The check itself broke. Mirrors verify_certificate.py's 6, which already
+#: draws this line, rather than inventing a second vocabulary for the same
+#: fact. This file already printed a different message for the two cases
+#: and then returned SIGNATURE_FAILED from both, so a person reading stderr
+#: could tell them apart and nothing else could.
+SIGNATURE_CHECK_RAISED = 6
 LEDGER_BINDING_FAILURE = 7
 REVOCATION_FAILURE = 10
 
@@ -446,8 +454,14 @@ def main() -> int:
         print(f"ERROR: signature verification failed (InvalidSignature) against {key_source}", file=sys.stderr)
         return SIGNATURE_FAILED
     except Exception as exc:
-        print(f"ERROR: signature verification failed ({exc})", file=sys.stderr)
-        return SIGNATURE_FAILED
+        # Not SIGNATURE_FAILED. A malformed registry entry, an unsupported key
+        # algorithm, or a programming error here all land in this branch, and
+        # none of them is evidence that the record's signature is bad.
+        print(
+            f"ERROR: signature verification could not be performed ({exc})",
+            file=sys.stderr,
+        )
+        return SIGNATURE_CHECK_RAISED
 
     # 4. The bound ledger.
     if args.no_ledger:
