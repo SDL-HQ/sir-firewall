@@ -141,6 +141,23 @@ changes the verdict.
   happened twice. A test asserts the rendered blocks against actual stdout.
   Keep it.
 
+- **What the verifier prints is published, not described.**
+  `docs/verification-transcripts.json` holds the exact stdout, exit code and
+  command for `verify_evidence.py` over both halves of the newest six
+  valid-complete pairs, captured by running it.
+  `tools/publish_verification_transcripts.py` writes it, `--check` re-captures
+  and refuses on drift, and both publishing steps in `audit-and-sign.yml`
+  regenerate it in the same commit as the archive. A consumer renders the
+  stored text verbatim and never rebuilds a sentence from certificate fields.
+  The website did rebuild one, in JavaScript, from `signing_key_id`,
+  `itgl_final_hash`, `itgl_row_count` and `prompts_tested`, and published it as
+  what the command prints; it matched because a person kept it in step. Six
+  pairs is not a round number: the website renders the newest six and pins one
+  of them, and `tests/test_verification_transcripts.py` asserts that coupling
+  so a run a public surface could show cannot be a run with no transcript.
+  Nothing is written into a published run directory, because `manifest.json` is
+  signed over what that directory holds.
+
 - **Two trees are published from here, and the same rules scan both.**
   `tools/publication_rules.py` holds the working-document, private-key,
   credential and patent rules in one place.

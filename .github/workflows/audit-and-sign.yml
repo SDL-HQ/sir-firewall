@@ -754,9 +754,22 @@ jobs:
             exit 1
           fi
 
+          # The published verification transcripts are captured output, not a
+          # description of it. A new pair moves the set of runs they cover, so
+          # they regenerate here for the same reason the figures do: the
+          # archives and everything that quotes them land in one commit.
+          # tests/test_verification_transcripts.py re-runs the verdict tool and
+          # compares, so a pair that landed without this would turn main red.
+          if ! python tools/publish_verification_transcripts.py; then
+            echo "ERROR: the published verification transcripts could not be regenerated,"
+            echo "ERROR: so a consumer would render what the verdict tool used to print."
+            exit 1
+          fi
+
           git add proofs/runs/ docs/runs/ docs/latest-run.json docs/monitor-summary.json
           git add docs/archive-errata.md docs/claims-register.md README.md
           git add docs/archive-figures.json
+          git add docs/verification-transcripts.json
 
           if [ "${AUDIT_JSON:-}" = "proofs/latest-audit.json" ]; then
             git add proofs/latest-audit.json proofs/latest-audit.html || true
@@ -1490,9 +1503,22 @@ jobs:
             exit 1
           fi
 
+          # The published verification transcripts are captured output, not a
+          # description of it. A new pair moves the set of runs they cover, so
+          # they regenerate here for the same reason the figures do: the
+          # archives and everything that quotes them land in one commit.
+          # tests/test_verification_transcripts.py re-runs the verdict tool and
+          # compares, so a pair that landed without this would turn main red.
+          if ! python tools/publish_verification_transcripts.py; then
+            echo "ERROR: the published verification transcripts could not be regenerated,"
+            echo "ERROR: so a consumer would render what the verdict tool used to print."
+            exit 1
+          fi
+
           git add proofs/runs/ docs/runs/ docs/monitor-summary.json docs/latest-run.json
           git add docs/archive-errata.md docs/claims-register.md README.md
           git add docs/archive-figures.json
+          git add docs/verification-transcripts.json
           if [ "${BENCHMARK_GATED_PASS:-false}" = "true" ]; then
             git add proofs/latest-audit.json proofs/latest-audit.html
             git add docs/latest-audit.json docs/latest-audit.html

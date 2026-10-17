@@ -1,0 +1,97 @@
+{
+  "exit_codes": {
+    "0": "ESTABLISHED",
+    "1": "NOT ESTABLISHED",
+    "2": "FAILED",
+    "3": "UNREADABLE"
+  },
+  "generated_at_utc": "2026-10-17T01:31:03Z",
+  "pairs_covered": 6,
+  "transcripts": {
+    "20260920-092345-000000-gh35502041779-6b9fd67c75c0": {
+      "command": "python3 tools/verify_evidence.py docs/runs/20260920-092345-000000-gh35502041779-6b9fd67c75c0",
+      "exit_code": 1,
+      "stderr": "",
+      "stdout": "docs/runs/20260920-092345-000000-gh35502041779-6b9fd67c75c0\n\n  OK      signing trust      signing_key_id='default' resolved through key_registry.v1.json, with its status and revocation rules applied\n  UNKNOWN certificate        the certificate-to-ledger binding was not fully checked, so it is not established; the signature and payload hash were still checked\n  UNKNOWN signed counters    this ledger predates the fields needed to recompute the signed counters, so they were not checked against it; this is not agreement\n  OK      archive custody    every file named by the signed manifest is present and unchanged\n  OK      evidence contract  the certificate satisfies its applicable evidence contract\n\nVERDICT: NOT ESTABLISHED\nNothing failed. One or more properties could not be established, and an unestablished property is not a passing one.\n",
+      "verdict": "NOT ESTABLISHED"
+    },
+    "20260920-092456-000000-gh35502041779-ecfffeda49c8": {
+      "command": "python3 tools/verify_evidence.py docs/runs/20260920-092456-000000-gh35502041779-ecfffeda49c8",
+      "exit_code": 1,
+      "stderr": "",
+      "stdout": "docs/runs/20260920-092456-000000-gh35502041779-ecfffeda49c8\n\n  OK      signing trust      signing_key_id='default' resolved through key_registry.v1.json, with its status and revocation rules applied\n  UNKNOWN certificate        the certificate-to-ledger binding was not fully checked, so it is not established; the signature and payload hash were still checked\n  UNKNOWN signed counters    this ledger predates the fields needed to recompute the signed counters, so they were not checked against it; this is not agreement\n  OK      archive custody    every file named by the signed manifest is present and unchanged\n  OK      evidence contract  the certificate satisfies its applicable evidence contract\n\nVERDICT: NOT ESTABLISHED\nNothing failed. One or more properties could not be established, and an unestablished property is not a passing one.\n",
+      "verdict": "NOT ESTABLISHED"
+    },
+    "20260921-120147-000000-gh35596886552-22386105e0e7": {
+      "command": "python3 tools/verify_evidence.py docs/runs/20260921-120147-000000-gh35596886552-22386105e0e7",
+      "exit_code": 1,
+      "stderr": "",
+      "stdout": "docs/runs/20260921-120147-000000-gh35596886552-22386105e0e7\n\n  OK      signing trust      signing_key_id='default' resolved through key_registry.v1.json, with its status and revocation rules applied\n  UNKNOWN certificate        the certificate-to-ledger binding was not fully checked, so it is not established; the signature and payload hash were still checked\n  UNKNOWN signed counters    this ledger predates the fields needed to recompute the signed counters, so they were not checked against it; this is not agreement\n  OK      archive custody    every file named by the signed manifest is present and unchanged\n  OK      evidence contract  the certificate satisfies its applicable evidence contract\n\nVERDICT: NOT ESTABLISHED\nNothing failed. One or more properties could not be established, and an unestablished property is not a passing one.\n",
+      "verdict": "NOT ESTABLISHED"
+    },
+    "20260921-120318-000000-gh35596886552-87e23dfcf536": {
+      "command": "python3 tools/verify_evidence.py docs/runs/20260921-120318-000000-gh35596886552-87e23dfcf536",
+      "exit_code": 1,
+      "stderr": "",
+      "stdout": "docs/runs/20260921-120318-000000-gh35596886552-87e23dfcf536\n\n  OK      signing trust      signing_key_id='default' resolved through key_registry.v1.json, with its status and revocation rules applied\n  UNKNOWN certificate        the certificate-to-ledger binding was not fully checked, so it is not established; the signature and payload hash were still checked\n  UNKNOWN signed counters    this ledger predates the fields needed to recompute the signed counters, so they were not checked against it; this is not agreement\n  OK      archive custody    every file named by the signed manifest is present and unchanged\n  OK      evidence contract  the certificate satisfies its applicable evidence contract\n\nVERDICT: NOT ESTABLISHED\nNothing failed. One or more properties could not be established, and an unestablished property is not a passing one.\n",
+      "verdict": "NOT ESTABLISHED"
+    },
+    "20260921-134707-359329-gh35607761858-a8a5ade8f6ed": {
+      "command": "python3 tools/verify_evidence.py docs/runs/20260921-134707-359329-gh35607761858-a8a5ade8f6ed",
+      "exit_code": 1,
+      "stderr": "",
+      "stdout": "docs/runs/20260921-134707-359329-gh35607761858-a8a5ade8f6ed\n\n  OK      signing trust      signing_key_id='default' resolved through key_registry.v1.json, with its status and revocation rules applied\n  OK      certificate        signature, payload hash and ledger binding all verify\n  UNKNOWN signed counters    this ledger predates the fields needed to recompute the signed counters, so they were not checked against it; this is not agreement\n  OK      archive custody    every file named by the signed manifest is present and unchanged\n  OK      evidence contract  the certificate satisfies its applicable evidence contract\n\nVERDICT: NOT ESTABLISHED\nNothing failed. One or more properties could not be established, and an unestablished property is not a passing one.\n",
+      "verdict": "NOT ESTABLISHED"
+    },
+    "20260921-135018-029319-gh35607761858-f3dd66376a01": {
+      "command": "python3 tools/verify_evidence.py docs/runs/20260921-135018-029319-gh35607761858-f3dd66376a01",
+      "exit_code": 1,
+      "stderr": "",
+      "stdout": "docs/runs/20260921-135018-029319-gh35607761858-f3dd66376a01\n\n  OK      signing trust      signing_key_id='default' resolved through key_registry.v1.json, with its status and revocation rules applied\n  OK      certificate        signature, payload hash and ledger binding all verify\n  UNKNOWN signed counters    this ledger predates the fields needed to recompute the signed counters, so they were not checked against it; this is not agreement\n  OK      archive custody    every file named by the signed manifest is present and unchanged\n  OK      evidence contract  the certificate satisfies its applicable evidence contract\n\nVERDICT: NOT ESTABLISHED\nNothing failed. One or more properties could not be established, and an unestablished property is not a passing one.\n",
+      "verdict": "NOT ESTABLISHED"
+    },
+    "20260923-120942-363864-gh35858690232-bae75d4d16c1": {
+      "command": "python3 tools/verify_evidence.py docs/runs/20260923-120942-363864-gh35858690232-bae75d4d16c1",
+      "exit_code": 1,
+      "stderr": "",
+      "stdout": "docs/runs/20260923-120942-363864-gh35858690232-bae75d4d16c1\n\n  OK      signing trust      signing_key_id='default' resolved through key_registry.v1.json, with its status and revocation rules applied\n  OK      certificate        signature, payload hash and ledger binding all verify\n  UNKNOWN signed counters    this ledger predates the fields needed to recompute the signed counters, so they were not checked against it; this is not agreement\n  OK      archive custody    every file named by the signed manifest is present and unchanged\n  OK      evidence contract  the certificate satisfies its applicable evidence contract\n\nVERDICT: NOT ESTABLISHED\nNothing failed. One or more properties could not be established, and an unestablished property is not a passing one.\n",
+      "verdict": "NOT ESTABLISHED"
+    },
+    "20260923-121300-882023-gh35858690232-ffb741962ac6": {
+      "command": "python3 tools/verify_evidence.py docs/runs/20260923-121300-882023-gh35858690232-ffb741962ac6",
+      "exit_code": 1,
+      "stderr": "",
+      "stdout": "docs/runs/20260923-121300-882023-gh35858690232-ffb741962ac6\n\n  OK      signing trust      signing_key_id='default' resolved through key_registry.v1.json, with its status and revocation rules applied\n  OK      certificate        signature, payload hash and ledger binding all verify\n  UNKNOWN signed counters    this ledger predates the fields needed to recompute the signed counters, so they were not checked against it; this is not agreement\n  OK      archive custody    every file named by the signed manifest is present and unchanged\n  OK      evidence contract  the certificate satisfies its applicable evidence contract\n\nVERDICT: NOT ESTABLISHED\nNothing failed. One or more properties could not be established, and an unestablished property is not a passing one.\n",
+      "verdict": "NOT ESTABLISHED"
+    },
+    "20261015-092557-107124-gh38712792514-670d9d4222c2": {
+      "command": "python3 tools/verify_evidence.py docs/runs/20261015-092557-107124-gh38712792514-670d9d4222c2",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "docs/runs/20261015-092557-107124-gh38712792514-670d9d4222c2\n\n  OK      baseline record  signature, ledger binding and recomputed counters all verify\n  OK      signing trust    the signature verified against a key the registry honours for this record\n  OK      archive custody  every file named by the signed manifest is present and unchanged\n\nVERDICT: ESTABLISHED\n",
+      "verdict": "ESTABLISHED"
+    },
+    "20261015-092939-820950-gh38712792514-308a8a0f91eb": {
+      "command": "python3 tools/verify_evidence.py docs/runs/20261015-092939-820950-gh38712792514-308a8a0f91eb",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "docs/runs/20261015-092939-820950-gh38712792514-308a8a0f91eb\n\n  OK      signing trust      signing_key_id='sdl-2026-10-06' resolved through key_registry.v1.json, with its status and revocation rules applied\n  OK      certificate        signature, payload hash and ledger binding all verify\n  OK      signed counters    the signed counters were recomputed from the rows the certificate binds\n  OK      archive custody    every file named by the signed manifest is present and unchanged\n  OK      evidence contract  the certificate satisfies its applicable evidence contract\n\nVERDICT: ESTABLISHED\n",
+      "verdict": "ESTABLISHED"
+    },
+    "20261015-100721-727031-gh38717892223-6eaf76503ea6": {
+      "command": "python3 tools/verify_evidence.py docs/runs/20261015-100721-727031-gh38717892223-6eaf76503ea6",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "docs/runs/20261015-100721-727031-gh38717892223-6eaf76503ea6\n\n  OK      baseline record  signature, ledger binding and recomputed counters all verify\n  OK      signing trust    the signature verified against a key the registry honours for this record\n  OK      archive custody  every file named by the signed manifest is present and unchanged\n\nVERDICT: ESTABLISHED\n",
+      "verdict": "ESTABLISHED"
+    },
+    "20261015-102454-361045-gh38717892223-97797a56cc0d": {
+      "command": "python3 tools/verify_evidence.py docs/runs/20261015-102454-361045-gh38717892223-97797a56cc0d",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "docs/runs/20261015-102454-361045-gh38717892223-97797a56cc0d\n\n  OK      signing trust      signing_key_id='sdl-2026-10-06' resolved through key_registry.v1.json, with its status and revocation rules applied\n  OK      certificate        signature, payload hash and ledger binding all verify\n  OK      signed counters    the signed counters were recomputed from the rows the certificate binds\n  OK      archive custody    every file named by the signed manifest is present and unchanged\n  OK      evidence contract  the certificate satisfies its applicable evidence contract\n\nVERDICT: ESTABLISHED\n",
+      "verdict": "ESTABLISHED"
+    }
+  },
+  "verifier": "tools/verify_evidence.py"
+}
