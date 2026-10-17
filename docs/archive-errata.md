@@ -34,16 +34,16 @@ output.
 ## Current figures
 
 <!-- BEGIN GENERATED ARCHIVE FIGURES: measured-totals -->
-Measured across all 368 published run archives under `proofs/runs/`:
+Measured across all 369 published run archives under `proofs/runs/`:
 
 | Check | Result | Count |
 |---|---|---|
-| `verify_certificate.py` | verified (exit 0) | 98 |
+| `verify_certificate.py` | verified (exit 0) | 99 |
 | `verify_certificate.py` | verified; no ledger in the archive, so no binding was checked (exit 0) | 39 |
 | `verify_certificate.py` | SIGNATURE VERIFICATION FAILED (exit 5) | 6 |
 | `verify_certificate.py` | ledger binding not established (no row count, or predates the 2.3.4 correction) (exit 9) | 223 |
 | `verify_certificate.py` | no certificate in archive; this archive holds a baseline record (exit none) | 2 |
-| `verify_archive_receipt.py` | verified (exit 0) | 221 |
+| `verify_archive_receipt.py` | verified (exit 0) | 222 |
 | `verify_archive_receipt.py` | archive incomplete or signature failed (exit 2) | 108 |
 | `verify_archive_receipt.py` | no archive receipt (legacy archive) (exit 3) | 39 |
 <!-- END GENERATED ARCHIVE FIGURES: measured-totals -->
@@ -220,7 +220,7 @@ certificate does not identify its ledger.
 <!-- BEGIN GENERATED ARCHIVE FIGURES: e4-above-the-correction -->
 **Why this is exit 9 and not exit 7.** A binding that was never made is not a
 binding that disagrees. Every certificate from SIR 2.3.4 onward matches the
-ledger shipped with it, 98 of 98, so a mismatch at or above the correction is a
+ledger shipped with it, 99 of 99, so a mismatch at or above the correction is a
 real failure and is still reported as one. Below it, reporting a documented and
 disclosed format boundary as a tampering failure would describe 105 published
 archives as broken.
