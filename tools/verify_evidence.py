@@ -71,7 +71,15 @@ CERTIFICATE_CODES = {
     3: ("failed", "payload hash does not match the signed payload"),
     4: ("failed", "the signature is not valid base64"),
     5: ("failed", "signature verification failed"),
-    6: ("failed", "signature verification raised"),
+    # Unknown, not failed. Exit 6 means the check itself broke, so the
+    # signature is neither established nor refuted, and this tool's own rule
+    # is that a property nobody could check is not a property that holds.
+    # Classifying it as failed said our evidence was broken when it was our
+    # tool or our key file that was broken, which is the one defect class here
+    # that reads as dishonesty rather than as a limit. It is the same
+    # distinction this table already draws between 7 and 9.
+    6: ("unknown", "the signature check could not be performed, so the signature is "
+                   "neither established nor refuted"),
     7: ("failed", "certificate-to-ledger binding failed"),
     9: ("unknown", "the certificate-to-ledger binding was not fully checked, so it is "
                    "not established; the signature and payload hash were still checked"),
@@ -84,6 +92,10 @@ CERTIFICATE_CODES = {
 # verify_certificate.py codes reached only after the signature verified. Signing
 # trust is read from this rather than from the overall result, because a missing
 # ledger says nothing about the key and must not be reported as though it did.
+#: Codes that mean the signature itself was checked and verified, whatever
+#: else went wrong afterwards. 6 is deliberately absent: under 6 the check did
+#: not complete, so the signature was not verified and claiming otherwise is
+#: the error this module was corrected for.
 SIGNATURE_VERIFIED_CODES = frozenset({0, 2, 7, 9, 11})
 
 CONTRACT_CODES = {
@@ -101,6 +113,10 @@ RECEIPT_CODES = {
     # without one at all. Nothing was checked, so nothing failed.
     3: ("unknown", "the manifest or receipt could not be read, or this archive was "
                    "published without one"),
+    # Added 17 October 2026 with the receipt verifier's own exit 6. Unknown
+    # for the same reason as the certificate's 6: the check did not complete.
+    6: ("unknown", "the receipt's signature check could not be performed, so the "
+                   "receipt is neither established nor refuted"),
 }
 
 
@@ -224,6 +240,11 @@ BASELINE_RECORD_CODES = {
     3: ("failed", "payload hash does not match the signed payload"),
     4: ("failed", "the signature is not valid base64"),
     5: ("failed", "signature verification failed"),
+    # Unknown, matching the certificate table's 6 and the record verifier's
+    # own new code. The check did not complete, so the signature is neither
+    # established nor refuted.
+    6: ("unknown", "the signature check could not be performed, so the signature is "
+                   "neither established nor refuted"),
     7: ("failed", "the bound ledger does not support the record"),
     10: ("failed", "the signing key is revoked for this record"),
 }

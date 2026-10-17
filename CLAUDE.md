@@ -94,8 +94,36 @@ minimal bundle needs no spec file;
 | 11 | counter binding failure: the signed counters are not supported by the bound ledger |
 | 12 | the document is not a SIR audit certificate, and nothing about it was verified, including its signature |
 
+`tools/verify_baseline_record.py`: 0 verified, 2 not a baseline record, 3
+payload hash mismatch, 4 malformed base64, 5 signature does not verify, 6 the
+signature check could not be performed, 7 the bound ledger does not support
+the record, 10 the signing key is revoked.
+
+`tools/verify_archive_receipt.py`: 0 verified, 2 a named file is missing or
+changed or the receipt signature does not verify, 3 the manifest or receipt
+could not be read, 6 the signature check could not be performed.
+
 `tools/validate_certificate_contract.py`: 0 pass, 2 contract violation, 3 load
 error, 8 below the applicability floor.
+
+**5 and 6 are the same distinction as 7 and 9**, applied to the signature
+rather than the binding. 5 means the signature was checked and the payload
+does not bear it, which is a statement about the document. 6 means the check
+did not complete, which is a statement about us: a malformed entry in our own
+registry, an unsupported algorithm, a library that is absent, or a programming
+error in the verifier. Collapsing them reports our defect as the document's,
+and that is the only defect class here that reads as dishonesty rather than as
+a limit. `verify_evidence.py` therefore classifies 6 as **unknown**, not
+failed, from every tool that returns it.
+
+Until 17 October 2026 only `verify_certificate.py` drew that line.
+`verify_baseline_record.py` and `verify_archive_receipt.py` each printed a
+distinct message for a check that raised and then returned the code for a
+signature that does not verify, so the distinction reached a person reading
+stderr and nothing else. `verify_policy.py` carried a comment saying every
+cryptography exception is a failure, which is true of the outcome and wrong
+about the fact. Inside the gate, `_verify_signature` returned a bare false for
+all of it.
 
 `tools/verify_evidence.py`, the consolidated command and the documented
 evaluator procedure: 0 established, 1 **not established**, 2 failed, 3 the run
@@ -140,6 +168,18 @@ changes the verdict.
   website bundle. Changing the wording without updating all of them has
   happened twice. A test asserts the rendered blocks against actual stdout.
   Keep it.
+
+- **A check that could not run is not a bad signature.** `_verify_signature`
+  in `core.py` returns one of the `SIGNATURE_*` reasons rather than a bool,
+  and the `crypto_signature` ledger row records which, plus
+  `signature_established` so a consumer does not keep its own list of which
+  reasons mean what. `invalid` is the only one that is a statement about the
+  request; `crypto_unavailable`, `signature_absent`, `key_unknown` and
+  `check_raised` are statements about us. The ITGL row's `output` is a
+  free-form dict covered by the row hash, so adding a field needs no schema
+  or version bump and old ledgers verify against their own hashes unchanged.
+  Enforcement is deliberately untouched: a broken check still blocks under
+  `CRYPTO_ENFORCED`, because fail-closed was never the defect. The record was.
 
 - **What the verifier prints is published, not described.**
   `docs/verification-transcripts.json` holds the exact stdout, exit code and

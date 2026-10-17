@@ -87,13 +87,27 @@ PUBLIC_KEYS: Dict[str, str] = {
 
 GENESIS_HASH = "0" * 64
 
+class _CryptoUnavailable(Exception):
+    """Stands in for `InvalidSignature` when the library is not installed.
+
+    `_verify_signature` returns before it can raise anything once
+    `_CRYPTO_AVAILABLE` is false, so this is never caught. It exists so the
+    name in that function's `except` clause always resolves: a bare
+    `except InvalidSignature` would be a `NameError` the moment anything
+    reached it, which is the shape of defect this module is being corrected
+    for in the first place.
+    """
+
+
 try:
+    from cryptography.exceptions import InvalidSignature
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.asymmetric import padding
     from cryptography.hazmat.primitives.serialization import load_pem_public_key
 
     _CRYPTO_AVAILABLE = True
 except Exception:  # pragma: no cover
+    InvalidSignature = _CryptoUnavailable
     _CRYPTO_AVAILABLE = False
 
 
@@ -933,12 +947,58 @@ def _contains_surrogate(value: str) -> bool:
     return any(0xD800 <= ord(char) <= 0xDFFF for char in value)
 
 
-def _verify_signature(payload: str, signature_b64: str, key_id: str = "default") -> bool:
-    if not _CRYPTO_AVAILABLE or not signature_b64:
-        return False
+#: What a signature check concluded. Only `verified` passes; the rest are the
+#: reasons it did not, and they are not the same kind of fact.
+#:
+#: `invalid` is a statement about the request: the signature was checked and
+#: the payload does not bear it. Every other value is a statement about us,
+#: and recording any of them as `invalid` is the defect this vocabulary
+#: exists to remove. A malformed PEM in our own registry, a key the registry
+#: does not carry, a library we did not install, or a programming error in
+#: the function below would all arrive at the gate as "the signature does not
+#: verify", and the ledger would say so. A reader cannot tell those apart,
+#: and the one they would reasonably assume is the one that blames the
+#: request.
+SIGNATURE_VERIFIED = "verified"
+SIGNATURE_INVALID = "invalid"
+SIGNATURE_CRYPTO_UNAVAILABLE = "crypto_unavailable"
+SIGNATURE_ABSENT = "signature_absent"
+SIGNATURE_KEY_UNKNOWN = "key_unknown"
+SIGNATURE_CHECK_RAISED = "check_raised"
+
+#: The reasons that mean the signature's validity is unknown rather than
+#: refuted. `tools/verify_certificate.py` already draws this line, with exit
+#: 5 for a signature that does not verify and exit 6 for a check that raised;
+#: this is the same line inside the gate.
+SIGNATURE_NOT_ESTABLISHED = frozenset(
+    {
+        SIGNATURE_CRYPTO_UNAVAILABLE,
+        SIGNATURE_ABSENT,
+        SIGNATURE_KEY_UNKNOWN,
+        SIGNATURE_CHECK_RAISED,
+    }
+)
+
+
+def _verify_signature(payload: str, signature_b64: str, key_id: str = "default") -> str:
+    """Why the signature check reached the answer it did.
+
+    Returns one of the `SIGNATURE_*` reasons. The caller decides what to do
+    about it; `signature_verified()` is the predicate for "this passed".
+
+    Note what is deliberately not collapsed. `load_pem_public_key` raising on
+    a malformed registry entry, `b64decode` raising on a malformed signature,
+    an unsupported key algorithm, and an outright bug here all land in
+    `check_raised`, because in every one of those cases we do not know whether
+    the signature is good. That is a different claim from knowing it is bad.
+    """
+    if not _CRYPTO_AVAILABLE:
+        return SIGNATURE_CRYPTO_UNAVAILABLE
+    if not signature_b64:
+        return SIGNATURE_ABSENT
     pem = PUBLIC_KEYS.get(key_id)
     if not pem:
-        return False
+        return SIGNATURE_KEY_UNKNOWN
     try:
         public_key = load_pem_public_key(pem.encode("ascii"))
         signature = base64.b64decode(signature_b64)
@@ -948,9 +1008,16 @@ def _verify_signature(payload: str, signature_b64: str, key_id: str = "default")
             padding.PKCS1v15(),
             hashes.SHA256(),
         )
-        return True
+    except InvalidSignature:
+        return SIGNATURE_INVALID
     except Exception:
-        return False
+        return SIGNATURE_CHECK_RAISED
+    return SIGNATURE_VERIFIED
+
+
+def signature_verified(reason: str) -> bool:
+    """Whether a `_verify_signature` reason means the signature passed."""
+    return reason == SIGNATURE_VERIFIED
 
 
 def _check_crypto(
@@ -993,15 +1060,34 @@ def _check_crypto(
             prev_hash,
         )
 
-    sig_ok = _verify_signature(payload, signature, key_id=key_id)
+    signature_reason = _verify_signature(payload, signature, key_id=key_id)
+    sig_ok = signature_verified(signature_reason)
+    # The outcome stays pass/fail, which is the ITGL's own vocabulary for a
+    # step, and a step that could not complete did not pass. What changes is
+    # that the row now says which fact it is. Before this, `fail` here meant
+    # any of six things, and a reader would reasonably take it for the one
+    # that blames the request.
     log, prev_hash = _append_itgl(
         "crypto_signature",
         "pass" if sig_ok else "fail",
         step_input,
-        {"crypto_available": _CRYPTO_AVAILABLE},
+        {
+            "crypto_available": _CRYPTO_AVAILABLE,
+            "reason": signature_reason,
+            # Whether the signature itself was refuted, as against the check
+            # not having been performed. Recorded rather than left to be
+            # inferred from `reason`, because a consumer that has to maintain
+            # its own list of which reasons mean which is a second copy of
+            # this distinction, and second copies are what this project keeps
+            # finding broken.
+            "signature_established": sig_ok or signature_reason not in SIGNATURE_NOT_ESTABLISHED,
+        },
         log,
         prev_hash,
     )
+    # Unchanged, deliberately. A check that could not be performed is still a
+    # block when enforcement is on: fail-closed is the safe direction and is
+    # not the defect. The defect was the record, and the record is now right.
     if crypto_enforced and not sig_ok:
         return False, log, prev_hash
 

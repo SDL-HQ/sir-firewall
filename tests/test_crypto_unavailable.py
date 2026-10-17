@@ -177,7 +177,14 @@ def test_the_same_subprocess_reports_the_library_present_without_the_blocker():
     assert allowed["crypto_available_flag"] is True
     assert allowed["status"] == "PASS"
     assert allowed["signature_rows"] == [
-        {"outcome": "pass", "output": {"crypto_available": True}}
+        {
+            "outcome": "pass",
+            "output": {
+                "crypto_available": True,
+                "reason": core.SIGNATURE_VERIFIED,
+                "signature_established": True,
+            },
+        }
     ]
 
 
@@ -193,7 +200,16 @@ def test_a_valid_signature_is_refused_when_the_library_is_absent():
     assert result["status"] == "BLOCKED"
     assert result["reason"] == "invalid_signature_or_checksum"
     assert result["signature_rows"] == [
-        {"outcome": "fail", "output": {"crypto_available": False}}
+        {
+            "outcome": "fail",
+            "output": {
+                "crypto_available": False,
+                # The row names the environment defect rather than leaving a
+                # reader to infer it from a bare `fail`.
+                "reason": core.SIGNATURE_CRYPTO_UNAVAILABLE,
+                "signature_established": False,
+            },
+        }
     ]
 
 
@@ -218,7 +234,16 @@ def test_an_absent_library_is_recorded_rather_than_enforced_when_off():
 
     assert result["status"] == "PASS"
     assert result["signature_rows"] == [
-        {"outcome": "fail", "output": {"crypto_available": False}}
+        {
+            "outcome": "fail",
+            "output": {
+                "crypto_available": False,
+                # The row names the environment defect rather than leaving a
+                # reader to infer it from a bare `fail`.
+                "reason": core.SIGNATURE_CRYPTO_UNAVAILABLE,
+                "signature_established": False,
+            },
+        }
     ]
 
 
@@ -243,19 +268,43 @@ def test_the_row_separates_an_absent_library_from_an_unverified_signature(monkey
 
     assert absent["signature_rows"][0]["outcome"] == "fail"
     assert present[0]["outcome"] == "fail"
-    assert absent["signature_rows"][0]["output"] == {"crypto_available": False}
-    assert present[0]["output"] == {"crypto_available": True}
+    assert absent["signature_rows"][0]["output"] == {
+        "crypto_available": False,
+        "reason": core.SIGNATURE_CRYPTO_UNAVAILABLE,
+        "signature_established": False,
+    }
+    # The envelope here carries no signature at all, so the library being
+    # present is not the point: what separates the two rows now is the reason
+    # itself. Before this change both said `fail` and a reader had to infer
+    # the difference from `crypto_available`, which is the inference this test
+    # existed to make possible and no longer has to.
+    assert present[0]["output"] == {
+        "crypto_available": True,
+        "reason": core.SIGNATURE_ABSENT,
+        "signature_established": False,
+    }
+    assert (
+        absent["signature_rows"][0]["output"]["reason"] != present[0]["output"]["reason"]
+    ), "the two facts share a reason, which is what this test refuses"
 
 
 def test_the_flag_short_circuits_before_the_key_is_loaded(monkeypatch):
     """The guard must be reached, not merely produce the same answer.
 
-    `_verify_signature` wraps its body in `except Exception`, so dropping
-    `not _CRYPTO_AVAILABLE` from the guard still returns false: the NameError
-    from the absent `load_pem_public_key` is caught and read as a failed
-    verification. The outcome is identical and the mutation is invisible to any
-    assertion about the return value. This asserts the key is never loaded, so
-    the guard has to exist rather than merely agree.
+    This was the sharpest test in the file when the function returned a
+    boolean. `_verify_signature` wraps its body in `except Exception`, so
+    dropping `not _CRYPTO_AVAILABLE` from the guard still returned false: the
+    NameError from the absent `load_pem_public_key` was caught and read as a
+    failed verification. The outcome was identical and the mutation invisible
+    to any assertion about the return value, so this asserts the key is never
+    loaded, which the guard has to exist to achieve.
+
+    Since the function returns a reason rather than a boolean, that mutation
+    is also visible in the return value: without the guard the answer becomes
+    `check_raised` rather than `crypto_unavailable`, which is the honest
+    description of a NameError and a different fact. Measured on 17 October
+    2026. The loaded-key assertion stays anyway, because it holds the stronger
+    property and does not depend on the reason vocabulary staying as it is.
     """
     _, public_pem = _signed_envelope()
     loaded = []
@@ -265,7 +314,10 @@ def test_the_flag_short_circuits_before_the_key_is_loaded(monkeypatch):
         core, "load_pem_public_key", lambda *a, **k: loaded.append(1), raising=False
     )
 
-    assert core._verify_signature(PAYLOAD, "c2lnbmF0dXJl", key_id="default") is False
+    assert (
+        core._verify_signature(PAYLOAD, "c2lnbmF0dXJl", key_id="default")
+        == core.SIGNATURE_CRYPTO_UNAVAILABLE
+    )
     assert loaded == [], "the key was loaded after the library was reported absent"
 
 

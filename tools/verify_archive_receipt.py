@@ -1,5 +1,20 @@
 #!/usr/bin/env python3
-"""Verify a signed SIR run archive receipt offline."""
+"""Verify a signed SIR run archive receipt offline.
+
+Exit codes:
+  0  verified: every file named by the signed manifest is present and unchanged
+  2  a named file is missing or changed, or the receipt signature does not
+     verify
+  3  the manifest or receipt could not be read, or this archive was published
+     without one
+  6  the signature check could not be performed, so the signature is neither
+     established nor refuted
+
+6 was added on 17 October 2026 and mirrors verify_certificate.py, which
+already separates a signature that does not verify from a check that raised.
+This file printed a different message for the two and then returned 2 from
+both, so the distinction reached a person reading stderr and nothing else. The codes it shares with that tool mean the same thing in both.
+"""
 
 from __future__ import annotations
 
@@ -255,8 +270,17 @@ def main() -> int:
         print("ERROR: signature verification failed (InvalidSignature)", file=sys.stderr)
         return 2
     except Exception as e:
-        print(f"ERROR: signature verification failed ({e})", file=sys.stderr)
-        return 2
+        # Exit 6, not 2. This file already printed a different message for a
+        # check that raised and then returned the same code as a signature
+        # that did not verify, so the distinction reached a human reading
+        # stderr and nothing else. 6 is the code verify_certificate.py uses
+        # for this; one meaning for one number across the project beats a
+        # third vocabulary here.
+        print(
+            f"ERROR: signature verification could not be performed ({e})",
+            file=sys.stderr,
+        )
+        return 6
 
     print(f"OK: archive receipt verified for {archive_dir}")
     return 0

@@ -12,6 +12,7 @@ import json
 import sys
 from pathlib import Path
 
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
@@ -100,8 +101,17 @@ def verify_policy(
         public_key = serialization.load_pem_public_key(
             public_key_pem_from_entry(entry).encode("utf-8")
         )
-    except Exception as exc:  # malformed registry entry is a verification failure
-        return False, f"registry entry for {key_id} carries no usable public key: {exc}"
+    except Exception as exc:
+        # Our registry, our defect. The message already said so, and the
+        # comment that called it "a verification failure" was the belief this
+        # file was corrected for on 17 October 2026: a key we cannot load does
+        # not tell us anything about the policy's signature. Still fail-closed,
+        # because generate_certificate.py refuses to sign on a false return,
+        # and that is the safe direction.
+        return False, (
+            f"the signature could not be checked: registry entry for {key_id} "
+            f"carries no usable public key: {exc}"
+        )
 
     try:
         public_key.verify(
@@ -110,8 +120,21 @@ def verify_policy(
             padding.PKCS1v15(),
             hashes.SHA256(),
         )
-    except Exception as e:  # cryptography throws several specific errors; all are failure
-        return False, f"signature verification failed: {e}"
+    except InvalidSignature:
+        # The signature was checked and the payload does not bear it. This is
+        # the only branch here that is a statement about the policy.
+        return False, (
+            "signature verification failed: the signed policy's signature does "
+            f"not verify under registry key {key_id}"
+        )
+    except Exception as e:
+        # Everything else is a statement about us. The comment that used to sit
+        # on this branch read "cryptography throws several specific errors; all
+        # are failure", which is true of the outcome and wrong about the fact:
+        # an unsupported algorithm or a programming error here is not evidence
+        # that the policy's signature is bad. Reported as what it is, so that
+        # "refusing to sign certificate: ..." sends a reader to the right place.
+        return False, f"the signature could not be checked: {e}"
 
     return True, (
         f"signed policy is authentic under registry key {key_id} and exactly "
