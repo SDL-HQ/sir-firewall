@@ -68,3 +68,73 @@ def test_validate_execution_selection_rejects_removed_openai_model():
         assert False, "expected validation failure"
     except ValueError as exc:
         assert "unsupported model" in str(exc)
+
+
+def test_live_mode_refuses_a_credential_with_a_trailing_newline():
+    """Breaking this lets a key pasted with a newline reach the provider.
+
+    SIR never reads this value: litellm reads the environment itself. So the
+    whitespace travels with the credential and arrives as an authentication or
+    illegal-header error that names no whitespace, and the reasonable
+    conclusion from that error is that the key is wrong.
+    """
+    try:
+        validate_execution_selection(
+            provider="xai",
+            model="grok-4.3",
+            mode="live",
+            env={"XAI_API_KEY": "not-a-credential\n"},
+        )
+        assert False, "expected validation failure"
+    except ValueError as exc:
+        message = str(exc)
+        assert "XAI_API_KEY" in message
+        assert "0 leading, 1 trailing" in message
+        assert "will not strip it" in message
+
+
+def test_live_mode_refuses_a_credential_with_a_leading_space():
+    """Breaking this catches only the trailing case, which is half the paste."""
+    try:
+        validate_execution_selection(
+            provider="xai",
+            model="grok-4.3",
+            mode="live",
+            env={"XAI_API_KEY": "  not-a-credential"},
+        )
+        assert False, "expected validation failure"
+    except ValueError as exc:
+        assert "2 leading, 0 trailing" in str(exc)
+
+
+def test_live_mode_accepts_a_credential_with_no_surrounding_whitespace():
+    """Breaking this refuses every live run, which the check must not do.
+
+    No provider credential legitimately carries surrounding whitespace, so the
+    refusal above costs nothing that works today. This is what holds that.
+    """
+    provider, model = validate_execution_selection(
+        provider="xai",
+        model="grok-4.3",
+        mode="live",
+        env={"XAI_API_KEY": "not-a-credential"},
+    )
+    assert (provider, model) == ("xai", "grok-4.3")
+
+
+def test_an_absent_credential_keeps_the_message_the_cli_test_asserts():
+    """Breaking this drifts from tests/test_cli_run_py.py, which asserts it verbatim.
+
+    Whitespace only is absent rather than malformed, so it takes this path and
+    not the one above: there is no value to fix the whitespace around.
+    """
+    expected = "LIVE mode requires your own provider credentials (XAI_API_KEY)"
+    for value in ("", "   ", "\n"):
+        try:
+            validate_execution_selection(
+                provider="xai", model="grok-4.3", mode="live", env={"XAI_API_KEY": value}
+            )
+            assert False, "expected validation failure"
+        except ValueError as exc:
+            assert expected in str(exc), (value, str(exc))
+            assert "will not strip it" not in str(exc)

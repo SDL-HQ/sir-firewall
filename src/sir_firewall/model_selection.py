@@ -99,10 +99,30 @@ def validate_execution_selection(
     if mode == "live":
         lookup = env if env is not None else os.environ
         secret_name = required_secret_for_provider(resolved_provider)
-        if not str(lookup.get(secret_name, "")).strip():
+        raw = str(lookup.get(secret_name, ""))
+        stripped = raw.strip()
+        if not stripped:
             raise ValueError(
                 "LIVE mode requires your own provider credentials "
                 f"({secret_name}) for provider '{resolved_provider}'. SIR does not ship keys."
+            )
+        # Refuse rather than strip. Nothing in SIR reads this value or hands it
+        # to the provider: litellm reads the environment itself, so whitespace
+        # travels with the credential and arrives as an authentication or
+        # illegal-header error that names no whitespace. The reasonable
+        # conclusion from that error is that the key is wrong, which is the
+        # expensive wrong answer. Stripping it here would instead leave the
+        # value SIR validated and the value the provider receives as two copies
+        # of one identity, which is the shape of every defect in this project.
+        if raw != stripped:
+            raise ValueError(
+                f"{secret_name} is set but carries whitespace around the value "
+                f"({len(raw) - len(raw.lstrip())} leading, "
+                f"{len(raw) - len(raw.rstrip())} trailing). SIR will not strip it: "
+                "nothing here reads this value, litellm reads the environment itself, "
+                "so the whitespace would travel with the credential and fail at the "
+                "provider with an error that names no whitespace. Fix it where the "
+                "value is set."
             )
 
     return resolved_provider, resolved_model
