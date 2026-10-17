@@ -347,6 +347,77 @@ stay published and are not re-signed. Where their result is shown, the archive
 view marks them as ungated baselines whose result was computed with no gate in
 the path.
 
+## E8. Three archives were redacted after publication, and their receipts fail
+
+**Symptom.** The archive receipt for three April 2026 runs fails with exit 2:
+
+```
+ERROR: file hash mismatch for proofs/latest-attempts.log
+  manifest: sha256:f799f335...
+  calc:     sha256:a1a537de...
+```
+
+That is the receipt working. A file named by a signed manifest was changed after
+the manifest was signed, and the receipt says so. It is a redaction, recorded
+here, and not tampering.
+
+**Counts.** Three run identifiers, six tracked files, because each run is held
+under both `docs/runs/` and `proofs/runs/`:
+
+- `20260418-154825-000000-gh24608097503-e2d0e1b413fb`
+- `20260419-050141-000000-gh24621243485-8e8bade17b75`
+- `20260419-093111-000000-gh24625904026-1c5793648137`
+
+**What was removed.** An xAI team identifier and an API key identifier, both
+UUIDs, from thirteen provider content-refusal errors recorded in
+`proofs/latest-attempts.log`. xAI returns two forms of content refusal and the
+verbose one carries organisational identifiers in its error body.
+`red_team_suite.py` wrote provider error text verbatim, deliberately, because
+an error's class and code are evidence.
+
+Each occurrence now reads `Team: [redacted], API key ID: [redacted]`. What was
+kept is what the line is evidence of: the exception class, the provider's
+`code`, its `Failed check` name and the model. The short refusal form carried no
+identifiers and is byte-identical.
+
+**Severity, stated plainly.** A key identifier is not a key and cannot call the
+API. What it exposed was attribution that is already public, and at a stretch a
+more convincing impersonation attempt. Measured across 5,646 published run
+artefacts: 52 UUIDs in these six files, and zero matches for any credential
+pattern including the `xai-` prefix a real key carries. **No key has ever been
+published.** No `downstream_evidence.jsonl` was ever published and no published
+file carries a provider response excerpt, so provider response content has never
+been in the archive. The key in use at the time was rotated afterwards
+regardless, which retires the identifier.
+
+**Cause.** Not the verbatim logging, which is deliberate. The defect was that
+the guard built to stop exactly this did not see it.
+`publication_rules.offences()` is the shared entry point and
+`tools/generate_shop_window.py` calls it over the window it pushes. This
+repository's own scan did not: each test called one rule function directly, so
+a rule added to the shared entry point protected the generated window and left
+the archive unscanned. Two surfaces, two rule sets, which is the second copy of
+an identity the module exists to prevent.
+
+**Fixed, in one place.** `ACCOUNT_IDENTIFIERS` and
+`redact_account_identifiers()` live beside the rules they share patterns with,
+and the runner imports the redactor rather than carrying a copy: a producer and
+an inspector that drift mean the producer writes what the inspector no longer
+looks for. Redaction happens before truncation, because truncating first can
+cut an identifier in half and leave a fragment the redactor no longer
+recognises. `test_every_rule_in_offences_is_scanned_over_this_repository` reads
+`offences()`'s own output, so a future rule cannot be added to one surface only.
+
+**Not re-signed**, and this is the point of the entry. Re-signing a receipt over
+the redacted file would make the archive assert that the redacted file is what
+was originally archived. The receipt's job is to report that the bytes changed,
+and it does. The certificates and ledgers in these three archives are untouched
+and verify exactly as before: all three reported exit 9 under
+`verify_certificate.py` before the redaction and report exit 9 after, which is
+the pre-existing binding-not-checked state of an April 2026 run that predates
+`itgl_row_count`. Nothing about the gate's decisions, the counters or the
+signed result changed.
+
 ## What a reviewer should do
 
 Choose a run whose `audit.json` records `sir_firewall_version` 2.3.4 or later,
@@ -354,6 +425,10 @@ and verify the certificate, the ledger and the receipt from the same archive
 directory. `docs/assurance-kit.md` gives a worked example with a named run and
 its actual output. Treat any record listed in E1 or E2 as not independently
 verifiable.
+
+A receipt failure on one of the three archives named in E8 is a recorded
+redaction, not a defect in the archive and not tampering. Their certificates and
+ledgers verify unchanged. Any other receipt failure is E1 or is new.
 
 ## Appendix A. Archives incomplete against their manifest
 
