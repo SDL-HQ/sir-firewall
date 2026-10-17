@@ -213,6 +213,30 @@ changes the verdict.
   derives them from the rows. That asymmetry is the cross-check. Making the
   producer derive them too would have deleted the check being added.
 
+- **Every input the verifier recomputes a signed value from, the producer must
+  compute that value from.** Recomputing a signed value is the fix above; its
+  price is that the two computations must take the same inputs, and nothing
+  enforced that until it cost something.
+
+  `provider_call_declined` was derived by the verifier from the rows and left
+  unread by `generate_certificate.py`, so the keyword defaulted to zero at
+  signing. Measured: a `LIVE_GATING_CHECK` run whose every provider call the
+  provider declined computed `INCONCLUSIVE` at signing and `AUDIT PASSED` from
+  the rows, so an honest certificate was refused at exit 11 by the check meant
+  to protect it. Before recomputation existed, an unread counter was a missing
+  check. After it, an unread counter is a guaranteed disagreement.
+
+  `tests/test_the_verdict_is_recomputed_not_asserted.py` holds the producer and
+  the verifier to the same inputs, and reads the generator's source for the
+  keyword so dropping it fails there rather than on a live run. The same
+  question applies to any counter added later: derive it in `itgl.py` and the
+  verifier will use it, so the generator has to read it in the same change.
+
+  The certificate also carries `refusal_detection` and
+  `provider_output_limit`. The evidence contract declares
+  `additionalProperties` true, so adding a field needs no new contract version;
+  a new floor would only be needed to make one required.
+
 - **A check that could not run is not a bad signature.** `_verify_signature`
   in `core.py` returns one of the `SIGNATURE_*` reasons rather than a bool,
   and the `crypto_signature` ledger row records which, plus
