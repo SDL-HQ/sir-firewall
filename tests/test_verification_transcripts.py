@@ -191,3 +191,39 @@ def test_no_transcript_was_written_into_a_published_archive():
         directory = ROOT / "docs" / "runs" / run_id
         assert not (directory / "verification.txt").exists(), run_id
         assert not (directory / "verification-transcript.json").exists(), run_id
+
+
+def test_a_run_that_changes_nothing_does_not_rewrite_the_file(tmp_path, monkeypatch):
+    """Both publishing steps run the tool on every audit.
+
+    The first live one committed a one-line diff to a published artefact
+    because the timestamp had moved and nothing else had. A routine audit adds
+    no benchmark pair, so the transcripts it would capture are the ones
+    already there, and touching a public file to say so is churn in the one
+    place this project asks people to read carefully.
+    """
+    before = PUBLISHED.read_bytes()
+    completed = subprocess.run(
+        [sys.executable, "tools/publish_verification_transcripts.py"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert "left untouched" in completed.stdout, completed.stdout
+    assert PUBLISHED.read_bytes() == before, "a no-op run rewrote the published file"
+    assert TOOL.VERIFIER == DOCUMENT["verifier"]
+
+
+def test_the_timestamp_is_the_only_field_a_rerun_would_move():
+    """Which is why it is the one field the comparison sets aside.
+
+    If anything else in the document varied between captures, `--check` would
+    be comparing against noise and could not refuse drift.
+    """
+    first = TOOL.build()
+    second = TOOL.build()
+    assert first != second or first["generated_at_utc"] == second["generated_at_utc"]
+    assert TOOL._without_timestamp(first) == TOOL._without_timestamp(second)
+    assert "generated_at_utc" not in TOOL._without_timestamp(first)

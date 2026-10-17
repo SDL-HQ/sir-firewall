@@ -156,7 +156,13 @@ changes the verdict.
   of them, and `tests/test_verification_transcripts.py` asserts that coupling
   so a run a public surface could show cannot be a run with no transcript.
   Nothing is written into a published run directory, because `manifest.json` is
-  signed over what that directory holds.
+  signed over what that directory holds. The tool writes only when something
+  other than the clock has moved: a routine audit adds no benchmark pair, so
+  it captures what is already there, and the first live run committed a
+  one-line timestamp diff to a published artefact for nothing.
+  `generated_at_utc` therefore means when the content was produced, and that
+  the transcripts were re-captured today is evidenced by the CI run that did
+  it.
 
 - **Two trees are published from here, and the same rules scan both.**
   `tools/publication_rules.py` holds the working-document, private-key,
@@ -184,6 +190,15 @@ changes the verdict.
   install all live in `generate_shop_window.py` for the same reason, and
   `tests/test_the_evidence_window_is_reachable.py` holds the two public pages
   against them.
+
+  The window states the archive's totals as at the tag it was built from, not
+  in the present tense. A run is published on every merge here and the window
+  is rebuilt only when a release is cut, so a present-tense total is wrong
+  within a day and has no way to correct itself while the weekly rebuild skips
+  a release that predates the generator. It said "It holds 356 runs" while the
+  archive held 359. A page that cannot go stale beats a page that is currently
+  accurate, which is the same answer the website reached for its own dated
+  figure.
 
 - **Absent input is never a pass.** CI steps that run under `always()` are
   reached even when the checkout or the audit itself failed. A missing counter

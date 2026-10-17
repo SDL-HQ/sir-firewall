@@ -440,8 +440,12 @@ row so you can watch the chain refuse to re-derive. That last one is the only
 item here that is a detection rather than a disclosure, and it is the reason
 the evidence plane exists.
 
-The archive of record is at [{VAULT}]({VAULT}). It holds
-{figures['total']} runs and {figures['certificates_total']} certificates.
+The archive of record is at [{VAULT}]({VAULT}). At `{tag}`, the release this
+window is built from, it held {figures['total']} runs and
+{figures['certificates_total']} certificates. It holds more now: a run is
+published on every merge to its main branch, and this page is rebuilt only
+when a release is cut, so treat those two numbers as a position on a date and
+read the current ones from the archive itself.
 
 Nothing here is a sample chosen for how it looks. Each exhibit is selected from
 a category by a tool in the main repository, a test there refuses any category
