@@ -140,6 +140,9 @@ def test_an_ungated_baseline_records_forwarding_and_no_gate_counters(tmp_path, m
         "provider_call_attempts": 2,
         "provider_call_successes": 2,
         "provider_call_failures": 0,
+        # Baseline row version 2. The stub provider returns, so nothing
+        # declined; the outcomes still have to partition the attempts.
+        "provider_call_declined": 0,
     }
 
     for field in (

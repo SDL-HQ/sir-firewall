@@ -562,6 +562,32 @@ def _resolve_openai_api_mode(model: str) -> str:
     return "responses" if (model or "").lower().startswith("gpt-5") else "completion"
 
 
+# The output ceiling every provider call is made under.
+#
+# These are not incidental. At one token the provider emits a single token, so
+# a declining provider cannot produce a prose refusal and its output-side
+# guardrail never acts: what a run can observe is the provider's input-side
+# filter and nothing more. A run at a different ceiling measures a different
+# thing, so the ceiling is recorded on every document that reports a provider
+# call rather than left implicit in this file.
+PROVIDER_OUTPUT_LIMIT_COMPLETION = 1
+PROVIDER_OUTPUT_LIMIT_RESPONSES = 32
+
+
+def provider_output_limit(provider: str, model: str) -> Dict[str, Any]:
+    """The output ceiling this call is made under, and the kwarg carrying it.
+
+    One definition, read both by the call below and by the run summary, so the
+    figure a document publishes is the figure the call used rather than a second
+    copy of it maintained by hand.
+    """
+    if (provider or "").strip().lower() == "openai" and _resolve_openai_api_mode(
+        (model or "").strip()
+    ) == "responses":
+        return {"kind": "max_output_tokens", "value": PROVIDER_OUTPUT_LIMIT_RESPONSES}
+    return {"kind": "max_tokens", "value": PROVIDER_OUTPUT_LIMIT_COMPLETION}
+
+
 def _call_provider_model(provider: str, model: str, messages: List[Dict[str, str]]) -> Any:
     try:
         from litellm import completion
@@ -580,14 +606,14 @@ def _call_provider_model(provider: str, model: str, messages: List[Dict[str, str
             return responses(
                 model=model_norm,
                 input=messages,
-                max_output_tokens=32,
+                max_output_tokens=PROVIDER_OUTPUT_LIMIT_RESPONSES,
                 stream=False,
             )
         return completion(
             model=model_norm,
             messages=messages,
             temperature=0,
-            max_tokens=1,
+            max_tokens=PROVIDER_OUTPUT_LIMIT_COMPLETION,
         )
 
     # xai and non-openai default to completion path.
@@ -595,8 +621,62 @@ def _call_provider_model(provider: str, model: str, messages: List[Dict[str, str
         model=model_norm,
         messages=messages,
         temperature=0,
-        max_tokens=1,
+        max_tokens=PROVIDER_OUTPUT_LIMIT_COMPLETION,
     )
+
+
+PROVIDER_DECLINED_EXCEPTIONS = ("ContentPolicyViolationError",)
+
+# What the refusal rule is, recorded on every document that reports a declined
+# call so two runs' figures are comparable or visibly not.
+REFUSAL_DETECTION_RULE = "litellm-content-policy-violation-v1"
+
+
+def _litellm_version() -> str:
+    """The version of the library whose exception types the rule reads.
+
+    `pyproject.toml` declares `live = ["litellm"]` with no pin, so the set of
+    exception types this rule matches can change without any change here. The
+    version is therefore part of the rule, not metadata about it.
+    """
+    try:
+        from importlib.metadata import version
+
+        return str(version("litellm"))
+    except Exception:
+        return "unknown"
+
+
+def _provider_declined(exc: BaseException) -> bool:
+    """Whether the provider's own error declared that it would not answer.
+
+    Matched on litellm's exception type, which its provider exception mappers
+    raise from the provider's own 400 response. Read from litellm 1.105.1's
+    `litellm/exceptions.py` rather than recalled:
+    `ContentPolicyViolationError(BadRequestError)` carries the provider's
+    `content_policy_violation` code.
+
+    Deliberately not matched, and each for its own reason:
+
+    - `GuardrailRaisedException` is litellm's own middleware refusing, not the
+      provider. Counting it would attribute a decision to a party that never
+      made it. Its own docstring says it is raised both when a guardrail judged
+      content and when it could not judge it at all, which is the same defect
+      this change exists to fix, one layer out.
+    - `RejectedRequestError` is raised only from `litellm/proxy/utils.py`, the
+      proxy server, which SIR does not use.
+
+    Matched by type name rather than by `isinstance`, because the name is what
+    the attempts log already records and because an import here would fail in
+    exactly the configuration where this function is reached in tests without
+    the live extra. A rename in litellm therefore stops detection rather than
+    misclassifying, and `refusal_detection` carries the version that decides
+    which names existed.
+    """
+    for klass in type(exc).__mro__:
+        if klass.__name__ in PROVIDER_DECLINED_EXCEPTIONS:
+            return True
+    return False
 
 
 def _maybe_call_model(model: str, messages: List[Dict[str, str]], enable: bool, excerpt_chars: int = 0, provider: str = "") -> Dict[str, str]:
@@ -812,6 +892,7 @@ def main() -> None:
     provider_call_attempts = 0
     provider_call_successes = 0
     provider_call_failures = 0
+    provider_call_declined = 0
     observed_governance_scope = ""
     observed_crypto_enforced: Optional[bool] = None
 
@@ -978,8 +1059,20 @@ def main() -> None:
                             downstream_record["response_excerpt"] = call_meta["response_excerpt"]
                         downstream_f.write(json.dumps(downstream_record, separators=(",", ":"), ensure_ascii=False) + "\n")
                 except Exception as e:
-                    provider_call_failures += 1
-                    provider_call_outcome = "failure"
+                    # A provider declining on its own content policy is not the
+                    # same fact as a call that failed. Both arrive here as an
+                    # exception, and until 17 October 2026 both were recorded as
+                    # `failure`, which docs/benchmark-cycle.v1.md publishes as a
+                    # known limit: "a refusal returned as an error is a
+                    # `failure` that cannot be told apart from an outage or a
+                    # timeout". The decline is the provider working; the failure
+                    # is ours.
+                    if _provider_declined(e):
+                        provider_call_declined += 1
+                        provider_call_outcome = "declined"
+                    else:
+                        provider_call_failures += 1
+                        provider_call_outcome = "failure"
                     # Never persist model response content. Only record call error metadata.
                     f.write(f"  model_call_error: {type(e).__name__}: {e}\n")
                     if downstream_f is not None:
@@ -1157,6 +1250,7 @@ def main() -> None:
             "provider_call_attempts": provider_call_attempts,
             "provider_call_successes": provider_call_successes,
             "provider_call_failures": provider_call_failures,
+            "provider_call_declined": provider_call_declined,
         }
         _disagreements = {
             key: {"counted": _claimed[key], "ledger": value}
@@ -1176,6 +1270,7 @@ def main() -> None:
         provider_call_attempts = _derived["provider_call_attempts"]
         provider_call_successes = _derived["provider_call_successes"]
         provider_call_failures = _derived["provider_call_failures"]
+        provider_call_declined = _derived["provider_call_declined"]
     elif _derived is not None:
         _claimed = {
             "prompts_tested": prompts_tested,
@@ -1192,6 +1287,7 @@ def main() -> None:
             "provider_call_attempts": provider_call_attempts,
             "provider_call_successes": provider_call_successes,
             "provider_call_failures": provider_call_failures,
+            "provider_call_declined": provider_call_declined,
             # From 17 October 2026 the ledger derives this too, so the count
             # accumulated above is cross-checked against the rows like every
             # other counter. It was the one input to the certificate's result
@@ -1227,6 +1323,7 @@ def main() -> None:
         provider_call_attempts = _derived["provider_call_attempts"]
         provider_call_successes = _derived["provider_call_successes"]
         provider_call_failures = _derived["provider_call_failures"]
+        provider_call_declined = _derived["provider_call_declined"]
 
     # Back-compat counters for CI scripts that expect these files.
     #
@@ -1332,6 +1429,23 @@ def main() -> None:
         "provider_call_attempts": provider_call_attempts,
         "provider_call_successes": provider_call_successes,
         "provider_call_failures": provider_call_failures,
+        "provider_call_declined": provider_call_declined,
+        # What a declined call was decided by, and what ceiling every call was
+        # made under. Both are part of reading the figure above rather than
+        # metadata about it: the rule decides which declines are detectable at
+        # all, and `litellm` is declared unpinned in pyproject.toml, so the set
+        # of exception types the rule matches can change with no change here.
+        # The ceiling decides what a provider had room to say: at one token a
+        # prose refusal cannot occur and only the input-side filter is
+        # observable. A run at a different ceiling is measuring something else
+        # and must not be compared under the same name.
+        "refusal_detection": {
+            "rule": REFUSAL_DETECTION_RULE,
+            "litellm_version": _litellm_version() if do_model_calls else "",
+        },
+        "provider_output_limit": (
+            provider_output_limit(provider_name, model_name) if do_model_calls else None
+        ),
         "model_calls_made": provider_call_attempts,
         "flags": summary_flags,
         "governance_scope": observed_governance_scope or "deployment",
@@ -1375,6 +1489,7 @@ def main() -> None:
             "provider_call_attempts": provider_call_attempts,
             "provider_call_successes": provider_call_successes,
             "provider_call_failures": provider_call_failures,
+            "provider_call_declined": provider_call_declined,
         }
     with open(os.path.join("proofs", "run_summary.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)

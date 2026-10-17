@@ -90,7 +90,14 @@ LEDGER_BINDING_FAILURE = 7
 REVOCATION_FAILURE = 10
 
 RECORD_KIND = "sir_ungated_baseline"
-RECORD_VERSION = 1
+# The record version that goes with each baseline row format. The two move
+# together: a row format permitting a new provider outcome gives the document a
+# counter and the fields needed to read it.
+RECORD_VERSION_BY_ROW_VERSION = {1: 1, 2: 2}
+
+# What this release writes. Readers below take the version from the record's own
+# declared row format instead.
+RECORD_VERSION = RECORD_VERSION_BY_ROW_VERSION[2]
 
 DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
 DEFAULT_KEY_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
@@ -123,6 +130,26 @@ REQUIRED_FIELDS = (
     "signature",
 )
 
+# What each row format adds to the required set above. v2 records carry the
+# rule that decided their declined count and the output ceiling their calls
+# were made under; a v1 record must not carry either, because it has no
+# declined count for them to qualify.
+REQUIRED_FIELDS_ADDED_BY_ROW_VERSION = {
+    1: (),
+    2: ("refusal_detection", "provider_output_limit"),
+}
+
+
+def required_fields_for_row_version(row_version):
+    """The top-level fields a record of this format must carry, or () if unknown."""
+    if isinstance(row_version, bool) or not isinstance(row_version, int):
+        return ()
+    added = REQUIRED_FIELDS_ADDED_BY_ROW_VERSION.get(row_version)
+    if added is None:
+        return ()
+    return REQUIRED_FIELDS + added
+
+
 OPTIONAL_FIELDS = ("scenario_id",)
 
 # Fields a certificate carries that this document must not. Each is a statement
@@ -154,14 +181,56 @@ FORBIDDEN_FIELDS = (
 
 LEDGER_FIELDS = ("path", "chain_version", "row_version", "row_count", "itgl_final_hash")
 
-COUNTER_FIELDS = (
-    "prompts_forwarded",
-    "expected_block_prompts_forwarded",
-    "expected_allow_prompts_forwarded",
-    "provider_call_attempts",
-    "provider_call_successes",
-    "provider_call_failures",
-)
+# The counters a record carries, per baseline row format version.
+#
+# Version-conditional because the set grew. A version 1 record must not carry
+# `provider_call_declined`: when it was written the value did not exist and
+# `failure` was the only thing a declining provider could produce, so a v1
+# record carrying the field would be asserting a measurement its own format had
+# no way to take. And a version 2 record must carry it, or its provider
+# outcomes do not partition its attempts.
+#
+# Judged by the version in the `ledger` block, which is covered by the chain and
+# chained to the terminal hash the record signs, and which this tool has already
+# checked against the versions its rows carry. Not by `record_version`, which
+# the document asserts about itself: that is the artefact choosing the rule that
+# judges it, which is the defect
+# tests/test_contract_floor_is_not_self_asserted.py exists for one level down.
+COUNTER_FIELDS_BY_ROW_VERSION = {
+    1: (
+        "prompts_forwarded",
+        "expected_block_prompts_forwarded",
+        "expected_allow_prompts_forwarded",
+        "provider_call_attempts",
+        "provider_call_successes",
+        "provider_call_failures",
+    ),
+    2: (
+        "prompts_forwarded",
+        "expected_block_prompts_forwarded",
+        "expected_allow_prompts_forwarded",
+        "provider_call_attempts",
+        "provider_call_successes",
+        "provider_call_failures",
+        "provider_call_declined",
+    ),
+}
+
+# What this release writes. Readers below take the set from the record's own
+# declared row version instead, so this is for the writer's sake only.
+COUNTER_FIELDS = COUNTER_FIELDS_BY_ROW_VERSION[2]
+
+
+def counter_fields_for_row_version(row_version):
+    """The counters a record of this format must carry, or () if unknown.
+
+    Empty rather than the current set, so a format this release does not read
+    cannot have its counters judged by rules written for another one. The
+    version check reports that separately.
+    """
+    if isinstance(row_version, bool) or not isinstance(row_version, int):
+        return ()
+    return COUNTER_FIELDS_BY_ROW_VERSION.get(row_version, ())
 
 PROMPT_SET_HASH_KINDS = ("suite_hash", "scenario_hash")
 
@@ -186,7 +255,10 @@ SHA256 = re.compile(r"^sha256:[0-9a-f]{64}$")
 # (type, minimum length for a string, compiled pattern, exact value)
 FIELD_RULES: Dict[str, tuple] = {
     "record_kind": (str, 1, None, RECORD_KIND),
-    "record_version": (int, None, None, RECORD_VERSION),
+    # The exact value is filled in per record from its declared row format,
+    # because the two move together. None here means "an integer, checked
+    # against the row format below" rather than "any integer".
+    "record_version": (int, None, None, None),
     "run_id": (str, 1, None, None),
     "timestamp_utc": (str, 1, None, None),
     "sir_firewall_version": (str, 1, None, None),
@@ -211,6 +283,19 @@ LEDGER_FIELD_RULES: Dict[str, tuple] = {
     "row_version": (int, None, None, None),
     "row_count": (int, None, None, None),
     "itgl_final_hash": (str, None, SHA256, None),
+}
+
+# Baseline row version 2 fields. Shape only: what the rule says and which
+# library version decided it are facts about the run, not values this tool can
+# check against anything.
+REFUSAL_DETECTION_RULES: Dict[str, tuple] = {
+    "rule": (str, 1, None, None),
+    "litellm_version": (str, None, None, None),
+}
+
+PROVIDER_OUTPUT_LIMIT_RULES: Dict[str, tuple] = {
+    "kind": (str, 1, None, None),
+    "value": (int, None, None, None),
 }
 
 
@@ -256,16 +341,33 @@ def _structural_defects(record: Dict[str, Any]) -> List[str]:
             "proof class and no policy correspondence"
         )
 
-    undeclared = sorted(set(record) - set(REQUIRED_FIELDS) - set(OPTIONAL_FIELDS) - set(FORBIDDEN_FIELDS))
+    # The field set a record is judged against is the one its own declared row
+    # format names. Applying the current release's set to a v1 record would
+    # report its missing v2 fields as defects, which is the floor-predates-the-
+    # field trap: both published v1 records would stop verifying.
+    _declared_rows = (record.get("ledger") or {}).get("row_version") if isinstance(record.get("ledger"), dict) else None
+    _expected_fields = required_fields_for_row_version(_declared_rows) or REQUIRED_FIELDS
+
+    undeclared = sorted(set(record) - set(_expected_fields) - set(OPTIONAL_FIELDS) - set(FORBIDDEN_FIELDS))
     if undeclared:
         defects.append(f"carries undeclared fields: {undeclared}")
 
-    missing = [field for field in REQUIRED_FIELDS if field not in record]
+    missing = [field for field in _expected_fields if field not in record]
     if missing:
         defects.append(f"does not carry required fields: {missing}")
         return defects
 
     defects.extend(_field_defects("", record, FIELD_RULES))
+    # record_version against the row format the document declares, not against
+    # the one this release writes. A v1 record declaring record_version 1 is
+    # correct; judging it by the current constant would refuse it.
+    _expected_record_version = RECORD_VERSION_BY_ROW_VERSION.get(_declared_rows)
+    if _expected_record_version is not None and record.get("record_version") != _expected_record_version:
+        defects.append(
+            f"record_version is {record.get('record_version')!r}, but baseline row "
+            f"version {_declared_rows!r} goes with record_version "
+            f"{_expected_record_version}"
+        )
     if record.get("mode") != "live":
         defects.append(
             "A baseline with no provider call observes nothing its prompt set does not "
@@ -284,6 +386,26 @@ def _structural_defects(record: Dict[str, Any]) -> List[str]:
         if set(ledger) - set(LEDGER_FIELDS):
             defects.append(f"ledger carries undeclared fields: {sorted(set(ledger) - set(LEDGER_FIELDS))}")
         defects.extend(_field_defects("ledger.", ledger, LEDGER_FIELD_RULES))
+
+    # Baseline row version 2's two objects, checked for shape where present.
+    # Their presence is decided by the required set above, which is keyed on the
+    # declared row version; this only says what they must look like.
+    for name, rules in (
+        ("refusal_detection", REFUSAL_DETECTION_RULES),
+        ("provider_output_limit", PROVIDER_OUTPUT_LIMIT_RULES),
+    ):
+        block = record.get(name)
+        if name not in record or block is None:
+            continue
+        if not isinstance(block, dict):
+            defects.append(f"{name} is not an object")
+            continue
+        for field in rules:
+            if field not in block:
+                defects.append(f"{name} does not carry {field}")
+        if set(block) - set(rules):
+            defects.append(f"{name} carries undeclared fields: {sorted(set(block) - set(rules))}")
+        defects.extend(_field_defects(f"{name}.", block, rules))
         if ledger.get("chain_version") != CHAIN_VERSION_V2:
             defects.append(
                 "A chain version 1 row's status is not evidence, so the bound ledger must "
@@ -309,10 +431,18 @@ def _structural_defects(record: Dict[str, Any]) -> List[str]:
     if not isinstance(counters, dict):
         defects.append("counters is not an object")
     else:
-        missing_counters = [field for field in COUNTER_FIELDS if field not in counters]
+        # Judged by the format the record declares, not by the one this
+        # release writes. A v1 record has six counters and a v2 record has
+        # seven; applying the current set to either would reject the other.
+        expected_counters = counter_fields_for_row_version(
+            (record.get("ledger") or {}).get("row_version")
+            if isinstance(record.get("ledger"), dict)
+            else None
+        )
+        missing_counters = [field for field in expected_counters if field not in counters]
         if missing_counters:
             defects.append(f"counters does not carry {missing_counters}")
-        undeclared_counters = sorted(set(counters) - set(COUNTER_FIELDS))
+        undeclared_counters = sorted(set(counters) - set(expected_counters))
         if undeclared_counters:
             defects.append(f"counters carries undeclared fields: {undeclared_counters}")
         for field, value in counters.items():
@@ -554,9 +684,14 @@ def main() -> int:
 
     # 6. Counters, recomputed.
     derived = derive_counters(rows)
+    # Only the counters this record's format declares. A v1 record is not
+    # expected to carry `provider_call_declined`, and comparing a field it
+    # cannot have against a derived zero would report every published v1 record
+    # as disagreeing with its own rows.
+    compared_fields = counter_fields_for_row_version(record["ledger"].get("row_version"))
     disagreements = {
         field: {"record": record["counters"].get(field), "ledger": derived.get(field)}
-        for field in COUNTER_FIELDS
+        for field in compared_fields
         if record["counters"].get(field) != derived.get(field)
     }
     if disagreements:
@@ -568,7 +703,16 @@ def main() -> int:
         return LEDGER_BINDING_FAILURE
 
     counters = record["counters"]
-    if counters["provider_call_successes"] + counters["provider_call_failures"] != counters[
+    # The outcomes must partition the attempts, over whichever outcomes this
+    # record's format has. A v1 record has two and a v2 record has three, so a
+    # fixed two-term sum would report every v2 record whose provider declined
+    # anything as failing to partition.
+    _outcome_counters = [
+        field
+        for field in counter_fields_for_row_version(record["ledger"].get("row_version"))
+        if field in ("provider_call_successes", "provider_call_failures", "provider_call_declined")
+    ]
+    if sum(counters[field] for field in _outcome_counters) != counters[
         "provider_call_attempts"
     ]:
         print(
