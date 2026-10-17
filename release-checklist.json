@@ -1,8 +1,8 @@
 {
   "checklist_version": "v1",
-  "target_version": "2.5.0",
-  "source_branch": "release/2.5.0",
-  "rollback_tag": "v2.4.0",
+  "target_version": "2.6.0",
+  "source_branch": "release/2.6.0",
+  "rollback_tag": "v2.5.0",
   "note": "Acceptance conditions for the bounded technical-diligence release. An item is met only when it carries evidence that resolves: a test that exists, an artefact that exists, or a command that runs to its expected exit code. Prose is not evidence. tools/check_release_checklist.py enforces this on the merge path to main.",
   "evidence_types": [
     "test",
@@ -915,6 +915,54 @@
         {
           "type": "test",
           "ref": "tests/test_the_evidence_window_is_reachable.py::test_one_dependency_is_still_one_dependency"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Error-path distinction",
+      "condition": "A check that could not run is not reported as a statement about the document. _verify_signature returns one of the SIGNATURE_* reasons rather than a bool, and the crypto_signature ledger row records which, so a consumer does not keep its own list of which reasons mean what.",
+      "status": "met",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "tests/test_a_broken_check_is_not_a_bad_signature.py::test_a_check_that_cannot_run_is_not_reported_as_invalid"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_a_broken_check_is_not_a_bad_signature.py::test_each_way_of_not_verifying_has_its_own_reason"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Recomputed verdict",
+      "condition": "The certificate's signed result is recomputed by the verifier from the rows the certificate binds. A verdict the rows contradict is refused rather than reported as verified, and the verdict function is defined once rather than copied into the generator.",
+      "status": "met",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "tests/test_the_verdict_is_recomputed_not_asserted.py::test_a_signed_verdict_the_rows_contradict_is_refused"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_the_verdict_is_recomputed_not_asserted.py::test_the_verdict_is_defined_once"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "A provider decision is not a provider failure",
+      "condition": "A provider declining content is recorded as the provider deciding, not as evidence that could not be obtained. The producer and the verifier compute the verdict from the same inputs, so an unread counter cannot make an honest certificate disagree with its own rows.",
+      "status": "met",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "tests/test_the_verdict_is_recomputed_not_asserted.py::test_the_producer_and_the_verifier_agree_about_a_declined_call"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_counters_derive_from_the_ledger.py::test_the_derivation_matches_what_the_rows_say"
         }
       ]
     }
