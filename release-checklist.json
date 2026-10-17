@@ -221,12 +221,29 @@
     {
       "id": 4,
       "name": "Verification consolidation",
-      "condition": "The normal evaluator procedure rejects changed, missing, mismatched and incomplete evidence without the evaluator needing to know which extra command closes which gap.",
+      "condition": "The normal evaluator procedure rejects changed, missing, mismatched and incomplete evidence without the evaluator needing to know which extra command closes which gap, and what that procedure prints is published as captured output rather than reconstructed by whoever quotes it.",
       "status": "met",
       "evidence": [
         {
           "type": "test",
           "ref": "tests/test_one_command_verification.py::test_a_published_archive_establishes_signature_binding_custody_and_contract"
+        },
+        {
+          "type": "artefact",
+          "ref": "docs/verification-transcripts.json"
+        },
+        {
+          "type": "command",
+          "ref": "python3 tools/publish_verification_transcripts.py --check",
+          "expect_exit": 0
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_verification_transcripts.py::test_the_published_transcripts_are_what_the_tool_prints"
+        },
+        {
+          "type": "test",
+          "ref": "tests/test_verification_transcripts.py::test_the_scope_is_the_set_a_public_surface_can_pin"
         },
         {
           "type": "test",
