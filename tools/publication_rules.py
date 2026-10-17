@@ -65,6 +65,79 @@ CREDENTIALS = {
     "Google API key": re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b"),
 }
 
+# Account identifiers, which are not credentials and are still not ours to
+# publish. Separate from CREDENTIALS because the severity and the remedy differ:
+# a leaked key is revoked, a leaked account identifier is redacted.
+#
+# This exists because the archive published one. xAI returns two forms of
+# content refusal, and the verbose one carries organisational identifiers in the
+# error body:
+#
+#   {"code":"The caller does not have permission to execute the specified
+#    operation","error":"Content violates usage guidelines. Team: <uuid>,
+#    API key ID: <uuid>, Model: grok-4-1-fast-reasoning, Failed check": ...}
+#
+# `red_team_suite.py` writes provider error text verbatim into the attempts
+# log, deliberately, because an error's class and code are evidence. Thirteen
+# such refusals reached six tracked files across three run identifiers, three of
+# them under `docs/`, and `offences()` returned nothing for all six: the rule
+# that exists to stop this did not see it. A key *ID* cannot call the API, so
+# this was disclosure hygiene rather than an incident, and the guard's silence
+# was the defect.
+#
+# Measured when this was added: across 5,646 published run artefacts, 52 UUIDs
+# in 6 files and zero matches for any CREDENTIALS pattern, so no key has ever
+# been published. The UUID rule has no false positives in the archive because a
+# run identifier ends in 12 hex characters with no dashes and a hash is 64 with
+# none.
+ACCOUNT_IDENTIFIERS = {
+    # The negative lookahead is load-bearing. Without it the rule matches its
+    # own placeholder, so a file this module had just redacted still read as an
+    # offence and no redaction could ever satisfy the guard. Found by running
+    # the redactor and re-detecting, which is the only way it shows up.
+    "provider account identifier": re.compile(
+        r"(?i)\b(?:API key ID|Team)\s*:\s*(?!\[redacted\])[^\s,\"}]+"
+    ),
+    "UUID": re.compile(
+        r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b",
+        re.IGNORECASE,
+    ),
+}
+
+#: What a redacted identifier is replaced with. One token, so a reader of a
+#: redacted log can tell the difference between a field that was empty and a
+#: field whose value was removed.
+REDACTED = "[redacted]"
+
+
+def account_identifiers(text) -> list:
+    """Every account-identifier shape this text carries, by rule name."""
+    return sorted(
+        name for name, pattern in ACCOUNT_IDENTIFIERS.items() if pattern.search(text)
+    )
+
+
+def redact_account_identifiers(text) -> str:
+    """Remove account identifiers while keeping what the text is evidence of.
+
+    Used by the producer before provider error text reaches a log, and by the
+    redaction of the six files that were published before it existed. Shares its
+    patterns with `account_identifiers()` above, so what is detected and what is
+    removed cannot drift: a second copy of this identity is the defect this
+    project keeps finding.
+
+    What survives deliberately: the exception class, the provider's `code`, its
+    `Failed check` name and the model. Those are why the error is recorded at
+    all. What goes: the labelled identifier fields, then any bare UUID left
+    over, in that order, because the labelled form contains one.
+    """
+    out = str(text)
+    labelled = ACCOUNT_IDENTIFIERS["provider account identifier"]
+    out = labelled.sub(lambda m: m.group(0).split(":")[0] + ": " + REDACTED, out)
+    out = ACCOUNT_IDENTIFIERS["UUID"].sub(REDACTED, out)
+    return out
+
+
 PATENT_ANALYSIS = re.compile(
     # The claim-number rule excludes a version. tools/verify_certificate.py
     # says "a certificate that claims <version> or later", which is not a
@@ -143,6 +216,11 @@ def offences(relative, text, *, working_documents=True, patent=True) -> list:
         return reasons
     reasons += [f"private key material: {found}" for found in private_key_material(text)]
     reasons += [f"credential shaped like a {name}" for name in credentials(text)]
+    # Applied to every surface, archives included. An audited prompt may contain
+    # any words at all, which is why the writing rules are skipped for an
+    # archive, but an account identifier is never part of a prompt: it arrives
+    # in a provider's error body and gets written to a log beside it.
+    reasons += [f"account identifier: {name}" for name in account_identifiers(text)]
     if patent:
         reasons += [f"patent analysis: {phrase!r}" for phrase in patent_analysis(text)]
     return reasons

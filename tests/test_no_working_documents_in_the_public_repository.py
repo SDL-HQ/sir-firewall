@@ -144,6 +144,69 @@ def test_no_tracked_file_carries_a_credential():
     assert not offenders, f"these look like live credentials: {offenders}"
 
 
+def test_no_tracked_file_carries_an_account_identifier():
+    """The rule that was missing, and the reason it was missing.
+
+    Six tracked files carried an xAI team identifier and a key identifier,
+    three of them under `docs/` and so live on the Pages site. They arrived in
+    the verbose form of xAI's content-refusal error body, which
+    `red_team_suite.py` wrote verbatim into the attempts log.
+
+    `publication_rules.offences()` returned nothing for all six, and this file
+    is why: every test here calls one rule function directly rather than
+    calling `offences()`, so a rule added to the shared entry point is invisible
+    to the repository scan until someone writes this. The generated-window
+    surface does call `offences()`, so the two surfaces were applying different
+    sets, which is the second copy of an identity this module exists to
+    prevent.
+
+    Applied to archives too, unlike the writing rules. An audited prompt may
+    contain any words at all; an account identifier is never part of a prompt.
+    """
+    offenders = {
+        relative: found
+        # RULE_FILES are exempt, and only those: a file that holds this rule
+        # has to name the shape it refuses, which is why that tuple exists.
+        # Nothing else is exempt, archives included.
+        for relative, text in _readable(TRACKED)
+        if relative not in RULE_FILES
+        for found in [publication_rules.account_identifiers(text)]
+        if found
+    }
+
+    assert not offenders, (
+        "these carry provider account identifiers, which are not credentials "
+        "and are still not ours to publish: "
+        f"{offenders}"
+    )
+
+
+def test_every_rule_in_offences_is_scanned_over_this_repository():
+    """A rule the shared entry point applies and this file does not is a rule
+    that protects the generated window and not the archive.
+
+    Read from `offences()`'s own output rather than from a list, so a new rule
+    fails here until a test above covers it. The sample carries one instance of
+    every rule class on purpose.
+    """
+    sample = "\n".join(
+        [
+            "-----BEGIN PRIVATE KEY-----" + ("A" * 240) + "-----END",
+            "xai-" + ("x" * 24),
+            "Team: 164a06d6-9e17-403a-bb49-49ac95cf41f6",
+            publication_rules.PATENT_SAMPLE,
+        ]
+    )
+    reasons = publication_rules.offences("docs/runs/x/proofs/latest-attempts.log", sample)
+    classes = {reason.split(":")[0] for reason in reasons}
+    assert classes == {
+        "private key material",
+        "credential shaped like a xAI key",
+        "account identifier",
+        "patent analysis",
+    }, reasons
+
+
 @pytest.mark.parametrize(
     "pattern,sample",
     [

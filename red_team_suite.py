@@ -44,6 +44,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "tools"))
 # is a workaround in prose for a two-line fix in code. Every tool in tools/ does
 # this; tests/test_tools_run_from_a_clone.py covers this file too.
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+# One definition of what must not be published, shared with the guard that
+# scans for it. A second copy of this identity is the defect this project keeps
+# finding, and here the two halves are a producer and an inspector: if they
+# drift, the producer writes what the inspector no longer looks for.
+from publication_rules import redact_account_identifiers  # noqa: E402
+
 from itgl import (  # noqa: E402
     BASELINE_ROW_VERSION,
     CURRENT_CHAIN_VERSION,
@@ -1073,8 +1079,19 @@ def main() -> None:
                     else:
                         provider_call_failures += 1
                         provider_call_outcome = "failure"
-                    # Never persist model response content. Only record call error metadata.
-                    f.write(f"  model_call_error: {type(e).__name__}: {e}\n")
+                    # Never persist model response content. Only record call
+                    # error metadata, and redact the provider's account
+                    # identifiers out of it first. The attempts log is
+                    # published, and xAI's verbose content-refusal body carries
+                    # a team identifier and a key identifier; thirteen of those
+                    # reached six
+                    # tracked files before this existed. The exception class,
+                    # the provider's code and its Failed check name survive,
+                    # because those are what the line is evidence of.
+                    f.write(
+                        "  model_call_error: "
+                        f"{type(e).__name__}: {redact_account_identifiers(e)}\n"
+                    )
                     if downstream_f is not None:
                         downstream_record = {
                             "ts": _utc_now_iso(),
@@ -1087,7 +1104,10 @@ def main() -> None:
                             "response_hash": "",
                             "artifact_ref": DOWNSTREAM_EVIDENCE_PATH,
                             "error_type": type(e).__name__,
-                            "error_message": str(e)[:200],
+                            # Redacted before truncation, not after: truncating
+                            # first can cut an identifier in half and leave a
+                            # fragment the redactor no longer recognises.
+                            "error_message": redact_account_identifiers(e)[:200],
                         }
                         downstream_f.write(json.dumps(downstream_record, separators=(",", ":"), ensure_ascii=False) + "\n")
 
