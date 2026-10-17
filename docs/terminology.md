@@ -277,6 +277,15 @@ checks were satisfied. It is a property of a gated run. A baseline record has
 no result, and no surface may supply one for it, by computing it from counters
 or otherwise.
 
+**It is recomputable, from 17 October 2026.** `compute_audit_result` in
+`tools/itgl.py` is the definition, it ships in the minimal verification bundle,
+and `verify_certificate.py` recomputes this field from the ledger a certificate
+binds and reports disagreement under exit 11. Until then it was computed once
+at signing by a function no verifier called, so the word was the claim. Now the
+word is a label on a value a reader can derive, which is the difference between
+trusting the producer and checking the artefact. A ledger written before the
+fields needed to recompute it reports not checked, which is not agreement.
+
 **What it does not mean:** that the rule set is adequate, or that the
 configuration enforces what its name suggests. A run over a corpus the rules
 already cover produces this verdict, and so does a run over a corpus that

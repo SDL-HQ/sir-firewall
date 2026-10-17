@@ -75,7 +75,7 @@ result observed, not that a test exists.
 | Archive always contains artefacts for passes and failures | generated region, regenerated from `docs/archive-figures.json` in this pass | holds |
 | A proof-producing system | generated region; the three counter states were added and compared against the stated denominator | **one defect, fixed**: the counters bullet gave the archive count as the denominator in a sentence about certificates |
 | `sir packs list` | executed the command; all eight listed entries declare an enforcement pack in their own column | holds |
-| A certificate's `result` mixes two axes | re-read against `_compute_audit_result` and `docs/backlog.md`; still an open contract change, still described accurately | holds |
+| A certificate's `result` mixes two axes | re-measured 17 October 2026: the framing was wrong. Executed against a copy of a published certificate, `AUDIT PASSED` with `jailbreaks_leaked: 7` passed the contract validator at exit 0, because `result` was a derived value nothing recomputed. Addressed by recomputing it from the ledger; 68 of 68 derivable certificates agree | **corrected, and narrower than recorded**: the record now holds, and what remains is the word `AUDIT PASSED` inviting an adequacy reading |
 | An ungated baseline published as an audit | executed `tests/test_the_54_are_an_agreement_of_three_signals.py`; the three signals still agree at 54 | holds |
 | Zero downstream calls on failure paths | executed `tests/test_no_downstream_call_without_approval.py` | holds |
 | "approved calls preserve the evaluated content" | executed the register test holding both readings | holds |
@@ -260,43 +260,58 @@ Four of the nine entries had been unrunnable since `e0ee45d` on 16 April 2026.
 
 ### A certificate's `result` mixes evidence integrity with enforcement outcome
 
-**holds as evidence, overstates as endorsement.** Recorded 13 October 2026 after
-an independent review observed that reporting "what the gate allowed or blocked"
-and "what the evidence establishes" through one field lets each lend the other an
-endorsement neither has earned.
+**corrected in mechanism on 17 October 2026, open on the word, and the
+recorded framing was wrong.**
+Recorded 13 October after an independent review observed that reporting "what
+the gate allowed or blocked" and "what the evidence establishes" through one
+field lets each lend the other an endorsement neither has earned. Two further
+reviews and a measurement pass found a different defect underneath it.
 
-`tools/generate_certificate.py._compute_audit_result` returns three values across
-two unrelated axes.
+**What the framing missed.** The item was filed as one field carrying two axes,
+which makes it a question about how many fields there should be. But
+`_compute_audit_result` lived in `tools/generate_certificate.py`, which is not
+shipped in the minimal verification bundle and is called by no verifier, while
+`counter_disagreements` recomputed every one of its inputs. `result` was the
+derived value nothing recomputed. Executed on a copy of a published
+certificate, with the counters left truthful so only the verdict was wrong:
 
-*Evidence integrity, meaning the run cannot be described.* `INCONCLUSIVE` is
-returned when `systemic_reset_count` is above zero, when a domain pack failed to
-load, when `prompts_tested` or `content_evaluated` is at or below zero, when more
-than one configuration was observed, and, on a `LIVE_GATING_CHECK`, when any
-provider call failed or every attempt failed. None of these says anything about
-the rule set. They say the record is not a description of a governed run.
+    result: "AUDIT FAILED" with jailbreaks_leaked: 0   -> validator exit 0
+    result: "AUDIT PASSED" with jailbreaks_leaked: 7   -> validator exit 0
 
-*Enforcement outcome, meaning the run is described and the result is bad.*
-`AUDIT FAILED` is returned when `jailbreaks_leaked` or `harmless_blocked` is
-above zero. That is a statement about rule coverage against a labelled corpus,
-on a run whose record is sound.
+The signature meant no third party could forge either, so this was a defect
+class rather than an attack class. It was the sharpest available version of
+one: a bug in the field that gates canonical publication, the CI outcome and
+the public homepage was invisible to every published verification path.
 
-*And `AUDIT PASSED` is returned when neither fired*, which is read as both: that
-the record is trustworthy, which it is, and that the enforcement was adequate,
-which the field cannot establish. A correctly signed record of inadequate
-enforcement is still valid evidence, and nothing in the certificate separates the
-two readings.
+**What was done.** `compute_audit_result` moved to `tools/itgl.py`, beside
+`derive_counters` and inside the bundle a third party gets, and
+`verify_certificate.py` recomputes `result` and reports disagreement under exit
+11. `configurations_observed` is derived from the rows, closing the one input
+of six that was read from `proofs/run_summary.json` and cross-checked by
+nothing. A stronger companion check holds the configuration the certificate
+names to the one its rows witness. Recomputed over the whole archive: **68 of
+68** certificates with derivable rows agree with their signed string, 292
+report not checked, and no published status moves.
 
-What holds: every `INCONCLUSIVE` and `AUDIT FAILED` condition is correctly
-computed and signed, and the verifier establishes the record's integrity
-independently of the verdict. What is overstated: any reading of `AUDIT PASSED`
-as an adequacy claim. `docs/rule-coverage.md` publishes what the rules cover,
-`docs/terminology.md` states what the verdict does and does not mean, and
-`docs/backlog.md` carries the open item.
+The first thing the check caught was one of this project's own fixtures.
+`test_an_honest_certificate_verifies` asserted exit 0 for a certificate reading
+`AUDIT PASSED` over rows carrying a leak, a harmless block and a reset. It
+derives its result now.
 
-Separating the axes means two fields where there is one, so it is a contract
-change and belongs to a release that bumps the contract anyway, by the same
-reasoning as the proof class name in `docs/terminology.md`. Defining the limit
-costs nothing and is done here. Recorded rather than fixed.
+**What still overstates, and it is one word.** `AUDIT PASSED` invites a third
+reading, that the rule set is adequate, which no run of any design can
+establish and which no field split reaches. `docs/rule-coverage.md` publishes
+what the rules cover and is the proper home for it. What changed is that the
+string's meaning is now pinned by a function anyone with the ledger can run,
+rather than by the word. Renaming it is a v5 contract change, because all four
+contracts carry the three strings as an enum and contracts are selected by the
+certificate's own version; it is recorded in `docs/backlog.md` with its
+measured cost and deferred to the contract bump that other 2.6 items already
+require. Renaming only the human-facing labels was considered and rejected: the
+homepage renders `audit.result` verbatim, and a label absent from the signed
+artefact is the described-rather-than-published defect this project spent a
+release removing from that same page.
+
 
 ### An ungated baseline run was published as an audit of the gate
 

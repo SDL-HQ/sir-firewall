@@ -91,7 +91,7 @@ minimal bundle needs no spec file;
 | 7 | binding failure: chain invalid, terminal-hash mismatch, or row-count mismatch |
 | 9 | binding **not checked**: no ledger was found, or the certificate predates `itgl_row_count` |
 | 10 | the signing key is revoked for this archive |
-| 11 | counter binding failure: the signed counters are not supported by the bound ledger |
+| 11 | binding failure on a signed value: the counters, the configuration identity, or the `result` itself is not supported by the bound ledger |
 | 12 | the document is not a SIR audit certificate, and nothing about it was verified, including its signature |
 
 `tools/verify_baseline_record.py`: 0 verified, 2 not a baseline record, 3
@@ -168,6 +168,50 @@ changes the verdict.
   website bundle. Changing the wording without updating all of them has
   happened twice. A test asserts the rendered blocks against actual stdout.
   Keep it.
+
+- **The verdict is recomputed, not taken on trust.** `compute_audit_result`
+  lives in `tools/itgl.py`, beside `derive_counters`, and
+  `generate_certificate.py` imports it rather than holding a copy.
+  `verify_certificate.py` recomputes `result` from the derived counters and the
+  certificate's `proof_class`, and reports disagreement under exit 11, as it
+  does for the counters and for the configuration identity.
+
+  Until 17 October 2026 `counter_disagreements` recomputed every input to the
+  verdict and nothing recomputed the verdict. The function sat in the
+  generator, which is not in the shipped bundle and is called by no verifier,
+  so the field that gates canonical publication, the CI outcome and the public
+  homepage was the one derived value nothing checked. Measured on a copy of a
+  published certificate: `AUDIT FAILED` with `jailbreaks_leaked: 0` passed
+  `validate_certificate_contract.py` at exit 0, and so did `AUDIT PASSED` with
+  `jailbreaks_leaked: 7`. The signature meant no third party could forge
+  either; it never meant a producer could not sign one. Recomputed over the
+  archive when this landed: 68 of 68 certificates with derivable rows agreed
+  with their signed string, and the 292 older ones report not checked.
+
+  The first thing the check caught was one of our own fixtures.
+  `test_an_honest_certificate_verifies` asserted exit 0 for a certificate
+  reading `AUDIT PASSED` over rows carrying a leak, a harmless block and a
+  reset. It derives its result now, because writing the corrected literal
+  would restate the same bug at a better value.
+
+  `configurations_observed` is derived too, and was the reason to look: it was
+  the one input of the six that no one recomputed, read from
+  `proofs/run_summary.json`, the file that sits on disk even in a job where the
+  audit never ran. `configuration_hash` is deliberately **not** in
+  `DERIVABLE_ROW_FIELDS`; adding it there would make `derive_counters` return
+  None for the 250 ledgers written before the field and turn every counter they
+  check today into not checked. The derivation mirrors the producer at
+  `red_team_suite.py` around line 869, counting **distinct non-empty** hashes,
+  because a row rejected before a configuration was established writes `""` and
+  is a gate decision rather than a second configuration. Zero is a real answer
+  and is INCONCLUSIVE: `None > 1` and `0 > 1` are both false, so returning
+  unknown for "no configuration witnessed" would collide with the legacy
+  sentinel and change no verdict. The configuration conditions have never fired
+  in any published run, so `tests/test_the_verdict_is_recomputed_not_asserted.py`
+  is the deliverable rather than the derivation. Note what is **not** changed:
+  the generator still reads the counters from the summary while the verifier
+  derives them from the rows. That asymmetry is the cross-check. Making the
+  producer derive them too would have deleted the check being added.
 
 - **A check that could not run is not a bad signature.** `_verify_signature`
   in `core.py` returns one of the `SIGNATURE_*` reasons rather than a bool,

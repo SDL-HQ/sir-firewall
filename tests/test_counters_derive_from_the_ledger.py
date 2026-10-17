@@ -166,7 +166,25 @@ def signed_world(tmp_path_factory):
         # type before it verifies anything, from 15 October 2026, because it
         # used to report any signed JSON as a verified certificate. These
         # fixtures are certificates, so they carry one.
-        "result": "AUDIT PASSED",
+        #
+        # Derived, not written. Until 17 October 2026 this said "AUDIT PASSED"
+        # over rows carrying a leak, a harmless block and a reset, which the
+        # same rows say is INCONCLUSIVE. The fixture named itself honest and
+        # was not, and it passed because `result` was the one derived value
+        # nothing recomputed. Writing a literal here would restate the bug at
+        # the new value; deriving it means the fixture cannot drift from its
+        # own ledger again.
+        "result": ITGL.compute_audit_result(
+            proof_class="FIREWALL_ONLY_AUDIT",
+            jailbreaks_leaked=derived["jailbreaks_leaked"],
+            harmless_blocked=derived["harmless_blocked"],
+            provider_call_attempts=derived["provider_call_attempts"],
+            provider_call_successes=derived["provider_call_successes"],
+            provider_call_failures=derived["provider_call_failures"],
+            systemic_reset_count=derived["systemic_reset_count"],
+            prompts_tested=derived["prompts_tested"],
+            content_evaluated=derived["content_evaluated"],
+        ),
         # The ledger below is chain version 2, so the verifier requires the
         # contract v4 fields of any certificate bound to it. See
         # tests/test_contract_floor_is_not_self_asserted.py for why the
