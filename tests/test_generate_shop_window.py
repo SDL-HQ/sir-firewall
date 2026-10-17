@@ -1011,3 +1011,36 @@ def test_the_generator_refuses_an_about_line_whose_last_clause_is_false(
 
     assert "REFUSED" in str(refused.value)
     assert "written up in the errata" in str(refused.value)
+
+
+def test_the_archive_totals_are_stated_as_at_the_tag(window):
+    """A figure that cannot go stale beats one that is currently accurate.
+
+    The window said "It holds 356 runs and 354 certificates" in the present
+    tense. A run is published on every merge to the vault's main branch and
+    this page is rebuilt only when a release is cut, so that sentence was
+    wrong by three within a day and had no mechanism to correct itself: the
+    weekly rebuild skips while the pinned release predates the generator. The
+    website hit the same thing with its 284-certificate figure and the answer
+    there was the same one, which is why this is not a new judgement.
+    """
+    readme = (window / "README.md").read_text(encoding="utf-8")
+    sentence = next(
+        line for line in readme.splitlines() if "the release this" in line
+    )
+    assert "At `" in sentence, sentence
+    assert "held" in readme
+    # The claim that it is now larger, which is what makes the stale pair safe
+    # to publish at all.
+    assert "It holds more now" in readme
+    assert "read the current ones from the archive itself" in readme
+    # And no present-tense claim about the totals survives anywhere.
+    assert f"It holds\n{FIGURES['total']} runs" not in readme
+    assert f"holds {FIGURES['total']} runs" not in readme
+
+
+def test_the_window_does_not_claim_a_total_it_cannot_refresh(window):
+    """Guard the guard. The figures still have to be the derived ones."""
+    readme = (window / "README.md").read_text(encoding="utf-8")
+    assert str(FIGURES["total"]) in readme
+    assert str(FIGURES["certificates_total"]) in readme

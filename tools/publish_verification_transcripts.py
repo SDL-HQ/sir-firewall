@@ -161,6 +161,24 @@ def main() -> int:
 
     fresh = build()
     if not args.check:
+        # Only write when something other than the clock has moved. Both
+        # publishing steps run this on every audit, and the first live one
+        # committed a one-line diff to a published artefact for no reason but
+        # a new timestamp. `generated_at_utc` therefore means when this
+        # content was produced, not when the tool last ran; that the
+        # transcripts were re-captured today is evidenced by the CI run that
+        # did it, which is the right place for it.
+        unchanged = (
+            OUTPUT.is_file()
+            and _without_timestamp(json.loads(OUTPUT.read_text(encoding="utf-8")))
+            == _without_timestamp(fresh)
+        )
+        if unchanged:
+            print(
+                f"{OUTPUT.relative_to(ROOT)} already matches what {VERIFIER} prints "
+                f"for all {len(fresh['transcripts'])} runs it covers; left untouched."
+            )
+            return 0
         OUTPUT.write_text(json.dumps(fresh, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(
             f"Captured {len(fresh['transcripts'])} transcripts from {VERIFIER} "
