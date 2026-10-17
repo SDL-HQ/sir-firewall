@@ -35,6 +35,29 @@ Mutation table. Each mutation below was applied to the repository on 12 October
 | `if updated != document` made unconditional | test_regeneration_is_idempotent fails |
 | the archive total retyped into prose outside a region | test_live_figures_do_not_appear_outside_a_region fails |
 
+On 17 October 2026 the stray-figure check fired on a number that is not an
+archive figure. The archive reached 359 runs and the register has long said
+that 359 of 453 prompts differ from the evaluated text by case and whitespace
+folding alone. A required check therefore blocked publication of a proof pull
+request on a coincidence, and would have cleared itself on the next run, which
+is worse than failing: a check that passes tomorrow for no reason teaches
+people to re-run it rather than read it. `UNRELATED_QUANTITIES` holds such
+sentences, separately from `HISTORICAL_SENTENCES`, because a stale figure and a
+number about something else are different claims and should not share a list.
+
+Writing its guard found that one of the five historical exclusions had never
+matched anything. The errata wraps "taking the total\nfrom 290 to 292" and the
+exclusion spells that break as a space, so `str.replace` removed nothing and
+said nothing, which is what removing an absent sentence does. It had been dead
+since the day it was written. Exclusions now match across line breaks, so a
+reflow cannot kill one either. Three mutations, 17 October 2026:
+
+| Mutation | Effect |
+|---|---|
+| the unrelated-quantity exclusions dropped from the search | test_live_figures_do_not_appear_outside_a_region fails on the register's total, which is the live blocker this was written for |
+| an exclusion added for a sentence in neither document | test_every_excluded_sentence_is_still_in_a_document fails |
+| exclusions matched with str.replace again, so the wrapped one dies | test_every_excluded_sentence_is_still_in_a_document fails, naming the sentence that was dead for five days |
+
 Two further mutations are applied by the tests themselves, to copies of the
 records rather than to the repository, because the thing being checked is that
 the generator raises: an exit 9 record given an unrecognised detail string, and a
@@ -83,6 +106,42 @@ HISTORICAL_SENTENCES = (
     "ledgers of 152, 8 and 6 rows",
     "E6 was two runs stale",
 )
+
+#: Prose in these documents whose integer is not an archive figure at all and
+#: has collided with one. The archive total goes up by one on every run, so
+#: every bare integer in these two documents is on a collision course with it,
+#: and the collision arrives for exactly as long as the total sits on that
+#: number. On 17 October 2026 the archive reached 359 runs and this test failed
+#: on a sentence counting prompts, which blocked publication of a proof pull
+#: request on a coincidence. It would have cleared itself on the next run, which
+#: is worse than failing, because a required check that passes tomorrow for no
+#: reason teaches people to re-run it rather than read it.
+#:
+#: An entry here is the claim that the number means something else, so each is
+#: written with the quantity it actually measures. The list cannot quietly rot:
+#: `test_every_excluded_sentence_is_still_in_a_document` fails when one stops
+#: appearing, and an exclusion for a sentence nobody can find would silently
+#: stop checking a figure.
+UNRELATED_QUANTITIES = (
+    # Prompts in the eight registry suites, fixed by those suites. Not archives.
+    "359 differ by case and whitespace folding alone",
+)
+
+
+def _without(text: str, sentences) -> str:
+    r"""Remove each sentence, matching across the line breaks prose has in it.
+
+    The exclusions were applied with `str.replace` until 17 October 2026, which
+    matches a sentence only where the document happens not to wrap it. One of
+    the five never matched anything: the errata wraps "taking the total\nfrom
+    290 to 292", and the exclusion spells that space as a space. It had been
+    dead since the day it was written and nothing said so, because removing a
+    sentence that is not there succeeds silently. Matching on `\s+` means a
+    reflow of the document cannot kill an exclusion either.
+    """
+    for sentence in sentences:
+        text = re.sub(r"\s+".join(map(re.escape, sentence.split())), "", text)
+    return text
 
 
 def test_the_generator_owns_regions_in_every_published_surface():
@@ -219,8 +278,7 @@ def test_live_figures_do_not_appear_outside_a_region(document, figure):
         head, _, rest = text.partition(begin)
         _, _, tail = rest.partition(end)
         text = head + tail
-    for sentence in HISTORICAL_SENTENCES:
-        text = text.replace(sentence, "")
+    text = _without(text, HISTORICAL_SENTENCES + UNRELATED_QUANTITIES)
     # Run identifiers are hex and routinely contain a figure's digits:
     # `20260405-040324-000000-2c99d5f16574` holds 99. Inline code is not prose,
     # so it is removed before the search rather than matched around.
@@ -231,9 +289,35 @@ def test_live_figures_do_not_appear_outside_a_region(document, figure):
 
     assert not stray, (
         f"{document} states {value} outside every generated region. Either put the "
-        "sentence in a region, or, if it describes a measurement that has already "
+        "sentence in a region; or, if it describes a measurement that has already "
         "happened, add it to HISTORICAL_SENTENCES in this file and say so in the "
-        "document."
+        "document; or, if its number is not an archive figure at all and has "
+        "merely collided with one, add it to UNRELATED_QUANTITIES with the "
+        "quantity it does measure."
+    )
+
+
+def test_every_excluded_sentence_is_still_in_a_document():
+    """Guard the exclusions. One that matches nothing un-checks a figure.
+
+    `text.replace` on a sentence that is no longer there does nothing and says
+    nothing, so an exclusion kept past the edit that removed its sentence is
+    indistinguishable from one doing its job, right up until a real retyped
+    figure lands on the same words.
+    """
+    text = "".join(
+        (ROOT / document).read_text(encoding="utf-8")
+        for document in ("docs/archive-errata.md", "docs/claims-register.md")
+    )
+    missing = [
+        sentence
+        for sentence in HISTORICAL_SENTENCES + UNRELATED_QUANTITIES
+        if _without(text, [sentence]) == text
+    ]
+
+    assert not missing, (
+        "these sentences are excluded from the stray-figure search and are not "
+        f"in either document, so the exclusion checks nothing: {missing}"
     )
 
 
