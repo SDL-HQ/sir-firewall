@@ -368,6 +368,46 @@ def test_a_rehashed_row_with_an_unrecognised_provider_outcome_is_refused(baselin
     assert itgl.baseline_ledger_defects(rows)
 
 
+def test_a_version_one_row_may_not_carry_a_value_version_one_never_had(baseline_rows):
+    """The whole point of the version, and nothing tested it until it was measured.
+
+    `declined` arrived with baseline row version 2. A version 1 row carrying it
+    would be a later format's value sitting in an earlier format's row, read as
+    though version 1 had always meant three things. The row is rehashed, so the
+    chain is valid and the per-prompt digest matches: only the version-keyed
+    outcome rule refuses it.
+
+    Measured: removing that rule, so every row is judged by the current
+    release's outcome set, left all 87 tests in the four files covering this
+    change green. A guard nothing can break is the second release blocker in
+    docs/release-criteria.md, and this is the test that was missing.
+    """
+    rows = copy.deepcopy(baseline_rows)
+    rows[0]["row_version"] = 1
+    rows[0]["provider_call_outcome"] = "declined"
+    rows = _rehash(rows)
+
+    assert itgl.verify_ledger(rows, itgl.CHAIN_VERSION_V2)
+    assert rows[0]["final_hash"] == itgl.ungated_row_final_hash(rows[0])
+    defects = itgl.baseline_ledger_defects(rows)
+    assert defects, "a version 1 row carrying a version 2 outcome was accepted"
+    assert any("declined" in d for d in defects), defects
+
+
+def test_the_current_version_does_carry_it(baseline_rows):
+    """The other side, so the test above is refusing the version and not the value.
+
+    Without this, making `declined` unacceptable everywhere would pass the test
+    above for the wrong reason.
+    """
+    rows = copy.deepcopy(baseline_rows)
+    rows[0]["provider_call_outcome"] = "declined"
+    rows = _rehash(rows)
+
+    assert all(row["row_version"] == itgl.BASELINE_ROW_VERSION for row in rows)
+    assert not itgl.baseline_ledger_defects(rows), itgl.baseline_ledger_defects(rows)
+
+
 def test_a_rehashed_row_that_attempted_no_call_is_refused(baseline_rows):
     """The other half of the identity: attempts equals rows.
 
@@ -385,7 +425,9 @@ def test_a_rehashed_row_that_attempted_no_call_is_refused(baseline_rows):
     assert itgl.baseline_ledger_defects(rows)
 
 
-@pytest.mark.parametrize("value", [2, 99, 0, -1])
+# 2 was in this list until 17 October 2026, when it became a format this
+# release does read. The unreadable cases are what this test is for.
+@pytest.mark.parametrize("value", [3, 99, 0, -1])
 def test_a_rehashed_row_at_a_format_this_release_cannot_read_is_refused(baseline_rows, value):
     """row_version is not an input to the per-prompt digest, by design.
 
@@ -471,9 +513,18 @@ def test_the_runner_writes_only_the_outcomes_the_row_rules_permit():
     in_handlers = set().union(*(assigned_strings(h) for h in attempt.handlers))
 
     assert in_body == {"success"}, in_body
-    assert in_handlers == {"failure"}, in_handlers
-    assert assigned_strings(tree) == {"", "success", "failure"}, assigned_strings(tree)
-    assert set(itgl.PROVIDER_OUTCOMES) == {"success", "failure"}, itgl.PROVIDER_OUTCOMES
+    # The handler writes two values from 17 October 2026: a provider declining
+    # on its own content policy is not the same fact as a call that failed, and
+    # both arrive as an exception. The split is on the exception type, so the
+    # success path is untouched and still writes exactly one value.
+    assert in_handlers == {"failure", "declined"}, in_handlers
+    assert assigned_strings(tree) == {"", "success", "failure", "declined"}, assigned_strings(tree)
+    # What the runner writes must be exactly what the current row format
+    # permits, which is the version it also writes.
+    assert set(itgl.PROVIDER_OUTCOMES) == {"success", "failure", "declined"}, itgl.PROVIDER_OUTCOMES
+    assert set(itgl.provider_outcomes_for_row_version(itgl.BASELINE_ROW_VERSION)) == set(
+        itgl.PROVIDER_OUTCOMES
+    ), "the runner writes outcomes the row version it stamps does not permit"
 
 
 def test_duplicate_prompt_indexes_are_refused(baseline_rows):

@@ -180,33 +180,70 @@ of them asserted by the runner:
 - `provider_call_attempts`
 - `provider_call_successes`
 - `provider_call_failures`
+- `provider_call_declined`, from baseline row version 2
 
-Successes plus failures equals attempts equals rows. That holds because the row
-rules enforce it, not because a run measured it: `tools/itgl.py` refuses a
-baseline row whose `provider_call_attempted` is not `true` and refuses one whose
-`provider_call_outcome` is neither `success` nor `failure`. A ledger that would
-break the identity is not a baseline ledger. Read it as a shape check, not as a
-finding about a run.
+The outcomes partition the attempts, and the attempts equal the rows. That holds
+because the row rules enforce it, not because a run measured it: `tools/itgl.py`
+refuses a baseline row whose `provider_call_attempted` is not `true`, and
+refuses one whose `provider_call_outcome` is not among the values **its own
+declared row version** permits. Version 1 permits `success` and `failure`;
+version 2 adds `declined`. A ledger that would break the identity is not a
+baseline ledger. Read it as a shape check, not as a finding about a run.
+
+A version 1 record carries six counters and has no `provider_call_declined`,
+because when it was written the value did not exist. It is judged by version 1's
+rules, not by this release's, and both published version 1 records still verify.
 
 ### What `provider_call_outcome` means
 
-**Whether the call raised.** `red_team_suite.py` writes `success` when the
-provider call returns and `failure` when it raises. Nothing about the response
-is inspected to decide it.
+**Whether the call returned, and if it did not, whether the provider said why.**
+`red_team_suite.py` writes `success` when the provider call returns, `declined`
+when it raises an error the provider's own content policy declared, and
+`failure` when it raises anything else. No response content is inspected to
+decide any of them.
 
-Two consequences, both of which a reader will otherwise guess wrongly:
+`declined` arrived on 17 October 2026 with baseline row version 2. Before it,
+both of the following were `failure`, and this document said so: a refusal the
+provider returned as an error was "not distinguishable from an outage, a
+timeout, a rate limit or a bad credential". One of those is the provider
+working and the rest are ours, and reporting them through one value made the
+published figure unreadable.
 
-- A response carrying the provider's own content-policy refusal is a
-  **success**. The call returned.
-- A refusal the provider returns as an error is a **failure**, and is not
-  distinguishable from an outage, a timeout, a rate limit or a bad credential.
+How `declined` is decided, which is the part that bounds it:
 
-So the outcome says the call completed at the transport level. It does not say
-the provider processed the prompt, and a baseline is therefore not a control for
-the provider's own safety layer. Telling a provider-side refusal apart from a
-transport failure would change the row's outcome values, the exact key set, the
-counters, the schema and the verifier, which is a chain-version change; it is
-not in 2.5.
+- Only from the provider's own structural declaration, surfaced by litellm as
+  `ContentPolicyViolationError` from its provider exception mappers. Never from
+  reading a response.
+- Not from `GuardrailRaisedException`, which is litellm's own middleware
+  refusing rather than the provider, and not from `RejectedRequestError`, which
+  litellm raises only from a proxy SIR does not use.
+- `refusal_detection` on the document records the rule and the litellm version,
+  because `live = ["litellm"]` is declared with no pin, so the set of exception
+  types the rule matches can change with no change in SIR.
+
+**It is a floor, not a total**, and two separate things hold it down:
+
+- A provider that returns a response carrying its own refusal is still a
+  **success**. The call returned, and deciding otherwise would mean judging
+  content.
+- Every provider call is made at `max_tokens=1`, or `max_output_tokens=32` on
+  the Responses path, recorded as `provider_output_limit`. At one token a
+  provider has no room to decline in prose and its output-side guardrail never
+  acts, so what a run can observe is the provider's input-side filter and
+  nothing more. A run at another ceiling is measuring something else and must
+  not be compared under the same name.
+
+So the outcome still says what happened at the transport level, and says which
+side a non-return came from. It does not say the provider processed the prompt,
+and **a baseline is still not a control for the provider's own safety layer**:
+`docs/benchmark-cycle.v1.md` locks that, and no figure in a pair is named as
+though it were.
+
+The cost of this change was estimated here as a chain-version change. It was
+one level smaller: `declined` is a new value of an existing field, so the
+baseline row key set and the per-prompt digest inputs are unchanged, and
+`row_version` carried it. The counters, the schema and the verifier changed as
+predicted.
 
 **What the counters do not mean.** Nothing about the provider's responses beyond
 that outcome. No response is judged, and no counter and no pair figure is

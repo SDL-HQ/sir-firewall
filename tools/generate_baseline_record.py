@@ -56,7 +56,10 @@ from itgl import (  # noqa: E402
 )
 
 RECORD_KIND = "sir_ungated_baseline"
-RECORD_VERSION = 1
+# Moves with the baseline row format, because the two change together: a row
+# format that permits a new provider outcome gives the document a counter it
+# did not have. v1 is unchanged and still judges the records issued under it.
+RECORD_VERSION = 2
 
 SUMMARY_PATH = Path("proofs/run_summary.json")
 RECORD_PATH = Path("proofs/baseline.json")
@@ -84,6 +87,11 @@ COUNTER_FIELDS = (
     "provider_call_attempts",
     "provider_call_successes",
     "provider_call_failures",
+    # From baseline row version 2. A call the provider's own error declined is
+    # not a call that failed, and until 17 October 2026 both were `failure`,
+    # which docs/evidence-perimeter.v6.md publishes as a limit: a refusal
+    # returned as an error "cannot be told apart from an outage or a timeout".
+    "provider_call_declined",
 )
 
 
@@ -218,6 +226,13 @@ def build_record(summary: Dict[str, Any], *, ledger_rows, ledger_path: str) -> D
             "itgl_final_hash": terminal_hash,
         },
         "counters": {field: counters[field] for field in COUNTER_FIELDS},
+        # What decided the declined count, and what ceiling the calls were made
+        # under. Both are needed to read that count rather than to describe it:
+        # litellm is declared unpinned so the detectable set can move, and at
+        # one output token a provider has no room for a prose refusal, so a run
+        # at another ceiling measures something else under the same name.
+        "refusal_detection": summary.get("refusal_detection"),
+        "provider_output_limit": summary.get("provider_output_limit"),
         "signing_key_id": (os.getenv("SDL_SIGNING_KEY_ID") or "default").strip() or "default",
     }
     if summary.get("scenario_id"):

@@ -241,7 +241,49 @@ BASELINE_SCENARIO_ROW_KEYS = frozenset(
 )
 
 EXPECTED_LABELS = ("allow", "block")
-PROVIDER_OUTCOMES = ("success", "failure")
+# What a provider call can be recorded as, per baseline row format version.
+#
+# Until 17 October 2026 this was one two-value tuple for all versions:
+# ("success", "failure"), where `success` meant the call did not raise and
+# `failure` meant it did. `docs/benchmark-cycle.v1.md` and
+# `docs/evidence-perimeter.v6.md` both publish the consequence in their own
+# words: "a refusal returned as an error is a `failure` that cannot be told
+# apart from an outage or a timeout". That is the same defect shape as a
+# signature check that could not run being reported as a bad signature: one
+# value carrying a fact about the counterparty and a fact about us.
+#
+# `declined` separates them. It means the provider's own error declared that it
+# would not answer, which litellm surfaces as `ContentPolicyViolationError`
+# from its provider exception mappers. Deliberately NOT counted as declined:
+# `GuardrailRaisedException`, which is litellm's own middleware rather than the
+# provider, so counting it would attribute a decision to a party that never
+# made it; and `RejectedRequestError`, which litellm raises only from its proxy
+# server, which SIR does not use.
+#
+# Keyed by version because a v1 row was written when `declined` did not exist.
+# Accepting it there would let a later format's value be read as though the
+# earlier format had always meant three things.
+PROVIDER_OUTCOMES_BY_ROW_VERSION: Dict[int, Tuple[str, ...]] = {
+    1: ("success", "failure"),
+    2: ("success", "failure", "declined"),
+}
+
+# The outcomes a run writes today. Gated rows carry no `row_version` and have no
+# declared key set, so they take the current set.
+PROVIDER_OUTCOMES = PROVIDER_OUTCOMES_BY_ROW_VERSION[2]
+
+
+def provider_outcomes_for_row_version(row_version: Any) -> Tuple[str, ...]:
+    """What a baseline row of this format version may record.
+
+    An unknown version returns an empty tuple rather than the current set, so a
+    row from a format this release does not read cannot have its outcome judged
+    by rules written for a different format. The version check reports that
+    separately; this refuses to guess in the meantime.
+    """
+    if isinstance(row_version, bool) or not isinstance(row_version, int):
+        return ()
+    return PROVIDER_OUTCOMES_BY_ROW_VERSION.get(row_version, ())
 
 # The baseline row format's own version, carried on every baseline row.
 #
@@ -258,8 +300,17 @@ PROVIDER_OUTCOMES = ("success", "failure")
 # other instead of misreading it. Without it, the format could only be told
 # apart by a second predicate over the row's shape, and that predicate would
 # have to be maintained forever against every format that ever shipped.
-BASELINE_ROW_VERSION = 1
-SUPPORTED_BASELINE_ROW_VERSIONS = (BASELINE_ROW_VERSION,)
+BASELINE_ROW_VERSION = 2
+
+# Every version this release can read, which is not the same as the one it
+# writes. This was `(BASELINE_ROW_VERSION,)`, a one-element tuple derived from
+# the version being written, so the first bump would have orphaned every record
+# already published. Measured on the two published records before the change:
+# both failed with "the record declares baseline row version 1, which this
+# release does not read; it reads [2]". Keep this as the key set of
+# PROVIDER_OUTCOMES_BY_ROW_VERSION so a version cannot be declared readable
+# without saying what its rows may contain.
+SUPPORTED_BASELINE_ROW_VERSIONS = tuple(sorted(PROVIDER_OUTCOMES_BY_ROW_VERSION))
 
 
 def ungated_row_final_hash(entry: Dict[str, Any]) -> str:
@@ -340,9 +391,6 @@ def baseline_row_defects(entry: Dict[str, Any], *, index: int) -> List[str]:
             defects.append(f"row {index}: {field} is {entry.get(field)!r}, not empty")
     if entry.get("provider_call_attempted") is not True:
         defects.append(f"row {index}: provider_call_attempted is not true")
-    if entry.get("provider_call_outcome") not in PROVIDER_OUTCOMES:
-        defects.append(f"row {index}: provider_call_outcome is {entry.get('provider_call_outcome')!r}")
-
     # bool is a subclass of int and True == 1, so a membership test alone
     # accepts true where 1 is required.
     row_version = entry.get("row_version")
@@ -352,6 +400,27 @@ def baseline_row_defects(entry: Dict[str, Any], *, index: int) -> List[str]:
         defects.append(
             f"row {index}: unsupported row_version {row_version}; this release reads "
             f"{list(SUPPORTED_BASELINE_ROW_VERSIONS)}"
+        )
+
+    # Judged by the version the row declares, not by the current one. A v1 row
+    # cannot carry `declined`, because when it was written the value did not
+    # exist and `failure` was the only thing a declining provider could produce.
+    # Accepting it on a v1 row would let a producer write a later format's value
+    # into an earlier format's row and have it read as if the earlier format had
+    # always meant three things.
+    #
+    # Measured before this was written: bumping BASELINE_ROW_VERSION without
+    # this made both published baseline records fail with "the record declares
+    # baseline row version 1, which this release does not read; it reads [2]",
+    # because SUPPORTED_BASELINE_ROW_VERSIONS was a one-element tuple derived
+    # from the current version. That is the floor-predates-the-field defect this
+    # project has already suffered once with evidence contracts.
+    permitted_outcomes = provider_outcomes_for_row_version(row_version)
+    if entry.get("provider_call_outcome") not in permitted_outcomes:
+        defects.append(
+            f"row {index}: provider_call_outcome is "
+            f"{entry.get('provider_call_outcome')!r}, which baseline row version "
+            f"{row_version!r} does not permit; it permits {list(permitted_outcomes)}"
         )
 
     expected_digest = ungated_row_final_hash(entry)
@@ -528,6 +597,9 @@ def derive_counters(entries: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
             "provider_call_failures": sum(
                 1 for e in entries if e.get("provider_call_outcome") == "failure"
             ),
+            "provider_call_declined": sum(
+                1 for e in entries if e.get("provider_call_outcome") == "declined"
+            ),
         }
 
     judged = [e for e in entries if not str(e.get("systemic_reset_reason") or "")]
@@ -594,6 +666,16 @@ def derive_counters(entries: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         "provider_call_failures": sum(
             1 for e in entries if e.get("provider_call_outcome") == "failure"
         ),
+        # A call the provider's own error declined, as against one that failed.
+        # Zero is correct rather than unknown for a ledger written before the
+        # value existed: no row in it says `declined`, so none was recorded,
+        # which is a different statement from "we cannot tell". A certificate
+        # from before the field simply does not carry the key, and
+        # `counter_disagreements` only compares keys the claim mentions, so an
+        # older archive reports nothing rather than a false agreement at zero.
+        "provider_call_declined": sum(
+            1 for e in entries if e.get("provider_call_outcome") == "declined"
+        ),
     }
 
     # Present only where the rows witness it. Omitting the key leaves it out of
@@ -618,6 +700,7 @@ def compute_audit_result(
     provider_call_attempts: int,
     provider_call_successes: int,
     provider_call_failures: int,
+    provider_call_declined: int = 0,
     systemic_reset_count: int = 0,
     systemic_reset_domain_pack_load_failed_count: int = 0,
     prompts_tested: int = 0,
@@ -690,7 +773,14 @@ def compute_audit_result(
     if proof_class == "LIVE_GATING_CHECK":
         if provider_call_failures > 0:
             return "INCONCLUSIVE"
-        if provider_call_attempts > 0 and provider_call_successes == 0:
+        # A declined call reached the provider. This condition exists for a
+        # provider that was never reached at all, so a run every one of whose
+        # calls the provider declined is describable: the gate made and recorded
+        # every decision, and what is missing is the downstream comparison the
+        # proof class already names. Before `declined` existed such a call
+        # raised and counted as a failure, so the condition above fired and a
+        # strict provider made every gated run undescribable.
+        if provider_call_attempts > 0 and (provider_call_successes + provider_call_declined) == 0:
             return "INCONCLUSIVE"
 
     return "AUDIT PASSED"
@@ -727,6 +817,7 @@ def result_disagreement(
         provider_call_attempts=int(derived["provider_call_attempts"]),
         provider_call_successes=int(derived["provider_call_successes"]),
         provider_call_failures=int(derived["provider_call_failures"]),
+        provider_call_declined=int(derived.get("provider_call_declined") or 0),
         systemic_reset_count=int(derived["systemic_reset_count"]),
         # Passed explicitly rather than left at its default. A domain-pack
         # load failure writes a reset reason, so it implies a non-zero

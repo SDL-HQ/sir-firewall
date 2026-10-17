@@ -86,6 +86,10 @@ def test_the_derivation_matches_what_the_rows_say():
         "provider_call_attempts": 2,
         "provider_call_successes": 1,
         "provider_call_failures": 1,
+        # Added 17 October 2026. None of these rows records a declined call, so
+        # zero is the right answer rather than unknown: a row either says
+        # `declined` or it does not.
+        "provider_call_declined": 0,
     }
 
 
