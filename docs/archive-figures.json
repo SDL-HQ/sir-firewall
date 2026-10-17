@@ -35,12 +35,12 @@
     {
       "exit": 0,
       "meaning": "verified",
-      "count": 222
+      "count": 219
     },
     {
       "exit": 2,
       "meaning": "archive incomplete or signature failed",
-      "count": 105
+      "count": 108
     },
     {
       "exit": 3,
@@ -228,6 +228,11 @@
     "20260416-003923-000000-ef03803fc756",
     "20260416-003924-000000-001dcbab3e95",
     "20260416-003926-000000-049b1e770f3d"
+  ],
+  "redacted_after_publication": [
+    "20260418-154825-000000-gh24608097503-e2d0e1b413fb",
+    "20260419-050141-000000-gh24621243485-8e8bade17b75",
+    "20260419-093111-000000-gh24625904026-1c5793648137"
   ],
   "legacy_no_receipt": [
     "20260111-023031-211ac186f758",

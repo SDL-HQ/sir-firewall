@@ -216,6 +216,12 @@ REGION_END = "<!-- END GENERATED ARCHIVE FIGURES: {name} -->"
 # would publish a decomposition of a smaller archive than the one measured.
 MISSING_MANIFEST_FILE = "file listed in manifest is missing"
 BAD_SIGNATURE = "signature verification failed"
+#: A file named by a signed manifest whose bytes differ from the signed hash.
+#: Distinct from MISSING_MANIFEST_FILE: the file is there and has changed. The
+#: only instances are the E8 redaction, and the decomposition below refuses to
+#: produce figures for any exit 2 it cannot name, so a new one stops the build
+#: rather than being absorbed into a count.
+CHANGED_MANIFEST_FILE = "file hash mismatch"
 NO_ROW_COUNT = "carries no itgl_row_count"
 PREDATES_CORRECTION = "predates the SIR 2.3.4 evidence-binding correction"
 NO_LEDGER_FOR_IDENTITY = "no ledger corresponding to the signed identity"
@@ -323,10 +329,15 @@ def build_figures(records: list[dict], runs_dir: Path) -> dict:
         r["run_id"] for r in records
         if r["receipt_exit"] == 2 and BAD_SIGNATURE in receipt_detail(r)
     )
+    redacted_after_publication = sorted(
+        r["run_id"] for r in records
+        if r["receipt_exit"] == 2 and CHANGED_MANIFEST_FILE in receipt_detail(r)
+    )
     legacy_no_receipt = sorted(r["run_id"] for r in records if r["receipt_exit"] == 3)
     unexplained_receipt = sorted(
         {r["run_id"] for r in records if r["receipt_exit"] == 2}
         - set(incomplete) - set(receipt_signature_failed)
+        - set(redacted_after_publication)
     )
 
     # --- certificate outcomes ------------------------------------------------
@@ -551,6 +562,7 @@ def build_figures(records: list[dict], runs_dir: Path) -> dict:
         },
         "incomplete": incomplete,
         "receipt_signature_failed": receipt_signature_failed,
+        "redacted_after_publication": redacted_after_publication,
         "legacy_no_receipt": legacy_no_receipt,
         "certificate_signature_failed": certificate_signature_failed,
         "no_ledger_to_bind": no_ledger_to_bind,
@@ -671,11 +683,20 @@ def render_measured_totals(figures: dict) -> str:
 def render_receipt_exit_two(figures: dict) -> str:
     incomplete = _n(figures, "incomplete")
     signature = _n(figures, "receipt_signature_failed")
-    return _wrap(
-        f"The exit 2 count is {incomplete + signature}: {incomplete} archives that are "
+    redacted = _n(figures, "redacted_after_publication")
+    total = incomplete + signature + redacted
+    sentence = (
+        f"The exit 2 count is {total}: {incomplete} archives that are "
         f"incomplete, described in E1, and {signature} whose receipt signature does not "
         "verify, described in E2."
     )
+    if redacted:
+        sentence += (
+            f" The remaining {redacted} carry a file whose bytes were changed after the "
+            "manifest was signed, which is the redaction described in E8; their "
+            "certificates and ledgers verify unchanged."
+        )
+    return _wrap(sentence)
 
 
 def render_e1_affected(figures: dict) -> str:

@@ -43,8 +43,8 @@ Measured across all 366 published run archives under `proofs/runs/`:
 | `verify_certificate.py` | SIGNATURE VERIFICATION FAILED (exit 5) | 6 |
 | `verify_certificate.py` | ledger binding not established (no row count, or predates the 2.3.4 correction) (exit 9) | 223 |
 | `verify_certificate.py` | no certificate in archive; this archive holds a baseline record (exit none) | 2 |
-| `verify_archive_receipt.py` | verified (exit 0) | 222 |
-| `verify_archive_receipt.py` | archive incomplete or signature failed (exit 2) | 105 |
+| `verify_archive_receipt.py` | verified (exit 0) | 219 |
+| `verify_archive_receipt.py` | archive incomplete or signature failed (exit 2) | 108 |
 | `verify_archive_receipt.py` | no archive receipt (legacy archive) (exit 3) | 39 |
 <!-- END GENERATED ARCHIVE FIGURES: measured-totals -->
 
@@ -53,8 +53,10 @@ fails are different outcomes, and earlier descriptions of this archive did not
 distinguish them.
 
 <!-- BEGIN GENERATED ARCHIVE FIGURES: receipt-exit-2 -->
-The exit 2 count is 105: 99 archives that are incomplete, described in E1, and
-6 whose receipt signature does not verify, described in E2.
+The exit 2 count is 108: 99 archives that are incomplete, described in E1, and
+6 whose receipt signature does not verify, described in E2. The remaining 3
+carry a file whose bytes were changed after the manifest was signed, which is
+the redaction described in E8; their certificates and ledgers verify unchanged.
 <!-- END GENERATED ARCHIVE FIGURES: receipt-exit-2 -->
 
 ### What changed on 8 October 2026, and why these numbers moved
