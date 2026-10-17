@@ -274,7 +274,7 @@ changes the verdict.
 
 - **Two trees are published from here, and the same rules scan both.**
   `tools/publication_rules.py` holds the working-document, private-key,
-  credential and patent rules in one place.
+  credential, account-identifier and patent rules in one place.
   `tests/test_no_working_documents_in_the_public_repository.py` runs them over
   this repository's tracked files on every commit, and
   `tools/generate_shop_window.py` runs them over the window it is about to
@@ -288,6 +288,39 @@ changes the verdict.
   Planting the patent phrase inline in a test is how the vault's guard caught
   its own test suite: use `publication_rules.PATENT_SAMPLE` instead of
   exempting another file.
+
+  **An account identifier is not a credential, and the rules missed it for
+  that reason.** `ACCOUNT_IDENTIFIERS` is separate from `CREDENTIALS` because
+  the severity and the remedy differ: a leaked key is revoked, a leaked
+  identifier is redacted. xAI returns two forms of content refusal and the
+  verbose one carries organisational identifiers in its error body, which
+  `red_team_suite.py` writes verbatim into the attempts log, deliberately,
+  because an error's class and code are evidence. Thirteen such refusals
+  reached six tracked files across three run identifiers, three of them under
+  `docs/`, and `offences()` returned nothing for any of them. The guard's
+  silence was the defect rather than the publication: a key *ID* cannot call
+  the API, so this was disclosure hygiene. Measured when it was found: 52 UUIDs
+  in 6 files, and zero matches for every `CREDENTIALS` pattern across 5,646
+  published artefacts, so no key has ever been published and no provider
+  response content ever was either.
+
+  Three things about it are only visible by running something. The detector
+  matched its own placeholder, so a file this module had just redacted still
+  read as an offence and no redaction could satisfy the guard; the negative
+  lookahead in the labelled pattern is load-bearing, and it was found by
+  redacting and then re-detecting rather than by reading either function.
+  Redaction has to happen **before** truncating, because truncating first can
+  cut an identifier in half and leave a fragment the redactor no longer
+  matches. And a comment of mine explaining the rule carried the shape the rule
+  refuses, which the guard caught on its own source.
+
+  Changing the bytes of a published file breaks the archive receipt that was
+  signed over them, so the three archives report exit 2 and are recorded as E8
+  in `docs/archive-errata.md` rather than re-signed. Re-signing would make the
+  archive assert that the redacted file is what was published, which is the
+  one thing it must not say. Their certificates and ledgers verify unchanged,
+  because neither covers the attempts log. The exit 2 count is therefore three
+  things and the generated prose says so.
 
   The window's About line is the exception, because GitHub keeps it in
   repository settings where no rebuild reaches it. The generator composes it
