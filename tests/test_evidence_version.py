@@ -119,6 +119,13 @@ def test_current_version_surfaces_match_runtime_authority():
     # pass, and it cannot do that while the old version and the authority are
     # the same string.
     v_240 = ".".join(("2", "4", "0"))
+    # The runtime authority before the bump this release carries, added as the
+    # release opened rather than in the bump commit. The note below records
+    # what happened when the previous release got no symbol in time: six files
+    # naming it became visible to this scan all at once. Doing it here is that
+    # lesson applied rather than restated. No literal, for the reason the
+    # neighbouring comment gives.
+    v_250 = ".".join(("2", "5", "0"))
     # There is no symbol for a release in flight, and there should have been
     # one for 2.5 from the start. The comment this replaces said a forward
     # symbol exists so that surfaces naming the coming release are classified
@@ -155,11 +162,11 @@ def test_current_version_surfaces_match_runtime_authority():
         # Item 8's verification record points twice at the release whose notes
         # the evidence page now frames as a dated record rather than as the
         # current measurement.
-        "release-checklist.json": Counter({v_240: 1, v_235: 2, authority: 2}),
+        "release-checklist.json": Counter({v_250: 1, v_235: 2, authority: 2}),
         # The chain-version floor table is version-keyed, so that test names
         # the released versions either side of the floor as boundary cases.
         # This entry fires if the floor moves without the test moving with it.
-        "tests/test_ledger_binds_row_contents.py": Counter({v_102: 1, v_238: 1, v_240: 1, authority: 1}),
+        "tests/test_ledger_binds_row_contents.py": Counter({v_102: 1, v_238: 1, v_240: 1, v_250: 1}),
         "examples/verifier-negatives/tampered-leak-count.json": Counter({v_230: 1}),
         "examples/verifier-negatives/tampered-leak-count-rehashed.json": Counter({v_230: 1}),
         "examples/verifier-negatives/tampered-required-field-removed.json": Counter({v_230: 1}),
@@ -176,7 +183,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # deliberately unwritten until the release that carries it ships, so
         # the entry adds no version of its own. Written as the symbol rather
         # than the string, because this file counts its own mentions too.
-        "docs/archive-errata.md": Counter({v_234: 6, v_240: 1, v_237: 1, v_102: 1, authority: 1}),
+        "docs/archive-errata.md": Counter({v_234: 6, v_240: 1, v_237: 1, v_102: 1, v_250: 1}),
         # The scenario-suite divergence row names the version the three published
         # archives were produced at, which is the half of the question that is known.
         # Three post-2.4 rows added 13 October 2026 name the release that
@@ -196,7 +203,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # Every row resolved by this release names it, which is the point:
         # a row saying "unreleased" after the tag is the drift this file
         # exists to catch, one document over.
-        "docs/backlog.md": Counter({v_240: 11, v_230: 1, v_102: 1, authority: 36}),
+        "docs/backlog.md": Counter({v_240: 13, v_230: 1, v_102: 2, v_250: 36}),
         # The publication step records the release whose merge exposed that a
         # direct push to main cannot satisfy the required status checks.
         ".github/workflows/audit-and-sign.yml": Counter({v_240: 1}),
@@ -263,7 +270,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # measurement they cite. The second v_240 is the contract applicability
         # list, corrected on 15 October 2026: it said v_235 and above selected
         # contract v3, which stopped being true when v4 arrived at v_240.
-        "docs/terminology.md": Counter({v_240: 3, v_235: 1, v_234: 1, authority: 3}),
+        "docs/terminology.md": Counter({v_240: 3, v_235: 1, v_234: 1, v_250: 3}),
         "docs/threat-model.md": Counter({v_234: 1}),
         "pyproject.toml": Counter({authority: 1}),
         "spec/evidence_contract.v1.json": Counter({v_220: 2}),
@@ -290,11 +297,12 @@ def test_current_version_surfaces_match_runtime_authority():
         # These notes are now a frozen surface: the tag exists, so the suite
         # figure in them is stated as a fact about that tag rather than
         # about the tree a reader is holding, which is the third mention.
-        f"docs/release-notes-{authority}.md": Counter({authority: 3}),
+        f"docs/release-notes-{v_250}.md": Counter({v_250: 3}),
+        f"docs/release-notes-{authority}.md": Counter({authority: 1, v_250: 1}),
         # The pack rename names the last shipped version where it states what
         # that release carried under the retired identifiers, and where it holds
         # those release notes against being tidied. v_240, four times.
-        "tests/test_pack_names_say_what_they_enforce.py": Counter({v_240: 4, authority: 1}),
+        "tests/test_pack_names_say_what_they_enforce.py": Counter({v_240: 4, v_250: 1}),
         # The shop window names one exhibit for the binding correction that
         # the archive is divided by, which is a historical boundary and not
         # a current-state claim.
@@ -304,18 +312,18 @@ def test_current_version_surfaces_match_runtime_authority():
         # recognised token, so they all arrive at once here. The symbol for
         # the next release in flight should be added at the start of that
         # release rather than at its end, which is the lesson of this block.
-        "docs/latency.md": Counter({authority: 1}),
-        "spec/packs/pack_registry.v1.json": Counter({authority: 1}),
-        "tests/domain_packs/README.md": Counter({authority: 1}),
-        "tests/domain_packs/mental_health_clinical.md": Counter({authority: 1}),
-        "tests/test_benchmark_index_v3_schema.py": Counter({authority: 2}),
-        "tests/test_no_key_material_in_diagnostics.py": Counter({authority: 1}),
+        "docs/latency.md": Counter({v_250: 1}),
+        "spec/packs/pack_registry.v1.json": Counter({v_250: 1}),
+        "tests/domain_packs/README.md": Counter({v_250: 1}),
+        "tests/domain_packs/mental_health_clinical.md": Counter({v_250: 1}),
+        "tests/test_benchmark_index_v3_schema.py": Counter({v_250: 2}),
+        "tests/test_no_key_material_in_diagnostics.py": Counter({v_250: 1}),
         # Names the release whose notes first carried the figure, the tag that
         # froze it, and the pattern that recognises a figure anchored to a tag.
         "tests/test_release_notes_suite_size.py": Counter({v_240: 3}),
         "tests/test_check_archive_staged.py": Counter({v_237: 2}),
         "tests/test_standalone_verifiers.py": Counter({v_234: 1}),
-        "tools/verify_certificate.py": Counter({v_234: 9}),
+        "tools/verify_certificate.py": Counter({v_234: 9, v_240: 1}),
         # Since 12 October 2026 this tool also generates the published figures,
         # so it names the evidence-binding correction it decomposes exit 9 by, the
         # contract floor it counts ungoverned certificates against, and the
@@ -325,8 +333,17 @@ def test_current_version_surfaces_match_runtime_authority():
         "tools/key_registry.py": Counter({v_240: 1}),
         "tests/test_one_command_verification.py": Counter({v_234: 7, v_238: 2, v_240: 1, v_102: 1}),
     }
+    # One tuple, two readers. These were two hand-maintained lists until
+    # 18 October 2026, and adding v_250 to only one of them made every mutable
+    # pointer fail with an empty counter: the version was recognised and
+    # unmatchable at the same time. A second copy of an identity, in the test
+    # that exists to guard version identity.
+    historical_versions = (
+        v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232,
+        v_233, v_234, v_235, v_236, v_237, v_238, v_240, v_250,
+    )
     version_pattern = re.compile(
-        rf"(?<![\d.])(?:{'|'.join(re.escape(version) for version in (authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233, v_234, v_235, v_236, v_237, v_238, v_240))})(?!\d)"
+        rf"(?<![\d.])(?:{'|'.join(re.escape(version) for version in (authority, *historical_versions))})(?!\d)"
     )
     # Untracked-but-not-ignored files are scanned too. `git ls-files` alone meant
     # a new version-bearing document was invisible to this test until it was
@@ -347,7 +364,7 @@ def test_current_version_surfaces_match_runtime_authority():
         if relative_path == "proofs/local-audit.json"
         or Path(relative_path).name == "latest-run.json"
     }
-    recognised_versions = {authority, v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232, v_233, v_234, v_235, v_236, v_237, v_238, v_240}
+    recognised_versions = {authority, *historical_versions}
     observed_by_path = {}
 
     for relative_path in sorted(mutable_certificate_pointers | mutable_if_versioned):
