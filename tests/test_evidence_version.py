@@ -203,7 +203,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # Every row resolved by this release names it, which is the point:
         # a row saying "unreleased" after the tag is the drift this file
         # exists to catch, one document over.
-        "docs/backlog.md": Counter({v_240: 13, v_230: 1, v_102: 2, v_250: 36}),
+        "docs/backlog.md": Counter({v_240: 13, v_230: 1, v_102: 2, v_250: 36, authority: 17}),
         # The publication step records the release whose merge exposed that a
         # direct push to main cannot satisfy the required status checks.
         ".github/workflows/audit-and-sign.yml": Counter({v_240: 1}),
@@ -298,7 +298,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # figure in them is stated as a fact about that tag rather than
         # about the tree a reader is holding, which is the third mention.
         f"docs/release-notes-{v_250}.md": Counter({v_250: 3}),
-        f"docs/release-notes-{authority}.md": Counter({authority: 1, v_250: 1}),
+        f"docs/release-notes-{authority}.md": Counter({authority: 2, v_236: 1, v_250: 1}),
         # The pack rename names the last shipped version where it states what
         # that release carried under the retired identifiers, and where it holds
         # those release notes against being tidied. v_240, four times.
