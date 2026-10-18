@@ -141,6 +141,30 @@ pointer failing with an empty counter: the version was recognised and
 unmatchable at the same time. One tuple now, two readers. A second copy of an
 identity, in the test that exists to guard version identity.
 
+## The gate and the runner are frozen from here
+
+Development stops at 2.6.0 rather than continuing quietly, and that is stated
+here rather than left to look dormant, as it was at 2.3.6.
+
+The reason is a measurement rather than a mood. The last cycle found defects
+across the whole severity range and treated them all with the same urgency:
+one of them was a verifier establishing a property from the document it was
+checking, and another was a published figure with no date on it. Both got a
+change. Nothing sorted them, because the machinery that finds defects here is
+better than the judgement that triages them, and a project with no shipping
+pressure will let that machinery set the agenda indefinitely.
+
+So the seven rows added to `docs/backlog.md` this release stay rows. That is
+what `docs/release-criteria.md` says a row is for: the difference between a
+release that ships with its limits recorded and one that waits for a condition
+nobody wrote down.
+
+What is not frozen: the evidence format, which is being worked on separately,
+and conversations with the people who would have to accept this evidence for
+any of it to matter. Six months and 370 published runs have produced no
+outside reader, and that is the only open question no amount of further
+hardening answers.
+
 ## What is not claimed
 
 The refusal counter does not measure provider refusals. It counts the ones the
