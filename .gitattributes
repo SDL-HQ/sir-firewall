@@ -1,1 +1,34 @@
+# Every tracked file is checked out byte for byte, on every platform.
+#
+# This repository signs file bytes. `publish_run.py` hashes whatever it finds
+# in a run directory into `manifest.json` and signs that manifest;
+# `verify_archive_receipt.py`, `verify_certificate.py`, `export_run_archive.py`
+# and `generate_shop_window.py` all read bytes back and compare. `core.py`
+# computes `rules_hash` from `deterministic_rules.py` with `read_bytes()`, so
+# the configuration identity in every certificate is a hash of that file's
+# bytes too.
+#
+# Git's default on Windows is `core.autocrlf=true`, which rewrites LF to CRLF
+# on checkout for any file it decides is text. That changes the bytes of the
+# published archives and of the rule source, so a fresh clone on Windows
+# computes different digests from the ones the archive signed. The visible
+# result is archive receipts failing across the whole archive and a
+# configuration hash that matches no published certificate, with nothing to
+# suggest a checkout setting is the cause.
+#
+# `-text` disables conversion in both directions: what is in the repository is
+# what lands on disk, everywhere. The cost is that an editor writing CRLF
+# commits CRLF rather than having it silently normalised away. That is the
+# right trade here, because a line ending that reaches a commit is visible in
+# a diff and a line ending introduced at checkout is visible to nobody.
+#
+# `tests/test_no_crlf_in_a_repository_that_signs_bytes.py` holds the other
+# half: no tracked file carries a CR, so the rule above cannot be quietly
+# undone by a commit.
+
+* -text
+
+# Kept from the original file. Redundant under the rule above, which already
+# guarantees these arrive as they are stored, and retained because it states
+# the intent for the suites the gate reads.
 tests/domain_packs/*.csv text eol=lf
