@@ -161,9 +161,9 @@ nobody wrote down.
 
 What is not frozen: the evidence format, which is being worked on separately,
 and conversations with the people who would have to accept this evidence for
-any of it to matter. Six months and 370 published runs have produced no
-outside reader, and that is the only open question no amount of further
-hardening answers.
+any of it to matter. Whether that evidence is useful to someone outside this
+project is the one open question further hardening cannot answer, which is why
+the work moves there.
 
 ## What is not claimed
 
