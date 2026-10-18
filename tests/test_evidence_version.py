@@ -203,7 +203,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # Every row resolved by this release names it, which is the point:
         # a row saying "unreleased" after the tag is the drift this file
         # exists to catch, one document over.
-        "docs/backlog.md": Counter({v_240: 13, v_230: 1, v_102: 2, v_250: 37, authority: 19}),
+        "docs/backlog.md": Counter({v_240: 14, v_230: 1, v_102: 2, v_250: 37, authority: 20}),
         # The publication step records the release whose merge exposed that a
         # direct push to main cannot satisfy the required status checks.
         ".github/workflows/audit-and-sign.yml": Counter({v_240: 1}),
