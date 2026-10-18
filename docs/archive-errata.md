@@ -34,16 +34,16 @@ output.
 ## Current figures
 
 <!-- BEGIN GENERATED ARCHIVE FIGURES: measured-totals -->
-Measured across all 372 published run archives under `proofs/runs/`:
+Measured across all 373 published run archives under `proofs/runs/`:
 
 | Check | Result | Count |
 |---|---|---|
-| `verify_certificate.py` | verified (exit 0) | 102 |
+| `verify_certificate.py` | verified (exit 0) | 103 |
 | `verify_certificate.py` | verified; no ledger in the archive, so no binding was checked (exit 0) | 39 |
 | `verify_certificate.py` | SIGNATURE VERIFICATION FAILED (exit 5) | 6 |
 | `verify_certificate.py` | ledger binding not established (no row count, or predates the 2.3.4 correction) (exit 9) | 223 |
 | `verify_certificate.py` | no certificate in archive; this archive holds a baseline record (exit none) | 2 |
-| `verify_archive_receipt.py` | verified (exit 0) | 225 |
+| `verify_archive_receipt.py` | verified (exit 0) | 226 |
 | `verify_archive_receipt.py` | archive incomplete or signature failed (exit 2) | 108 |
 | `verify_archive_receipt.py` | no archive receipt (legacy archive) (exit 3) | 39 |
 <!-- END GENERATED ARCHIVE FIGURES: measured-totals -->
@@ -220,7 +220,7 @@ certificate does not identify its ledger.
 <!-- BEGIN GENERATED ARCHIVE FIGURES: e4-above-the-correction -->
 **Why this is exit 9 and not exit 7.** A binding that was never made is not a
 binding that disagrees. Every certificate from SIR 2.3.4 onward matches the
-ledger shipped with it, 102 of 102, so a mismatch at or above the correction is
+ledger shipped with it, 103 of 103, so a mismatch at or above the correction is
 a real failure and is still reported as one. Below it, reporting a documented
 and disclosed format boundary as a tampering failure would describe 105
 published archives as broken.
@@ -268,8 +268,8 @@ ordinary push-triggered audit, in which nobody chose a model and none was
 called, records the default in the signed payload.
 
 <!-- BEGIN GENERATED ARCHIVE FIGURES: e6-counts -->
-**Counts.** 212 published certificates name a model and explicitly record zero
-model calls: 208 `FIREWALL_ONLY_AUDIT`, 2 `LIVE_GATING_CHECK` and 2
+**Counts.** 213 published certificates name a model and explicitly record zero
+model calls: 209 `FIREWALL_ONLY_AUDIT`, 2 `LIVE_GATING_CHECK` and 2
 `SCENARIO_AUDIT`. A further 37 name a model and do not carry the counter at
 all. The values recorded across both groups are `gpt-5-mini`, `gpt-5.4-mini`,
 `grok-4-1-fast`, `grok-4.3`, `xai/grok-3-beta` and `xai/grok-4-1-fast`, in the
