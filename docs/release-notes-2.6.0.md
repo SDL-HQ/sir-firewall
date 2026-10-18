@@ -189,6 +189,15 @@ the signing key identity is read from the environment with a constant fallback
 in four code paths, which has already produced the archive's six unverifiable
 certificates.
 
+The first of those two now has a public surface recorded against it. Checking
+the claims register for this release re-verified the repository's own About
+description, a row outstanding since 8 October for want of access, and found
+that "Blocks requests matching its published rules" is the sentence the
+substring behaviour does not support: the sentence above is blocked with
+`rule_hits: []` and all seven rule families reporting clean. It is the
+register's one open row, because the limit cannot be stated in a GitHub About
+line and the wording is therefore a decision rather than a fix.
+
 The rename of the verdict string is not in this release. `AUDIT PASSED` still
 invites the reading that the rule set is adequate, and changing it is a v5
 contract change: all four contracts carry the enum, contracts are selected by
@@ -207,4 +216,11 @@ verified. The third reports fourteen of fourteen for this release: the eleven
 conditions 2.5.0 stated, which are durable properties rather than one
 release's features and each still resolve, plus one per item above. It reports
 nothing about whether the claims in these notes were re-examined; that is
-`docs/claims-register.md`, and its date is the judgement.
+`docs/claims-register.md`.
+
+That register was not reviewed in full for this release, and it says so in its
+own first paragraph rather than carrying a date that implies otherwise. Four of
+its sixteen rows were re-checked, those being the ones this release moved, and
+the table marks which. One of the four changed status and one closed a row that
+had been outstanding for ten days. The remaining twelve rest on the reading of
+16 October.

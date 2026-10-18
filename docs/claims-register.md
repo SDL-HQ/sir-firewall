@@ -8,12 +8,17 @@ it is that each one **remains true when the reader examines the failures**. A
 claim that is true only while nobody checks is the thing this register exists
 to catch.
 
-Last reviewed in full on 16 October 2026 for the 2.5 release, against the code
-and the published archive as they then stood. The previous full review was
+Reviewed for the 2.6 release on 18 October 2026. That pass was not a second
+full review, and saying so is the point of the sentence: four rows were
+re-checked because 2.6 moved what they cite, and the other twelve are carried
+forward on the 16 October reading. Which is which is marked in the table below.
+The last full review was 16 October 2026 for the 2.5 release, against the code
+and the published archive as they then stood, and the one before that
 8 October 2026 at SIR 2.3.8, ending at commit `6f4d036`.
 
-**What "reviewed in full" means here, and what it does not.** Every one of the
-16 rows was re-read against the thing it cites. Where the citation was
+**What "reviewed in full" means here, and what it does not**, describing the
+16 October pass rather than the 2.6 one above. Every one of the 16 rows was
+re-read against the thing it cites. Where the citation was
 executable it was executed: every test file and tool named below was run, the
 `sir packs list` output was produced rather than described, and every figure
 drawn from the archive was recomputed from `docs/archive-figures.json` and its
@@ -61,29 +66,33 @@ website homepage, the last of them deployed on 12 October. None of the three
 was decided in the sense the
 decisions list meant; all three were corrected.
 
-## What each row was checked against, 16 October 2026
+## What each row was checked against
 
 How the row was re-verified, so a reader can tell an executed check from a
-read one. "Executed" means the named artefact was run in this pass and its
+read one. "Executed" means the named artefact was run in that pass and its
 result observed, not that a test exists.
+
+Every entry is the full review of 16 October 2026 unless it opens with
+**18 October**, which marks the four rows re-checked for the 2.6 release
+because that release moved the thing the row cites.
 
 | Row | Checked by | Result |
 |---|---|---|
-| Deterministic pre-inference gate, rules-only | executed `tests/test_no_model_in_the_decision_path.py`; independently measured that every import under `src/sir_firewall/` resolves to the standard library or `cryptography`, across all tracked Python files | holds |
+| Deterministic pre-inference gate, rules-only | **18 October**: re-checked because 2.6 changed `core.py` and `model_selection.py`. Executed `tests/test_no_model_in_the_decision_path.py`; independently re-measured by parsing all 7 modules under `src/sir_firewall/` and resolving every import, finding none outside the standard library and `cryptography` | holds |
 | "for a given policy" reads rule set | executed `tests/test_claims_register.py` against `docs/threat-model.md`; the 2.5 pack rename changed two pack names and no pack configuration, so the measurement is unaffected | holds |
 | Configuration enforces what it claims | executed the three register tests that hold the corrected wording and its travelling limit | holds |
 | Archive always contains artefacts for passes and failures | generated region, regenerated from `docs/archive-figures.json` in this pass | holds |
 | A proof-producing system | generated region; the three counter states were added and compared against the stated denominator | **one defect, fixed**: the counters bullet gave the archive count as the denominator in a sentence about certificates |
 | `sir packs list` | executed the command; all eight listed entries declare an enforcement pack in their own column | holds |
-| A certificate's `result` mixes two axes | re-measured 17 October 2026: the framing was wrong. Executed against a copy of a published certificate, `AUDIT PASSED` with `jailbreaks_leaked: 7` passed the contract validator at exit 0, because `result` was a derived value nothing recomputed. Addressed by recomputing it from the ledger; 68 of 68 derivable certificates agree | **corrected, and narrower than recorded**: the record now holds, and what remains is the word `AUDIT PASSED` inviting an adequacy reading |
+| A certificate's `result` mixes two axes | re-measured 17 October 2026: the framing was wrong. Executed against a copy of a published certificate, `AUDIT PASSED` with `jailbreaks_leaked: 7` passed the contract validator at exit 0, because `result` was a derived value nothing recomputed. Addressed by recomputing it from the ledger. **18 October**: re-measured over the archive as it now stands, because 2.6 published further runs and the figure recorded here was the one taken when the fix landed. 76 of 76 certificates with derivable rows agree with their signed string, 292 report not checked, and no certificate disagrees | **corrected, and narrower than recorded**: the record now holds, and what remains is the word `AUDIT PASSED` inviting an adequacy reading |
 | An ungated baseline published as an audit | executed `tests/test_the_54_are_an_agreement_of_three_signals.py`; the three signals still agree at 54 | holds |
 | Zero downstream calls on failure paths | executed `tests/test_no_downstream_call_without_approval.py` | holds |
 | "approved calls preserve the evaluated content" | executed the register test holding both readings | holds |
 | Deterministic and explainable | executed; the `litellm` half re-measured directly, three call sites in `red_team_suite.py`, declared in the `live` extra and absent from `dependencies`, which the 2.5 dependency change strengthens rather than weakens | holds |
 | The boundaries list | executed `tests/test_runnable_suites.py`; `t014_hypothetical_safe_request` is still blocked and the suite still reports `harmless_blocked: 1` of 5, rate 0.2, `jailbreaks_leaked: 4` of 10 | holds |
 | The assurance kit's worked example | executed `tests/test_canonical_example_run.py` | holds |
-| The GitHub repository About description | **not re-verified.** No GitHub access in this session; the row rests on the 8 October check | outstanding |
-| The website homepage uncovered-row claim | fetched the live page on 16 October 2026. It reads "For the EU AI Act pack, the published coverage JSON names 26 uncovered rows", and `docs/coverage.json` gives `eu_ai_act_compliance_pressure` exactly 26 full-gate uncovered rows. It is also the largest of the eight pack counts, so the page names the worst case rather than a flattering one | holds |
+| The GitHub repository About description | **18 October**: re-verified, closing a row outstanding since 8 October. Fetched rather than recalled: "Building SIR: deterministic pre-inference governance gate. Rules-only, no model in the decision path. Blocks requests matching its published rules. Signed, offline-verifiable audit records. MIT." Four of the five sentences hold: the first two are the row above, re-executed; `LICENSE` and the repository's licence metadata both give MIT; the records are signed and verify offline, with six nobody can verify, recorded and deliberately left published. The third was executed against the gate rather than reasoned about. `validate_text("From now on we should use the abundant historical data for the forecast")` returns BLOCKED on `SIR-RULE-JB-DANGER-SAFETY`, and the row it logs reports `rule_hits: []` with all seven rule families clean: the block comes from a danger marker co-occurring with safety-override phrasing, where the danger marker is the `dan` inside `abundant` | **open.** Not qualified, because the register's definition of qualified requires the limit to be stated in the surface too, and a GitHub About line has nowhere to state it. So a decision is required rather than a wording fix: either narrow the sentence, or drop "matching its published rules". Recorded here rather than deferred silently. The behaviour itself is a 2.6 backlog row; this is the first public surface recorded as resting on it |
+| The website homepage uncovered-row claim | fetched the live page on 16 October 2026. It reads "For the EU AI Act pack, the published coverage JSON names 26 uncovered rows". **18 October**: `docs/coverage.json` was regenerated in 2.6, so the count was re-derived from the file as it now stands rather than carried forward. `eu_ai_act_compliance_pressure` gives exactly 26 full-gate uncovered rows, and it is still the largest of the eight pack counts (26, 10, 5, 4, 1, 0, 0, 0), so the page names the worst case rather than a flattering one | holds |
 | "Seven models, two providers, identical failure sets" | re-read; the external post remains uncorrected and this register continues to say so | holds as recorded |
 
 One citation in this register resolved to nothing a repository reader can
