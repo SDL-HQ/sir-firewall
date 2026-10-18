@@ -194,9 +194,20 @@ the claims register for this release re-verified the repository's own About
 description, a row outstanding since 8 October for want of access, and found
 that "Blocks requests matching its published rules" is the sentence the
 substring behaviour does not support: the sentence above is blocked with
-`rule_hits: []` and all seven rule families reporting clean. It is the
-register's one open row, because the limit cannot be stated in a GitHub About
-line and the wording is therefore a decision rather than a fix.
+`rule_hits: []` and all seven rule families reporting clean. It was the
+register's one open row at the tag, because the limit cannot be stated in a
+GitHub About line and the wording was therefore a decision rather than a fix.
+
+**Amended after the tag**, visibly rather than silently, because these notes
+describe a release that shipped: the row was closed later the same day. The
+sentence is gone rather than narrowed and nothing replaced it. A replacement was
+drafted and withdrawn, which is the part worth recording. "Known false positives
+published" reads as a published false-positive rate, and
+`content_false_positive_rate` has never been published with a value at all. The
+counts are published and the rate is not, and an About line has no room to hold
+that difference, so the replacement would have been a second instance of the
+defect being removed. The gate's behaviour is unchanged and remains a backlog
+row.
 
 The rename of the verdict string is not in this release. `AUDIT PASSED` still
 invites the reading that the rule set is adequate, and changing it is a v5
