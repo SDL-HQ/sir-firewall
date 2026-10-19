@@ -1,8 +1,8 @@
 {
   "checklist_version": "v1",
-  "target_version": "2.6.0",
-  "source_branch": "release/2.6.0",
-  "rollback_tag": "v2.5.0",
+  "target_version": "2.6.1",
+  "source_branch": "release/2.6.1",
+  "rollback_tag": "v2.6.0",
   "note": "Acceptance conditions for the bounded technical-diligence release. An item is met only when it carries evidence that resolves: a test that exists, an artefact that exists, or a command that runs to its expected exit code. Prose is not evidence. tools/check_release_checklist.py enforces this on the merge path to main.",
   "evidence_types": [
     "test",

@@ -613,10 +613,33 @@ def _canonical_compact(text: str) -> str:
 def normalize_obfuscation(text: str) -> str:
     # Intentionally bounded: this normalizer handles low-level formatting/encoding
     # evasions and does not do semantic rewriting or intent inference.
+    #
+    # Combining marks are stripped before anything else looks at the text.
+    # NFKC alone composes "e" plus a combining acute into a single codepoint
+    # and leaves it there, so every downstream decision saw "prevíous" and no
+    # rule matched it. Decomposing first and dropping the marks reduces it to
+    # "previous"; the NFKC that follows keeps the compatibility composition the
+    # line relied on before, which is what folds fullwidth forms and ligatures.
+    #
+    # Deliberately NOT done here: deleting non-word characters, which would
+    # close the separator and whitespace-injection classes as well. Every
+    # decoder below this point keys on punctuation, the base64 marker's colon,
+    # "rot13:", "hex:" and the \xNN escapes, and a measurement of that
+    # aggressive form confirmed it stops all three of rot13, the hex marker and
+    # the hex escape from decoding at all. Those are classes the gate catches
+    # today, so the aggressive form trades three working detections for two new
+    # ones. Separator handling belongs in an additional matching view rather
+    # than in a destructive rewrite of the input, and is not attempted here.
+    decomposed = unicodedata.normalize("NFKD", text)
+    without_marks = "".join(
+        character
+        for character in decomposed
+        if unicodedata.category(character) != "Mn"
+    )
     raw = re.sub(
         r"[\u200b-\u206f\u2800\u202a-\u202f\u3000\u3164\ufffc\ufe00-\ufe0f\U000e0000-\U000e007f\U000e0100-\U000e01ef\s]+",
         " ",
-        unicodedata.normalize("NFKC", text),
+        unicodedata.normalize("NFKC", without_marks),
     ).strip()
     t = raw.lower()
 

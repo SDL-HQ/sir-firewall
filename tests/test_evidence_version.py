@@ -126,6 +126,7 @@ def test_current_version_surfaces_match_runtime_authority():
     # lesson applied rather than restated. No literal, for the reason the
     # neighbouring comment gives.
     v_250 = ".".join(("2", "5", "0"))
+    v_260 = ".".join(("2", "6", "0"))
     # There is no symbol for a release in flight, and there should have been
     # one for 2.5 from the start. The comment this replaces said a forward
     # symbol exists so that surfaces naming the coming release are classified
@@ -162,7 +163,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # Item 8's verification record points twice at the release whose notes
         # the evidence page now frames as a dated record rather than as the
         # current measurement.
-        "release-checklist.json": Counter({v_250: 1, v_235: 2, authority: 2}),
+        "release-checklist.json": Counter({v_260: 1, v_235: 2, authority: 2}),
         # The chain-version floor table is version-keyed, so that test names
         # the released versions either side of the floor as boundary cases.
         # This entry fires if the floor moves without the test moving with it.
@@ -203,7 +204,7 @@ def test_current_version_surfaces_match_runtime_authority():
         # Every row resolved by this release names it, which is the point:
         # a row saying "unreleased" after the tag is the drift this file
         # exists to catch, one document over.
-        "docs/backlog.md": Counter({v_240: 14, v_230: 1, v_102: 2, v_250: 37, authority: 20}),
+        "docs/backlog.md": Counter({v_240: 14, v_230: 1, v_102: 2, v_250: 37, v_260: 20}),
         # The publication step records the release whose merge exposed that a
         # direct push to main cannot satisfy the required status checks.
         ".github/workflows/audit-and-sign.yml": Counter({v_240: 1}),
@@ -298,7 +299,8 @@ def test_current_version_surfaces_match_runtime_authority():
         # figure in them is stated as a fact about that tag rather than
         # about the tree a reader is holding, which is the third mention.
         f"docs/release-notes-{v_250}.md": Counter({v_250: 3}),
-        f"docs/release-notes-{authority}.md": Counter({authority: 2, v_236: 1, v_250: 1}),
+        f"docs/release-notes-{v_260}.md": Counter({v_260: 2, v_236: 1, v_250: 1}),
+        f"docs/release-notes-{authority}.md": Counter({authority: 2, v_260: 2, v_250: 1}),
         # The pack rename names the last shipped version where it states what
         # that release carried under the retired identifiers, and where it holds
         # those release notes against being tidied. v_240, four times.
@@ -341,6 +343,7 @@ def test_current_version_surfaces_match_runtime_authority():
     historical_versions = (
         v_102, v_200, v_210, v_220, v_221, v_230, v_231, v_232,
         v_233, v_234, v_235, v_236, v_237, v_238, v_240, v_250,
+        v_260,
     )
     version_pattern = re.compile(
         rf"(?<![\d.])(?:{'|'.join(re.escape(version) for version in (authority, *historical_versions))})(?!\d)"
