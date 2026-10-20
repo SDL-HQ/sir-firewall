@@ -32,10 +32,30 @@ jobs:
           set -euo pipefail
           openssl genrsa -out /tmp/sir_ci_priv.pem 2048 >/dev/null 2>&1
           openssl rsa -in /tmp/sir_ci_priv.pem -pubout -out /tmp/sir_ci_pub.pem >/dev/null 2>&1
+
+          # A signer refuses unless the registry entry named by
+          # SDL_SIGNING_KEY_ID holds the public key belonging to the key in
+          # hand, so an ephemeral key has to be enrolled exactly as a real one
+          # is. The id is descriptive rather than borrowed: the verification
+          # steps below pass this public key directly and point at a
+          # deliberately missing registry, so nothing downstream reads it.
+          python - <<'PY'
+          import json, pathlib
+          pathlib.Path("/tmp/sir_ci_key_registry.json").write_text(json.dumps({
+              "keys": [{
+                  "key_id": "ci-ephemeral",
+                  "pubkey_pem": pathlib.Path("/tmp/sir_ci_pub.pem").read_text(),
+                  "status": "approved",
+              }]
+          }), encoding="utf-8")
+          PY
+
           {
             echo "SDL_PRIVATE_KEY_PEM<<EOF"
             cat /tmp/sir_ci_priv.pem
             echo "EOF"
+            echo "SDL_SIGNING_KEY_ID=ci-ephemeral"
+            echo "SDL_KEY_REGISTRY=/tmp/sir_ci_key_registry.json"
           } >> "$GITHUB_ENV"
 
       - name: Run audit mode (generic_safety)
@@ -70,6 +90,8 @@ jobs:
         id: generate_audit_certificate
         env:
           SDL_PRIVATE_KEY_PEM: ${{ env.SDL_PRIVATE_KEY_PEM }}
+          SDL_SIGNING_KEY_ID: ${{ env.SDL_SIGNING_KEY_ID }}
+          SDL_KEY_REGISTRY: ${{ env.SDL_KEY_REGISTRY }}
         run: |
           set -euo pipefail
 
@@ -135,6 +157,8 @@ jobs:
         id: generate_scenario_certificate
         env:
           SDL_PRIVATE_KEY_PEM: ${{ env.SDL_PRIVATE_KEY_PEM }}
+          SDL_SIGNING_KEY_ID: ${{ env.SDL_SIGNING_KEY_ID }}
+          SDL_KEY_REGISTRY: ${{ env.SDL_KEY_REGISTRY }}
         run: |
           set -euo pipefail
 
@@ -171,6 +195,8 @@ jobs:
       - name: Create archive and verify archive via CLI
         env:
           SDL_PRIVATE_KEY_PEM: ${{ env.SDL_PRIVATE_KEY_PEM }}
+          SDL_SIGNING_KEY_ID: ${{ env.SDL_SIGNING_KEY_ID }}
+          SDL_KEY_REGISTRY: ${{ env.SDL_KEY_REGISTRY }}
           AUDIT_JSON: ${{ steps.generate_scenario_certificate.outputs.audit_json }}
         run: |
           set -euo pipefail
