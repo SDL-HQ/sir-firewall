@@ -44,6 +44,8 @@ from typing import Any, Dict
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO_ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from key_registry import resolve_signing_key_id  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from document_signing import sign_document  # noqa: E402
 from itgl import (  # noqa: E402
@@ -146,7 +148,9 @@ def _require_baseline_summary(summary: Dict[str, Any]) -> None:
         )
 
 
-def build_record(summary: Dict[str, Any], *, ledger_rows, ledger_path: str) -> Dict[str, Any]:
+def build_record(
+    summary: Dict[str, Any], *, ledger_rows, ledger_path: str, signing_key_id: str
+) -> Dict[str, Any]:
     """The record's signed fields, in the order they are signed in."""
     counters = derive_counters(ledger_rows)
     if counters is None or sorted(counters) != sorted(COUNTER_FIELDS):
@@ -233,7 +237,7 @@ def build_record(summary: Dict[str, Any], *, ledger_rows, ledger_path: str) -> D
         # at another ceiling measures something else under the same name.
         "refusal_detection": summary.get("refusal_detection"),
         "provider_output_limit": summary.get("provider_output_limit"),
-        "signing_key_id": (os.getenv("SDL_SIGNING_KEY_ID") or "default").strip() or "default",
+        "signing_key_id": signing_key_id,
     }
     if summary.get("scenario_id"):
         record["scenario_id"] = str(summary["scenario_id"])
@@ -284,7 +288,13 @@ def main(summary_path: str | None = None) -> int:
         )
 
     record = sign_document(
-        build_record(summary, ledger_rows=rows, ledger_path=ledger_path), private_key_pem
+        build_record(
+            summary,
+            ledger_rows=rows,
+            ledger_path=ledger_path,
+            signing_key_id=resolve_signing_key_id(private_key_pem),
+        ),
+        private_key_pem,
     )
 
     RECORD_PATH.parent.mkdir(parents=True, exist_ok=True)

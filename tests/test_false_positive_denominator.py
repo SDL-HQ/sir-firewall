@@ -33,6 +33,8 @@ from pathlib import Path
 
 import pytest
 
+from conftest import signing_env  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -252,14 +254,16 @@ def test_the_certificate_carries_the_denominator_it_invites_division_by(tmp_path
     }
     (work / "proofs/run_summary.json").write_text(json.dumps(summary), encoding="utf-8")
 
+    _pem = key.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption()).decode()
     result = subprocess.run(
         [sys.executable, str(ROOT / "tools/generate_certificate.py")],
         cwd=work, capture_output=True, text=True,
         env={
             "PATH": "/usr/bin:/bin", "HOME": str(work),
-            "SDL_PRIVATE_KEY_PEM": key.private_bytes(
-                serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
-                serialization.NoEncryption()).decode(),
+            "SDL_PRIVATE_KEY_PEM": _pem,
+            **signing_env(_pem, work),
         },
     )
     certificates = list(work.glob("proofs/archive/audit-certificate-*.json"))

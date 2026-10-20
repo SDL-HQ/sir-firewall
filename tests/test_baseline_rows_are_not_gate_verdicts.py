@@ -83,6 +83,8 @@ from pathlib import Path
 
 import pytest
 
+from conftest import set_signing_env  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
@@ -636,7 +638,9 @@ def test_the_generator_refuses_to_certify_a_baseline_ledger(tmp_path, monkeypatc
     # A real signing key, so the refusal is reached rather than a missing
     # secret. The generator must refuse because of what the rows say, not
     # because it could not sign.
-    monkeypatch.setenv("SDL_PRIVATE_KEY_PEM", _signing_key_pem())
+    _pem = _signing_key_pem()
+    monkeypatch.setenv("SDL_PRIVATE_KEY_PEM", _pem)
+    set_signing_env(monkeypatch, _pem)
 
     spec = importlib.util.spec_from_file_location(
         "generate_certificate_for_baseline_test", ROOT / "tools/generate_certificate.py"

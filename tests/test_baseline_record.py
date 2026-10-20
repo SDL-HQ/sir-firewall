@@ -61,6 +61,8 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from jsonschema import Draft202012Validator
 
+from conftest import set_signing_env  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
@@ -190,6 +192,7 @@ def baseline_run(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("XAI_API_KEY", "test-key")
     monkeypatch.setenv("SDL_PRIVATE_KEY_PEM", private_pem)
+    set_signing_env(monkeypatch, private_pem)
     monkeypatch.setitem(sys.modules, "litellm", fake_litellm)
     monkeypatch.setattr(
         runner, "_call_provider_model", lambda **_kwargs: {"choices": [{"message": {"content": "stub"}}]}
@@ -615,7 +618,9 @@ def test_the_generator_refuses_a_gated_run(tmp_path, monkeypatch):
     generator = _module("generate_baseline_record_refusal", "tools/generate_baseline_record.py")
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("SDL_PRIVATE_KEY_PEM", _signing_key_pem()[0])
+    _pem = _signing_key_pem()[0]
+    monkeypatch.setenv("SDL_PRIVATE_KEY_PEM", _pem)
+    set_signing_env(monkeypatch, _pem)
     (tmp_path / "proofs").mkdir()
     (tmp_path / "proofs/run_summary.json").write_text(
         json.dumps(
@@ -643,6 +648,7 @@ def test_the_generator_refuses_a_summary_carrying_gate_counters(baseline_run, mo
     )
     monkeypatch.chdir(baseline_run["tmp_path"])
     monkeypatch.setenv("SDL_PRIVATE_KEY_PEM", baseline_run["private_pem"])
+    set_signing_env(monkeypatch, baseline_run["private_pem"])
 
     with pytest.raises(RuntimeError) as refused:
         generator.main()
