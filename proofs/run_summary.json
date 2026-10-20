@@ -1,6 +1,6 @@
 {
-  "date": "2026-10-18T08:43:39Z",
-  "timestamp_utc": "2026-10-18T08:43:39Z",
+  "date": "2026-10-20T00:34:19Z",
+  "timestamp_utc": "2026-10-20T00:34:19Z",
   "proof_class": "FIREWALL_ONLY_AUDIT",
   "model": "grok-4.3",
   "provider": "xai",
@@ -21,7 +21,7 @@
   "content_allow_prompts": 50,
   "content_block_prompts": 100,
   "content_false_positive_rate": 0.0,
-  "configuration_hash": "sha256:b6cdb913f42f1ab790418777e7d0c95f10afc2e7c6dcdd97190f95946a778334",
+  "configuration_hash": "sha256:3d83f27994ddc91179215ff4a127bedd1c0abad03c427dc0c722e9a7af5b25da",
   "configurations_observed": 1,
   "rows_without_configuration": 0,
   "systemic_reset_count": 0,
@@ -47,6 +47,6 @@
     "benchmark_role": "gated",
     "gate_mode": "sir_gated"
   },
-  "run_id": "20261018-084339-618948-gh39112542363-fd9a184b9c79",
-  "ledger_path": "proofs/runs/20261018-084339-618948-gh39112542363-fd9a184b9c79/proofs/itgl_ledger.jsonl"
+  "run_id": "20261020-003418-820192-gh39348402386-b334ed168b99",
+  "ledger_path": "proofs/runs/20261020-003418-820192-gh39348402386-b334ed168b99/proofs/itgl_ledger.jsonl"
 }
