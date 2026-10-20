@@ -34,6 +34,9 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from key_registry import resolve_signing_key_id  # noqa: E402
 from typing import Any, Dict, Optional
 
 
@@ -625,7 +628,8 @@ def main(ledger_path: Optional[str] = None, allow_detached_ledger: bool = False)
     repo = os.getenv("GITHUB_REPOSITORY", "SDL-HQ/sir-firewall")
     run_id = os.getenv("GITHUB_RUN_ID") or ""
     ci_run_url = f"https://github.com/{repo}/actions/runs/{run_id}" if (repo and run_id) else ""
-    signing_key_id = (os.getenv("SDL_SIGNING_KEY_ID") or "default").strip() or "default"
+    # Checked against the key that will actually sign, not read beside it.
+    signing_key_id = resolve_signing_key_id(private_key_pem)
 
     # Build certificate dict in a stable insertion order (do NOT sort keys).
     cert: Dict[str, Any] = {

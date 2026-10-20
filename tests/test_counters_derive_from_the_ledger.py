@@ -24,6 +24,8 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from sir_firewall.evidence_paths import canonical_ledger_path
 
+from conftest import set_signing_env  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -262,9 +264,11 @@ def _generator_world(tmp_path, monkeypatch, *, summary_overrides):
     """A run whose ledger is chain version 2, so the counters are derivable."""
     monkeypatch.chdir(tmp_path)
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    monkeypatch.setenv("SDL_PRIVATE_KEY_PEM", key.private_bytes(
+    _pem = key.private_bytes(
         serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
-        serialization.NoEncryption()).decode())
+        serialization.NoEncryption()).decode()
+    monkeypatch.setenv("SDL_PRIVATE_KEY_PEM", _pem)
+    set_signing_env(monkeypatch, _pem)
 
     prev = "GENESIS"
     rows = []

@@ -10,6 +10,10 @@ fails, so this artefact gates every other signature the project produces.
 The key id is inside the signed bytes rather than beside them. Recording it as
 an unsigned field would reproduce the same missing binding one level up.
 """
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parent))
+from key_registry import resolve_signing_key_id  # noqa: E402
 import base64
 import hashlib
 import json
@@ -21,21 +25,27 @@ from cryptography.hazmat.primitives.asymmetric import padding
 SIGNATURE_SCHEMA = "isc-policy-signature/v2"
 
 
-def load_private_key():
-    """Load SDL private key from env, same pattern as generate_certificate.py."""
+def _private_key_pem() -> str:
     pem = os.environ.get("SDL_PRIVATE_KEY_PEM")
     if not pem:
         raise RuntimeError("SDL_PRIVATE_KEY_PEM secret missing")
-    return serialization.load_pem_private_key(pem.encode("utf-8"), password=None)
+    return pem
 
 
-def signing_key_id() -> str:
+def load_private_key():
+    """Load SDL private key from env, same pattern as generate_certificate.py."""
+    return serialization.load_pem_private_key(
+        _private_key_pem().encode("utf-8"), password=None
+    )
+
+
+def signing_key_id(private_key_pem: str) -> str:
     """The registry key id this signature claims.
 
     Mirrors generate_certificate.py so a rotation cannot move one and not the
     other. Both read SDL_SIGNING_KEY_ID and both fall back to "default".
     """
-    return (os.getenv("SDL_SIGNING_KEY_ID") or "default").strip() or "default"
+    return resolve_signing_key_id(private_key_pem)
 
 
 def canonical_payload(data: dict) -> bytes:
@@ -67,7 +77,7 @@ def main() -> None:
 
     payload = canonical_payload(policy)
     payload_hash = "sha256:" + hashlib.sha256(payload).hexdigest()
-    key_id = signing_key_id()
+    key_id = signing_key_id(_private_key_pem())
 
     # Sign with SDL private key
     private_key = load_private_key()

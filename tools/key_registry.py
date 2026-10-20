@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -47,6 +48,107 @@ def load_registry(path: Path) -> Dict[str, Any]:
 # approved registry, retired, and a revoked "default" refuses these archives
 # exactly as it refuses the 249 that name it.
 IMPLICIT_KEY_ID = "default"
+
+
+# The environment variable every signer reads, and the registry they check it
+# against.
+SIGNING_KEY_ID_ENV = "SDL_SIGNING_KEY_ID"
+# The verifiers all take a registry path; the signers had nowhere to say one,
+# so a deployment or a test signing against its own keys had no way to be
+# checked at all. Named rather than passed because the four signers are
+# invoked as scripts with no shared argument surface.
+SIGNING_REGISTRY_ENV = "SDL_KEY_REGISTRY"
+DEFAULT_REGISTRY_PATH = Path(__file__).resolve().parents[1] / "spec" / "pubkeys" / "key_registry.v1.json"
+
+
+class SigningKeyError(RuntimeError):
+    """The signing key id could not be established, so nothing may be signed."""
+
+
+def _public_pem_of(private_key_pem: str) -> bytes:
+    """The DER of the public key belonging to this private key."""
+    from cryptography.hazmat.primitives import serialization
+
+    private_key = serialization.load_pem_private_key(
+        private_key_pem.encode("utf-8"), password=None
+    )
+    return private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+
+
+def _public_der_of_pem(public_key_pem: str) -> bytes:
+    from cryptography.hazmat.primitives import serialization
+
+    public_key = serialization.load_pem_public_key(public_key_pem.encode("utf-8"))
+    return public_key.public_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+
+
+def resolve_signing_key_id(
+    private_key_pem: str, registry_path: Optional[Path] = None
+) -> str:
+    """The signing key id, derived against the key that will actually sign.
+
+    Every signer used to read SDL_SIGNING_KEY_ID and fall back to "default"
+    when it was unset. That fallback is how the archive acquired six
+    certificates signed by a key nobody published: the id said "default", the
+    signature was made by something else, and nothing compared the two. A key
+    id read from an environment variable is a second copy of the key's
+    identity, and this project's recurring defect is a value taken from the
+    second copy rather than computed from the thing it names.
+
+    So the id is still named by the environment, because a registry id is a
+    label and cannot be computed from key material, but it is refused unless
+    the registry entry it names holds the public key belonging to the private
+    key in hand. Three ways to fail, all closed:
+
+      unset            nothing to check, so nothing is signed
+      not in registry  an id that resolves to no key identifies no key
+      wrong key        the id names a key that is not the one signing
+
+    The third is the one that matters. The other two were reachable before and
+    produced a signed document anyway.
+    """
+    key_id = (os.getenv(SIGNING_KEY_ID_ENV) or "").strip()
+    if not key_id:
+        raise SigningKeyError(
+            f"refusing to sign: {SIGNING_KEY_ID_ENV} is not set. It used to "
+            'default to "default", which is how six published certificates '
+            "came to name a key that was never published."
+        )
+
+    named = os.getenv(SIGNING_REGISTRY_ENV)
+    path = registry_path or (Path(named) if named else DEFAULT_REGISTRY_PATH)
+    entry = find_registry_key(path, key_id)
+    if entry is None:
+        raise SigningKeyError(
+            f"refusing to sign: {SIGNING_KEY_ID_ENV} is {key_id!r}, which is "
+            f"not in {path}. An id that resolves to no key identifies no key."
+        )
+
+    try:
+        registry_der = _public_der_of_pem(public_key_pem_from_entry(entry))
+        actual_der = _public_pem_of(private_key_pem)
+    except SigningKeyError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - any failure here must fail closed
+        raise SigningKeyError(
+            f"refusing to sign: could not compare {key_id!r} against the "
+            f"signing key: {exc}"
+        ) from exc
+
+    if registry_der != actual_der:
+        raise SigningKeyError(
+            f"refusing to sign: {SIGNING_KEY_ID_ENV} is {key_id!r}, but the "
+            "registry entry for that id holds a different public key from the "
+            "one belonging to the signing key. The certificate would name a "
+            "key that did not sign it."
+        )
+    return key_id
 
 
 def find_registry_key(path: Path, key_id: str) -> Optional[Dict[str, Any]]:

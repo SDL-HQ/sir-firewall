@@ -98,6 +98,9 @@ def test_signer_and_verifier_agree_end_to_end(tmp_path, key):
     env = dict(os.environ)
     env["SDL_PRIVATE_KEY_PEM"] = private_pem = private_key_pem(key)
     env["SDL_SIGNING_KEY_ID"] = "test-key-1"
+    # The signer now checks the id against the key, so it needs the registry
+    # this key is in rather than the shipped one.
+    env["SDL_KEY_REGISTRY"] = str(_registry(tmp_path, [_entry("test-key-1", key)]))
     assert private_pem.startswith("-----BEGIN")
 
     result = subprocess.run(
@@ -228,11 +231,23 @@ def test_runtime_drift_is_still_caught_before_any_key_work(tmp_path, key):
     assert "differs" in detail
 
 
-def test_the_signer_defaults_to_the_same_key_id_as_the_certificate_generator():
-    """Both read SDL_SIGNING_KEY_ID and both fall back to "default". A rotation
-    that moved one and not the other would stamp mismatched identities."""
-    generator = (ROOT / "tools/generate_certificate.py").read_text(encoding="utf-8")
-    assert 'os.getenv("SDL_SIGNING_KEY_ID")' in generator
-    assert 'os.getenv("SDL_SIGNING_KEY_ID")' in (
-        ROOT / "tools/sign_policy.py"
-    ).read_text(encoding="utf-8")
+def test_every_signer_resolves_the_key_id_through_the_same_function():
+    """They used to each read SDL_SIGNING_KEY_ID and each fall back to
+    "default", so a rotation that moved one and not the other stamped
+    mismatched identities, and an unset variable stamped an id for a key that
+    was never published. Six archives carry that. They now all call
+    resolve_signing_key_id, which refuses unless the registry entry the id
+    names holds the public key belonging to the key in hand.
+
+    Read out of the sources rather than exercised, because the point is that
+    no signer has its own copy of the rule."""
+    for relative in (
+        "tools/generate_certificate.py",
+        "tools/generate_baseline_record.py",
+        "tools/sign_policy.py",
+        "tools/sign_isc.py",
+    ):
+        source = (ROOT / relative).read_text(encoding="utf-8")
+        assert "resolve_signing_key_id" in source, relative
+        assert 'os.getenv("SDL_SIGNING_KEY_ID") or "default"' not in source, relative
+        assert "os.environ.get(\"SDL_SIGNING_KEY_ID\") or \"default\"" not in source, relative

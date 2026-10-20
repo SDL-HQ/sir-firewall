@@ -15,6 +15,7 @@ publisher all run for real.
 import argparse
 import importlib.util
 import json
+import tempfile
 import sys
 import types
 from pathlib import Path
@@ -36,6 +37,64 @@ def _module(name, relative):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+# The id a test document claims, and it is "default" on purpose.
+#
+# A test signs with a throwaway key, and several tests depend on a
+# published-registry verifier rejecting the result with exit 5, signature
+# checked and does not verify. That is a statement about the document. An id
+# the published registry has never heard of instead produces "signing key not
+# in registry", which is a statement about the verifier, and the two are the
+# distinction this project cares most about. "default" is in the published
+# registry, so the signature check runs and fails, which is what those tests
+# are reading. Enrolling the test key under that id in the test registry is
+# what lets the signer proceed at all.
+DEFAULT_TEST_KEY_ID = "default"
+
+
+def signing_env(private_pem: str, tmp_path: Path | None = None, key_id: str = DEFAULT_TEST_KEY_ID) -> dict:
+    """The environment a signer needs, for a throwaway key.
+
+    Since 20 October a signer refuses unless the registry entry named by
+    SDL_SIGNING_KEY_ID holds the public key belonging to the key in hand. That
+    is the point of the change: six published certificates name a key nobody
+    published, and the only reason they could be produced is that the id was
+    read beside the key and never compared to it.
+
+    So a test signing with a throwaway key has to enrol it, exactly as a real
+    deployment enrols a real one. Deliberately a helper each test calls rather
+    than an autouse fixture: an autouse fixture would make signing succeed
+    everywhere, including in a test whose point was that it should not, and
+    the refusals would then be held only by their own file.
+
+    Returns the variables as a dict, because some callers monkeypatch and some
+    build an env for a subprocess.
+    """
+    from cryptography.hazmat.primitives import serialization as _serialization
+
+    private_key = _serialization.load_pem_private_key(
+        private_pem.encode("utf-8"), password=None
+    )
+    public_pem = private_key.public_key().public_bytes(
+        encoding=_serialization.Encoding.PEM,
+        format=_serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode("ascii")
+
+    root = tmp_path if tmp_path is not None else Path(tempfile.mkdtemp())
+    registry = root / "test_key_registry.json"
+    registry.write_text(
+        json.dumps({"keys": [{"key_id": key_id, "pubkey_pem": public_pem, "status": "approved"}]}),
+        encoding="utf-8",
+    )
+    return {"SDL_SIGNING_KEY_ID": key_id, "SDL_KEY_REGISTRY": str(registry)}
+
+
+def set_signing_env(monkeypatch, private_pem: str, tmp_path: Path | None = None, key_id: str = DEFAULT_TEST_KEY_ID) -> str:
+    """signing_env, applied with monkeypatch. Returns the key id."""
+    for name, value in signing_env(private_pem, tmp_path, key_id).items():
+        monkeypatch.setenv(name, value)
+    return key_id
 
 
 def _signing_key_pem(public_out: Path | None = None):
@@ -135,7 +194,9 @@ def _publish_cli(tmp_path, *arguments, check=True):
         cwd=tmp_path,
         capture_output=True,
         text=True,
-        env={**os.environ, "SDL_PRIVATE_KEY_PEM": os.environ["SDL_PRIVATE_KEY_PEM"]},
+        env={**os.environ, "SDL_PRIVATE_KEY_PEM": os.environ["SDL_PRIVATE_KEY_PEM"],
+             "SDL_SIGNING_KEY_ID": os.environ.get("SDL_SIGNING_KEY_ID", ""),
+             "SDL_KEY_REGISTRY": os.environ.get("SDL_KEY_REGISTRY", "")},
         check=False,
     )
     if check:
@@ -166,7 +227,9 @@ def published_pair(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("XAI_API_KEY", "test-key")
     pubkey = tmp_path / "signing-key.pub.pem"
-    monkeypatch.setenv("SDL_PRIVATE_KEY_PEM", _signing_key_pem(public_out=pubkey))
+    _pem = _signing_key_pem(public_out=pubkey)
+    monkeypatch.setenv("SDL_PRIVATE_KEY_PEM", _pem)
+    set_signing_env(monkeypatch, _pem, tmp_path)
 
     baseline_summary, record, record_flag = _run_half(
         tmp_path, monkeypatch, ungated_baseline=True

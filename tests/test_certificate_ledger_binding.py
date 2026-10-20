@@ -15,6 +15,8 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric import rsa
 from sir_firewall.evidence_paths import canonical_ledger_path
 
+from conftest import set_signing_env  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 
 _ITGL_SPEC = importlib.util.spec_from_file_location("itgl_for_binding_tests", ROOT / "tools/itgl.py")
@@ -100,9 +102,11 @@ def _setup_run(tmp_path: Path, ledger_path: Path, run_id: str = "binding-run") -
 
 def _key(monkeypatch):
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    monkeypatch.setenv("SDL_PRIVATE_KEY_PEM", key.private_bytes(
+    _pem = key.private_bytes(
         serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
-        serialization.NoEncryption()).decode())
+        serialization.NoEncryption()).decode()
+    monkeypatch.setenv("SDL_PRIVATE_KEY_PEM", _pem)
+    set_signing_env(monkeypatch, _pem)
     return key
 
 

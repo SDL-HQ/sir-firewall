@@ -11,6 +11,8 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 
+from conftest import set_signing_env  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 CURRENT_SYSTEMIC_RESET_REASONS = {
     "systemic_reset_policy_load_failed",
@@ -132,14 +134,13 @@ def test_canary_fail_systemic_reset_is_inconclusive(tmp_path, monkeypatch):
     (tmp_path / "proofs").mkdir(exist_ok=True)
     shutil.copy(ROOT / "proofs/template.html", tmp_path / "proofs/template.html")
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    monkeypatch.setenv(
-        "SDL_PRIVATE_KEY_PEM",
-        key.private_bytes(
-            serialization.Encoding.PEM,
-            serialization.PrivateFormat.PKCS8,
-            serialization.NoEncryption(),
-        ).decode("utf-8"),
-    )
+    _pem = key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    ).decode("utf-8")
+    monkeypatch.setenv("SDL_PRIVATE_KEY_PEM", _pem)
+    set_signing_env(monkeypatch, _pem, tmp_path)
     generator = _load_module("generate_certificate_canary_fail", "tools/generate_certificate.py")
     generator.main()
     certificate = json.loads((tmp_path / "proofs/local-audit.json").read_text(encoding="utf-8"))
