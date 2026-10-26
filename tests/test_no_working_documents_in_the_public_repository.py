@@ -250,9 +250,19 @@ def test_a_documented_key_header_without_a_body_is_allowed():
 
     assert not publication_rules.private_key_material(documented)
     assert publication_rules.private_key_material(real)
-    # The threshold is the rule, so name it rather than trusting the samples.
-    assert KEY_BODY_MINIMUM == 200
+    # The threshold is the rule, so name it rather than trusting the samples --
+    # as the property it has to hold, not as a literal. It was pinned here at
+    # 200 and separately defined in publication_rules, which is two copies of
+    # one identity, and the copy here is the one that would have argued against
+    # correcting it. The bound is measured against real keys per algorithm in
+    # tests/test_the_guard_sees_every_key_algorithm.py; what matters here is
+    # that a documented header still has no body and a real one does.
+    assert 0 < KEY_BODY_MINIMUM < 64, (
+        f"KEY_BODY_MINIMUM={KEY_BODY_MINIMUM} must be positive, so a bare header stays "
+        "documentation, and below 64, the body length of an Ed25519 key"
+    )
     assert len("".join(KEY_BODY.findall(KEY_HEADER.search(real).group(2)))) > KEY_BODY_MINIMUM
+    assert "".join(KEY_BODY.findall(KEY_HEADER.search(documented).group(2))) == ""
 
 
 def test_no_tracked_file_outside_the_notice_carries_patent_analysis():
