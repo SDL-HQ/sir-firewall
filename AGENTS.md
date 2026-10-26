@@ -449,6 +449,20 @@ Editing a token's permissions does not change its value.
   registry consulted by the runtime gate is empty, so enabling it would block
   all traffic.
 
+## Attribution in git
+
+Commits and pull requests carry no attribution trailer, no co-author line and
+no session link. This repository is public and its history is append-only in
+practice: a commit message cannot be corrected without rewriting history, and
+published artefacts bind to commit SHAs, so a line added by default is a line
+that stays. Write the message and nothing else.
+
+The settings keys that do this are `attribution.commit`, `attribution.pr` and
+`attribution.sessionUrl`, and they belong in a settings file outside this
+repository. `.claude/` is a working-document path by
+`publication_rules.WORKING_DOCUMENT` and is not tracked here, so this note is
+where the rule lives for a session working in this tree.
+
 ## Working agreement
 
 Run it, do not trust the report, including your own. Every defect found in the
