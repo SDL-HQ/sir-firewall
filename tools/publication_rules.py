@@ -51,9 +51,28 @@ WORKING_DOCUMENT = (
 )
 
 # A header on its own is documentation. A header with a body is a key.
+#
+# The minimum is one base64 run, not a round number, and the distinction it
+# draws is carried by KEY_BODY's own 40-character floor: a documented header
+# followed by prose or an ellipsis contributes nothing, so a body exists or it
+# does not. The five legitimate headers in this repository's own docs and tests
+# measure 0.
+#
+# It was 200 until 26 October 2026, which is a figure an RSA key clears easily
+# and no other algorithm does. Measured on the keys of a repository this guard
+# is also pointed at: an Ed25519 PKCS#8 private key body is 64 characters, so
+# five real private keys scanned clean and the guard printed "private key
+# material" among the rules it had checked. RSA-2048 is about 1,600, which is
+# why nothing here caught it. The threshold was calibrated against the only
+# algorithm this repository signs with, and then used to clear a repository
+# that signs with another.
+#
+# tests/test_the_guard_sees_every_key_algorithm.py generates a real key per
+# algorithm and requires each to be found, so the bound is derived from the
+# artefacts rather than chosen.
 KEY_HEADER = re.compile(r"-----BEGIN ([A-Z ]*PRIVATE KEY)-----(.*?)-----END", re.S)
 KEY_BODY = re.compile(r"[A-Za-z0-9+/=]{40,}")
-KEY_BODY_MINIMUM = 200
+KEY_BODY_MINIMUM = 40
 
 CREDENTIALS = {
     "OpenAI-style key": re.compile(r"\bsk-[A-Za-z0-9_-]{20,}"),
