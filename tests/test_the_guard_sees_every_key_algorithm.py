@@ -27,7 +27,7 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa
 
-from tools.publication_rules import (
+from publication_rules import (
     KEY_BODY,
     KEY_BODY_MINIMUM,
     KEY_HEADER,
