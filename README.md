@@ -174,10 +174,11 @@ python3 tools/verify_archive_receipt.py "docs/runs/$RUN_ID" --require-registry
   count.
 - `verify_itgl.py` establishes that the ledger's rows are complete and in order,
   with no row removed, inserted or reordered.
-- `verify_archive_receipt.py` establishes that every file in the archive, the
-  ledger included, is byte-identical to what was signed. The chain alone does
-  not cover the contents of a ledger row, so this check is required, not
-  optional.
+- `verify_archive_receipt.py` establishes that every file the signed manifest
+  names, the ledger included, is byte-identical to what was signed. A file in
+  the directory that the manifest does not name is not covered, and is named in
+  a `NOTE` line. The chain alone does not cover the contents of a ledger row,
+  so this check is required, not optional.
 
 `docs/archive-errata.md` lists the published runs that do not pass these checks
 and why.

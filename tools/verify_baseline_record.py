@@ -41,7 +41,8 @@ Exit codes:
   6  the signature check could not be performed, so the signature is neither
      established nor refuted
   7  the bound ledger does not support the record
-  10 the signing key is revoked for this record
+  10 the registry does not honour the signing key for this record: it is
+     revoked, or no longer active and the record is not one the registry anchors
 """
 from __future__ import annotations
 
@@ -71,6 +72,7 @@ from itgl import (  # noqa: E402
     load_ledger,
 )
 from key_registry import (  # noqa: E402
+    anchored_set_refusal,
     find_registry_key,
     public_key_pem_from_entry,
     revocation_allows_proof,
@@ -553,7 +555,7 @@ def main() -> int:
 
     if entry is not None:
         allowed, reason = revocation_allows_proof(
-            entry, record.get("timestamp_utc"), record.get("run_id")
+            entry, record.get("timestamp_utc"), record.get("run_id"), anchored_check_follows=True
         )
         if not allowed:
             print(f"ERROR: revoked-key verification failure: {reason}", file=sys.stderr)
@@ -592,6 +594,15 @@ def main() -> int:
             file=sys.stderr,
         )
         return SIGNATURE_CHECK_RAISED
+
+    # The signature verified against the registry's key. A key that is no
+    # longer active is honoured only for the documents the registry anchors,
+    # by the payload hash computed here and compared with the stated one above.
+    if entry is not None:
+        refusal = anchored_set_refusal(entry, compute_payload_hash(record))
+        if refusal is not None:
+            print(f"ERROR: {entry.get('status')}-key verification failure: {refusal}", file=sys.stderr)
+            return REVOCATION_FAILURE
 
     # 4. The bound ledger.
     if args.no_ledger:

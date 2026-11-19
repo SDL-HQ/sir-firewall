@@ -37,6 +37,7 @@ from key_registry import (
     IMPLICIT_KEY_ID,
     find_registry_key,
     public_key_pem_from_entry,
+    anchored_set_refusal,
     revocation_allows_proof,
 )
 from itgl import (
@@ -248,12 +249,14 @@ def _load_pubkey(pubkey_path: str) -> tuple[Any, str]:
 
 def _load_pubkey_with_registry(
     cert: Dict[str, Any], pubkey_path: str, key_registry_path: str, require_registry: bool = False
-) -> List[Tuple[Any, str]]:
-    """Public keys to try, in order, each with the source that produced it.
+) -> Tuple[List[Tuple[Any, str]], Dict[str, Dict[str, Any]]]:
+    """Public keys to try, in order, each with the source that produced it, and
+    the registry entry behind each source that came from the registry.
 
-    One entry in every case but one: a certificate naming no signing_key_id,
+    One key in every case but one: a certificate naming no signing_key_id,
     where the registry's implicit entry is tried first and the public key file
-    second. main() names whichever verified.
+    second. main() names whichever verified, and asks the entry behind it
+    whether a key that is no longer active is honoured for this document.
     """
     signing_key_id = cert.get("signing_key_id")
     registry_path = Path(key_registry_path)
@@ -286,7 +289,7 @@ def _load_pubkey_with_registry(
             entry = None
         if entry is not None:
             allowed, reason = revocation_allows_proof(
-                entry, cert.get("timestamp_utc"), cert.get("run_id")
+                entry, cert.get("timestamp_utc"), cert.get("run_id"), anchored_check_follows=True
             )
             if not allowed:
                 print(
@@ -308,13 +311,13 @@ def _load_pubkey_with_registry(
                 "WARNING: signing_key_id present but key registry unavailable; falling back to --pubkey verification only (revocation checks not enforced).",
                 file=sys.stderr,
             )
-            return [_load_pubkey(pubkey_path)]
+            return [_load_pubkey(pubkey_path)], {}
         try:
             entry = find_registry_key(registry_path, signing_key_id)
             if entry is None:
                 raise SystemExit(f"ERROR: signing_key_id not found in key registry: {signing_key_id}")
             allowed, reason = revocation_allows_proof(
-                entry, cert.get("timestamp_utc"), cert.get("run_id")
+                entry, cert.get("timestamp_utc"), cert.get("run_id"), anchored_check_follows=True
             )
             if not allowed:
                 print(f"ERROR: revoked-key verification failure: {reason}", file=sys.stderr)
@@ -329,7 +332,7 @@ def _load_pubkey_with_registry(
             candidates = [(serialization.load_pem_public_key(pem.encode("utf-8")), described)]
             if implicit and not require_registry:
                 candidates.append(_load_pubkey(pubkey_path))
-            return candidates
+            return candidates, {described: entry}
         except SystemExit:
             raise
         except Exception as e:
@@ -341,9 +344,9 @@ def _load_pubkey_with_registry(
                 "WARNING: signing_key_id present but key registry unreadable; falling back to --pubkey verification only (revocation checks not enforced).",
                 file=sys.stderr,
             )
-            return [_load_pubkey(pubkey_path)]
+            return [_load_pubkey(pubkey_path)], {}
 
-    return [_load_pubkey(pubkey_path)]
+    return [_load_pubkey(pubkey_path)], {}
 
 
 def _parse_args() -> argparse.Namespace:
@@ -463,7 +466,7 @@ def main() -> int:
             file=sys.stderr,
         )
         return NOT_A_CERTIFICATE
-    key_candidates = _load_pubkey_with_registry(
+    key_candidates, registry_entries = _load_pubkey_with_registry(
         cert, args.pubkey, args.key_registry, require_registry=args.require_registry
     )
 
@@ -514,6 +517,22 @@ def main() -> int:
             file=sys.stderr,
         )
         return 5
+
+    # The signature verified, so this is a document the key signed. Whether a
+    # key that is no longer active is honoured for it is decided here and not
+    # before, by the hash computed above and never the one the document
+    # states: before the signature is checked a refusal would be about a
+    # document nobody has shown the key signed, and it would displace the
+    # more exact answer for a tampered one (3, or 5).
+    registry_entry = registry_entries.get(key_source)
+    if registry_entry is not None:
+        refusal = anchored_set_refusal(registry_entry, expected_hash)
+        if refusal is not None:
+            print(
+                f"ERROR: {registry_entry.get('status')}-key verification failure: {refusal}",
+                file=sys.stderr,
+            )
+            return REVOCATION_FAILURE
 
     missing_identity = [
         field for field in CERTIFICATE_IDENTIFYING_FIELDS if field not in cert

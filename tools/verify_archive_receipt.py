@@ -2,7 +2,9 @@
 """Verify a signed SIR run archive receipt offline.
 
 Exit codes:
-  0  verified: every file named by the signed manifest is present and unchanged
+  0  verified: every file named by the signed manifest is present and unchanged.
+     A file the manifest does not name is reported in a NOTE line and is not
+     a failure; nothing here covers it
   2  a named file is missing or changed, or the receipt signature does not
      verify
   3  the manifest or receipt could not be read, or this archive was published
@@ -30,7 +32,12 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
-from key_registry import find_registry_key, public_key_pem_from_entry, revocation_allows_proof
+from key_registry import (
+    anchored_set_refusal,
+    find_registry_key,
+    public_key_pem_from_entry,
+    revocation_allows_proof,
+)
 
 DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
 DEFAULT_KEY_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
@@ -79,6 +86,42 @@ def _resolve_archive_dir(path: Path) -> Path:
     if len(candidates) > 1:
         raise ValueError(f"multiple run archives found under {path}; pass a specific run folder")
     raise ValueError(f"no run archive found at {path}")
+
+
+#: The two files that describe an archive and are not described by it.
+ARCHIVE_DESCRIPTORS = ("manifest.json", "archive_receipt.json")
+
+
+def files_not_named(archive_dir: Path, manifest: dict) -> list:
+    """Files in the archive directory that the signed manifest does not name.
+
+    The receipt establishes that every file the manifest names is present and
+    unchanged. It says nothing about a file the manifest does not name, and
+    until this existed nothing told a reader such a file was there: two files
+    added to a copy of a published archive verified as before. They are
+    reported and are not a failure. An archive unpacked beside other files is
+    not a damaged archive, and a reader is owed the names of the files nobody
+    signed.
+    """
+    named = {
+        entry.get("path")
+        for entry in (manifest.get("files") or [])
+        if isinstance(entry, dict)
+    }
+    present = {
+        path.relative_to(archive_dir).as_posix()
+        for path in archive_dir.rglob("*")
+        if path.is_file()
+    }
+    return sorted(present - named - set(ARCHIVE_DESCRIPTORS))
+
+
+def not_named_note(unnamed: list) -> str:
+    shown = ", ".join(unnamed[:5]) + (f", and {len(unnamed) - 5} more" if len(unnamed) > 5 else "")
+    return (
+        f"{len(unnamed)} file(s) in this directory are not named by the signed manifest, "
+        f"so this check says nothing about them: {shown}"
+    )
 
 
 def main() -> int:
@@ -145,11 +188,12 @@ def main() -> int:
         print("ERROR: signing_key_id must be a non-empty string", file=sys.stderr)
         return 3
 
+    registry_entry = None
     try:
         registry_path = Path(args.key_registry)
         if registry_path.exists():
-            entry = find_registry_key(registry_path, signing_key_id)
-            if entry is None:
+            registry_entry = find_registry_key(registry_path, signing_key_id)
+            if registry_entry is None:
                 if pubkey_explicit and not args.require_registry:
                     print(
                         "WARNING: signing_key_id not found in key registry; using explicit --pubkey for local/dev verification only (revocation checks not enforced).",
@@ -164,12 +208,12 @@ def main() -> int:
                     return 2
             else:
                 allowed, reason = revocation_allows_proof(
-                    entry, receipt.get("timestamp_utc"), receipt.get("run_id")
+                    registry_entry, receipt.get("timestamp_utc"), receipt.get("run_id"), anchored_check_follows=True
                 )
                 if not allowed:
                     print(f"ERROR: revoked-key verification failure: {reason}", file=sys.stderr)
                     return 2
-                public_key = serialization.load_pem_public_key(public_key_pem_from_entry(entry).encode("utf-8"))
+                public_key = serialization.load_pem_public_key(public_key_pem_from_entry(registry_entry).encode("utf-8"))
         else:
             if args.require_registry:
                 print(
@@ -282,6 +326,26 @@ def main() -> int:
         )
         return 6
 
+    # The signature verified against the registry's key, so this is a receipt
+    # that key signed. A key that is no longer active is honoured only for the
+    # receipts the registry anchors, by the payload hash computed above, which
+    # was compared with the stated one before it is used here.
+    #
+    # `registry_entry`, and not `entry`: the loop over the manifest's files
+    # above binds that name, and the first version of this check asked the
+    # last file in the manifest whether the key was honoured.
+    if registry_entry is not None:
+        refusal = anchored_set_refusal(registry_entry, payload_hash)
+        if refusal is not None:
+            print(
+                f"ERROR: {registry_entry.get('status')}-key verification failure: {refusal}",
+                file=sys.stderr,
+            )
+            return 2
+
+    unnamed = files_not_named(archive_dir, manifest)
+    if unnamed:
+        print(f"NOTE: {not_named_note(unnamed)}")
     print(f"OK: archive receipt verified for {archive_dir}")
     return 0
 

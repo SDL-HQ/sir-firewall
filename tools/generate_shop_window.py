@@ -167,7 +167,7 @@ VERIFIER_FILES = (
 
 #: Everything a shipped verifier may import without the visitor installing
 #: anything: the standard library, and the other files the window ships.
-SHIPPED_MODULES = {"key_registry", "itgl", "document_signing", "sir_firewall"}
+SHIPPED_MODULES = {"key_registry", "itgl", "document_signing", "sir_firewall", "verify_archive_receipt"}
 
 #: Written out because the public claims write them out. A figure quoted in
 #: words still has to be true.

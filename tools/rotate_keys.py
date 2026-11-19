@@ -9,6 +9,7 @@ import glob
 import json
 import os
 import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
@@ -16,10 +17,18 @@ from typing import Any, Dict, List
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from anchor_published_set import derive as derive_anchored_set  # noqa: E402
+from key_registry import ANCHORED_FIELD  # noqa: E402
+
 DEFAULT_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
 DEFAULT_CURRENT_PUB = Path("spec/sdl.pub")
 DEFAULT_PUBKEY_DIR = Path("spec/pubkeys")
 DEFAULT_ARCHIVE_ROOT = Path("proofs/runs")
+# Everywhere a signed document is published from. The retired key is anchored
+# to what it signed under these, by payload hash, at the moment it is retired.
+DEFAULT_PUBLISHED_ROOTS = ("docs", "proofs")
 # A rotation must never weaken the signature. The first key was 4096-bit and this
 # default matches it; the registry test refuses an active key below MIN_KEY_SIZE.
 DEFAULT_KEY_SIZE = 4096
@@ -124,6 +133,10 @@ def main() -> int:
                     help="RSA modulus size for the new key (minimum {}).".format(MIN_KEY_SIZE))
     ap.add_argument("--last-trusted-run-id",
                     help="Override the derived anchor for the key being retired.")
+    ap.add_argument("--published-root", action="append",
+                    help="A root signed documents are published under; repeatable "
+                         "(default: docs and proofs). The retired key is anchored to "
+                         "the documents it signed there.")
     args = ap.parse_args()
 
     now = _utc_now_z()
@@ -139,6 +152,7 @@ def main() -> int:
     active_count = 0
     anchors: List[str] = []
     archive_root = Path(args.archive_root)
+    published_roots = [Path(r) for r in (args.published_root or DEFAULT_PUBLISHED_ROOTS)]
     for entry in keys:
         if isinstance(entry, dict) and entry.get("status") == "active":
             entry["status"] = "retired"
@@ -152,6 +166,14 @@ def main() -> int:
                     f"{entry.get('key_id')} -> NONE DERIVABLE; set last_trusted_run_id by hand "
                     f"before this key is ever revoked"
                 )
+            # The same reasoning as the run anchor above, and a stronger answer:
+            # derive what the key signed now, while only we can sign with it.
+            # From here on the verifiers honour this key for these documents
+            # and no others, whatever a later document says about itself.
+            if ANCHORED_FIELD not in entry:
+                anchored, _counts = derive_anchored_set(entry, published_roots)
+                entry[ANCHORED_FIELD] = anchored
+                anchors.append(f"{entry.get('key_id')} -> anchored to {len(anchored)} published document(s)")
             active_count += 1
 
     keys.append(
