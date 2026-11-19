@@ -172,13 +172,21 @@ python3 tools/verify_archive_receipt.py "docs/runs/$RUN_ID" --require-registry
 - `verify_certificate.py` establishes that the certificate is intact, signed by
   a registered key, and bound to a ledger with the signed terminal hash and row
   count.
-- `verify_itgl.py` establishes that the ledger's rows are complete and in order,
-  with no row removed, inserted or reordered.
+- `verify_itgl.py` establishes that the ledger's rows chain from a genesis
+  state to its terminal hash, so no row has been inserted, reordered, or
+  removed from the middle. It does not establish that no row was removed from
+  the end: a truncated chain is a valid chain, so a ledger whose last rows have
+  been deleted exits 0 here. The signed `itgl_row_count` in the certificate is
+  what catches that, and `verify_certificate.py` reports it as a binding
+  failure.
 - `verify_archive_receipt.py` establishes that every file the signed manifest
   names, the ledger included, is byte-identical to what was signed. A file in
   the directory that the manifest does not name is not covered, and is named in
-  a `NOTE` line. The chain alone does not cover the contents of a ledger row,
-  so this check is required, not optional.
+  a `NOTE` line. Under `chain_version` 1 the row hash covers only an opaque
+  per-prompt digest, so a row's own decision, prompt identifier and flags are
+  not bound by the chain and this check is the only thing that covers them;
+  under `chain_version` 2 the row hash covers the row's contents as well.
+  `verify_itgl.py` prints which rule a ledger was checked under.
 
 `docs/archive-errata.md` lists the published runs that do not pass these checks
 and why.
