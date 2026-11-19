@@ -9,7 +9,7 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 TS_Z_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 RUN_NUMBER_RE = re.compile(r"-gh(\d+)-")
@@ -315,3 +315,88 @@ def revocation_allows_proof(
             )
 
     return True, None
+
+
+class RegistryKeyUnreadable(ValueError):
+    """A registry entry's key could not be read, so no key can be compared with it."""
+
+
+def entries_holding(registry_path: Path, public_key: Any) -> List[Dict[str, Any]]:
+    """Every entry of this registry whose public key is the key in hand.
+
+    The comparison is of key material. It reads nothing a document says about
+    which key signed it and nothing a file is called.
+    """
+    from cryptography.hazmat.primitives import serialization
+
+    keys = load_registry(registry_path).get("keys")
+    if not isinstance(keys, list):
+        raise ValueError("key registry keys must be a list")
+    in_hand = public_key.public_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    holding = []
+    for item in keys:
+        if not isinstance(item, dict):
+            continue
+        try:
+            der = _public_der_of_pem(public_key_pem_from_entry(item))
+        except Exception as exc:  # noqa: BLE001 - an entry that cannot be read may be the one that matters
+            raise RegistryKeyUnreadable(
+                f"registry entry key_id={item.get('key_id')!r} holds no readable public key ({exc})"
+            ) from exc
+        if der == in_hand:
+            holding.append(item)
+    return holding
+
+
+def key_file_refusal(
+    registry_path: Path,
+    public_key: Any,
+    proof_timestamp_utc: Optional[str],
+    proof_run_id: Optional[str],
+    computed_payload_hash: str,
+) -> Optional[str]:
+    """Why a document verified by a key from a public key file is not honoured, or None.
+
+    Call this after the signature has verified under a key that did not come
+    from the registry, with the payload hash the verifier computed.
+
+    A key reaches a verifier two ways: the registry is asked for the entry a
+    document names, or a public key file is read. The registry's rules were
+    applied on the first way only. So the holder of a revoked key had a second
+    way in wherever a reader's public key file still held that key: a document
+    naming no key, or naming one the registry does not have, was verified
+    against the file, and neither the revocation nor the anchored set was
+    asked anything. The id a document states is the signer's to write. The key
+    that verified the signature is not, so the registry is asked about that.
+
+    A key no entry holds is not the registry's to refuse: someone verifying
+    their own documents with their own key beside this registry is unaffected.
+    Where no registry can be read there is nothing to hold the key to, and the
+    verifiers say so in a warning. That case is not closed here.
+
+    Raises RegistryKeyUnreadable when an entry's key cannot be read: the check
+    could not be performed, which is not a statement about the document.
+    """
+    if not registry_path.exists():
+        return None
+    try:
+        holding = entries_holding(registry_path, public_key)
+    except RegistryKeyUnreadable:
+        raise
+    except ValueError:
+        return None
+    for entry in holding:
+        if entry.get("status") == "active":
+            continue
+        allowed, reason = revocation_allows_proof(
+            entry, proof_timestamp_utc, proof_run_id, anchored_check_follows=True
+        )
+        if not allowed:
+            return f"the key in the public key file is registry entry key_id={entry.get('key_id')!r}: {reason}"
+        refusal = anchored_set_refusal(entry, computed_payload_hash)
+        if refusal is not None:
+            return f"the key in the public key file is a registry key: {refusal}"
+    return None

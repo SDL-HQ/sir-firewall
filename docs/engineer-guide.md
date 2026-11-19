@@ -225,7 +225,7 @@ RUN_DIR="$(ls -dt proofs/runs/* | head -n 1)"
 python3 tools/verify_archive_receipt.py "$RUN_DIR" --pubkey /tmp/sir_dev_pub.pem
 ```
 
-If `archive_receipt.json` carries a `signing_key_id` that does not exist in the default SDL key registry, explicitly passing `--pubkey` now verifies the signature for local/dev use and prints a warning that registry/revocation checks were not enforced.
+If `archive_receipt.json` carries a `signing_key_id` that does not exist in the default SDL key registry, explicitly passing `--pubkey` now verifies the signature for local/dev use and prints a warning that registry/revocation checks were not enforced. If the registry holds that same key under another `key_id`, that entry's rules are applied to it.
 
 Benchmark/index semantics:
 

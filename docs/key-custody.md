@@ -81,6 +81,22 @@ A public key file on disk answers no question about status. It cannot say
 whether the key is active, retired or revoked, so a verifier that trusts one is
 outside every control described below.
 
+Since 19 November 2026 a verifier that reads one asks the registry about it.
+After a signature verifies under a key from a public key file, the certificate,
+receipt and baseline record verifiers ask the registry whether any entry holds
+that key, comparing the key itself and not a name, and an entry that holds it
+decides as it would have if the document had named it: a revoked key is
+refused, and a key that is no longer active is honoured only for the documents
+the registry anchors. Before that date a document naming no key, or naming one
+the registry does not have, was verified against the file and the registry's
+rules were never asked. Measured with a key a scratch registry marks revoked
+and a public key file still holding it: a certificate, a receipt and a baseline
+record signed after the revocation each verified. A key no entry holds is not
+refused, so a reader verifying their own documents with their own key beside
+the approved registry is unaffected. Where no registry can be read there is
+nothing to ask: the verifier says so in a warning, and `--require-registry`
+refuses instead.
+
 On 6 October 2026 `policy/sdl_public_key.pem` was found still holding the
 retired `default` public key, referenced by nothing, two commits in its entire
 history. It was the most obvious-looking file for a reader to verify against and

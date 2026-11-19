@@ -365,6 +365,25 @@ changes the verdict.
   `revocation_allows_proof` without the later check: it refuses a key with a
   set unless told the check follows.
 
+- **A key from a public key file is held to the registry entry that holds it.**
+  The registry's rules were applied only when a key was resolved by the name a
+  document states. A certificate naming no key, or a receipt or baseline record
+  naming one the registry lacks, was verified against the public key file, and
+  until 19 November 2026 nothing asked the registry about that key. Measured
+  with a scratch key a registry marks revoked: all three verifiers returned 0
+  for a document signed after the revocation. `key_registry.key_file_refusal`
+  is now called by each verifier after the signature verifies under a key that
+  did not come from the registry, and compares key material, never an id. A
+  key no entry holds is not refused: that is a reader's own key beside the
+  approved registry, and it must keep working. An entry whose key cannot be
+  read is exit 6, not "does not hold it". Over 2,905 standalone commands on
+  the 379 archives and 82 other published documents, nothing run from the
+  repository root changed, because no published document verifies through the
+  file. What is not closed: with no readable registry there is nothing to ask.
+  That fallback is documented behaviour in `docs/key-governance-readiness.md`
+  and `docs/engineer-guide.md`, so it warns, on every path now, and
+  `--require-registry` refuses, for a certificate naming no key as well.
+
 - **A property line says what this run did, not what the certificate says was
   done.** `verify_evidence.py` printed "the signed counters were recomputed
   from the rows the certificate binds" whenever the certificate carried

@@ -40,6 +40,7 @@ Verification-enforcement boundary:
 - When a certificate carries a resolvable `signing_key_id`, the verifier uses the matching registry key and applies registry revocation semantics.
 - Unless `--require-registry` is used, a missing or unreadable registry causes the verifier to fall back to the configured `--pubkey` and print a warning that registry and revocation checks were not enforced.
 - Use `--require-registry` for verification that must fail closed rather than accept that fallback.
+- A key read from `--pubkey` is still held to a registry that can be read. After the signature verifies, the verifier asks whether any registry entry holds that key, by the key and not by a name, and applies that entry's revocation and anchored-set rules. A key no entry holds is verified as non-authoritative material, as before.
 
 ### Non-authoritative local and workflow keys
 
