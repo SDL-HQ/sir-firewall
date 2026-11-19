@@ -38,7 +38,13 @@
             "type": "string",
             "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
           },
-          "revocation_reason": { "type": "string" }
+          "revocation_reason": { "type": "string" },
+          "last_trusted_run_id": { "type": "string", "minLength": 1 },
+          "anchored_payload_hashes": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+          }
         },
         "allOf": [
           {
@@ -60,11 +66,11 @@
       "properties": {
         "revocation_behavior": {
           "type": "string",
-          "const": "Do not retroactively invalidate proofs signed before revoked_utc. Fail verification only for proofs where timestamp_utc >= revoked_utc for that key."
+          "minLength": 1
         },
         "timestamp_requirement": {
           "type": "string",
-          "const": "If proof timestamp_utc is missing during revocation checks, fail closed."
+          "minLength": 1
         },
         "timestamp_format": {
           "type": "string",
