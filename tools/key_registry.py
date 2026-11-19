@@ -187,12 +187,78 @@ def run_number_from_run_id(run_id: Optional[str]) -> Optional[int]:
     return int(match.group(1)) if match else None
 
 
+#: The registry field that anchors what a key signed, by payload hash.
+ANCHORED_FIELD = "anchored_payload_hashes"
+
+
+def has_anchored_set(entry: Dict[str, Any]) -> bool:
+    """Whether this key is decided by an anchored set.
+
+    It is when the key is no longer active and the entry carries the field,
+    whatever the field holds: a field that is present and malformed is a set
+    that honours nothing, not an absent one. An active key signs new documents
+    every day, so a list of what it has signed is never complete and is not
+    consulted.
+    """
+    return entry.get("status") != "active" and ANCHORED_FIELD in entry
+
+
+def anchored_set_refusal(entry: Dict[str, Any], computed_payload_hash: str) -> Optional[str]:
+    """Why a verified document is not honoured under this key, or None if it is.
+
+    Call this after the signature has verified, with the payload hash the
+    verifier computed from the document. Never pass the hash the document
+    states: a signature does not cover that field, so whoever holds the key
+    can write any value there, including one from this list.
+
+    A key that is retired or revoked is, from that day, a key someone may hold
+    who should not be signing. What the registry recorded for a retired key was
+    an end date and a last trusted run, and nothing read either: a document
+    signed the next year verified exactly as one signed the year before. Both
+    limits are also values the signer writes. The anchored set is not. It is
+    the payload hash of every document the key signed that was published while
+    the key was in use, derived from the published archive when the key was
+    retired (tools/anchor_published_set.py). A key that is not active is
+    honoured for those documents and no others, whatever a new document says
+    about its own date or run.
+    """
+    if not has_anchored_set(entry):
+        return None
+    anchored = entry.get(ANCHORED_FIELD)
+    key_id = entry.get("key_id")
+    status = entry.get("status")
+    if not isinstance(anchored, list) or not all(isinstance(h, str) for h in anchored):
+        return (
+            f"key_id={key_id!r} is {status} and its {ANCHORED_FIELD} is not a list of "
+            "payload hashes (fail closed)"
+        )
+    if computed_payload_hash in anchored:
+        return None
+    return (
+        f"key_id={key_id!r} is {status} and is honoured only for the {len(anchored)} "
+        f"document(s) the registry anchors by payload hash; this document's payload "
+        f"hash, {computed_payload_hash}, is not among them"
+    )
+
+
 def revocation_allows_proof(
     entry: Dict[str, Any],
     proof_timestamp_utc: Optional[str],
     proof_run_id: Optional[str] = None,
+    *,
+    anchored_check_follows: bool = False,
 ) -> Tuple[bool, Optional[str]]:
     """Decide whether a revoked key's signature may still be honoured.
+
+    An entry that carries an anchored set is decided by that set instead, after
+    the signature has verified (anchored_set_refusal). The run-number rule
+    below reads values the document states about itself, and the set does not,
+    so where both exist the set decides alone: it honours an anchored document
+    that states no run number, which the rule below would refuse, and refuses
+    an unanchored one that states an old run number, which the rule below
+    would honour. A caller says it will make that later check by passing
+    anchored_check_follows; one that does not is refused here, so a verifier
+    that has not been taught the set cannot honour such a key for anything.
 
     A revoked key is, by assumption, held by someone who can sign anything they
     like, including a certificate carrying a timestamp from before the
@@ -208,6 +274,14 @@ def revocation_allows_proof(
     Fails closed when the entry carries no anchor, or the proof carries no
     parseable run identifier.
     """
+    if has_anchored_set(entry):
+        if anchored_check_follows:
+            return True, None
+        return False, (
+            f"key_id={entry.get('key_id')!r} is {entry.get('status')} and carries "
+            f"{ANCHORED_FIELD}, which this verifier does not apply (fail closed)"
+        )
+
     if entry.get("status") != "revoked":
         return True, None
 

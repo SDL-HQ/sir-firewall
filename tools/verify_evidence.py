@@ -83,7 +83,9 @@ CERTIFICATE_CODES = {
     7: ("failed", "certificate-to-ledger binding failed"),
     9: ("unknown", "the certificate-to-ledger binding was not fully checked, so it is "
                    "not established; the signature and payload hash were still checked"),
-    10: ("failed", "the signing key is revoked for this archive"),
+    10: ("failed", "the approved registry does not honour the signing key for this archive: the "
+                   "key is revoked, or it is no longer active and this document is not one the "
+                   "registry anchors for it"),
     11: ("failed", "the signed counters are not supported by the bound ledger"),
     12: ("failed", "this document is not a SIR audit certificate, so nothing about it "
                    "was verified, including its signature"),
@@ -158,6 +160,26 @@ def _parse_args() -> argparse.Namespace:
 #: Found by shipping this tool into a public repository without its helper,
 #: where the answer would have been that our evidence breaks our own contract.
 TOOL_MISSING = 1000
+
+
+#: verify_certificate.py and verify_baseline_record.py: the registry declined the key.
+KEY_NOT_HONOURED = 10
+
+
+def _not_named(run_directory: Path, manifest: Path) -> str:
+    """A clause naming files the signed manifest does not cover, or nothing.
+
+    Computed by the receipt verifier's own function and not read back out of
+    what that tool printed. Imported here and not at the top: this tool has to
+    start, and say so, when a helper it runs is not beside it.
+    """
+    try:
+        from verify_archive_receipt import files_not_named, not_named_note
+
+        unnamed = files_not_named(run_directory, json.loads(manifest.read_text(encoding="utf-8")))
+    except Exception:
+        return ""
+    return f"; {not_named_note(unnamed)}" if unnamed else ""
 
 
 def _run(argv: List[str]) -> Tuple[int, str]:
@@ -246,7 +268,9 @@ BASELINE_RECORD_CODES = {
     6: ("unknown", "the signature check could not be performed, so the signature is "
                    "neither established nor refuted"),
     7: ("failed", "the bound ledger does not support the record"),
-    10: ("failed", "the signing key is revoked for this record"),
+    10: ("failed", "the approved registry does not honour the signing key for this record: the "
+                   "key is revoked, or it is no longer active and this document is not one the "
+                   "registry anchors for it"),
 }
 
 # Codes reached only after the signature verified, so signing trust can be read
@@ -300,6 +324,12 @@ def _verify_baseline_archive(*, run_directory, record, ledger, manifest, receipt
             "through the approved registry; this establishes that someone signed the "
             "record, not that SDL did",
         )
+    elif code == KEY_NOT_HONOURED:
+        report.add(
+            "signing trust",
+            "failed",
+            "the approved registry does not honour this key for this record",
+        )
     elif code in BASELINE_SIGNATURE_VERIFIED_CODES:
         report.add(
             "signing trust",
@@ -321,6 +351,8 @@ def _verify_baseline_archive(*, run_directory, record, ledger, manifest, receipt
         receipt_state, receipt_detail = _classify(
             receipt_code, RECEIPT_CODES, "verify_archive_receipt.py"
         )
+        if receipt_state == "established":
+            receipt_detail += _not_named(run_directory, manifest)
         report.add(
             "archive custody",
             receipt_state,
@@ -441,6 +473,17 @@ def main() -> int:
             "through the approved registry; this establishes that someone signed the "
             "certificate, not that SDL did",
         )
+    elif code == KEY_NOT_HONOURED:
+        # Not "the signature did not verify". Since the anchored set, this code
+        # is also reached after a signature has verified, for a document a key
+        # that is no longer active signed and the registry does not anchor.
+        # Either way it is the registry declining the key, which is a failure
+        # of signing trust and not an absence of evidence about it.
+        report.add(
+            "signing trust",
+            "failed",
+            "the approved registry does not honour this key for this document",
+        )
     elif code not in SIGNATURE_VERIFIED_CODES:
         report.add(
             "signing trust",
@@ -470,15 +513,46 @@ def main() -> int:
     # can bind correctly and still predate the fields that let the signed
     # numbers be recomputed from it. Saying "verified" for both would report an
     # unperformed check as a performed one.
+    #
+    # Until 19 November 2026 this read "recomputed" whenever the certificate
+    # said its counters had been checked and the verifier had not returned 11.
+    # Every outcome in which the verifier never reached the counters is also
+    # "not 11": no ledger in the directory, a ledger that does not bind, a
+    # certificate whose payload hash or signature fails. Each printed "the
+    # signed counters were recomputed from the rows the certificate binds"
+    # over rows nobody read, which is the unperformed check reported as a
+    # performed one that this property exists to prevent. The certificate's
+    # own field says what the signer did. Only this run's exit code says what
+    # this run did: the verifier recomputes the counters as its last step, so
+    # 0 with a ledger in hand is the one outcome in which they were recomputed
+    # and agreed, and 11 the one in which they were recomputed and did not.
     certificate_code = code
     if cert.get("counters_checked_against_ledger") is True:
-        report.add(
-            "signed counters",
-            "established" if certificate_code != 11 else "failed",
-            "the signed counters were recomputed from the rows the certificate binds"
-            if certificate_code != 11
-            else "the signed counters are not supported by the bound ledger",
-        )
+        if certificate_code == 11:
+            report.add(
+                "signed counters",
+                "failed",
+                "the signed counters are not supported by the bound ledger",
+            )
+        elif certificate_code == 0 and ledger.is_file():
+            report.add(
+                "signed counters",
+                "established",
+                "the signed counters were recomputed from the rows the certificate binds",
+            )
+        else:
+            report.add(
+                "signed counters",
+                "unknown",
+                "the certificate says its counters were checked against the ledger when it "
+                "was signed; this run did not recompute them, because "
+                + (
+                    "there is no ledger in this run directory"
+                    if not ledger.is_file()
+                    else "the certificate did not verify as far as its counters"
+                )
+                + ". This is not agreement",
+            )
     else:
         report.add(
             "signed counters",
@@ -526,6 +600,8 @@ def main() -> int:
                 "certificates and ledgers verify unchanged. Any other archive failing "
                 "this way is not covered there"
             )
+        if state == "established":
+            detail += _not_named(run_directory, manifest)
         report.add(
             "archive custody", state, detail, evidence=output.splitlines()[-1] if output else None
         )
@@ -544,6 +620,16 @@ def main() -> int:
             f"no evidence contract governs sir_firewall_version "
             f"{cert.get('sir_firewall_version')!r}; the contracts begin at 2.2.0, and "
             "219 of the 292 certificates published before SIR 2.4.0 are in this position"
+        )
+    if certificate_code not in SIGNATURE_VERIFIED_CODES and state == "established":
+        # The contract check reads the certificate's fields. Where the payload
+        # hash or the signature failed, those are the fields of a document
+        # nobody has shown SDL wrote, and "satisfies its contract" about them
+        # is the same defect as the counters line above, one property down.
+        state, detail = (
+            "unknown",
+            "the certificate did not verify, so whether its contents satisfy an evidence "
+            "contract was not judged",
         )
     report.add(
         "evidence contract", state, detail, evidence=output.splitlines()[-1] if output else None

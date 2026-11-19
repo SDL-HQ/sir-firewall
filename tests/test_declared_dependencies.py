@@ -89,6 +89,8 @@ LOCAL_MODULES = {
     "certificate_results",
     "document_signing",
     "publication_rules",
+    "anchor_published_set",
+    "verify_archive_receipt",
     "tools",
 }
 

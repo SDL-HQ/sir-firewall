@@ -90,18 +90,20 @@ minimal bundle needs no spec file;
 | 6 | signature verification error |
 | 7 | binding failure: chain invalid, terminal-hash mismatch, or row-count mismatch |
 | 9 | binding **not checked**: no ledger was found, or the certificate predates `itgl_row_count` |
-| 10 | the signing key is revoked for this archive |
+| 10 | the registry does not honour the signing key for this document: revoked, or no longer active and not among the documents the registry anchors |
 | 11 | binding failure on a signed value: the counters, the configuration identity, or the `result` itself is not supported by the bound ledger |
 | 12 | the document is not a SIR audit certificate, and nothing about it was verified, including its signature |
 
 `tools/verify_baseline_record.py`: 0 verified, 2 not a baseline record, 3
 payload hash mismatch, 4 malformed base64, 5 signature does not verify, 6 the
 signature check could not be performed, 7 the bound ledger does not support
-the record, 10 the signing key is revoked.
+the record, 10 the registry does not honour the signing key for this record.
 
 `tools/verify_archive_receipt.py`: 0 verified, 2 a named file is missing or
-changed or the receipt signature does not verify, 3 the manifest or receipt
-could not be read, 6 the signature check could not be performed.
+changed, the receipt signature does not verify, or the registry does not honour
+the key for this receipt, 3 the manifest or receipt could not be read, 6 the
+signature check could not be performed. A file in the directory that the
+manifest does not name is a `NOTE` line and not a failure.
 
 `tools/validate_certificate_contract.py`: 0 pass, 2 contract violation, 3 load
 error, 8 below the applicability floor.
@@ -340,6 +342,39 @@ changes the verdict.
   archive held 359. A page that cannot go stale beats a page that is currently
   accurate, which is the same answer the website reached for its own dated
   figure.
+
+- **A key that is no longer active is honoured for what it published and for
+  nothing else.** A retired key was honoured exactly as an active one until
+  19 November 2026: the registry recorded an end date and a last trusted run
+  for it and nothing read either. Revoking instead read the run number a
+  document states, which 268 published certificates do not carry and which a
+  key holder writes. The registry now lists `anchored_payload_hashes` for a key
+  that is not active, derived from the published archive by
+  `tools/anchor_published_set.py` when the key is retired, and
+  `key_registry.anchored_set_refusal` is called by each verifier **after** the
+  signature verifies, with the hash it computed. Three things about it were
+  only found by running something. Checked before the signature, it would have
+  displaced the documented answers for the tampered examples (3 and 5 would
+  have become 10). The receipt verifier's first version asked the wrong
+  object: its loop over the manifest's files rebinds `entry`, so the last file
+  in the manifest was asked whether the key was honoured, and every receipt
+  passed; an end-to-end test caught it and comparing output over the whole
+  archive could not have. And a field that is present and malformed was first
+  read as absent. `--check` holds recorded equal to derived, in both
+  directions. Do not add a hash by hand, and do not make a verifier call
+  `revocation_allows_proof` without the later check: it refuses a key with a
+  set unless told the check follows.
+
+- **A property line says what this run did, not what the certificate says was
+  done.** `verify_evidence.py` printed "the signed counters were recomputed
+  from the rows the certificate binds" whenever the certificate carried
+  `counters_checked_against_ledger: true` and the verifier had not returned 11.
+  With no ledger in the directory, with a ledger that did not bind, and with a
+  certificate whose payload hash failed, nothing was recomputed and the line
+  said it had been. The verdict was right each time. The line is now
+  established only on exit 0 with a ledger in hand, and `evidence contract` is
+  unknown over a certificate that did not verify. No published archive showed
+  either, so no published line changed.
 
 - **Absent input is never a pass.** CI steps that run under `always()` are
   reached even when the checkout or the audit itself failed. A missing counter

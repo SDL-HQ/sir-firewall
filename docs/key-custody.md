@@ -128,14 +128,42 @@ number on the certificate, the answer is refusal rather than acceptance.
 distinct from every other failure so a consumer can tell revocation apart from a
 bad signature or a missing field.
 
-**What revocation does not contain.** Only 24 of the 292 published certificates
-carry a parseable run number. Revoking `default` rather than retiring it would
-therefore refuse the other 268, because the rule fails closed. That is a real
-cost and it has not been accepted yet: `default` is currently **retired, not
-revoked**, so nothing is refused today. The options are to accept the forfeit,
-to publish a one-off attestation anchoring the historical set, or to defer until
-the key is known to be exposed. This is an open decision, recorded here so a
-reader is not left to assume it was handled.
+**What the run-number rule did not contain, and what now does.** Only 24 of the
+292 published certificates carry a parseable run number. Revoking `default`
+rather than retiring it would therefore have refused the other 268, because the
+rule fails closed. So `default` was retired and not revoked, and until
+19 November 2026 that was recorded here as an open decision with three options:
+accept the forfeit, anchor the historical set, or defer until the key was known
+to be exposed.
+
+Deferring had a cost this section did not state. A retired key was honoured
+exactly as an active one. The registry recorded `valid_until_utc` and
+`last_trusted_run_id` for it and no verifier read either, so a certificate or a
+receipt signed with the old key on any later date verified, with `signing trust`
+established. Measured on the committed entry: a document dated 19 November 2026
+with a run number above the recorded last trusted run was allowed.
+
+The historical set is now anchored. The `default` entry carries
+`anchored_payload_hashes`: the payload hash of every published document that key
+signed, 547 of them, derived from `docs/` and `proofs/` by
+`tools/anchor_published_set.py`. A key that is not active is honoured for a
+document whose computed payload hash is in that list, and for no other, whatever
+the document says about its own date or run. The check is made after the
+signature has verified and uses the hash the verifier computes, never the one
+the document states, because the signature does not cover that field.
+
+What this changed, measured over every archive under `docs/runs`:
+`verify_evidence.py` prints the same lines and exits with the same code for each
+of them as it did before. Nothing published is refused. With `default` set to
+`revoked` in a copy of the registry, the same holds, so revoking it now forfeits
+nothing. It is still recorded as `retired` because that is what happened to it;
+the label no longer decides anything.
+
+What it does not change: a key with no `anchored_payload_hashes` is decided as
+before, by the run-number rule if revoked and not at all if retired.
+`python3 tools/anchor_published_set.py --check` reports any key in that state
+and fails, and `tests/test_a_key_no_longer_active_is_honoured_only_for_what_it_published.py`
+runs it over the committed registry.
 
 **A detached certificate cannot be anchored at all.** Anchoring works on
 archives published through continuous integration. A certificate handed over
@@ -161,7 +189,11 @@ python3 tools/rotate_keys.py --private-out ~/.sdl-keys/sir-signing-<date>.pem
 Defaults worth knowing: the new key id is `sdl-<UTC stamp>`, the key is 4096
 bits, and the tool refuses anything below 4096. It retires the previously active
 entry and derives its `last_trusted_run_id` from the published archives under
-`--archive-root`, or takes it from `--last-trusted-run-id`. It writes
+`--archive-root`, or takes it from `--last-trusted-run-id`. It also anchors the
+retired key to the documents it signed under `docs/` and `proofs/`, by payload
+hash, so that from this moment the old key is honoured for those and for nothing
+signed later. Both are derived at retirement and not at revocation, because the
+answer stops being derivable once anyone else can sign. It writes
 `spec/sdl.pub`, a historical copy under `spec/pubkeys/`, and the registry entry.
 
 **2. Fingerprint the new private key against `spec/sdl.pub` before touching the
