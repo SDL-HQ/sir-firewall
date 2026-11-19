@@ -72,8 +72,10 @@ from itgl import (  # noqa: E402
     load_ledger,
 )
 from key_registry import (  # noqa: E402
+    RegistryKeyUnreadable,
     anchored_set_refusal,
     find_registry_key,
+    key_file_refusal,
     public_key_pem_from_entry,
     revocation_allows_proof,
 )
@@ -544,7 +546,9 @@ def main() -> int:
     public_key = None
 
     entry = None
+    registry_state = "unavailable"
     if registry_path.exists():
+        registry_state = "read"
         try:
             entry = find_registry_key(registry_path, signing_key_id)
         except Exception as exc:
@@ -552,6 +556,7 @@ def main() -> int:
                 print(f"ERROR: key registry unreadable: {exc}", file=sys.stderr)
                 return SIGNATURE_FAILED
             entry = None
+            registry_state = "unreadable"
 
     if entry is not None:
         allowed, reason = revocation_allows_proof(
@@ -572,6 +577,14 @@ def main() -> int:
         )
         return SIGNATURE_FAILED
     else:
+        # This fallback printed nothing until 19 November 2026, where the
+        # certificate and receipt verifiers have always said that the registry
+        # was not consulted.
+        if registry_state != "read":
+            print(
+                f"WARNING: signing_key_id present but key registry {registry_state}; falling back to --pubkey verification only (revocation checks not enforced).",
+                file=sys.stderr,
+            )
         pubkey_path = Path(args.pubkey or DEFAULT_PUBKEY_PATH)
         try:
             public_key = serialization.load_pem_public_key(pubkey_path.read_bytes())
@@ -602,6 +615,22 @@ def main() -> int:
         refusal = anchored_set_refusal(entry, compute_payload_hash(record))
         if refusal is not None:
             print(f"ERROR: {entry.get('status')}-key verification failure: {refusal}", file=sys.stderr)
+            return REVOCATION_FAILURE
+    else:
+        # The key came from the public key file. The registry is asked whether
+        # it holds that key, by the key and not by the id the record names.
+        try:
+            refusal = key_file_refusal(
+                registry_path, public_key, record.get("timestamp_utc"), record.get("run_id"), compute_payload_hash(record)
+            )
+        except RegistryKeyUnreadable as exc:
+            print(
+                f"ERROR: whether the key in {key_source} is a registry key could not be established ({exc})",
+                file=sys.stderr,
+            )
+            return SIGNATURE_CHECK_RAISED
+        if refusal is not None:
+            print(f"ERROR: key-file verification failure: {refusal}", file=sys.stderr)
             return REVOCATION_FAILURE
 
     # 4. The bound ledger.

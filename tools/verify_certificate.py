@@ -35,7 +35,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from key_registry import (
     IMPLICIT_KEY_ID,
+    RegistryKeyUnreadable,
     find_registry_key,
+    key_file_refusal,
     public_key_pem_from_entry,
     anchored_set_refusal,
     revocation_allows_proof,
@@ -282,11 +284,13 @@ def _load_pubkey_with_registry(
     # there is no fallback. Otherwise a revoked key could be laundered back in
     # through a public key file.
     implicit = False
+    registry_unreadable = False
     if not (isinstance(signing_key_id, str) and signing_key_id) and registry_path.exists():
         try:
             entry = find_registry_key(registry_path, IMPLICIT_KEY_ID)
         except Exception:
             entry = None
+            registry_unreadable = True
         if entry is not None:
             allowed, reason = revocation_allows_proof(
                 entry, cert.get("timestamp_utc"), cert.get("run_id"), anchored_check_follows=True
@@ -346,6 +350,22 @@ def _load_pubkey_with_registry(
             )
             return [_load_pubkey(pubkey_path)], {}
 
+    # Reached by a certificate that names no key where the registry offered no
+    # implicit entry. With a registry that can be read, main() asks it about
+    # whichever key verifies. With none, nothing can be asked, and until
+    # 19 November 2026 that was neither refused under --require-registry nor
+    # said: the two branches above speak only for a certificate naming a key.
+    if registry_unreadable or not registry_path.exists():
+        state = "unreadable" if registry_unreadable else "unavailable"
+        if require_registry:
+            raise SystemExit(
+                f"ERROR: key registry {state}: {registry_path} (required; this certificate "
+                "names no signing_key_id, so it would be verified against --pubkey alone)"
+            )
+        print(
+            f"WARNING: certificate names no signing_key_id and key registry {state}; falling back to --pubkey verification only (revocation checks not enforced).",
+            file=sys.stderr,
+        )
     return [_load_pubkey(pubkey_path)], {}
 
 
@@ -395,7 +415,7 @@ def _parse_args() -> argparse.Namespace:
     ap.add_argument(
         "--require-registry",
         action="store_true",
-        help="Fail when signing_key_id is present but key registry is missing/unreadable (disables --pubkey fallback).",
+        help="Fail when the key registry is missing/unreadable (disables --pubkey fallback).",
     )
     ap.add_argument("--quiet", action="store_true", help="Only exit code, no success message.")
     args = ap.parse_args()
@@ -490,6 +510,7 @@ def main() -> int:
         return 4
 
     key_source = None
+    verified_key = None
     raised: Optional[Exception] = None
     for candidate, source in key_candidates:
         try:
@@ -500,6 +521,7 @@ def main() -> int:
             raised = e
             continue
         key_source = source
+        verified_key = candidate
         break
     if key_source is None:
         if raised is not None:
@@ -532,6 +554,24 @@ def main() -> int:
                 f"ERROR: {registry_entry.get('status')}-key verification failure: {refusal}",
                 file=sys.stderr,
             )
+            return REVOCATION_FAILURE
+    else:
+        # The key came from the public key file. The registry is asked whether
+        # it holds that key, by the key and not by anything the certificate
+        # names, and an entry that holds it decides exactly as it would have
+        # if the certificate had named it.
+        try:
+            refusal = key_file_refusal(
+                Path(args.key_registry), verified_key, cert.get("timestamp_utc"), cert.get("run_id"), expected_hash
+            )
+        except RegistryKeyUnreadable as e:
+            print(
+                f"ERROR: whether the key in {key_source} is a registry key could not be established ({e})",
+                file=sys.stderr,
+            )
+            return 6
+        if refusal is not None:
+            print(f"ERROR: key-file verification failure: {refusal}", file=sys.stderr)
             return REVOCATION_FAILURE
 
     missing_identity = [

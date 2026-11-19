@@ -33,8 +33,10 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 from key_registry import (
+    RegistryKeyUnreadable,
     anchored_set_refusal,
     find_registry_key,
+    key_file_refusal,
     public_key_pem_from_entry,
     revocation_allows_proof,
 )
@@ -341,6 +343,22 @@ def main() -> int:
                 f"ERROR: {registry_entry.get('status')}-key verification failure: {refusal}",
                 file=sys.stderr,
             )
+            return 2
+    else:
+        # The key came from the public key file. The registry is asked whether
+        # it holds that key, by the key and not by the id the receipt names.
+        try:
+            refusal = key_file_refusal(
+                Path(args.key_registry), public_key, receipt.get("timestamp_utc"), receipt.get("run_id"), payload_hash
+            )
+        except RegistryKeyUnreadable as e:
+            print(
+                f"ERROR: whether the key in --pubkey {args.pubkey} is a registry key could not be established ({e})",
+                file=sys.stderr,
+            )
+            return 6
+        if refusal is not None:
+            print(f"ERROR: key-file verification failure: {refusal}", file=sys.stderr)
             return 2
 
     unnamed = files_not_named(archive_dir, manifest)
