@@ -86,6 +86,7 @@ LOCAL_MODULES = {
     "verify_baseline_record",
     "verify_policy",
     "pair_validation",
+    "publish_run",
     "certificate_results",
     "document_signing",
     "publication_rules",

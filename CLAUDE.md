@@ -440,6 +440,33 @@ changes the verdict.
   a test. Two copies of the **same** thing that nothing compares are a second
   copy of an identity. Key resolution was the second kind.
 
+- **Verifying writes nothing, and a publisher's hash file is compared with its
+  ledger, not found.** `tools/verify_itgl.py` wrote `proofs/itgl_final_hash.txt`
+  beneath the directory it was run from, every time it ran. That file is
+  tracked here, so a reader who verified an archived ledger from a checkout
+  left that ledger's terminal hash in a tracked file describing another run.
+  Since 21 November 2026 it writes only where `--write-hash PATH` says, and
+  the three publishing steps say it: `audit-and-sign.yml`, `local_audit.py`
+  and `run_paired_benchmark.py`. Over all 338 published ledgers the tool's
+  exit code, stdout and stderr did not change; it wrote the file on 338 runs
+  before and on none after.
+
+  Requiring the flag was proposed as failing closed by itself: a step that
+  forgets it gets no file, and the existence check stops the run. That is
+  false here. The file is tracked, so a step that forgets the flag finds last
+  run's, the existence check passes, and the stale hash is copied into an
+  archive and signed over. It has happened. Of the 338 published archives carrying both
+  files, 107 hold a hash file that is not the terminal hash of the ledger
+  beside it, all from before October 2026. So `publish_run.py` computes the
+  ledger's terminal hash and compares, before it copies or signs, and refuses
+  a file left over from another run. The existence check in the workflow is
+  still there and is not what holds this.
+
+  Three pages told a reader that the plain command produces the file, and now
+  give the flag: `docs/engineer-guide.md`, `docs/assurance-kit.md` and
+  `docs/minimal-pilot-runbook.md`. Neither workflow can be run from a clone,
+  so the line in `audit-and-sign.yml` is held by a test that reads it.
+
 - **A property line says what this run did, not what the certificate says was
   done.** `verify_evidence.py` printed "the signed counters were recomputed
   from the rows the certificate binds" whenever the certificate carried

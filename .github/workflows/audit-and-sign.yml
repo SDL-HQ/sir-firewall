@@ -305,7 +305,7 @@ jobs:
           PY
           )"
           echo "ITGL_LEDGER_PATH=$ITGL_LEDGER_PATH" >> "$GITHUB_ENV"
-          python tools/verify_itgl.py --ledger "$ITGL_LEDGER_PATH" | tee itgl_env.txt
+          python tools/verify_itgl.py --ledger "$ITGL_LEDGER_PATH" --write-hash proofs/itgl_final_hash.txt | tee itgl_env.txt
 
           if grep '^ITGL_FINAL_HASH=' itgl_env.txt >> "$GITHUB_ENV"; then
             echo "ITGL_FINAL_HASH exported to GITHUB_ENV"

@@ -140,12 +140,12 @@ Review:
 - `proofs/run_summary.json`
 - `proofs/itgl_ledger.jsonl`
 
-`proofs/itgl_final_hash.txt` is produced by the separate ITGL verification step below, not by `sir run`.
+`proofs/itgl_final_hash.txt` is not produced by `sir run`. The ITGL verification step below writes it when it is given `--write-hash`, and writes nothing without it.
 
 Optional integrity check:
 
 ```bash
-python3 tools/verify_itgl.py
+python3 tools/verify_itgl.py --write-hash proofs/itgl_final_hash.txt
 ```
 
 After verification, review `proofs/itgl_final_hash.txt`.

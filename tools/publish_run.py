@@ -37,6 +37,7 @@ _REPO_ROOT = _Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO_ROOT / "src"))
 sys.path.insert(0, str(_Path(__file__).resolve().parent))
 
+from itgl import CHAIN_VERSION_V1, load_and_verify_ledger
 from pair_validation import validate_pair
 from sir_firewall.evidence_paths import canonical_ledger_path
 
@@ -887,6 +888,47 @@ def _unique_run_dir(runs_dir: Path, base_run_id: str) -> tuple[str, Path]:
     raise SystemExit(f"ERROR: unable to allocate unique run archive dir after 50 attempts: {base_run_id}")
 
 
+HASH_FILE = "proofs/itgl_final_hash.txt"
+ROOT_LEDGER = "proofs/itgl_ledger.jsonl"
+
+
+def _stale_hash_file(repo_root: Path, copies: List[str]) -> Optional[str]:
+    """Why the terminal-hash file about to be archived is not its ledger's, or None.
+
+    The file is a second copy of something the ledger already says, it is
+    tracked, and it sits on disk from the run before. Whether it exists says
+    nothing about which run it describes, and an archive is signed over
+    whatever is copied into it. Measured on 21 November 2026 over the
+    published archive: of 338 archives carrying both files, 107 hold a hash
+    file that is not the terminal hash of the ledger beside it, all published
+    before October 2026.
+
+    So it is compared, here, with the hash computed from the ledger going into
+    the same archive, before anything is copied or signed. This is also what
+    makes `verify_itgl.py --write-hash` safe to require: a publishing step
+    that forgets the flag does not get a missing file, it gets last run's.
+    """
+    names = {Path(path).as_posix() for path in copies}
+    hash_path = repo_root / HASH_FILE
+    if HASH_FILE not in names or not hash_path.is_file():
+        return None
+    ledger_path = repo_root / ROOT_LEDGER
+    if ROOT_LEDGER not in names or not ledger_path.is_file():
+        return f"{HASH_FILE} is being archived without {ROOT_LEDGER}, so nothing here can say whose terminal hash it is"
+    try:
+        computed, _ = load_and_verify_ledger(ledger_path, CHAIN_VERSION_V1)
+    except Exception as exc:  # noqa: BLE001 - whatever stopped the ledger verifying, its hash is not established
+        return f"{ROOT_LEDGER} does not verify ({exc}), so {HASH_FILE} cannot be shown to be its terminal hash"
+    stated = hash_path.read_text(encoding="utf-8").strip()
+    if stated != computed:
+        return (
+            f"{HASH_FILE} reads {stated} and the ledger being archived with it ends at {computed}. "
+            "The file is left over from another run. Write it from this run's ledger with "
+            f"tools/verify_itgl.py --ledger <ledger> --write-hash {HASH_FILE}"
+        )
+    return None
+
+
 def _copy_optional_artifacts(repo_root: Path, run_dir: Path, extra_paths: List[str]) -> List[str]:
     copied: List[str] = []
     for p in extra_paths:
@@ -1003,6 +1045,10 @@ def main() -> int:
 
     repo_root = Path(args.repo_root).resolve()
     runs_dir = (repo_root / args.runs_dir).resolve()
+
+    stale = _stale_hash_file(repo_root, args.copy)
+    if stale:
+        raise SystemExit(f"ERROR: refusing to publish: {stale}")
 
     # One run, one signed document. A gated run is described by a certificate
     # and an ungated baseline by a baseline record, and from SIR 2.5 the
