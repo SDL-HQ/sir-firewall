@@ -73,7 +73,10 @@ published as a statement about what the shipped tools report.
 
 import copy
 import importlib.util
+import json
 import re
+import shutil
+import sys
 from pathlib import Path
 
 import pytest
@@ -399,3 +402,126 @@ def test_the_unbound_sentence_agrees_in_number():
         _figures_with(correction_era_bound=era[:-2])
     )
     assert "2 do not" in " ".join(two.split()), two
+
+
+# --- figures no exit code carries: E9, and the wider figure in E4 ------------
+#
+# Added 21 November 2026. Everything above is derived from what a verifier
+# reported. Two figures cannot be: a certificate whose signature fails says
+# nothing about its binding, and no shipped tool reads an archive's
+# proofs/itgl_final_hash.txt at all. The generator computes each ledger's
+# terminal hash for those, and what is held here is that the computed figures
+# and the reported ones are compared, and that the fix was measured against
+# the archives it is about.
+#
+# Two mutations, applied on 21 November 2026 and reverted. The comparison in
+# publish_run._stale_hash_file disabled:
+# test_the_publishers_comparison_refuses_exactly_the_archives_e9_counts fails,
+# with two tests in test_verifying_a_ledger_writes_nothing.py. The generator's
+# comparison of the two derivations disabled:
+# test_the_computed_hash_and_the_verifiers_message_are_compared_and_not_merged
+# fails.
+
+
+def test_the_publishers_comparison_refuses_exactly_the_archives_e9_counts(tmp_path):
+    """The fix, against the defect that occurred, and not only against fixtures.
+
+    Each published archive's own hash file and ledger are placed in an empty
+    directory as a publishing step would have found them, and
+    `publish_run._stale_hash_file` is asked. The figure in E9 is derived by the
+    generator from the same two files by a different route, so this is two
+    derivations compared: the publisher must refuse every archive the errata
+    counts, and no other.
+    """
+    sys.path.insert(0, str(ROOT / "tools"))
+    import publish_run
+
+    refused, raised = [], []
+    for run_id in FIGURES["hash_file_shipped"]:
+        root = tmp_path / run_id
+        (root / "proofs").mkdir(parents=True)
+        for relative in (publish_run.ROOT_LEDGER, publish_run.HASH_FILE):
+            shutil.copy(ROOT / "proofs/runs" / run_id / relative, root / relative)
+        try:
+            answer = publish_run._stale_hash_file(root, [publish_run.HASH_FILE, publish_run.ROOT_LEDGER])
+        except Exception as exc:  # noqa: BLE001 - a raise here is a third outcome and is reported as one
+            raised.append((run_id, repr(exc)))
+            continue
+        if answer is not None:
+            assert "left over from another run" in answer, answer
+            refused.append(run_id)
+
+    assert not raised, raised
+    assert FIGURES["hash_file_stale"], "the archive holds stale hash files; a figure of none means nothing was measured"
+    assert refused == FIGURES["hash_file_stale"]
+
+
+def test_the_wider_figure_is_the_exit_9_figure_and_what_stops_before_it():
+    wider = set(FIGURES["signed_hash_not_the_ledgers"])
+    assert wider == (
+        set(FIGURES["exit_9_predates_correction"])
+        | set(FIGURES["signed_hash_signature_failed"])
+        | set(FIGURES["signed_hash_other"])
+    )
+    # A certificate that stops at exit 5 is one of E2's, whatever it signs.
+    assert set(FIGURES["signed_hash_signature_failed"]) <= set(FIGURES["certificate_signature_failed"])
+    # Every stale file is under a certificate that signs a hash not its ledger's.
+    assert set(FIGURES["hash_file_stale"]) <= wider
+
+
+def test_the_computed_hash_and_the_verifiers_message_are_compared_and_not_merged():
+    """Exit 9's second cause is derived twice, and a disagreement is a refusal."""
+    records = copy.deepcopy(RECORDS)
+    moved = FIGURES["exit_9_predates_correction"][0]
+    for record in records:
+        if record["run_id"] == moved:
+            # The verifier's message now gives this certificate the other cause.
+            record["certificate_detail"] = record["certificate_detail"].replace(
+                REPORT.PREDATES_CORRECTION, REPORT.NO_ROW_COUNT
+            )
+    with pytest.raises(REPORT.FigureError) as refused:
+        REPORT.build_figures(records, ROOT / "proofs/runs")
+    assert "by the computed hash only" in str(refused.value) and moved in str(refused.value)
+
+
+def test_e4s_example_is_three_of_e2s_certificates():
+    """The sentence that was wrong: E4 offered three certificates as its example
+    and said their signatures were unaffected. They exit 5.
+
+    The paragraph is prose about named runs, so it is held by reading the runs.
+    """
+    errata = (ROOT / "docs/archive-errata.md").read_text(encoding="utf-8")
+    e4 = errata[errata.index("## E4."):errata.index("## E5.")]
+    assert "ledgers of 152, 8 and 6 rows" in e4
+    assert "recorded in E2" in e4 and "never reaches the binding" in e4
+
+    sharing: dict[str, list[str]] = {}
+    for run_id in FIGURES["signed_hash_signature_failed"]:
+        certificate = json.loads((ROOT / "proofs/runs" / run_id / "audit.json").read_text(encoding="utf-8"))
+        assert "sir_firewall_version" not in certificate or certificate["sir_firewall_version"] in ("unknown", None)
+        sharing.setdefault(certificate["itgl_final_hash"], []).append(run_id)
+    assert len(sharing) == 1, sharing
+    (three,) = sharing.values()
+    rows = sorted(
+        len(REPORT.load_ledger(ROOT / "proofs/runs" / run_id / REPORT.ARCHIVED_LEDGER)) for run_id in three
+    )
+    assert rows == [6, 8, 152]
+    for run_id in three:
+        assert run_id in FIGURES["certificate_signature_failed"]
+        assert run_id not in FIGURES["exit_9_predates_correction"]
+        assert f"`{run_id}`" in errata[errata.index("## E2."):errata.index("## E3.")]
+
+
+def test_e9_and_e4_say_so_when_there_is_nothing_to_separate():
+    none_stale = _figures_with(hash_file_stale=[])
+    assert "none holds a file that differs" in " ".join(REPORT.render_e9_counts(none_stale).split())
+
+    all_reach_exit_9 = _figures_with(
+        signed_hash_not_the_ledgers=list(FIGURES["exit_9_predates_correction"]),
+        signed_hash_signature_failed=[],
+    )
+    causes = " ".join(REPORT.render_e4_causes(all_reach_exit_9).split())
+    assert "every one of them reaches exit 9 for it" in causes
+
+    unexplained = _figures_with(signed_hash_other=[FIGURES["binding_checked_and_holds"][0]])
+    assert "should be read as a defect" in " ".join(REPORT.render_e4_causes(unexplained).split())
