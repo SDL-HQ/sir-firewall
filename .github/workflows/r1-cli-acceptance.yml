@@ -36,9 +36,12 @@ jobs:
           # A signer refuses unless the registry entry named by
           # SDL_SIGNING_KEY_ID holds the public key belonging to the key in
           # hand, so an ephemeral key has to be enrolled exactly as a real one
-          # is. The id is descriptive rather than borrowed: the verification
-          # steps below pass this public key directly and point at a
-          # deliberately missing registry, so nothing downstream reads it.
+          # is. The id is descriptive rather than borrowed. The verification
+          # steps below resolve it through this same registry: a certificate
+          # or a receipt that names a key is checked against the registry's
+          # entry for that key and against nothing else. Until 21 November
+          # 2026 they pointed at a deliberately missing registry and passed
+          # the public key, which worked through a fallback that was removed.
           python - <<'PY'
           import json, pathlib
           pathlib.Path("/tmp/sir_ci_key_registry.json").write_text(json.dumps({
@@ -122,8 +125,8 @@ jobs:
         run: |
           set -euo pipefail
           test -f "$AUDIT_JSON"
-          sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json "$AUDIT_JSON"
-          cat "$AUDIT_JSON" | sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json --no-ledger -
+          sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/sir_ci_key_registry.json "$AUDIT_JSON"
+          cat "$AUDIT_JSON" | sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/sir_ci_key_registry.json --no-ledger -
 
       - name: Run scenario mode (scenario_injection_chain)
         run: |
@@ -189,8 +192,8 @@ jobs:
         run: |
           set -euo pipefail
           test -f "$AUDIT_JSON"
-          sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json "$AUDIT_JSON"
-          cat "$AUDIT_JSON" | sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json --no-ledger -
+          sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/sir_ci_key_registry.json "$AUDIT_JSON"
+          cat "$AUDIT_JSON" | sir verify cert --key /tmp/sir_ci_pub.pem --key-registry /tmp/sir_ci_key_registry.json --no-ledger -
 
       - name: Create archive and verify archive via CLI
         env:
@@ -219,7 +222,7 @@ jobs:
             echo "ERROR: no run archive directory found under proofs/runs/"
             exit 1
           fi
-          sir verify archive --key /tmp/sir_ci_pub.pem --key-registry /tmp/ci_missing_key_registry.json "$RUN_DIR"
+          sir verify archive --key /tmp/sir_ci_pub.pem --key-registry /tmp/sir_ci_key_registry.json "$RUN_DIR"
 
       - name: Live mode fails fast without credentials (no stale summary)
         run: |

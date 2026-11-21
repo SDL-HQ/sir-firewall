@@ -51,6 +51,7 @@ import argparse
 import copy
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import types
@@ -187,7 +188,7 @@ def baseline_run(tmp_path, monkeypatch):
     fake_litellm = types.ModuleType("litellm")
     fake_litellm.completion = lambda **_kwargs: {"choices": [{"message": {"content": "stub"}}]}
 
-    private_pem, public_pem = _signing_key_pem()
+    private_pem, _public_pem = _signing_key_pem()
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("XAI_API_KEY", "test-key")
@@ -224,8 +225,11 @@ def baseline_run(tmp_path, monkeypatch):
     generator = _module("generate_baseline_record_for_tests", "tools/generate_baseline_record.py")
     assert generator.main() == 0
 
-    pubkey = tmp_path / "sdl.pub"
-    pubkey.write_bytes(public_pem)
+    # The registry the signer was made to enrol its key in is the one the
+    # verifier is given. Until 21 November 2026 these tests named a registry
+    # that did not exist and a public key file, which is the fallback that
+    # was removed: a record is verified through a registry or not at all.
+    registry = Path(os.environ["SDL_KEY_REGISTRY"])
 
     record_path = tmp_path / "proofs/baseline.json"
     summary = json.loads((tmp_path / "proofs/run_summary.json").read_text(encoding="utf-8"))
@@ -233,22 +237,20 @@ def baseline_run(tmp_path, monkeypatch):
         "record_path": record_path,
         "record": json.loads(record_path.read_text(encoding="utf-8")),
         "summary": summary,
-        "pubkey": pubkey,
+        "registry": registry,
         "private_pem": private_pem,
         "tmp_path": tmp_path,
     }
 
 
-def _verify(record_path, pubkey, *extra, cwd):
+def _verify(record_path, registry, *extra, cwd):
     completed = subprocess.run(
         [
             sys.executable,
             str(ROOT / "tools/verify_baseline_record.py"),
             str(record_path),
-            "--pubkey",
-            str(pubkey),
             "--key-registry",
-            str(cwd / "no-registry.json"),
+            str(registry),
             *extra,
         ],
         cwd=cwd,
@@ -261,7 +263,7 @@ def _verify(record_path, pubkey, *extra, cwd):
 
 def test_a_real_baseline_run_produces_a_record_that_verifies(baseline_run):
     code, output = _verify(
-        baseline_run["record_path"], baseline_run["pubkey"], cwd=baseline_run["tmp_path"]
+        baseline_run["record_path"], baseline_run["registry"], cwd=baseline_run["tmp_path"]
     )
 
     assert code == 0, output
@@ -379,7 +381,7 @@ def test_a_record_whose_provider_declined_partitions_its_attempts(baseline_run):
     record = _resign(record, baseline_run["private_pem"])
 
     code, output = _verify(
-        _write(baseline_run, record), baseline_run["pubkey"], cwd=baseline_run["tmp_path"]
+        _write(baseline_run, record), baseline_run["registry"], cwd=baseline_run["tmp_path"]
     )
     assert code == 0, output
 
@@ -420,7 +422,7 @@ def test_a_record_claiming_enforcement_is_refused(baseline_run, field, value):
     """
     record = _resign(dict(baseline_run["record"], **{field: value}), baseline_run["private_pem"])
     code, output = _verify(
-        _write(baseline_run, record), baseline_run["pubkey"], cwd=baseline_run["tmp_path"]
+        _write(baseline_run, record), baseline_run["registry"], cwd=baseline_run["tmp_path"]
     )
 
     assert code == verifier.NOT_A_BASELINE_RECORD, output
@@ -435,7 +437,7 @@ def test_a_record_with_overstated_counters_is_refused(baseline_run):
     record = _resign(record, baseline_run["private_pem"])
 
     code, output = _verify(
-        _write(baseline_run, record), baseline_run["pubkey"], cwd=baseline_run["tmp_path"]
+        _write(baseline_run, record), baseline_run["registry"], cwd=baseline_run["tmp_path"]
     )
     assert code == verifier.LEDGER_BINDING_FAILURE, output
     assert "counter binding failed" in output
@@ -477,7 +479,7 @@ def test_a_record_declaring_a_row_format_this_release_cannot_read_is_refused(
     record = _resign(record, baseline_run["private_pem"])
 
     code, output = _verify(
-        _write(baseline_run, record), baseline_run["pubkey"], cwd=baseline_run["tmp_path"]
+        _write(baseline_run, record), baseline_run["registry"], cwd=baseline_run["tmp_path"]
     )
     assert code == verifier.NOT_A_BASELINE_RECORD, output
     assert "row version" in output or "row_version" in output
@@ -491,7 +493,7 @@ def test_a_record_declaring_a_true_row_version_is_refused(baseline_run):
     record = _resign(record, baseline_run["private_pem"])
 
     code, output = _verify(
-        _write(baseline_run, record), baseline_run["pubkey"], cwd=baseline_run["tmp_path"]
+        _write(baseline_run, record), baseline_run["registry"], cwd=baseline_run["tmp_path"]
     )
     assert code == verifier.NOT_A_BASELINE_RECORD, output
     assert "row_version" in output
@@ -528,7 +530,7 @@ def test_a_record_declaring_one_supported_format_over_rows_in_the_other_is_refus
     record = _resign(record, baseline_run["private_pem"])
 
     code, output = _verify(
-        _write(baseline_run, record), baseline_run["pubkey"], cwd=baseline_run["tmp_path"]
+        _write(baseline_run, record), baseline_run["registry"], cwd=baseline_run["tmp_path"]
     )
     assert code != 0, f"a record declaring {other} over version {itgl.BASELINE_ROW_VERSION} rows verified: {output}"
     assert "row version" in output or "row_version" in output, output
@@ -560,7 +562,7 @@ def test_a_record_bound_to_another_ledger_is_refused(baseline_run, tmp_path):
 
     code, output = _verify(
         baseline_run["record_path"],
-        baseline_run["pubkey"],
+        baseline_run["registry"],
         "--ledger",
         str(other),
         cwd=baseline_run["tmp_path"],
@@ -596,7 +598,7 @@ def test_a_record_over_gated_rows_is_refused(baseline_run):
     record = _resign(record, baseline_run["private_pem"])
 
     code, output = _verify(
-        _write(baseline_run, record), baseline_run["pubkey"], cwd=baseline_run["tmp_path"]
+        _write(baseline_run, record), baseline_run["registry"], cwd=baseline_run["tmp_path"]
     )
     assert code == verifier.LEDGER_BINDING_FAILURE, output
     assert "not the rows of an ungated baseline" in output
@@ -608,7 +610,7 @@ def test_an_altered_record_fails_on_its_signature(baseline_run):
     record["counters"]["prompts_forwarded"] = 99
 
     code, output = _verify(
-        _write(baseline_run, record), baseline_run["pubkey"], cwd=baseline_run["tmp_path"]
+        _write(baseline_run, record), baseline_run["registry"], cwd=baseline_run["tmp_path"]
     )
     assert code == verifier.PAYLOAD_HASH_MISMATCH, output
 

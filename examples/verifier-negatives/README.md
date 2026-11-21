@@ -7,7 +7,7 @@ Run both certificate tools when relying on a certificate:
 - `tools/validate_certificate_contract.py` establishes certificate shape, required fields, and contract rules. It does **not** establish payload integrity or signature authenticity. A falsified leak count can remain structurally contract-valid.
 - `tools/verify_certificate.py` establishes that the payload hash matches the reconstructed payload and that the signature authenticates it with trusted key material. It does **not** replace contract validation.
 
-Cases 1–4 pass the contract validator. Case 5 demonstrates the validator's required-field check. All five fail the verifier.
+Cases 1–4 pass the contract validator. Case 5 demonstrates the validator's required-field check. The verifier returns a code other than 0 for all five: four fail a check, and case 4 is refused before any check is made.
 
 ## Case 1: falsified leak count
 
@@ -67,11 +67,13 @@ Cases 2 and 3 produce identical verifier output **by construction**. In both cas
 
 `tampered-unregistered-key.json` was re-hashed and re-signed using a temporary key whose `signing_key_id` is not present in the repository key registry.
 
-Verifier exit code: `1`
+Verifier exit code: `6`
 
 ```text
 ERROR: signing_key_id not found in key registry: phase1-unregistered-temp-key
 ```
+
+Exit `6` is the code for a signature check that could not be performed. The certificate names a key the registry does not have, so there is no key to check its signature against, and the verifier checks nothing and says so. It is not exit `5`: nobody has shown that this signature fails. Until 21 November 2026 this case left the verifier at exit `1`, a code its table does not list.
 
 Contract-validator exit code: `0`
 

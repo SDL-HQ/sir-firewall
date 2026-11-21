@@ -93,9 +93,16 @@ rules were never asked. Measured with a key a scratch registry marks revoked
 and a public key file still holding it: a certificate, a receipt and a baseline
 record signed after the revocation each verified. A key no entry holds is not
 refused, so a reader verifying their own documents with their own key beside
-the approved registry is unaffected. Where no registry can be read there is
-nothing to ask: the verifier says so in a warning, and `--require-registry`
-refuses instead.
+the approved registry is unaffected.
+
+Since 21 November 2026 the file is read in one case only, a certificate that
+names no key. A document that names its key is checked against the registry's
+entry for that key and against nothing else. Where no registry can be read, or
+the registry does not have the named key, the verifier refuses at exit 6, the
+code for a check that could not be performed, and no flag turns that into a
+check against the file. Before that date a missing registry was a warning and
+the file, and a receipt or a baseline record naming a key the registry lacked
+was verified against the file.
 
 On 6 October 2026 `policy/sdl_public_key.pem` was found still holding the
 retired `default` public key, referenced by nothing, two commits in its entire

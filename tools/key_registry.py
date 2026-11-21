@@ -9,7 +9,7 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple
 
 TS_Z_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 RUN_NUMBER_RE = re.compile(r"-gh(\d+)-")
@@ -318,7 +318,7 @@ def revocation_allows_proof(
 
 
 class RegistryKeyUnreadable(ValueError):
-    """A registry entry's key could not be read, so no key can be compared with it."""
+    """The registry, or the key of one of its entries, could not be read, so no key can be compared with it."""
 
 
 def entries_holding(registry_path: Path, public_key: Any) -> List[Dict[str, Any]]:
@@ -374,20 +374,21 @@ def key_file_refusal(
 
     A key no entry holds is not the registry's to refuse: someone verifying
     their own documents with their own key beside this registry is unaffected.
-    Where no registry can be read there is nothing to hold the key to, and the
-    verifiers say so in a warning. That case is not closed here.
 
-    Raises RegistryKeyUnreadable when an entry's key cannot be read: the check
-    could not be performed, which is not a statement about the document.
+    Raises RegistryKeyUnreadable when the registry, or an entry's key, cannot
+    be read: the check could not be performed, which is not a statement about
+    the document. Until 21 November 2026 a registry that was missing or could
+    not be parsed was answered None here, "not refused", which is how a
+    missing file became a pass. `resolve_keys` refuses that case before the
+    signature now, so a verifier does not arrive here without a registry; if
+    one ever does, the answer is that the question could not be asked.
     """
-    if not registry_path.exists():
-        return None
     try:
         holding = entries_holding(registry_path, public_key)
     except RegistryKeyUnreadable:
         raise
-    except ValueError:
-        return None
+    except (OSError, ValueError) as exc:
+        raise RegistryKeyUnreadable(f"key registry could not be read: {registry_path} ({exc})") from exc
     for entry in holding:
         if entry.get("status") == "active":
             continue
@@ -400,3 +401,206 @@ def key_file_refusal(
         if refusal is not None:
             return f"the key in the public key file is a registry key: {refusal}"
     return None
+
+
+# --- one resolution, for every verifier ----------------------------------------
+#
+# The five functions above were already shared. The sequence that calls them
+# was not: is there a registry, find the entry, ask the revocation rule, fall
+# back or refuse, and after the signature the anchored set or the key file.
+# Until 21 November 2026 each of the three verifiers wrote that sequence
+# itself, in 118, 37 and 23 lines. They had the same inputs and nothing
+# compared them, so one condition, a registry that was required and could not
+# be read, returned 1 from one, 3 from the second and 5 from the third; a
+# document naming a key the registry does not have was refused by one, verified
+# against a public key file by the second only when the file was typed, and
+# verified against it silently by the third; the key-file check of
+# 19 November had to be added in three places; and the receipt verifier asked
+# the wrong object for a day because its copy had its own variable.
+#
+# One thing is deliberately still different between the verifiers, and it is
+# passed in by name and not written again in each:
+#
+#   implicit_key_id  only a certificate may name no key, because the field
+#                    postdates 43 published certificates; such a certificate is
+#                    resolved as that id, with the public key file as a second
+#                    candidate.
+#
+# Each verifier maps a refusal's kind to its own published exit code.
+
+#: The reader's bundle: no registry could be read, and one is required.
+REGISTRY_UNAVAILABLE = "registry-unavailable"
+#: The reader's bundle: a public key file was needed and could not be read.
+KEY_FILE_UNREADABLE = "key-file-unreadable"
+#: The reader's bundle: the registry was read and does not have the key the document names.
+KEY_NOT_IN_REGISTRY = "key-not-in-registry"
+#: The registry holds the key and does not honour it for this document.
+KEY_NOT_HONOURED = "key-not-honoured"
+#: The document's signing_key_id is present and is not a non-empty string.
+KEY_ID_MALFORMED = "key-id-malformed"
+
+
+class KeyRefused(Exception):
+    """No key is offered for this document. `kind` says whose fact that is."""
+
+    def __init__(self, kind: str, message: str) -> None:
+        super().__init__(message)
+        self.kind = kind
+
+
+class KeyCandidate(NamedTuple):
+    """A key to try, how the verifier names it, and the registry entry that governs it.
+
+    `entry` is None for a key read from a public key file. After the signature
+    verifies, `refusal_after_signature` asks the entry, or asks the registry
+    whether it holds the key.
+
+    NamedTuple and not a dataclass: several tests and the shop window load
+    this module by path without registering it, and a dataclass under
+    postponed annotations looks its own module up by name.
+    """
+
+    public_key: Any
+    source: str
+    entry: Optional[Dict[str, Any]]
+
+
+def _key_from_file(pubkey_path: Path) -> KeyCandidate:
+    from cryptography.hazmat.primitives import serialization
+
+    try:
+        public_key = serialization.load_pem_public_key(pubkey_path.read_bytes())
+    except Exception as exc:  # noqa: BLE001 - a file we could not read is our fact, whatever raised
+        raise KeyRefused(KEY_FILE_UNREADABLE, f"failed to load public key: {pubkey_path} ({exc})") from exc
+    return KeyCandidate(public_key, f"--pubkey {pubkey_path}", None)
+
+
+def resolve_keys(
+    document: Dict[str, Any],
+    *,
+    registry_path: Path,
+    require_registry: bool = False,
+    implicit_key_id: Optional[str] = None,
+    pubkey_path: Optional[Path] = None,
+) -> Tuple[KeyCandidate, ...]:
+    """The keys to try for this document, in order, or a refusal.
+
+    A document that names a key is verified against the registry's entry for
+    that key and against nothing else. There is no flag that changes that.
+    Before 21 November 2026 a registry that was missing or unreadable meant a
+    warning and the public key file, and two of the three verifiers also fell
+    back to the file for a key the registry did not have; a file a reader was
+    handed says someone signed the document, and the registry is the only
+    thing here that says who, so both are refusals now and neither verifies
+    anything.
+
+    They are refusals about the reader's bundle and not about the document.
+    A registry that cannot be read, and a registry that was read and lacks the
+    key, leave the same thing unestablished: nobody checked the signature.
+    Which of them it was is in the message, and each verifier exits 6 for
+    both.
+
+    A public key file is a candidate in one case, the one `implicit_key_id`
+    and `pubkey_path` exist for: a certificate that names no key. Someone
+    assembling a minimal bundle signs with their own key, writes it to
+    spec/sdl.pub and copies the approved registry in beside it; their
+    certificate names no key either, and was not signed by SDL. The registry's
+    implicit entry is tried first and the file second, the result names
+    whichever verified, and `refusal_after_signature` holds a key from the
+    file to the registry entry that holds it. `require_registry` withdraws
+    the file: registry keys only.
+
+    The revocation rule is asked here, before the signature, and it is told
+    the anchored check follows. `refusal_after_signature` is that check. A
+    verifier that calls one calls the other.
+    """
+    from cryptography.hazmat.primitives import serialization
+
+    named = document.get("signing_key_id")
+    names_a_key = isinstance(named, str) and bool(named)
+    if ("signing_key_id" in document or implicit_key_id is None) and not names_a_key:
+        raise KeyRefused(KEY_ID_MALFORMED, "signing_key_id must be a non-empty string when present")
+    subject = f"signing_key_id={named}" if names_a_key else "a certificate naming no signing_key_id"
+
+    def unavailable(state: str, detail: str) -> KeyRefused:
+        return KeyRefused(
+            REGISTRY_UNAVAILABLE,
+            f"key registry {state}: {registry_path}{detail}. It is required to resolve {subject}, "
+            "so nothing about this document was verified.",
+        )
+
+    if not registry_path.exists():
+        raise unavailable("unavailable", "")
+    lookup = named if names_a_key else implicit_key_id
+    try:
+        entry = find_registry_key(registry_path, lookup)
+    except Exception as exc:  # noqa: BLE001 - whatever stopped the registry being read, it was not read
+        raise unavailable("unreadable", f" ({exc})") from exc
+
+    if entry is None:
+        if names_a_key:
+            # The sentence the certificate verifier has always printed for
+            # this, which a negative example publishes.
+            raise KeyRefused(KEY_NOT_IN_REGISTRY, f"signing_key_id not found in key registry: {named}")
+        # A certificate naming no key, and a registry with no implicit entry:
+        # someone else's registry. Their key file is all there is.
+        if require_registry or pubkey_path is None:
+            raise KeyRefused(
+                KEY_NOT_IN_REGISTRY,
+                f"this certificate names no signing_key_id and the key registry {registry_path} has no entry "
+                f"{implicit_key_id!r} to resolve it as, so nothing about this document was verified.",
+            )
+        return (_key_from_file(pubkey_path),)
+
+    implicit = not names_a_key
+    allowed, reason = revocation_allows_proof(
+        entry, document.get("timestamp_utc"), document.get("run_id"), anchored_check_follows=True
+    )
+    if not allowed:
+        resolved_as = (
+            f"this certificate carries no signing_key_id, so it is resolved as key_id={implicit_key_id!r}: "
+            if implicit
+            else ""
+        )
+        raise KeyRefused(KEY_NOT_HONOURED, f"revoked-key verification failure: {resolved_as}{reason}")
+    try:
+        public_key = serialization.load_pem_public_key(public_key_pem_from_entry(entry).encode("utf-8"))
+    except Exception as exc:  # noqa: BLE001 - a malformed entry in our own registry
+        raise unavailable("unreadable", f" (entry key_id={lookup!r}: {exc})") from exc
+    source = (
+        f"key registry {registry_path} entry key_id={lookup} "
+        "(the certificate carries no signing_key_id; the field postdates it)"
+        if implicit
+        else f"key registry {registry_path} entry signing_key_id={lookup}"
+    )
+    candidates = [KeyCandidate(public_key, source, entry)]
+    if implicit and not require_registry and pubkey_path is not None:
+        # A candidate and not a replacement: both are offered and the one
+        # that verifies is named in the result.
+        candidates.append(_key_from_file(pubkey_path))
+    return tuple(candidates)
+
+
+def refusal_after_signature(
+    candidate: KeyCandidate,
+    *,
+    registry_path: Path,
+    document: Dict[str, Any],
+    computed_payload_hash: str,
+) -> Optional[str]:
+    """Why a document whose signature verified under this candidate is not honoured, or None.
+
+    Call it after the signature verifies and not before, with the payload hash
+    computed from the document: before the signature a refusal would be about
+    a document nobody has shown the key signed, and it would displace the more
+    exact answer for a tampered one.
+
+    Raises RegistryKeyUnreadable when the question could not be asked.
+    """
+    if candidate.entry is not None:
+        refusal = anchored_set_refusal(candidate.entry, computed_payload_hash)
+        return None if refusal is None else f"{candidate.entry.get('status')}-key verification failure: {refusal}"
+    refusal = key_file_refusal(
+        registry_path, candidate.public_key, document.get("timestamp_utc"), document.get("run_id"), computed_payload_hash
+    )
+    return None if refusal is None else f"key-file verification failure: {refusal}"

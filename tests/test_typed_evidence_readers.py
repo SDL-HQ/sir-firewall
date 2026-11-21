@@ -415,19 +415,17 @@ def _verify_evidence(archive, *extra):
     return completed.returncode, states
 
 
-def _verify_record(record, *extra, pubkey=None, cwd=None):
-    """The record verifier with the fixture's own key.
+def _verify_record(record, *extra, key_registry, cwd=None):
+    """The record verifier with the registry the fixture enrolled its key in.
 
-    --key-registry is pointed at a path that does not exist, so registry
-    resolution finds nothing and the verifier falls back to --pubkey. Without
-    that, the published registry resolves signing_key_id "default" to the real
-    key and the fixture's signature fails, which leaves every
-    signature-dependent behaviour uncheckable.
+    Without it, the published registry resolves signing_key_id "default" to
+    the real key and the fixture's signature fails, which leaves every
+    signature-dependent behaviour uncheckable. Until 21 November 2026 this
+    named a registry that did not exist and passed the fixture's public key
+    file, which is the fallback that was removed.
     """
     argv = [sys.executable, str(ROOT / "tools/verify_baseline_record.py"), str(record)]
-    argv += ["--key-registry", "no/such/registry.json"]
-    if pubkey is not None:
-        argv += ["--pubkey", str(pubkey)]
+    argv += ["--key-registry", str(key_registry)]
     return subprocess.run(
         [*argv, *extra],
         capture_output=True,
@@ -463,26 +461,26 @@ def test_a_record_names_its_own_ledger_and_no_ledger_stops_that(published_pair):
     """
     archive = published_pair["runs_dir"] / published_pair["baseline_run_id"]
     record = archive / "baseline.json"
-    pubkey = published_pair["pubkey"]
+    key_registry = published_pair["key_registry"]
 
     # The path the record names is relative, so the fallback resolves it
     # against the working directory rather than against the archive. Run from
     # the tree the archive sits in, the record finds its ledger and the
     # binding is established without any --ledger argument.
-    verified = _verify_record(record, pubkey=pubkey, cwd=published_pair["tmp_path"])
+    verified = _verify_record(record, key_registry=key_registry, cwd=published_pair["tmp_path"])
     assert verified.returncode == 0, verified.stdout + verified.stderr
     assert "bound to" in verified.stdout
 
     # Run from anywhere else, the same record resolves nothing. Which ledger a
     # record is checked against therefore depends on where the tool was run,
     # which is the reason a per-archive report must say which it used.
-    elsewhere = _verify_record(record, pubkey=pubkey, cwd=ROOT)
+    elsewhere = _verify_record(record, key_registry=key_registry, cwd=ROOT)
     assert elsewhere.returncode != 0
     assert "was not found at" in elsewhere.stderr
 
     # --no-ledger suppresses the resolution, and says what is then unestablished.
     without = _verify_record(
-        record, "--no-ledger", pubkey=pubkey, cwd=published_pair["tmp_path"]
+        record, "--no-ledger", key_registry=key_registry, cwd=published_pair["tmp_path"]
     )
     assert without.returncode == 0, without.stdout + without.stderr
     assert "not established" in without.stdout
@@ -535,14 +533,14 @@ def test_signing_trust_is_unknown_after_a_public_key_fallback(published_pair):
 def test_the_record_verifier_can_check_a_document_without_a_ledger(published_pair):
     """--no-ledger, as the certificate verifier has, and it says what is missing."""
     record = published_pair["runs_dir"] / published_pair["baseline_run_id"] / "baseline.json"
-    pubkey = published_pair["pubkey"]
+    key_registry = published_pair["key_registry"]
 
-    completed = _verify_record(record, "--no-ledger", pubkey=pubkey)
+    completed = _verify_record(record, "--no-ledger", key_registry=key_registry)
 
     assert completed.returncode == 0, completed.stdout + completed.stderr
     assert "not established" in completed.stdout
     assert "does not establish that no gate ran" in completed.stdout
 
-    both = _verify_record(record, "--no-ledger", "--ledger", str(record), pubkey=pubkey)
+    both = _verify_record(record, "--no-ledger", "--ledger", str(record), key_registry=key_registry)
     assert both.returncode != 0
     assert "mutually exclusive" in both.stdout + both.stderr

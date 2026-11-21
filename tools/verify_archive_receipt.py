@@ -10,7 +10,8 @@ Exit codes:
   3  the manifest or receipt could not be read, or this archive was published
      without one
   6  the signature check could not be performed, so the signature is neither
-     established nor refuted
+     established nor refuted: the verification raised, the key registry could
+     not be read, or it does not have the key the receipt names
 
 6 was added on 17 October 2026 and mirrors verify_certificate.py, which
 already separates a signature that does not verify from a check that raised.
@@ -29,19 +30,19 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 
 from key_registry import (
+    KEY_NOT_HONOURED,
+    KEY_NOT_IN_REGISTRY,
+    REGISTRY_UNAVAILABLE,
+    KeyRefused,
     RegistryKeyUnreadable,
-    anchored_set_refusal,
-    find_registry_key,
-    key_file_refusal,
-    public_key_pem_from_entry,
-    revocation_allows_proof,
+    refusal_after_signature,
+    resolve_keys,
 )
 
-DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
 DEFAULT_KEY_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
 
 
@@ -126,24 +127,42 @@ def not_named_note(unnamed: list) -> str:
     )
 
 
+# What each kind of refusal from key resolution exits as. A registry that was
+# required and could not be read returned 3 until 21 November 2026, which this
+# tool documents as "the manifest or receipt could not be read"; a receipt
+# naming a key the registry does not have returned 2, "the receipt signature
+# does not verify", unless --pubkey was typed, when it was verified against
+# that file with a warning. Both are facts about the reader's bundle, nothing
+# was checked against anything in either, and 6 is the code for that.
+KEY_REFUSAL_EXIT = {
+    REGISTRY_UNAVAILABLE: 6,
+    KEY_NOT_IN_REGISTRY: 6,
+    KEY_NOT_HONOURED: 2,
+}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Verify a SIR run archive receipt.")
     ap.add_argument("archive_path", help="Path to run folder or exported bundle folder")
-    ap.add_argument("--pubkey", default=None, help="Path to PEM public key (default: spec/sdl.pub)")
+    ap.add_argument(
+        "--pubkey",
+        default=None,
+        help=(
+            "Accepted and not used. A receipt names its signing key, and that key is resolved "
+            "through the key registry and through nothing else."
+        ),
+    )
     ap.add_argument(
         "--key-registry",
         default=str(DEFAULT_KEY_REGISTRY),
-        help="Path to key registry JSON used when signing_key_id is present.",
+        help="Path to the key registry JSON the receipt's signing_key_id is resolved through.",
     )
     ap.add_argument(
         "--require-registry",
         action="store_true",
-        help="Fail when signing_key_id is present but key registry is missing/unreadable.",
+        help="Accepted and without effect here: a receipt is verified against registry keys only in every case.",
     )
     args = ap.parse_args()
-    pubkey_explicit = args.pubkey is not None
-    if args.pubkey is None:
-        args.pubkey = str(DEFAULT_PUBKEY_PATH)
 
     try:
         archive_dir = _resolve_archive_dir(Path(args.archive_path))
@@ -190,60 +209,13 @@ def main() -> int:
         print("ERROR: signing_key_id must be a non-empty string", file=sys.stderr)
         return 3
 
-    registry_entry = None
     try:
-        registry_path = Path(args.key_registry)
-        if registry_path.exists():
-            registry_entry = find_registry_key(registry_path, signing_key_id)
-            if registry_entry is None:
-                if pubkey_explicit and not args.require_registry:
-                    print(
-                        "WARNING: signing_key_id not found in key registry; using explicit --pubkey for local/dev verification only (revocation checks not enforced).",
-                        file=sys.stderr,
-                    )
-                    public_key = serialization.load_pem_public_key(Path(args.pubkey).read_bytes())
-                else:
-                    print(
-                        f"ERROR: signing_key_id not found in key registry: {signing_key_id}",
-                        file=sys.stderr,
-                    )
-                    return 2
-            else:
-                allowed, reason = revocation_allows_proof(
-                    registry_entry, receipt.get("timestamp_utc"), receipt.get("run_id"), anchored_check_follows=True
-                )
-                if not allowed:
-                    print(f"ERROR: revoked-key verification failure: {reason}", file=sys.stderr)
-                    return 2
-                public_key = serialization.load_pem_public_key(public_key_pem_from_entry(registry_entry).encode("utf-8"))
-        else:
-            if args.require_registry:
-                print(
-                    f"ERROR: key registry not found: {registry_path} (required for signing_key_id={signing_key_id})",
-                    file=sys.stderr,
-                )
-                return 3
-            print(
-                "WARNING: signing_key_id present but key registry unavailable; falling back to --pubkey verification only (revocation checks not enforced).",
-                file=sys.stderr,
-            )
-            public_key = serialization.load_pem_public_key(Path(args.pubkey).read_bytes())
-    except ValueError as e:
-        if args.require_registry:
-            print(f"ERROR: failed to load required key registry {args.key_registry} ({e})", file=sys.stderr)
-            return 3
-        print(
-            "WARNING: signing_key_id present but key registry unreadable; falling back to --pubkey verification only (revocation checks not enforced).",
-            file=sys.stderr,
-        )
-        try:
-            public_key = serialization.load_pem_public_key(Path(args.pubkey).read_bytes())
-        except Exception as ex:
-            print(f"ERROR: failed to load verification key ({ex})", file=sys.stderr)
-            return 3
-    except Exception as e:
-        print(f"ERROR: failed to load verification key ({e})", file=sys.stderr)
-        return 3
+        # A receipt names its key, so there is one candidate and it is the registry's.
+        (candidate,) = resolve_keys(receipt, registry_path=Path(args.key_registry))
+    except KeyRefused as refused:
+        print(f"ERROR: {refused}", file=sys.stderr)
+        return KEY_REFUSAL_EXIT[refused.kind]
+    public_key = candidate.public_key
 
     manifest_hash = _sha256_bytes(_canonical_json_bytes(manifest))
     if receipt.get("manifest_hash") != manifest_hash:
@@ -328,38 +300,26 @@ def main() -> int:
         )
         return 6
 
-    # The signature verified against the registry's key, so this is a receipt
-    # that key signed. A key that is no longer active is honoured only for the
-    # receipts the registry anchors, by the payload hash computed above, which
-    # was compared with the stated one before it is used here.
+    # The signature verified, so this is a receipt that key signed. Whether
+    # the key is honoured for it is asked now, by the payload hash computed
+    # above, which was compared with the stated one before it is used here.
     #
-    # `registry_entry`, and not `entry`: the loop over the manifest's files
-    # above binds that name, and the first version of this check asked the
-    # last file in the manifest whether the key was honoured.
-    if registry_entry is not None:
-        refusal = anchored_set_refusal(registry_entry, payload_hash)
-        if refusal is not None:
-            print(
-                f"ERROR: {registry_entry.get('status')}-key verification failure: {refusal}",
-                file=sys.stderr,
-            )
-            return 2
-    else:
-        # The key came from the public key file. The registry is asked whether
-        # it holds that key, by the key and not by the id the receipt names.
-        try:
-            refusal = key_file_refusal(
-                Path(args.key_registry), public_key, receipt.get("timestamp_utc"), receipt.get("run_id"), payload_hash
-            )
-        except RegistryKeyUnreadable as e:
-            print(
-                f"ERROR: whether the key in --pubkey {args.pubkey} is a registry key could not be established ({e})",
-                file=sys.stderr,
-            )
-            return 6
-        if refusal is not None:
-            print(f"ERROR: key-file verification failure: {refusal}", file=sys.stderr)
-            return 2
+    # `candidate`, and never `entry`: the loop over the manifest's files above
+    # binds that name, and the first version of this check asked the last file
+    # in the manifest whether the key was honoured.
+    try:
+        refusal = refusal_after_signature(
+            candidate, registry_path=Path(args.key_registry), document=receipt, computed_payload_hash=payload_hash
+        )
+    except RegistryKeyUnreadable as e:
+        print(
+            f"ERROR: whether the key in {candidate.source} is a registry key could not be established ({e})",
+            file=sys.stderr,
+        )
+        return 6
+    if refusal is not None:
+        print(f"ERROR: {refusal}", file=sys.stderr)
+        return 2
 
     unnamed = files_not_named(archive_dir, manifest)
     if unnamed:

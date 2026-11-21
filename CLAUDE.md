@@ -87,7 +87,7 @@ minimal bundle needs no spec file;
 | 3 | payload hash mismatch |
 | 4 | malformed base64 |
 | 5 | signature does not verify |
-| 6 | signature verification error |
+| 6 | the signature check could not be performed: the verification raised, the key registry or a public key file that was needed could not be read, or the registry does not have the key the certificate names |
 | 7 | binding failure: chain invalid, terminal-hash mismatch, or row-count mismatch |
 | 9 | binding **not checked**: no ledger was found, or the certificate predates `itgl_row_count` |
 | 10 | the registry does not honour the signing key for this document: revoked, or no longer active and not among the documents the registry anchors |
@@ -112,8 +112,10 @@ error, 8 below the applicability floor.
 rather than the binding. 5 means the signature was checked and the payload
 does not bear it, which is a statement about the document. 6 means the check
 did not complete, which is a statement about us: a malformed entry in our own
-registry, an unsupported algorithm, a library that is absent, or a programming
-error in the verifier. Collapsing them reports our defect as the document's,
+registry, an unsupported algorithm, a library that is absent, a programming
+error in the verifier, a registry or public key file the reader's bundle
+does not have, or a registry that does not have the key the document names.
+Collapsing them reports our defect as the document's,
 and that is the only defect class here that reads as dishonesty rather than as
 a limit. `verify_evidence.py` therefore classifies 6 as **unknown**, not
 failed, from every tool that returns it.
@@ -379,10 +381,64 @@ changes the verdict.
   read is exit 6, not "does not hold it". Over 2,905 standalone commands on
   the 379 archives and 82 other published documents, nothing run from the
   repository root changed, because no published document verifies through the
-  file. What is not closed: with no readable registry there is nothing to ask.
-  That fallback is documented behaviour in `docs/key-governance-readiness.md`
-  and `docs/engineer-guide.md`, so it warns, on every path now, and
-  `--require-registry` refuses, for a certificate naming no key as well.
+  file. With no readable registry there is nothing to ask, and that fallback
+  was left on 19 November because two pages document it. It was closed two
+  days later; see the next entry.
+
+- **Key resolution is written once, and a named key is the registry's or it is
+  nobody's.** `key_registry.py` already shared the primitives. The sequence
+  that calls them was written three times, in 118, 37 and 23 lines, one per
+  verifier, with the same inputs and nothing comparing them. That is why the
+  key-file check above had to be added in three places, why the receipt
+  verifier could ask the wrong object, and why the three disagreed twice
+  without anyone having decided that they should. `--require-registry` with
+  no readable registry returned 1 from the certificate verifier, 3 from the
+  receipt verifier and 5 from the baseline record verifier, none of which its
+  own table gives that meaning. And a document naming a key the registry does
+  not have was refused by the certificate verifier at exit 1, verified against
+  `--pubkey` by the receipt verifier when the file was typed, and verified
+  against the public key file by the baseline record verifier, which until
+  19 November did not say so.
+
+  Since 21 November 2026 each verifier calls `key_registry.resolve_keys`
+  before the signature and `key_registry.refusal_after_signature` after it,
+  and maps the kind of a refusal to its own exit code. The rule they share: a
+  document that names a key is checked against the registry's entry for that
+  key and against nothing else. A registry that could not be read, and a
+  registry that was read and does not have the key, both mean nothing was
+  checked. That is a fact about the reader's bundle and not about the
+  document, so it is 6 from all three, which `verify_evidence.py` reports as
+  unknown where it reported 1, 3 and 5 as the document's failure. The negative
+  example naming an unregistered key documents 6 now, with the sentence it
+  always printed.
+
+  There is no flag that asks for the fallback. One was built, so the old
+  default could be requested by name, and withdrawn before this merged: what
+  depended on the fallback was ours and not a reader's, 23 tests in
+  four files and five lines of `r1-cli-acceptance.yml` that verified with the
+  CI key against a registry path chosen because it did not exist. Each of
+  those already wrote a registry, because a signer refuses to sign without
+  one, so they verify through the registry they wrote. A caller that has no
+  registry has nothing that says whose key it is holding. Do not add the flag
+  back to make a test pass; give the test the registry its signer used.
+
+  One thing is deliberately still different and is passed to the one function
+  by name. Only a certificate may name no key, because 43 published
+  certificates predate the field, and such a certificate is tried against the
+  registry's implicit entry and then the public key file. That is the only
+  case in which a verifier reads a public key file, `--require-registry`
+  removes it, and `key_file_refusal` holds a key that arrives that way to the
+  registry. In the receipt and baseline record verifiers `--pubkey` and
+  `--require-registry` are still accepted, so published command lines keep
+  working, and neither has any effect.
+
+  Before collapsing any other duplication here, ask which kind it is. Two
+  copies derived from **different inputs**, with something comparing them, are
+  a cross-check: the counters, which the generator reads from the summary and
+  the verifier derives from the rows, and `CONTRACT_V4_ADDED_FIELDS`, held in
+  the verifier so a minimal bundle needs no spec file and held to the spec by
+  a test. Two copies of the **same** thing that nothing compares are a second
+  copy of an identity. Key resolution was the second kind.
 
 - **A property line says what this run did, not what the certificate says was
   done.** `verify_evidence.py` printed "the signed counters were recomputed
