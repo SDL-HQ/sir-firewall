@@ -176,7 +176,7 @@ Any model path that bypasses SIR is out of claim scope.
 
 ## Generate a locally signed certificate (dev/test key)
 
-Certificate generation and run-archive publishing require a signing key in `SDL_PRIVATE_KEY_PEM`.
+Certificate generation and run-archive publishing require a signing key in `SDL_PRIVATE_KEY_PEM`, the id of that key in `SDL_SIGNING_KEY_ID`, and a key registry that enrols it in `SDL_KEY_REGISTRY`.
 This is for local/dev proofs. It is not an SDL-signed production proof.
 
 Create a temporary dev key:
@@ -187,15 +187,34 @@ export SDL_PRIVATE_KEY_PEM="$(cat /tmp/sir_dev_priv.pem)"
 openssl rsa -in /tmp/sir_dev_priv.pem -pubout -out /tmp/sir_dev_pub.pem >/dev/null 2>&1
 ```
 
-Generate certificate + validate + verify (using your dev pubkey):
+Enrol it in a key registry of your own and name it. A signer refuses unless the registry entry named by `SDL_SIGNING_KEY_ID` holds the public key belonging to the key in hand, so a dev key is enrolled exactly as a real one is. Without these two variables `generate_certificate.py` stops with `refusing to sign: SDL_SIGNING_KEY_ID is not set`.
+
+```bash
+python3 - <<'PY'
+import json, pathlib
+pathlib.Path("/tmp/sir_dev_key_registry.json").write_text(json.dumps({
+    "keys": [{
+        "key_id": "dev-local",
+        "pubkey_pem": pathlib.Path("/tmp/sir_dev_pub.pem").read_text(),
+        "status": "active",
+    }]
+}), encoding="utf-8")
+PY
+export SDL_SIGNING_KEY_ID=dev-local
+export SDL_KEY_REGISTRY=/tmp/sir_dev_key_registry.json
+```
+
+Generate certificate + validate + verify (through your dev registry):
 
 Local generation writes `proofs/local-audit.json` because attributable CI provenance is absent. This is expected. The generator prints `OUTPUT_AUDIT_JSON=proofs/local-audit.json` so you can confirm the selected output path.
 
 ```bash
 python3 tools/generate_certificate.py
 python3 tools/validate_certificate_contract.py proofs/local-audit.json
-python3 tools/verify_certificate.py proofs/local-audit.json --pubkey /tmp/sir_dev_pub.pem
+python3 tools/verify_certificate.py proofs/local-audit.json --key-registry /tmp/sir_dev_key_registry.json
 ```
+
+The certificate names `dev-local`. The default SDL key registry does not have that key, so verifying against it stops with `signing_key_id not found in key registry: dev-local`, with or without `--pubkey`, at exit 6: the code for a check that could not be performed, because there is no key to check the signature against.
 
 ## Publish a local run archive (signed receipt)
 
@@ -206,7 +225,7 @@ Publishing a run archive creates:
 * `proofs/runs/<run_id>/archive_receipt.json` (signed)
 * `proofs/runs/benchmark_index.v1.json`, `.v2.json` and `.v3.json` (machine-readable benchmark index summaries; v3 is current and the other two are superseded)
 
-It requires `SDL_PRIVATE_KEY_PEM` to be set.
+It requires the three variables above, and `proofs/itgl_final_hash.txt` written from this run's ledger by the ITGL step earlier in this guide. `publish_run.py` refuses a hash file left over from another run.
 
 ```bash
 python3 tools/publish_run.py --cert proofs/local-audit.json \
@@ -218,14 +237,14 @@ python3 tools/publish_run.py --cert proofs/local-audit.json \
   --copy harmless_blocked.txt
 ```
 
-Verify the latest archived run (dev pubkey):
+Verify the latest archived run (through your dev registry):
 
 ```bash
-RUN_DIR="$(ls -dt proofs/runs/* | head -n 1)"
-python3 tools/verify_archive_receipt.py "$RUN_DIR" --pubkey /tmp/sir_dev_pub.pem
+RUN_DIR="proofs/runs/$(cat proofs/run_id.txt)"
+python3 tools/verify_archive_receipt.py "$RUN_DIR" --key-registry /tmp/sir_dev_key_registry.json
 ```
 
-If `archive_receipt.json` carries a `signing_key_id` that does not exist in the default SDL key registry, explicitly passing `--pubkey` now verifies the signature for local/dev use and prints a warning that registry/revocation checks were not enforced. If the registry holds that same key under another `key_id`, that entry's rules are applied to it.
+The receipt names `dev-local` as the certificate does. Against the default SDL key registry it stops at exit 6 with the same sentence, and passing `--pubkey` does not change that: a receipt is checked against the registry's entry for the key it names and against nothing else. Until 21 November 2026 an explicit `--pubkey` verified it with a warning.
 
 Benchmark/index semantics:
 
@@ -294,7 +313,7 @@ Low-level fallback (stdin). The trailing `-` means “read JSON from stdin”:
 curl -s https://raw.githubusercontent.com/SDL-HQ/sir-firewall/main/proofs/latest-audit.json | python3 tools/verify_certificate.py - --no-ledger
 ```
 
-Verification scope: this command proves payload integrity + signature validity against resolved public key material only (registry key when `signing_key_id` resolves, or explicit `--pubkey`). It does not prove policy correctness, model safety, or broader trust guarantees.
+Verification scope: this command proves payload integrity + signature validity against resolved public key material only (the registry's entry for the `signing_key_id` the certificate names; for a certificate that names none, the registry's implicit entry and then `--pubkey`). It does not prove policy correctness, model safety, or broader trust guarantees.
 
 SDL public key:
 
