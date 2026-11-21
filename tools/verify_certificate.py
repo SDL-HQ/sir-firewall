@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -35,12 +35,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from key_registry import (
     IMPLICIT_KEY_ID,
+    KEY_FILE_UNREADABLE,
+    KEY_ID_MALFORMED,
+    KEY_NOT_HONOURED,
+    KEY_NOT_IN_REGISTRY,
+    REGISTRY_UNAVAILABLE,
+    KeyRefused,
     RegistryKeyUnreadable,
-    find_registry_key,
-    key_file_refusal,
-    public_key_pem_from_entry,
-    anchored_set_refusal,
-    revocation_allows_proof,
+    refusal_after_signature,
+    resolve_keys,
 )
 from itgl import (
     CHAIN_VERSION_V1,
@@ -240,133 +243,22 @@ def _load_cert(cert_arg: str) -> tuple[Dict[str, Any], str]:
     return _load_cert_from_file(p), str(p)
 
 
-def _load_pubkey(pubkey_path: str) -> tuple[Any, str]:
-    p = Path(pubkey_path)
-    try:
-        data = p.read_bytes()
-        return serialization.load_pem_public_key(data), f"--pubkey {p}"
-    except Exception as e:
-        raise SystemExit(f"ERROR: failed to load public key: {p} ({e})") from e
-
-
-def _load_pubkey_with_registry(
-    cert: Dict[str, Any], pubkey_path: str, key_registry_path: str, require_registry: bool = False
-) -> Tuple[List[Tuple[Any, str]], Dict[str, Dict[str, Any]]]:
-    """Public keys to try, in order, each with the source that produced it, and
-    the registry entry behind each source that came from the registry.
-
-    One key in every case but one: a certificate naming no signing_key_id,
-    where the registry's implicit entry is tried first and the public key file
-    second. main() names whichever verified, and asks the entry behind it
-    whether a key that is no longer active is honoured for this document.
-    """
-    signing_key_id = cert.get("signing_key_id")
-    registry_path = Path(key_registry_path)
-
-    if "signing_key_id" in cert and (not isinstance(signing_key_id, str) or not signing_key_id):
-        raise SystemExit("ERROR: signing_key_id must be a non-empty string when present")
-
-    # A certificate from before the field existed is resolved as IMPLICIT_KEY_ID
-    # rather than falling straight through to the public key file. See the
-    # comment on that constant: since the 6 October rotation the file holds a
-    # key that signed none of the 43 archives in this position.
-    #
-    # It is a candidate rather than a replacement. A third party assembling a
-    # minimal bundle signs with their own key, writes it to spec/sdl.pub, and
-    # copies the approved registry in beside it; their certificate carries no
-    # key id either, and was not signed by SDL. So where the certificate names
-    # no key, both sources are offered and the one that verifies is named in the
-    # result. Two candidates do not weaken the statement, because the statement
-    # says which key verified.
-    #
-    # One exception, and it is the important one: if the implicit registry entry
-    # exists and its revocation rules refuse this archive, that is a refusal and
-    # there is no fallback. Otherwise a revoked key could be laundered back in
-    # through a public key file.
-    implicit = False
-    registry_unreadable = False
-    if not (isinstance(signing_key_id, str) and signing_key_id) and registry_path.exists():
-        try:
-            entry = find_registry_key(registry_path, IMPLICIT_KEY_ID)
-        except Exception:
-            entry = None
-            registry_unreadable = True
-        if entry is not None:
-            allowed, reason = revocation_allows_proof(
-                entry, cert.get("timestamp_utc"), cert.get("run_id"), anchored_check_follows=True
-            )
-            if not allowed:
-                print(
-                    "ERROR: revoked-key verification failure: this certificate carries no "
-                    f"signing_key_id, so it is resolved as key_id={IMPLICIT_KEY_ID!r}: {reason}",
-                    file=sys.stderr,
-                )
-                raise SystemExit(REVOCATION_FAILURE)
-            signing_key_id = IMPLICIT_KEY_ID
-            implicit = True
-
-    if isinstance(signing_key_id, str) and signing_key_id:
-        if not registry_path.exists():
-            if require_registry:
-                raise SystemExit(
-                    f"ERROR: key registry not found: {registry_path} (required for signing_key_id={signing_key_id})"
-                )
-            print(
-                "WARNING: signing_key_id present but key registry unavailable; falling back to --pubkey verification only (revocation checks not enforced).",
-                file=sys.stderr,
-            )
-            return [_load_pubkey(pubkey_path)], {}
-        try:
-            entry = find_registry_key(registry_path, signing_key_id)
-            if entry is None:
-                raise SystemExit(f"ERROR: signing_key_id not found in key registry: {signing_key_id}")
-            allowed, reason = revocation_allows_proof(
-                entry, cert.get("timestamp_utc"), cert.get("run_id"), anchored_check_follows=True
-            )
-            if not allowed:
-                print(f"ERROR: revoked-key verification failure: {reason}", file=sys.stderr)
-                raise SystemExit(REVOCATION_FAILURE)
-            pem = public_key_pem_from_entry(entry)
-            described = (
-                f"key registry {registry_path} entry key_id={signing_key_id} "
-                "(the certificate carries no signing_key_id; the field postdates it)"
-                if implicit
-                else f"key registry {registry_path} entry signing_key_id={signing_key_id}"
-            )
-            candidates = [(serialization.load_pem_public_key(pem.encode("utf-8")), described)]
-            if implicit and not require_registry:
-                candidates.append(_load_pubkey(pubkey_path))
-            return candidates, {described: entry}
-        except SystemExit:
-            raise
-        except Exception as e:
-            if require_registry:
-                raise SystemExit(
-                    f"ERROR: failed to load required key registry {registry_path} ({e})"
-                ) from e
-            print(
-                "WARNING: signing_key_id present but key registry unreadable; falling back to --pubkey verification only (revocation checks not enforced).",
-                file=sys.stderr,
-            )
-            return [_load_pubkey(pubkey_path)], {}
-
-    # Reached by a certificate that names no key where the registry offered no
-    # implicit entry. With a registry that can be read, main() asks it about
-    # whichever key verifies. With none, nothing can be asked, and until
-    # 19 November 2026 that was neither refused under --require-registry nor
-    # said: the two branches above speak only for a certificate naming a key.
-    if registry_unreadable or not registry_path.exists():
-        state = "unreadable" if registry_unreadable else "unavailable"
-        if require_registry:
-            raise SystemExit(
-                f"ERROR: key registry {state}: {registry_path} (required; this certificate "
-                "names no signing_key_id, so it would be verified against --pubkey alone)"
-            )
-        print(
-            f"WARNING: certificate names no signing_key_id and key registry {state}; falling back to --pubkey verification only (revocation checks not enforced).",
-            file=sys.stderr,
-        )
-    return [_load_pubkey(pubkey_path)], {}
+# What each kind of refusal from key resolution exits as. The first three are
+# facts about the reader's bundle and not about the certificate, so they are 6:
+# the check could not be performed. Until 21 November 2026 all three left this
+# tool through SystemExit with a message, which is exit 1, a code this tool's
+# table does not have. A registry that was read and lacks the named key is the
+# same fact as a registry that could not be read: the signature was checked
+# against nothing. The message says which.
+KEY_REFUSAL_EXIT = {
+    REGISTRY_UNAVAILABLE: 6,
+    KEY_FILE_UNREADABLE: 6,
+    KEY_NOT_IN_REGISTRY: 6,
+    KEY_NOT_HONOURED: REVOCATION_FAILURE,
+    # Not a table code, and left: a signing_key_id that is present and is not
+    # a string is a fact about the document, and it has no code of its own.
+    KEY_ID_MALFORMED: 1,
+}
 
 
 def _parse_args() -> argparse.Namespace:
@@ -380,8 +272,13 @@ def _parse_args() -> argparse.Namespace:
             "  python3 tools/verify_certificate.py proofs/latest-audit.json --no-ledger\n"
             "  cat proofs/latest-audit.json | python3 tools/verify_certificate.py - --no-ledger\n\n"
             "Key resolution:\n"
-            "  If signing_key_id is present and key registry is readable, that key is used.\n"
-            "  Otherwise verifier falls back to --pubkey unless --require-registry is set.\n\n"
+            "  The key the certificate names is resolved through the key registry and through\n"
+            "  nothing else. A certificate naming no key is resolved as the registry's implicit\n"
+            "  entry, with --pubkey as a second candidate. A registry that cannot be read, or\n"
+            "  that does not have the named key, is exit 6 and nothing was verified.\n\n"
+            "Exit code 6 means the signature check could not be performed: the verification\n"
+            "raised, the key registry or a public key file that was needed could not be read,\n"
+            "or the registry does not have the key the certificate names.\n"
             "Exit code 7 means ledger chain or certificate-binding verification failed.\n"
             "Exit code 9 means binding was not checked because no ledger was found.\n"
             "Exit code 12 means the document is not a SIR audit certificate, and nothing\n"
@@ -415,7 +312,7 @@ def _parse_args() -> argparse.Namespace:
     ap.add_argument(
         "--require-registry",
         action="store_true",
-        help="Fail when the key registry is missing/unreadable (disables --pubkey fallback).",
+        help="Registry keys only: no public key file is offered as a candidate on any path.",
     )
     ap.add_argument("--quiet", action="store_true", help="Only exit code, no success message.")
     args = ap.parse_args()
@@ -486,9 +383,20 @@ def main() -> int:
             file=sys.stderr,
         )
         return NOT_A_CERTIFICATE
-    key_candidates, registry_entries = _load_pubkey_with_registry(
-        cert, args.pubkey, args.key_registry, require_registry=args.require_registry
-    )
+    # Resolved here, before the payload is looked at, as it always was: a
+    # certificate naming a key the registry refuses is refused as that, and
+    # the order of the lines on stderr is unchanged.
+    try:
+        key_candidates = resolve_keys(
+            cert,
+            registry_path=Path(args.key_registry),
+            require_registry=args.require_registry,
+            implicit_key_id=IMPLICIT_KEY_ID,
+            pubkey_path=Path(args.pubkey),
+        )
+    except KeyRefused as refused:
+        print(f"ERROR: {refused}", file=sys.stderr)
+        return KEY_REFUSAL_EXIT[refused.kind]
 
     if "signature" not in cert or "payload_hash" not in cert:
         print("ERROR: missing required fields: signature and/or payload_hash", file=sys.stderr)
@@ -509,21 +417,19 @@ def main() -> int:
         print(f"ERROR: signature is not valid base64 ({e})", file=sys.stderr)
         return 4
 
-    key_source = None
-    verified_key = None
+    verified = None
     raised: Optional[Exception] = None
-    for candidate, source in key_candidates:
+    for candidate in key_candidates:
         try:
-            candidate.verify(sig, payload, padding.PKCS1v15(), hashes.SHA256())
+            candidate.public_key.verify(sig, payload, padding.PKCS1v15(), hashes.SHA256())
         except InvalidSignature:
             continue
         except Exception as e:
             raised = e
             continue
-        key_source = source
-        verified_key = candidate
+        verified = candidate
         break
-    if key_source is None:
+    if verified is None:
         if raised is not None:
             print(f"ERROR: signature verification failed ({raised})", file=sys.stderr)
             return 6
@@ -533,7 +439,7 @@ def main() -> int:
         # string is a documented diagnostic pinned by the negative examples.
         suffix = ""
         if len(key_candidates) > 1:
-            suffix = " against " + ", ".join(source for _, source in key_candidates)
+            suffix = " against " + ", ".join(candidate.source for candidate in key_candidates)
         print(
             f"ERROR: signature verification failed (InvalidSignature){suffix}",
             file=sys.stderr,
@@ -546,33 +452,20 @@ def main() -> int:
     # states: before the signature is checked a refusal would be about a
     # document nobody has shown the key signed, and it would displace the
     # more exact answer for a tampered one (3, or 5).
-    registry_entry = registry_entries.get(key_source)
-    if registry_entry is not None:
-        refusal = anchored_set_refusal(registry_entry, expected_hash)
-        if refusal is not None:
-            print(
-                f"ERROR: {registry_entry.get('status')}-key verification failure: {refusal}",
-                file=sys.stderr,
-            )
-            return REVOCATION_FAILURE
-    else:
-        # The key came from the public key file. The registry is asked whether
-        # it holds that key, by the key and not by anything the certificate
-        # names, and an entry that holds it decides exactly as it would have
-        # if the certificate had named it.
-        try:
-            refusal = key_file_refusal(
-                Path(args.key_registry), verified_key, cert.get("timestamp_utc"), cert.get("run_id"), expected_hash
-            )
-        except RegistryKeyUnreadable as e:
-            print(
-                f"ERROR: whether the key in {key_source} is a registry key could not be established ({e})",
-                file=sys.stderr,
-            )
-            return 6
-        if refusal is not None:
-            print(f"ERROR: key-file verification failure: {refusal}", file=sys.stderr)
-            return REVOCATION_FAILURE
+    key_source = verified.source
+    try:
+        refusal = refusal_after_signature(
+            verified, registry_path=Path(args.key_registry), document=cert, computed_payload_hash=expected_hash
+        )
+    except RegistryKeyUnreadable as e:
+        print(
+            f"ERROR: whether the key in {key_source} is a registry key could not be established ({e})",
+            file=sys.stderr,
+        )
+        return 6
+    if refusal is not None:
+        print(f"ERROR: {refusal}", file=sys.stderr)
+        return REVOCATION_FAILURE
 
     missing_identity = [
         field for field in CERTIFICATE_IDENTIFYING_FIELDS if field not in cert

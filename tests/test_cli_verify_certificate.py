@@ -60,8 +60,18 @@ def test_cli_verify_cert_reports_not_checked_when_discovery_finds_nothing(tmp_pa
     pubkey.write_bytes(key.public_key().public_bytes(
         serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
     ))
+    # The certificate names a key, so it is resolved through a registry and
+    # through nothing else: this one holds the key that signed it, under the
+    # id the certificate names. Until 21 November 2026 the registry named
+    # here did not exist and --key was what verified.
+    registry = tmp_path / "key_registry.json"
+    registry.write_text(json.dumps({"keys": [{
+        "key_id": payload["signing_key_id"],
+        "pubkey_pem": pubkey.read_text(encoding="ascii"),
+        "status": "approved",
+    }]}), encoding="utf-8")
     result = _run(
-        "--key", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--key", str(pubkey), "--key-registry", str(registry),
         str(certificate),
     )
     assert result.returncode == 9

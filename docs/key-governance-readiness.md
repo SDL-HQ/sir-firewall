@@ -38,9 +38,9 @@ Verification-enforcement boundary:
 
 - "Authoritative" and "non-authoritative" are governance classifications, not conclusions produced solely by a successful signature check.
 - When a certificate carries a resolvable `signing_key_id`, the verifier uses the matching registry key and applies registry revocation semantics.
-- Unless `--require-registry` is used, a missing or unreadable registry causes the verifier to fall back to the configured `--pubkey` and print a warning that registry and revocation checks were not enforced.
-- Use `--require-registry` for verification that must fail closed rather than accept that fallback.
-- A key read from `--pubkey` is still held to a registry that can be read. After the signature verifies, the verifier asks whether any registry entry holds that key, by the key and not by a name, and applies that entry's revocation and anchored-set rules. A key no entry holds is verified as non-authoritative material, as before.
+- A document that names its signing key is verified against the registry's entry for that key and against nothing else. A registry that is missing or unreadable, and a registry that does not have the named key, are both refused at exit 6, the code for a check that could not be performed, and nothing about the document is verified. No flag asks for a public key file instead. Until 21 November 2026 a missing registry was a warning and the configured `--pubkey`, and two of the three verifiers also used a public key file for a key the registry did not have.
+- Use `--require-registry` for verification that must rest on registry keys only. What it removes is the one remaining use of a public key file, described in the next point.
+- A public key file is a candidate in one case: a certificate that names no `signing_key_id`, which is tried against the registry's implicit entry and then against `--pubkey`. A key read from the file is held to the registry. After the signature verifies, the verifier asks whether any registry entry holds that key, by the key and not by a name, and applies that entry's revocation and anchored-set rules. A key no entry holds is verified as non-authoritative material, as before.
 
 ### Non-authoritative local and workflow keys
 
@@ -64,9 +64,9 @@ Authority rule:
 
 | Key class | Example location | Authoritative | Verification posture |
 | --- | --- | --- | --- |
-| SDL repository public key | `spec/sdl.pub` | Yes | Default offline verification anchor for published SDL artefacts |
-| SDL registry entries | `spec/pubkeys/key_registry.v1.json` | Yes | Authoritative key set for key-id based verification and future rotation readiness |
-| Local dev keypair | `/tmp/sir_dev_pub.pem` | No | Acceptable only for local/dev proofs when verifier explicitly points to that key |
+| SDL repository public key | `spec/sdl.pub` | Yes | The active key, as a file. Read by a verifier only as the second candidate for a certificate that names no `signing_key_id` |
+| SDL registry entries | `spec/pubkeys/key_registry.v1.json` | Yes | The verification anchor for every document that names its key, and the only one |
+| Local dev keypair | `/tmp/sir_dev_pub.pem` | No | Acceptable only for local/dev proofs, verified through the local registry that key is enrolled in |
 | CI ephemeral keypair | workflow-generated temporary key | No | Acceptance-only path for CI-generated proof material |
 
 ## Canonical authoritative vs non-authoritative semantics
@@ -74,14 +74,14 @@ Authority rule:
 Authoritative path:
 
 - SDL-signed proof material verified with a resolvable repository registry key, or under a verification procedure that otherwise establishes the approved SDL trust anchor.
-- For fail-closed registry resolution, use `--require-registry`.
+- Registry resolution fails closed by default. For registry keys only, with no public key file as a candidate, use `--require-registry`.
 - Successful signature verification establishes integrity and validity against the selected key; the authoritative SDL classification additionally depends on the governance provenance of that key.
 - Claims remain bounded to the published evidence and verifier output.
 
 Non-authoritative path:
 
-- Local or workflow-signed material may be verified with explicit non-authoritative key input.
-- When registry material is unavailable or unreadable and `--require-registry` is not used, the verifier permits `--pubkey` fallback and warns that registry and revocation checks were not enforced.
+- Local or workflow-signed material is verified through the signer's own registry, the one a signer is required to enrol its key in, passed as `--key-registry`. That establishes the signature against the key that registry names. It does not establish SDL trust, because the registry is not SDL's.
+- When registry material is unavailable or unreadable, or does not have the key a document names, the verifier refuses at exit 6. A document that names its key is never verified against `--pubkey` alone.
 - Such verification is valid for test correctness and pipeline checks, not for SDL public assurance claims.
 
 Segregation rule:

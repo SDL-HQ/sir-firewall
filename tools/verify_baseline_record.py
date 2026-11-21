@@ -39,7 +39,8 @@ Exit codes:
   4  the signature is not valid base64
   5  signature verification failed
   6  the signature check could not be performed, so the signature is neither
-     established nor refuted
+     established nor refuted: the verification raised, the key registry could
+     not be read, or it does not have the key the record names
   7  the bound ledger does not support the record
   10 the registry does not honour the signing key for this record: it is
      revoked, or no longer active and the record is not one the registry anchors
@@ -55,7 +56,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -72,12 +73,13 @@ from itgl import (  # noqa: E402
     load_ledger,
 )
 from key_registry import (  # noqa: E402
+    KEY_NOT_HONOURED,
+    KEY_NOT_IN_REGISTRY,
+    REGISTRY_UNAVAILABLE,
+    KeyRefused,
     RegistryKeyUnreadable,
-    anchored_set_refusal,
-    find_registry_key,
-    key_file_refusal,
-    public_key_pem_from_entry,
-    revocation_allows_proof,
+    refusal_after_signature,
+    resolve_keys,
 )
 
 NOT_A_BASELINE_RECORD = 2
@@ -93,6 +95,20 @@ SIGNATURE_CHECK_RAISED = 6
 LEDGER_BINDING_FAILURE = 7
 REVOCATION_FAILURE = 10
 
+# What each kind of refusal from key resolution exits as. Until 21 November
+# 2026 a registry that was required and could not be read returned
+# SIGNATURE_FAILED: "the signature does not verify", said of a signature
+# nobody had checked, because a file of ours was missing. A record naming a
+# key the registry does not have was verified against the public key file
+# without a word, or returned SIGNATURE_FAILED under --require-registry.
+# Neither is a fact about the record. verify_evidence.py reads 5 as failed and
+# 6 as unknown.
+KEY_REFUSAL_EXIT = {
+    REGISTRY_UNAVAILABLE: SIGNATURE_CHECK_RAISED,
+    KEY_NOT_IN_REGISTRY: SIGNATURE_CHECK_RAISED,
+    KEY_NOT_HONOURED: REVOCATION_FAILURE,
+}
+
 RECORD_KIND = "sir_ungated_baseline"
 # The record version that goes with each baseline row format. The two move
 # together: a row format permitting a new provider outcome gives the document a
@@ -103,7 +119,6 @@ RECORD_VERSION_BY_ROW_VERSION = {1: 1, 2: 2}
 # declared row format instead.
 RECORD_VERSION = RECORD_VERSION_BY_ROW_VERSION[2]
 
-DEFAULT_PUBKEY_PATH = Path("spec/sdl.pub")
 DEFAULT_KEY_REGISTRY = Path("spec/pubkeys/key_registry.v1.json")
 
 # The shipped copy of spec/baseline_record.v1.schema.json's required set, so a
@@ -481,12 +496,19 @@ def _parse_args() -> argparse.Namespace:
             "success line says so. Mirrors tools/verify_certificate.py."
         ),
     )
-    parser.add_argument("--pubkey", default=None, help=f"PEM public key (default: {DEFAULT_PUBKEY_PATH})")
+    parser.add_argument(
+        "--pubkey",
+        default=None,
+        help=(
+            "Accepted and not used. A record names its signing key, and that key is resolved "
+            "through the key registry and through nothing else."
+        ),
+    )
     parser.add_argument("--key-registry", default=str(DEFAULT_KEY_REGISTRY))
     parser.add_argument(
         "--require-registry",
         action="store_true",
-        help="Refuse to fall back to --pubkey when the registry cannot resolve the key.",
+        help="Accepted and without effect here: a record is verified against registry keys only in every case.",
     )
     parser.add_argument("--quiet", action="store_true", help="Only the exit code, no success line.")
     return parser.parse_args()
@@ -540,58 +562,14 @@ def main() -> int:
         print(f"ERROR: signature is not valid base64 ({exc})", file=sys.stderr)
         return SIGNATURE_NOT_BASE64
 
-    signing_key_id = str(record["signing_key_id"])
     registry_path = Path(args.key_registry)
-    key_source = None
-    public_key = None
-
-    entry = None
-    registry_state = "unavailable"
-    if registry_path.exists():
-        registry_state = "read"
-        try:
-            entry = find_registry_key(registry_path, signing_key_id)
-        except Exception as exc:
-            if args.require_registry:
-                print(f"ERROR: key registry unreadable: {exc}", file=sys.stderr)
-                return SIGNATURE_FAILED
-            entry = None
-            registry_state = "unreadable"
-
-    if entry is not None:
-        allowed, reason = revocation_allows_proof(
-            entry, record.get("timestamp_utc"), record.get("run_id"), anchored_check_follows=True
-        )
-        if not allowed:
-            print(f"ERROR: revoked-key verification failure: {reason}", file=sys.stderr)
-            return REVOCATION_FAILURE
-        public_key = serialization.load_pem_public_key(
-            public_key_pem_from_entry(entry).encode("utf-8")
-        )
-        key_source = f"key registry {registry_path} entry signing_key_id={signing_key_id}"
-    elif args.require_registry:
-        print(
-            f"ERROR: signing_key_id {signing_key_id!r} not found in {registry_path}, and "
-            "--require-registry forbids falling back to a public key file",
-            file=sys.stderr,
-        )
-        return SIGNATURE_FAILED
-    else:
-        # This fallback printed nothing until 19 November 2026, where the
-        # certificate and receipt verifiers have always said that the registry
-        # was not consulted.
-        if registry_state != "read":
-            print(
-                f"WARNING: signing_key_id present but key registry {registry_state}; falling back to --pubkey verification only (revocation checks not enforced).",
-                file=sys.stderr,
-            )
-        pubkey_path = Path(args.pubkey or DEFAULT_PUBKEY_PATH)
-        try:
-            public_key = serialization.load_pem_public_key(pubkey_path.read_bytes())
-        except Exception as exc:
-            print(f"ERROR: failed to load public key {pubkey_path}: {exc}", file=sys.stderr)
-            return SIGNATURE_FAILED
-        key_source = f"--pubkey {pubkey_path}"
+    try:
+        # A baseline record names its key, so there is one candidate and it is the registry's.
+        (candidate,) = resolve_keys(record, registry_path=registry_path)
+    except KeyRefused as refused:
+        print(f"ERROR: {refused}", file=sys.stderr)
+        return KEY_REFUSAL_EXIT[refused.kind]
+    public_key, key_source = candidate.public_key, candidate.source
 
     try:
         public_key.verify(signature, payload, padding.PKCS1v15(), hashes.SHA256())
@@ -608,30 +586,22 @@ def main() -> int:
         )
         return SIGNATURE_CHECK_RAISED
 
-    # The signature verified against the registry's key. A key that is no
-    # longer active is honoured only for the documents the registry anchors,
-    # by the payload hash computed here and compared with the stated one above.
-    if entry is not None:
-        refusal = anchored_set_refusal(entry, compute_payload_hash(record))
-        if refusal is not None:
-            print(f"ERROR: {entry.get('status')}-key verification failure: {refusal}", file=sys.stderr)
-            return REVOCATION_FAILURE
-    else:
-        # The key came from the public key file. The registry is asked whether
-        # it holds that key, by the key and not by the id the record names.
-        try:
-            refusal = key_file_refusal(
-                registry_path, public_key, record.get("timestamp_utc"), record.get("run_id"), compute_payload_hash(record)
-            )
-        except RegistryKeyUnreadable as exc:
-            print(
-                f"ERROR: whether the key in {key_source} is a registry key could not be established ({exc})",
-                file=sys.stderr,
-            )
-            return SIGNATURE_CHECK_RAISED
-        if refusal is not None:
-            print(f"ERROR: key-file verification failure: {refusal}", file=sys.stderr)
-            return REVOCATION_FAILURE
+    # The signature verified. Whether the key is honoured for this record is
+    # asked now, by the payload hash computed here and compared with the stated
+    # one above.
+    try:
+        refusal = refusal_after_signature(
+            candidate, registry_path=registry_path, document=record, computed_payload_hash=compute_payload_hash(record)
+        )
+    except RegistryKeyUnreadable as exc:
+        print(
+            f"ERROR: whether the key in {key_source} is a registry key could not be established ({exc})",
+            file=sys.stderr,
+        )
+        return SIGNATURE_CHECK_RAISED
+    if refusal is not None:
+        print(f"ERROR: {refusal}", file=sys.stderr)
+        return REVOCATION_FAILURE
 
     # 4. The bound ledger.
     if args.no_ledger:

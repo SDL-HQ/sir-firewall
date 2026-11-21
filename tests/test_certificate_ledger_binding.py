@@ -247,7 +247,7 @@ def test_certificate_verifier_ledger_binding_exit_code(tmp_path, monkeypatch, ca
     pubkey.write_bytes(key.public_key().public_bytes(
         serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo))
     base = [sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert),
-            "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json")]
+            "--pubkey", str(pubkey), "--key-registry", os.environ["SDL_KEY_REGISTRY"]]
     env = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
     assert subprocess.run(base + ["--ledger", str(matching)], cwd=ROOT, env=env).returncode == 0
     mismatch = subprocess.run(
@@ -275,7 +275,7 @@ def test_certificate_verifier_discovers_archived_sibling_ledger(tmp_path, monkey
     pubkey.write_bytes(key.public_key().public_bytes(
         serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo))
     base = [sys.executable, str(ROOT / "tools/verify_certificate.py"), str(archive_cert),
-            "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json")]
+            "--pubkey", str(pubkey), "--key-registry", os.environ["SDL_KEY_REGISTRY"]]
     env = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
     result = subprocess.run(base, cwd=ROOT, env=env, capture_output=True, text=True)
     assert result.returncode == 0
@@ -299,7 +299,7 @@ def test_certificate_verifier_refuses_unrelated_adjacent_ledger(
         serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo))
     result = subprocess.run([
         sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
-        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--pubkey", str(pubkey), "--key-registry", os.environ["SDL_KEY_REGISTRY"],
     ], cwd=ROOT, capture_output=True, text=True)
     assert result.returncode == 9
     assert "signed run_id='working-tree'" in result.stderr
@@ -335,7 +335,7 @@ def test_certificate_verifier_distinguishes_missing_binding_from_explicit_skip(
     pubkey.write_bytes(key.public_key().public_bytes(
         serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo))
     base = [sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
-            "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json")]
+            "--pubkey", str(pubkey), "--key-registry", os.environ["SDL_KEY_REGISTRY"]]
     env = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
     unchecked = subprocess.run(base, cwd=ROOT, env=env, capture_output=True, text=True)
     assert unchecked.returncode == 9
@@ -406,7 +406,7 @@ def test_verifier_prominently_reports_detached_certificate(tmp_path, monkeypatch
     ))
     result = subprocess.run([
         sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
-        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--pubkey", str(pubkey), "--key-registry", os.environ["SDL_KEY_REGISTRY"],
         "--ledger", str(detached),
     ], cwd=ROOT, capture_output=True, text=True)
     assert result.returncode == 0
@@ -430,7 +430,7 @@ def test_verifier_rejects_signed_itgl_row_count_disagreement(tmp_path, monkeypat
     ))
     result = subprocess.run([
         sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
-        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--pubkey", str(pubkey), "--key-registry", os.environ["SDL_KEY_REGISTRY"],
         "--ledger", str(ledger),
     ], cwd=ROOT, capture_output=True, text=True)
     assert result.returncode == 7
@@ -453,7 +453,7 @@ def test_verifier_reports_absent_signed_itgl_row_count(tmp_path, monkeypatch, ca
     ))
     result = subprocess.run([
         sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
-        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--pubkey", str(pubkey), "--key-registry", os.environ["SDL_KEY_REGISTRY"],
         "--ledger", str(ledger),
     ], cwd=ROOT, capture_output=True, text=True)
     assert result.returncode == 7
@@ -495,7 +495,7 @@ def test_a_certificate_predating_the_row_count_field_is_not_checked_rather_than_
 
     result = subprocess.run([
         sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
-        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--pubkey", str(pubkey), "--key-registry", os.environ["SDL_KEY_REGISTRY"],
         "--ledger", str(ledger),
     ], cwd=ROOT, capture_output=True, text=True)
 
@@ -526,7 +526,7 @@ def test_a_certificate_with_no_version_at_all_is_not_checked_rather_than_failed(
 
     result = subprocess.run([
         sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
-        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--pubkey", str(pubkey), "--key-registry", os.environ["SDL_KEY_REGISTRY"],
         "--ledger", str(ledger),
     ], cwd=ROOT, capture_output=True, text=True)
 
@@ -547,7 +547,7 @@ def test_verifier_accepts_correct_signed_itgl_row_count(tmp_path, monkeypatch, c
     ))
     result = subprocess.run([
         sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
-        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--pubkey", str(pubkey), "--key-registry", os.environ["SDL_KEY_REGISTRY"],
         "--ledger", str(ledger),
     ], cwd=ROOT, capture_output=True, text=True)
     assert result.returncode == 0
@@ -568,7 +568,7 @@ def test_quiet_no_ledger_still_reports_binding_skip(tmp_path, monkeypatch, capsy
     ))
     result = subprocess.run([
         sys.executable, str(ROOT / "tools/verify_certificate.py"), str(cert_path),
-        "--pubkey", str(pubkey), "--key-registry", str(tmp_path / "absent.json"),
+        "--pubkey", str(pubkey), "--key-registry", os.environ["SDL_KEY_REGISTRY"],
         "--no-ledger", "--quiet",
     ], cwd=ROOT, capture_output=True, text=True)
     assert result.returncode == 0
@@ -640,6 +640,6 @@ def test_certificate_verifier_rejects_isolated_wrong_ledger(tmp_path, monkeypatc
     result = subprocess.run([
         sys.executable, str(ROOT / "tools/verify_certificate.py"),
         str(cert_path), "--pubkey", str(pubkey),
-        "--key-registry", str(tmp_path / "absent.json"), "--ledger", str(candidate),
+        "--key-registry", os.environ["SDL_KEY_REGISTRY"], "--ledger", str(candidate),
     ], cwd=ROOT, env=env, capture_output=True, text=True)
     assert result.returncode == 7

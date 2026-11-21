@@ -247,4 +247,8 @@ def published_pair(tmp_path, monkeypatch):
         "gated_run_id": gated_run_id,
         "runs_dir": tmp_path / "proofs/runs",
         "pubkey": pubkey,
+        # Where set_signing_env enrolled the key above. A verifier resolves a
+        # named key through a registry and through nothing else, so a test
+        # that verifies these documents passes this.
+        "key_registry": tmp_path / "test_key_registry.json",
     }

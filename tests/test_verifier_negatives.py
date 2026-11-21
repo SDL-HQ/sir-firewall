@@ -34,7 +34,10 @@ CASES = {
         "contract_stderr": "",
     },
     "tampered-unregistered-key.json": {
-        "verify_code": 1,
+        # 6 and not 5: the registry does not have the key this names, so its
+        # signature was checked against nothing. It was 1, a code the
+        # verifier's table does not list, until 21 November 2026.
+        "verify_code": 6,
         "verify_stderr": "ERROR: signing_key_id not found in key registry: phase1-unregistered-temp-key\n",
         "contract_code": 0,
         "contract_stdout": "OK: certificate satisfies evidence contract v1.\n",

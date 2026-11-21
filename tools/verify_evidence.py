@@ -135,13 +135,18 @@ def _parse_args() -> argparse.Namespace:
         "--allow-unregistered-key",
         action="store_true",
         help=(
-            "Verify the signature against --pubkey without resolving the signing key "
-            "through the registry. The signing-trust property is then reported as "
-            "unknown, because an arbitrary public key file establishes that someone "
-            "signed this, not that SDL did."
+            "Do not require a registry key. A document that names its signing key is "
+            "resolved through the default registry either way; what this permits is a "
+            "certificate that names no key verifying under --pubkey. The signing-trust "
+            "property is then reported as unknown whichever key verified, because a "
+            "public key file establishes that someone signed this, not that SDL did."
         ),
     )
-    parser.add_argument("--pubkey", default=None, help="Only with --allow-unregistered-key.")
+    parser.add_argument(
+        "--pubkey",
+        default=None,
+        help="Only with --allow-unregistered-key, and only tried for a certificate that names no key.",
+    )
     parser.add_argument(
         "--key-registry",
         default=str(REPO_ROOT / "spec/pubkeys/key_registry.v1.json"),
@@ -164,6 +169,10 @@ TOOL_MISSING = 1000
 
 #: verify_certificate.py and verify_baseline_record.py: the registry declined the key.
 KEY_NOT_HONOURED = 10
+# From any of the three tools: the signature check could not be performed. The
+# reader's bundle has no registry that can be read, or the registry it has
+# does not have the key the document names, or the check raised.
+SIGNATURE_CHECK_NOT_PERFORMED = 6
 
 
 def _not_named(run_directory: Path, manifest: Path) -> str:
@@ -336,6 +345,15 @@ def _verify_baseline_archive(*, run_directory, record, ledger, manifest, receipt
             "established",
             "the signature verified against a key the registry honours for this record",
         )
+    elif code == SIGNATURE_CHECK_NOT_PERFORMED:
+        # Not "did not verify": nobody checked it. Until 21 November 2026 this
+        # fell into the branch below and was worded as a signature that failed.
+        report.add(
+            "signing trust",
+            "unknown",
+            "the signature check could not be performed, so nothing is established "
+            "about who signed this record",
+        )
     else:
         report.add(
             "signing trust",
@@ -483,6 +501,15 @@ def main() -> int:
             "signing trust",
             "failed",
             "the approved registry does not honour this key for this document",
+        )
+    elif code == SIGNATURE_CHECK_NOT_PERFORMED:
+        # Not "did not verify": nobody checked it. Until 21 November 2026 this
+        # fell into the branch below and was worded as a signature that failed.
+        report.add(
+            "signing trust",
+            "unknown",
+            "the signature check could not be performed, so nothing is established "
+            "about who signed this archive",
         )
     elif code not in SIGNATURE_VERIFIED_CODES:
         report.add(

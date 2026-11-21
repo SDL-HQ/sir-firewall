@@ -403,9 +403,10 @@ jobs:
             exit 1
           fi
 
-          # --require-registry so CI verifies the way a third party does. Without it the
-          # verifier falls back to spec/sdl.pub, which rotation rewrites, so a key id that
-          # disagreed with the registry would pass here and fail for everyone else.
+          # --require-registry so CI verifies the way a third party does: registry
+          # keys only. A registry that cannot be read is refused with or without it
+          # since 21 November 2026. What the flag still removes is spec/sdl.pub, which
+          # rotation rewrites, as a second candidate for a certificate naming no key.
           python tools/verify_certificate.py "$AUDIT_JSON" --ledger "$ITGL_LEDGER_PATH" \
             --require-registry
 

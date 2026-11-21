@@ -63,8 +63,8 @@ sir run --mode audit --pack generic_safety
 ### Local/dev key verification boundary
 
 - Local or dev certificates and archive receipts may be signed by non-authoritative keys.
-- Verification against an explicitly supplied matching local/dev public key can establish signature validity, but it does not establish authoritative SDL trust.
-- Where authoritative trust is claimed, use `--require-registry` as in Step 1 so an unreadable or missing registry cannot fall back to a default public key.
+- Verification through the local/dev registry that key is enrolled in, passed as `--key-registry`, can establish signature validity, but it does not establish authoritative SDL trust.
+- Where authoritative trust is claimed, use `--require-registry` as in Step 1 so no public key file can stand in for a registry key. A registry that is missing or unreadable, or that does not have the key a document names, is refused at exit 6 with or without it.
 
 ### What verification proves and does not prove
 
