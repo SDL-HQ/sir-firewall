@@ -2,7 +2,7 @@
 
 The shop window is a separate generated repository holding seven real
 published archives, each chosen because our own verifiers give it a different
-answer. Its whole value is that a stranger can check our claims, so the
+answer. Its whole value is that a reader can check our claims, so the
 failure with the worst consequence is the front door describing the vault
 wrongly. This is the check that stops it, and it lives here rather than in the
 generator so the claim is held on every commit instead of only at publish

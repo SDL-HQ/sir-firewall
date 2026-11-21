@@ -10,7 +10,7 @@ truth was that it could not find its own helper.
 
 Found by shipping the tool into the evidence window without the helper, where
 the wrong answer would have been public and would have been the most damaging
-one available: a stranger running our verifier and being told by it that our
+one available: a reader running our verifier and being told by it that our
 evidence is invalid. The failure is worse than the thing it falsely reports,
 because a tool that calls sound evidence broken makes us look dishonest rather
 than limited.

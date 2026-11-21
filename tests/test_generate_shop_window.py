@@ -389,7 +389,7 @@ def test_check_mode_and_an_output_directory_are_not_both_given(tmp_path):
 def test_the_window_ships_nothing_compiled(window):
     """Bytecode in the window is three problems, and the third is structural.
 
-    A repository about care should not look careless, and a stranger asked to
+    A repository about care should not look careless, and a reader asked to
     run our code should not be handed a precompiled copy of it, since a `.pyc`
     can differ from the `.py` beside it and Python will prefer the cache. But
     the one that breaks the design is that bytecode varies with whichever
