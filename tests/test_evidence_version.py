@@ -184,7 +184,11 @@ def test_current_version_surfaces_match_runtime_authority():
         # deliberately unwritten until the release that carries it ships, so
         # the entry adds no version of its own. Written as the symbol rather
         # than the string, because this file counts its own mentions too.
-        "docs/archive-errata.md": Counter({v_234: 6, v_240: 1, v_237: 1, v_102: 1, v_250: 1}),
+        #
+        # The seventh v_234 arrived with E9 on 21 November 2026: its cause
+        # paragraph names the release before which certificate generation
+        # could take the value it signed from the mutable hash file.
+        "docs/archive-errata.md": Counter({v_234: 7, v_240: 1, v_237: 1, v_102: 1, v_250: 1}),
         # The scenario-suite divergence row names the version the three published
         # archives were produced at, which is the half of the question that is known.
         # Three post-2.4 rows added 13 October 2026 name the release that

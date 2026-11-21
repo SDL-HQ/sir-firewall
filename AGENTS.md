@@ -467,6 +467,23 @@ changes the verdict.
   `docs/minimal-pilot-runbook.md`. Neither workflow can be run from a clone,
   so the line in `audit-and-sign.yml` is held by a test that reads it.
 
+  Those archives are E9 in `docs/archive-errata.md`, and its figures are
+  generated. No exit code carries them, because nothing shipped reads the
+  file, so `archive_verification_report.py` computes each ledger's terminal
+  hash itself. It does the same for one sentence of E4. E4 is filed by its
+  symptom, so its figure is the certificates that reach exit 9 for signing
+  another run's hash; measured on 21 November 2026 that is 105 of the 108 that
+  sign one, and the other three fail their signature first and are E2's. E4
+  had offered those three as its example and said their signatures were
+  unaffected.
+
+  Exit 9's second cause is therefore derived twice, from the verifier's
+  message and from the computed hash, and the generator refuses to publish if
+  the two disagree. That is a cross-check: do not make one read the other.
+  The publisher's comparison is held to E9's figure the same way, over the
+  real archive on every run: it must refuse every archive the errata counts
+  and no other.
+
 - **A property line says what this run did, not what the certificate says was
   done.** `verify_evidence.py` printed "the signed counters were recomputed
   from the rows the certificate binds" whenever the certificate carried

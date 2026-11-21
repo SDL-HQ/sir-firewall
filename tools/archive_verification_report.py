@@ -52,7 +52,9 @@ KEY_REGISTRY = ROOT / "spec/pubkeys/key_registry.v1.json"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from itgl import (  # noqa: E402
+    CHAIN_VERSION_V1,
     LedgerVerificationError,
+    load_and_verify_ledger,
     load_ledger,
     ungated_row_final_hash,
 )
@@ -226,6 +228,11 @@ NO_ROW_COUNT = "carries no itgl_row_count"
 PREDATES_CORRECTION = "predates the SIR 2.3.4 evidence-binding correction"
 NO_LEDGER_FOR_IDENTITY = "no ledger corresponding to the signed identity"
 
+# The two files of an archive that state its ledger's terminal hash a second
+# and a third time. The first statement is the ledger.
+ARCHIVED_LEDGER = "proofs/itgl_ledger.jsonl"
+ARCHIVED_HASH_FILE = "proofs/itgl_final_hash.txt"
+
 CONTRACT_FLOOR = (2, 2, 0)
 BINDING_CORRECTION = (2, 3, 4)
 
@@ -376,6 +383,86 @@ def build_figures(records: list[dict], runs_dir: Path) -> dict:
     ships_no_ledger = sorted(
         r["run_id"] for r in records
         if not (runs_dir / r["run_id"] / "proofs/itgl_ledger.jsonl").is_file()
+    )
+
+    # --- the terminal hash, computed here from each ledger --------------------
+    #
+    # Everything above is what a verifier reported. This is the one thing
+    # computed here, with the shipped library, and for a reason: no verifier
+    # can report it. An exit code says which check stopped a certificate, so a
+    # certificate whose signature fails says nothing about its binding, and
+    # the count of certificates that sign another run's hash was published as
+    # the count that reach exit 9 for it, which is three fewer. And nothing
+    # shipped reads proofs/itgl_final_hash.txt at all, so an archive whose copy
+    # of that file is another run's has no exit code to appear under. E9.
+    terminal_hash: dict[str, str] = {}
+    ledger_does_not_verify: list[str] = []
+    for record in records:
+        ledger = runs_dir / record["run_id"] / ARCHIVED_LEDGER
+        if not ledger.is_file():
+            continue
+        try:
+            terminal_hash[record["run_id"]], _ = load_and_verify_ledger(ledger, CHAIN_VERSION_V1)
+        except (LedgerVerificationError, ValueError):
+            ledger_does_not_verify.append(record["run_id"])
+    by_run = {record["run_id"]: record for record in records}
+
+    signed_hash_not_the_ledgers = sorted(
+        run_id for run_id, terminal in terminal_hash.items()
+        if "itgl_final_hash" in certificates[run_id]
+        and certificates[run_id]["itgl_final_hash"] != terminal
+    )
+    signed_hash_reaches_exit_9 = sorted(
+        run_id for run_id in signed_hash_not_the_ledgers if by_run[run_id]["certificate_exit"] == 9
+    )
+    signed_hash_signature_failed = sorted(
+        run_id for run_id in signed_hash_not_the_ledgers if by_run[run_id]["certificate_exit"] == 5
+    )
+    signed_hash_other = sorted(
+        set(signed_hash_not_the_ledgers) - set(signed_hash_reaches_exit_9) - set(signed_hash_signature_failed)
+    )
+    # Two derivations of one set from different inputs: the verifier's message
+    # for exit 9, and the hash computed above. They are compared and not
+    # merged, so either one drifting is a refusal and not a quiet new figure.
+    if signed_hash_reaches_exit_9 != predates_correction:
+        raise FigureError(
+            "the certificates the verifier reports at exit 9 as predating the "
+            "evidence-binding correction are not the exit 9 certificates whose signed "
+            "itgl_final_hash differs from the terminal hash computed from their ledger.\n"
+            f"  by the verifier's message only: {sorted(set(predates_correction) - set(signed_hash_reaches_exit_9))[:5]}\n"
+            f"  by the computed hash only: {sorted(set(signed_hash_reaches_exit_9) - set(predates_correction))[:5]}"
+        )
+
+    hash_file_shipped = sorted(
+        run_id for run_id in terminal_hash
+        if (runs_dir / run_id / ARCHIVED_HASH_FILE).is_file()
+    )
+    hash_file_text = {
+        run_id: (runs_dir / run_id / ARCHIVED_HASH_FILE).read_text(encoding="utf-8").strip()
+        for run_id in hash_file_shipped
+    }
+    hash_file_stale = sorted(
+        run_id for run_id in hash_file_shipped if hash_file_text[run_id] != terminal_hash[run_id]
+    )
+
+    def manifest_names_the_hash_file(run_id: str) -> bool:
+        manifest_path = runs_dir / run_id / "manifest.json"
+        if not manifest_path.is_file():
+            return False
+        files = json.loads(manifest_path.read_text(encoding="utf-8")).get("files")
+        return isinstance(files, list) and any(
+            isinstance(item, dict) and item.get("path") == ARCHIVED_HASH_FILE for item in files
+        )
+
+    hash_file_stale_under_the_receipt = sorted(
+        run_id for run_id in hash_file_stale if manifest_names_the_hash_file(run_id)
+    )
+    hash_file_stale_is_the_signed_hash = sorted(
+        run_id for run_id in hash_file_stale
+        if certificates[run_id].get("itgl_final_hash") == hash_file_text[run_id]
+    )
+    hash_file_stale_receipt_verifies = sorted(
+        run_id for run_id in hash_file_stale if by_run[run_id]["receipt_exit"] == 0
     )
 
     # --- certificate field tallies ------------------------------------------
@@ -571,6 +658,17 @@ def build_figures(records: list[dict], runs_dir: Path) -> dict:
         "exit_9_no_row_count": no_row_count,
         "exit_9_predates_correction": predates_correction,
         "exit_9_no_ledger_for_identity": no_ledger_for_identity,
+        # Computed from the ledgers, not read from an exit code. See the
+        # comment where they are derived.
+        "ledger_does_not_verify": sorted(ledger_does_not_verify),
+        "signed_hash_not_the_ledgers": signed_hash_not_the_ledgers,
+        "signed_hash_signature_failed": signed_hash_signature_failed,
+        "signed_hash_other": signed_hash_other,
+        "hash_file_shipped": hash_file_shipped,
+        "hash_file_stale": hash_file_stale,
+        "hash_file_stale_under_the_receipt": hash_file_stale_under_the_receipt,
+        "hash_file_stale_is_the_signed_hash": hash_file_stale_is_the_signed_hash,
+        "hash_file_stale_receipt_verifies": hash_file_stale_receipt_verifies,
         "governed_by_a_contract": governed_by_a_contract,
         "ungoverned_by_a_contract": ungoverned_by_a_contract,
         "at_or_above_the_correction": at_or_above_the_correction,
@@ -763,7 +861,8 @@ def render_e4_causes(figures: dict) -> str:
         "ledger shipped with them.* These predate the SIR 2.3.4 evidence-binding "
         "correction, when certificate generation took that value from an environment "
         "variable or the mutable `proofs/itgl_final_hash.txt` and so could sign a hash "
-        "left by an earlier run. `docs/evidence-binding-correction.md` records it.",
+        "left by an earlier run. `docs/evidence-binding-correction.md` records it. "
+        + _e4_wider_than_exit_9(figures, predates),
     ]
     if unreachable:
         causes.insert(
@@ -775,6 +874,135 @@ def render_e4_causes(figures: dict) -> str:
             "changed and the figures above should be read with that in mind.",
         )
     return _wrap("\n\n".join(causes))
+
+
+def _e4_wider_than_exit_9(figures: dict, reaching_exit_9: int) -> str:
+    """How many certificates sign another run's hash, against how many exit 9 for it.
+
+    E4 is filed by its symptom, exit 9, so its figure is the certificates that
+    reach that exit. Until 21 November 2026 the sentence read as the number
+    that sign such a hash, which is larger: a certificate whose signature
+    fails stops at exit 5 and never reaches the binding. The wider figure is
+    computed from the ledgers, because no exit code carries it.
+    """
+    wider = _n(figures, "signed_hash_not_the_ledgers")
+    signature_failed = _n(figures, "signed_hash_signature_failed")
+    other = _runs(figures, "signed_hash_other")
+    if wider == reaching_exit_9:
+        return (
+            f"Computed from the ledgers rather than read from an exit code, {wider} "
+            "certificates in the archive sign such a hash, and every one of them reaches "
+            "exit 9 for it."
+        )
+    sentence = (
+        f"The figure here is the certificates that reach exit 9 for it. Computed from the "
+        f"ledgers rather than read from an exit code, {wider} certificates in the archive "
+        f"sign such a hash: these {reaching_exit_9}"
+    )
+    if signature_failed:
+        sentence += (
+            f", and {signature_failed} whose signature does not verify, so the verifier "
+            "stops at exit 5 before it reaches the binding. Those are recorded in E2"
+        )
+    if other:
+        named = _and_list([f"`{run}`" for run in other[:5]])
+        sentence += (
+            f", and {len(other)} that {'exits' if len(other) == 1 else 'exit'} neither 5 nor 9, "
+            f"which this entry does not explain and should be read as a defect: {named}"
+        )
+    return sentence + "."
+
+
+def _month_counts(run_ids: list[str]) -> str:
+    """'69 in April 2026, 16 in May 2026 and 2 in June 2026', from the run identifiers."""
+    counts: dict[tuple[int, int], int] = {}
+    for run_id in run_ids:
+        key = (int(run_id[0:4]), int(run_id[4:6]))
+        counts[key] = counts.get(key, 0) + 1
+    return _and_list(
+        [f"{count} in {MONTHS[month - 1]} {year}" for (year, month), count in sorted(counts.items())]
+    )
+
+
+def render_e9_counts(figures: dict) -> str:
+    shipped = _n(figures, "hash_file_shipped")
+    stale = _runs(figures, "hash_file_stale")
+    if not stale:
+        return _wrap(
+            f"Of the {shipped} archives that ship a ledger and a "
+            "`proofs/itgl_final_hash.txt`, none holds a file that differs from the terminal "
+            "hash of the ledger beside it."
+        )
+    count = len(stale)
+    first, last = _date_span(stale)
+    under_receipt = _n(figures, "hash_file_stale_under_the_receipt")
+    signed = _n(figures, "hash_file_stale_is_the_signed_hash")
+    receipt_ok = _n(figures, "hash_file_stale_receipt_verifies")
+    receipt_bad = sorted(set(stale) - set(_runs(figures, "hash_file_stale_receipt_verifies")))
+    in_e2 = len(set(receipt_bad) & set(_runs(figures, "receipt_signature_failed")))
+    in_e8 = len(set(receipt_bad) & set(_runs(figures, "redacted_after_publication")))
+    in_e1 = len(set(receipt_bad) & set(_runs(figures, "incomplete")))
+    in_e3 = len(set(receipt_bad) & set(_runs(figures, "legacy_no_receipt")))
+
+    ledgers = figures["total"] - _n(figures, "ships_no_ledger")
+    broken = _n(figures, "ledger_does_not_verify")
+    chains = (
+        f"all {ledgers} of which verify as a chain"
+        if not broken
+        else f"{ledgers - broken} of {ledgers} of which verify as a chain; the other "
+        f"{broken} {'has' if broken == 1 else 'have'} no terminal hash to compare and "
+        f"{'is' if broken == 1 else 'are'} not counted here"
+    )
+    paragraphs = [
+        f"*{count} of the {shipped} archives that ship both files hold a "
+        "`proofs/itgl_final_hash.txt` that is not the terminal hash of the "
+        f"`proofs/itgl_ledger.jsonl` beside it.* The terminal hash is computed from the "
+        f"archived ledgers, {chains}. By month of publication: {_month_counts(stale)}. "
+        f"The first is {first} and the last is {last}.",
+    ]
+
+    def of_them(n: int) -> str:
+        return f"all {count}" if n == count else f"{n} of the {count}"
+
+    receipts = (
+        f"In {of_them(under_receipt)} the signed manifest names the file, so the archive "
+        "receipt is a statement that this is the file that was published."
+    )
+    if receipt_bad:
+        elsewhere = []
+        if in_e1:
+            elsewhere.append(f"{in_e1} under E1")
+        if in_e2:
+            elsewhere.append(f"{in_e2} under E2")
+        if in_e3:
+            elsewhere.append(f"{in_e3} under E3")
+        if in_e8:
+            elsewhere.append(f"{in_e8} under E8")
+        receipts += (
+            f" {receipt_ok} of those receipts verify. The other {len(receipt_bad)} do not, "
+            f"for reasons recorded elsewhere in this document: {_and_list(elsewhere)}."
+            if elsewhere and in_e1 + in_e2 + in_e3 + in_e8 == len(receipt_bad)
+            else f" {receipt_ok} of those receipts verify and {len(receipt_bad)} do not."
+        )
+    else:
+        receipts += f" Every one of those receipts verifies, {receipt_ok} of {count}."
+    paragraphs.append(receipts)
+
+    stale_set = set(stale)
+    at_exit_9 = len(stale_set & set(_runs(figures, "exit_9_predates_correction")))
+    at_exit_5 = len(stale_set & set(_runs(figures, "signed_hash_signature_failed")))
+    agreement = (
+        f"In {of_them(signed)} the file holds exactly the `itgl_final_hash` that the "
+        "archive's certificate signs. The file and the certificate agree with each other, "
+        "and neither is the ledger's."
+    )
+    if at_exit_9 + at_exit_5 == count:
+        agreement += (
+            f" {at_exit_9} of those certificates are among E4's"
+            + (f" and {at_exit_5} are among E2's." if at_exit_5 else ".")
+        )
+    paragraphs.append(agreement)
+    return _wrap("\n\n".join(paragraphs))
 
 
 def render_e4_above_the_correction(figures: dict) -> str:
@@ -1012,9 +1240,17 @@ ERRATA_REGIONS = {
     "e4-above-the-correction": render_e4_above_the_correction,
     "e6-counts": render_e6_counts,
     "e7-counts": render_e7_counts,
+    "e9-counts": render_e9_counts,
     "appendix-a": render_appendix_a,
     "appendix-b": render_appendix_b,
     "appendix-c": render_appendix_c,
+    # E9's archives have no appendix, and that is deliberate. They are listed in
+    # docs/archive-figures.json under hash_file_stale. tools/generate_shop_window.py
+    # tells a visitor whether the errata lists an exhibit individually by
+    # looking for its run identifier anywhere in that document, and the exhibit
+    # it presents as E4's class, which E4 does not enumerate, is one of E9's.
+    # An appendix here made the window say that exhibit is listed under E4.
+    # tests/test_generate_shop_window.py caught it.
 }
 
 REGISTER_REGIONS = {
