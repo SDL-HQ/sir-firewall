@@ -3,7 +3,7 @@
 The evidence window is a separate generated repository. Everything inside it
 is derived and held by `tests/test_generate_shop_window.py`, so the part that
 can rot without anyone noticing is on this side: the two places in this
-repository that send a stranger there, and the three figures those two places
+repository that send a reader there, and the three figures those two places
 quote.
 
 The audit page is the higher-value of the two. A reader of a served

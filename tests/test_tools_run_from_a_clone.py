@@ -1,6 +1,6 @@
 """Every tool in tools/ runs from a clone, with no install and no PYTHONPATH.
 
-A stranger who clones the repository and runs a tool should get the tool's own
+A reader who clones the repository and runs a tool should get the tool's own
 behaviour, not ``ModuleNotFoundError: No module named 'sir_firewall'``. Four
 verifiers always did this. Seven other tools did not, and worked only because
 the environment they happened to be run in made the package importable:
@@ -108,7 +108,7 @@ def test_the_runner_runs_from_a_clone():
     ``red_team_suite.py`` added tools/ to the path for ``itgl`` and not src/ for
     the package, so running it from a clone needed ``PYTHONPATH=src``. The
     parametrised test above now covers it; this names it, because it is the file
-    a stranger runs first.
+    a reader runs first.
     """
     result = _help("red_team_suite.py")
 

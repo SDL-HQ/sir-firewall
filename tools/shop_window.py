@@ -2,7 +2,7 @@
 """Select the archives the evidence shop window exhibits, by category.
 
 The shop window is a small, separate, generated repository whose job is to get
-a stranger from arriving to holding a verified fact in under two minutes. Its
+a reader from arriving to holding a verified fact in under two minutes. Its
 exhibits are real published archives, each chosen because running our own
 verifiers against it produces a different answer, including the answers that
 say we got something wrong.
@@ -34,7 +34,7 @@ bare command there reports exit 7.
 So each exhibit carries the form of the command it is documented with, and the
 test runs exactly that. A one-word command hiding the flags in a wrapper was
 the alternative and is rejected: for a front door whose pitch is that a
-stranger can check our claims, every path in the command should be visible.
+reader can check our claims, every path in the command should be visible.
 """
 
 from __future__ import annotations

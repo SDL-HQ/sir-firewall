@@ -4,12 +4,12 @@ every name declared is imported by something.
 ``hypothesis`` was in ``requirements.txt`` and not in ``pyproject.toml``. The
 README documents ``pip install -e .`` in four places and ``requirements.txt`` in
 none, and only one of the five workflows installs that file. So CI was green on
-a dependency a reader is never told to install, and a stranger following the
+a dependency a reader is never told to install, and anyone following the
 README got a collection error on ``tests/test_gate_outcome_invariance.py``
 before a single test ran.
 
 This derives the import set from the source rather than listing it, so the next
-undeclared dependency fails here instead of failing for a stranger. Imports are
+undeclared dependency fails here instead of failing for a reader. Imports are
 read statically, so an import inside a function or guarded by a try block is
 found too, which is deliberate: an optional dependency should be declared as an
 extra, not left out.

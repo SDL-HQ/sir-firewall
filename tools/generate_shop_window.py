@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the evidence shop window from the published archive.
 
-The shop window is a small, separate repository whose job is to get a stranger
+The shop window is a small, separate repository whose job is to get a reader
 from arriving to holding a verified fact in under two minutes. It is a build
 artefact, not a sibling project: this tool selects the exhibits, copies them,
 writes the documents and refuses to finish if any claim it is about to publish
@@ -760,7 +760,7 @@ def _tamper(window: Path, exhibit) -> dict:
     Twice, because the first version of this recipe passed once and then
     quietly undid itself: it toggled a field between two values and copied into
     a directory that already existed. Once is not a measurement of something a
-    stranger may run more than once.
+    reader may run more than once.
 
     Three earlier attempts at measuring this failed in the rig rather than the
     product, twice looking like the chain not detecting a change: once because
