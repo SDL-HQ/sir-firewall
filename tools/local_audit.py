@@ -320,7 +320,11 @@ def main() -> int:
     current_summary = json.loads((REPO_ROOT / "proofs/run_summary.json").read_text(encoding="utf-8"))
     current_ledger = str(current_summary.get("ledger_path") or "")
     itgl_out = _capture(
-        [sys.executable, "tools/verify_itgl.py", "--ledger", current_ledger], env=env
+        [
+            sys.executable, "tools/verify_itgl.py", "--ledger", current_ledger,
+            "--write-hash", "proofs/itgl_final_hash.txt",
+        ],
+        env=env,
     )
     _write_text(REPO_ROOT / "itgl_env.txt", itgl_out)
 

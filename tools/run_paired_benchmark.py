@@ -151,6 +151,8 @@ def _run_single(
         str(ROOT / "tools" / "verify_itgl.py"),
         "--ledger",
         str(summary["ledger_path"]),
+        "--write-hash",
+        "proofs/itgl_final_hash.txt",
     ])
 
     # Which document this half produces follows from what it was: the gate

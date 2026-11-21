@@ -16,14 +16,21 @@ Where final_hash_raw is:
 - else entry["itgl_prompt_final_hash"] with optional "sha256:" prefix stripped
 
 Outputs:
-- proofs/itgl_final_hash.txt   (sha256:<final_ledger_hash>)
 - Prints: ITGL_FINAL_HASH=sha256:<final_ledger_hash> (CI-friendly)
+- With --write-hash PATH, and only then, writes sha256:<final_ledger_hash> to PATH.
+
+Until 21 November 2026 every run wrote proofs/itgl_final_hash.txt beneath the
+directory it was run from. That file is tracked in this repository and
+published beside the root ledger, so a reader who verified an archived or an
+altered ledger from a checkout left that ledger's terminal hash in a tracked
+file describing a different run. Verifying writes nothing now. The three
+publishing steps that need the file name where it goes.
 """
 
 import argparse
-import os
 import sys
 from pathlib import Path
+from typing import Optional
 
 LEDGER_PATH = Path("proofs") / "itgl_ledger.jsonl"
 
@@ -39,7 +46,11 @@ from itgl import (
 )
 
 
-def main(ledger_path: Path = LEDGER_PATH, minimum_chain_version: int = CHAIN_VERSION_V1) -> None:
+def main(
+    ledger_path: Path = LEDGER_PATH,
+    minimum_chain_version: int = CHAIN_VERSION_V1,
+    write_hash: Optional[Path] = None,
+) -> None:
     try:
         chain_version = ledger_chain_version(load_ledger(ledger_path))
         itgl_final_hash, row_count = load_and_verify_ledger(ledger_path, minimum_chain_version)
@@ -50,9 +61,9 @@ def main(ledger_path: Path = LEDGER_PATH, minimum_chain_version: int = CHAIN_VER
         print(f"ITGL ledger verification ERROR: {exc}", file=sys.stderr)
         raise SystemExit(1)
 
-    os.makedirs("proofs", exist_ok=True)
-    with open("proofs/itgl_final_hash.txt", "w", encoding="utf-8") as out:
-        out.write(itgl_final_hash + "\n")
+    if write_hash is not None:
+        write_hash.parent.mkdir(parents=True, exist_ok=True)
+        write_hash.write_text(itgl_final_hash + "\n", encoding="utf-8")
 
     print(f"ITGL_FINAL_HASH={itgl_final_hash}")
     print(
@@ -89,5 +100,16 @@ if __name__ == "__main__":
             "downgraded to the weaker rule by whoever holds the archive."
         ),
     )
+    parser.add_argument(
+        "--write-hash",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help=(
+            "Write the terminal hash to PATH. For the publishing steps, which archive "
+            "that file. Without it this tool writes nothing, so verifying a ledger "
+            "leaves no file behind."
+        ),
+    )
     args = parser.parse_args()
-    main(args.ledger, args.min_chain_version)
+    main(args.ledger, args.min_chain_version, args.write_hash)

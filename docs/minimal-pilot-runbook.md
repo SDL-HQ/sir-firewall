@@ -171,8 +171,10 @@ What to look for:
 Action/command:
 
 ```bash
-python3 tools/verify_itgl.py
+python3 tools/verify_itgl.py --write-hash proofs/itgl_final_hash.txt
 ```
+
+Without `--write-hash` the verifier prints the terminal hash and writes nothing, so the file would still describe the run before.
 
 Artifact to inspect:
 

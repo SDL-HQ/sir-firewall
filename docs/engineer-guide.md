@@ -88,12 +88,12 @@ Outputs (local run artefacts):
 * `effective_pack_id`: runtime enforcement pack observed from gate execution
 * `pack_id`: runtime pack alias used by downstream cert/archive metadata
 
-`proofs/itgl_final_hash.txt` is produced by the separate ITGL verification step below, not by `sir run`.
+`proofs/itgl_final_hash.txt` is not produced by `sir run`. The ITGL verification step below writes it when it is given `--write-hash`, and writes nothing without it.
 
-Verify ITGL:
+Verify ITGL, and write the terminal hash for the publishing step further down:
 
 ```bash
-python3 tools/verify_itgl.py
+python3 tools/verify_itgl.py --write-hash proofs/itgl_final_hash.txt
 ```
 
 ## Run a live gating check (PASS prompts call provider)
