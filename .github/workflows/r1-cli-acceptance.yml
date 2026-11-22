@@ -204,6 +204,11 @@ jobs:
         run: |
           set -euo pipefail
           test -f "$AUDIT_JSON"
+          # This step archives proofs/itgl_final_hash.txt, so it is a publishing
+          # step and has to write that file from this run's ledger. The file is
+          # tracked, so without this the checkout's copy is another run's and
+          # publish_run.py refuses it.
+          python tools/verify_itgl.py --ledger proofs/itgl_ledger.jsonl --write-hash proofs/itgl_final_hash.txt
           python tools/publish_run.py --cert "$AUDIT_JSON" \
             --copy proofs/itgl_ledger.jsonl \
             --copy proofs/itgl_final_hash.txt \
