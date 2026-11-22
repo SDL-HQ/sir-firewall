@@ -41,16 +41,16 @@ output.
 ## Current figures
 
 <!-- BEGIN GENERATED ARCHIVE FIGURES: measured-totals -->
-Measured across all 381 published run archives under `proofs/runs/`:
+Measured across all 382 published run archives under `proofs/runs/`:
 
 | Check | Result | Count |
 |---|---|---|
-| `verify_certificate.py` | verified (exit 0) | 111 |
+| `verify_certificate.py` | verified (exit 0) | 112 |
 | `verify_certificate.py` | verified; no ledger in the archive, so no binding was checked (exit 0) | 39 |
 | `verify_certificate.py` | SIGNATURE VERIFICATION FAILED (exit 5) | 6 |
 | `verify_certificate.py` | ledger binding not established (no row count, or predates the 2.3.4 correction) (exit 9) | 223 |
 | `verify_certificate.py` | no certificate in archive; this archive holds a baseline record (exit none) | 2 |
-| `verify_archive_receipt.py` | verified (exit 0) | 234 |
+| `verify_archive_receipt.py` | verified (exit 0) | 235 |
 | `verify_archive_receipt.py` | archive incomplete or signature failed (exit 2) | 108 |
 | `verify_archive_receipt.py` | no archive receipt (legacy archive) (exit 3) | 39 |
 <!-- END GENERATED ARCHIVE FIGURES: measured-totals -->
@@ -237,7 +237,7 @@ the three it offered as its example.
 <!-- BEGIN GENERATED ARCHIVE FIGURES: e4-above-the-correction -->
 **Why this is exit 9 and not exit 7.** A binding that was never made is not a
 binding that disagrees. Every certificate from SIR 2.3.4 onward matches the
-ledger shipped with it, 111 of 111, so a mismatch at or above the correction is
+ledger shipped with it, 112 of 112, so a mismatch at or above the correction is
 a real failure and is still reported as one. Below it, reporting a documented
 and disclosed format boundary as a tampering failure would describe 105
 published archives as broken.
@@ -285,8 +285,8 @@ ordinary push-triggered audit, in which nobody chose a model and none was
 called, records the default in the signed payload.
 
 <!-- BEGIN GENERATED ARCHIVE FIGURES: e6-counts -->
-**Counts.** 221 published certificates name a model and explicitly record zero
-model calls: 217 `FIREWALL_ONLY_AUDIT`, 2 `LIVE_GATING_CHECK` and 2
+**Counts.** 222 published certificates name a model and explicitly record zero
+model calls: 218 `FIREWALL_ONLY_AUDIT`, 2 `LIVE_GATING_CHECK` and 2
 `SCENARIO_AUDIT`. A further 37 name a model and do not carry the counter at
 all. The values recorded across both groups are `gpt-5-mini`, `gpt-5.4-mini`,
 `grok-4-1-fast`, `grok-4.3`, `xai/grok-3-beta` and `xai/grok-4-1-fast`, in the
@@ -452,10 +452,10 @@ that ledger's terminal hash is given another run's.
 **Counts.**
 
 <!-- BEGIN GENERATED ARCHIVE FIGURES: e9-counts -->
-*107 of the 339 archives that ship both files hold a
+*107 of the 340 archives that ship both files hold a
 `proofs/itgl_final_hash.txt` that is not the terminal hash of the
 `proofs/itgl_ledger.jsonl` beside it.* The terminal hash is computed from the
-archived ledgers, all 339 of which verify as a chain. By month of publication:
+archived ledgers, all 340 of which verify as a chain. By month of publication:
 69 in April 2026, 16 in May 2026, 2 in June 2026, 2 in July 2026, 8 in August
 2026 and 10 in September 2026. The first is 5 April 2026 and the last is 21
 September 2026.
