@@ -832,3 +832,36 @@ def test_every_field_the_schema_constrains_has_a_shipped_rule(baseline_run):
     # The fields the schema leaves as a bare string. Listed so that a field
     # losing its constraint shows up here rather than passing silently.
     assert exempt == {"commit_sha", "ci_run_url", "pack_version", "repository"}, sorted(exempt)
+
+
+def test_an_input_that_cannot_be_read_is_an_exit_code_and_not_a_traceback(tmp_path):
+    """A path that does not exist, a directory given instead of a file.
+
+    Before 22 November 2026 the read in `_load_record` was unguarded while the
+    parse beside it was guarded, so either of these ended in a FileNotFoundError
+    or IsADirectoryError traceback. A traceback is not one of this tool's exit
+    codes, so a reader could not tell a crash from a verdict, and the tool
+    reported our defect in the shape of a statement about their document. That
+    is the distinction this repository draws between 5 and 6, and between 7 and
+    9, applied to the input.
+
+    The code and the message shape match verify_certificate.py on the same
+    input, which has always refused it. Asserted against that sibling rather
+    than against a literal, so the two cannot drift apart.
+
+    Breaking this: remove the try/except around the read in `_load_record`.
+    """
+    baseline = ROOT / "tools/verify_baseline_record.py"
+    sibling = ROOT / "tools/verify_certificate.py"
+
+    for target in (tmp_path / "absent.json", tmp_path):
+        got = subprocess.run([sys.executable, str(baseline), str(target)],
+                             capture_output=True, text=True)
+        ref = subprocess.run([sys.executable, str(sibling), str(target)],
+                             capture_output=True, text=True)
+
+        assert "Traceback" not in got.stderr, got.stderr
+        assert got.returncode == ref.returncode, (
+            f"{target}: baseline exits {got.returncode}, certificate exits {ref.returncode}")
+        assert got.stderr.startswith("ERROR: "), got.stderr
+        assert "baseline record" in got.stderr

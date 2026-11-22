@@ -94,10 +94,14 @@ minimal bundle needs no spec file;
 | 11 | binding failure on a signed value: the counters, the configuration identity, or the `result` itself is not supported by the bound ledger |
 | 12 | the document is not a SIR audit certificate, and nothing about it was verified, including its signature |
 
-`tools/verify_baseline_record.py`: 0 verified, 2 not a baseline record, 3
-payload hash mismatch, 4 malformed base64, 5 signature does not verify, 6 the
-signature check could not be performed, 7 the bound ledger does not support
-the record, 10 the registry does not honour the signing key for this record.
+`tools/verify_baseline_record.py`: 0 verified, **1 the input could not be
+read**, 2 not a baseline record, 3 payload hash mismatch, 4 malformed base64,
+5 signature does not verify, 6 the signature check could not be performed, 7
+the bound ledger does not support the record, 10 the registry does not honour
+the signing key for this record. 1 is what `verify_certificate.py` has always
+returned for the same input and was undocumented for both; until 22 November
+2026 this tool ended in a traceback instead, which is not an exit code and
+reports our defect in the shape of a statement about the reader's document.
 
 `tools/verify_archive_receipt.py`: 0 verified, 2 a named file is missing or
 changed, the receipt signature does not verify, or the registry does not honour

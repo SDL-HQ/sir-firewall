@@ -515,7 +515,18 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _load_record(source: str) -> Dict[str, Any]:
-    raw = sys.stdin.read() if source == "-" else Path(source).read_text(encoding="utf-8")
+    # The read is guarded for the same reason the parse below is. Unguarded it
+    # ended in a traceback on a path that does not exist, which reports our
+    # defect as the document's: a reader cannot tell a crash from a verdict,
+    # and a traceback is not one of this tool's exit codes. The message and the
+    # code match verify_certificate.py on the same input.
+    if source == "-":
+        raw = sys.stdin.read()
+    else:
+        try:
+            raw = Path(source).read_text(encoding="utf-8")
+        except OSError as exc:
+            raise SystemExit(f"ERROR: baseline record file could not be read: {source}: {exc.strerror}") from exc
     try:
         document = json.loads(raw)
     except Exception as exc:
