@@ -57,9 +57,14 @@ jobs:
           # generated per run, signs nothing that is published, and dies with
           # the job, so this is disclosure hygiene and not a credential. But
           # three later steps carry it in `env:`, and the runner prints a
-          # step's env block, so without this the whole BEGIN PRIVATE KEY
-          # block stands in a public log and reads to anyone scrolling past as
-          # a leaked signing key. On a repository whose claim is that its
+          # step's env block, so without this the whole key block stands in a
+          # public log and reads to anyone scrolling past as a leaked signing
+          # key. This comment says "key block" rather than spelling out the PEM
+          # header, because the runner echoes the script body: the first version
+          # of it put that header in the public log on every run, so a scanner
+          # grepping logs for it hit this workflow forever. That is the cost
+          # this step exists to remove, reintroduced by the comment explaining
+          # the step. On a repository whose claim is that its
           # evidence survives inspection, looking like a leak costs something.
           # Per line because add-mask matches a line at a time.
           while IFS= read -r line; do
