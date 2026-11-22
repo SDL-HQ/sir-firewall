@@ -6,8 +6,16 @@ and published beside the root ledger. So a reader who verified an archived
 ledger from a checkout left that ledger's terminal hash in a tracked file that
 describes a different run, as a side effect of checking something.
 
-The write is now asked for, with `--write-hash PATH`, by the three publishing
-steps that archive the file.
+The write is now asked for, with `--write-hash PATH`, by every publishing step
+that archives the file.
+
+How many such steps there are is derived from the tree and not listed here. A
+hand-typed list of the publishing steps is a second copy of which steps
+publish, and nothing compared it to the tree: the first version of this test
+named three, the repository had four, and the fourth was
+`.github/workflows/r1-cli-acceptance.yml`, which archived the checkout's hash
+file on every run. Its first run after `publish_run.py` learned to compare
+refused it, which is the comparison working and the enumeration not.
 
 Requiring the flag does not by itself make a forgotten one fail closed, and
 that was measured and not assumed. The file is tracked, so a publishing step
@@ -98,14 +106,49 @@ def test_a_ledger_that_does_not_verify_writes_no_hash(tmp_path):
 # --- the publishing steps name the destination ------------------------------------------------
 
 
+def _publishing_steps():
+    """Every tracked file that archives the hash file, found rather than listed.
+
+    A file is a publishing step if it hands `publish_run.py` the hash file to
+    copy. That is the property the rule is about, so it is the property looked
+    for; a step added later is found by the same walk.
+    """
+    tracked = subprocess.run(
+        ["git", "ls-files", "-z", "--", ".github/workflows", "tools"],
+        cwd=REPO, capture_output=True, text=True, check=True,
+    ).stdout.split("\0")
+    found = []
+    for name in tracked:
+        if not name or not name.endswith((".yml", ".yaml", ".py")):
+            continue
+        path = REPO / name
+        if path.name in ("verify_itgl.py", "publish_run.py"):
+            continue
+        source = path.read_text(encoding="utf-8", errors="replace")
+        uncommented = "\n".join(
+            line for line in source.splitlines() if not line.lstrip().startswith("#")
+        )
+        if "publish_run" in uncommented and str(HASH_FILE) in uncommented:
+            found.append((name, uncommented))
+    return found
+
+
 def test_every_step_that_archives_the_hash_file_asks_for_it_to_be_written():
-    workflow = (REPO / ".github" / "workflows" / "audit-and-sign.yml").read_text(encoding="utf-8")
-    invocations = [line for line in workflow.splitlines() if "tools/verify_itgl.py" in line and not line.lstrip().startswith("#")]
-    assert invocations, "the audit workflow no longer runs the ledger verifier"
-    assert all(f"--write-hash {HASH_FILE}" in line for line in invocations), invocations
-    for tool in ("local_audit.py", "run_paired_benchmark.py"):
-        source = (REPO / "tools" / tool).read_text(encoding="utf-8")
-        assert "verify_itgl.py" in source and '"--write-hash"' in source and f'"{HASH_FILE}"' in source, tool
+    steps = _publishing_steps()
+    assert len(steps) >= 4, [name for name, _ in steps]
+    for name, source in steps:
+        assert "verify_itgl.py" in source, f"{name} archives {HASH_FILE} and never writes it"
+        assert f"--write-hash" in source, f"{name} runs verify_itgl.py without --write-hash"
+        assert str(HASH_FILE) in source, name
+        if not name.endswith((".yml", ".yaml")):
+            # A Python caller builds the invocation as a list over several
+            # lines, so the flag is not on the line that names the tool and
+            # the check above is the whole check. Only in a workflow is one
+            # invocation one line.
+            continue
+        for line in source.splitlines():
+            if "verify_itgl.py" in line and "--write-hash" not in line:
+                raise AssertionError(f"{name}: a verify_itgl.py call with no --write-hash: {line.strip()}")
 
 
 # --- a forgotten flag meets a comparison, not an existence check ----------------------------------
